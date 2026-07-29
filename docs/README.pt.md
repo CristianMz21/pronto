@@ -160,6 +160,12 @@ Consulte `.env.example` para a lista completa, incluindo Telegram, Viber e confi
 
 ---
 
+## Checklist de segurança após a instalação
+
+Depois de implantar, acesse o dashboard do seu projeto Supabase e confira **Advisors → Security Advisor**. Este projeto segue as boas práticas de RLS do Postgres/Supabase em cada migração, mas o próprio advisor do Supabase é a única forma de confirmar o estado real do seu banco de dados específico — incluindo qualquer objeto que já existisse no seu projeto antes de rodar essas migrações, ou alterações personalizadas que você mesmo tenha feito. Corrija tudo o que for sinalizado ali antes de usar isso em produção com dados reais de clientes.
+
+---
+
 ## Eventos de Notificação
 
 O Pronto envia notificações automáticas por todos os canais configurados.

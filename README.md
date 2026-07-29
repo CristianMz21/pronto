@@ -126,6 +126,12 @@ Start free at [trypronto.app](https://trypronto.app) — no credit card, no comm
 
 ---
 
+## Security checklist after installation
+
+After deploying, log into your Supabase project dashboard and check **Advisors → Security Advisor**. This project follows Postgres/Supabase RLS best practices in every migration, but Supabase's own advisor is the only way to confirm the live state of your specific database — including any objects that may have existed in your project before running these migrations, or custom changes you've made yourself. Fix anything flagged there before using this in production with real customer data.
+
+---
+
 ## Environment Variables
 
 Copy `.env.example` to `.env` and fill in:
