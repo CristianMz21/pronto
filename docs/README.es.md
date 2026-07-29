@@ -390,6 +390,8 @@ pronto/
 - **Personalización** — funciones a medida, branding o integraciones específicas para tu negocio ($150–400)
 - **Hosting administrado** — ¿no quieres gestionar un servidor? Usa la versión en la nube en [trypronto.app](https://trypronto.app) desde $19/mes
 
+  La versión en la nube incluye además algunas funciones que no forman parte del núcleo self-hosted: programa de fidelización y panel de analíticas.
+
 Contacto: [ukv2179@gmail.com](mailto:ukv2179@gmail.com) o abre un issue con la etiqueta `services`.
 
 ---
@@ -423,7 +425,6 @@ Consulta [CONTRIBUTING.md](../CONTRIBUTING.md) para la configuración de desarro
 
 ### 🔜 v1.5 — Q3 2026
 - Panel de analíticas (ingresos, LTV, servicios más populares)
-- Programa de fidelización
 - Notificaciones por LINE (Japón, Tailandia, Taiwán)
 - PWA para clientes (historial de reservas, tarjeta de fidelidad)
 - Gestión de personal con nómina y comisiones

@@ -390,6 +390,8 @@ Precisa de ajuda para começar? Ofereço:
 - **Personalização** — funcionalidades sob medida, identidade visual ou integrações específicas para o seu negócio ($150–400)
 - **Hospedagem gerenciada** — não quer gerenciar um servidor? Use a versão na nuvem em [trypronto.app](https://trypronto.app) a partir de $19/mês
 
+  A versão na nuvem também inclui algumas funcionalidades que não fazem parte do núcleo self-hosted: programa de fidelidade e painel de análises.
+
 Contato: [ukv2179@gmail.com](mailto:ukv2179@gmail.com) ou abra uma issue com a label `services`.
 
 ---
@@ -423,7 +425,6 @@ Pull requests são bem-vindos! Por favor, abra uma issue primeiro para discutir 
 
 ### 🔜 v1.5 — Q3 2026
 - Painel de análises (receita, LTV, serviços mais populares)
-- Programa de fidelidade
 - Notificações pelo LINE (Japão, Tailândia, Taiwan)
 - PWA para clientes (histórico de agendamentos, cartão fidelidade)
 - Gestão de equipe com folha de pagamento e comissões

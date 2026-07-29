@@ -52,10 +52,6 @@ export type Database = {
           notification_language: string | null
           custom_domain: string | null
           custom_domain_status: string | null
-          loyalty_enabled: boolean | null
-          loyalty_points_per_dollar: number | null
-          loyalty_min_redeem_points: number | null
-          loyalty_redeem_value: number | null
           enabled_modules: string[] | null
           created_at: string
           updated_at: string
@@ -102,10 +98,6 @@ export type Database = {
           notification_language?: string | null
           custom_domain?: string | null
           custom_domain_status?: string | null
-          loyalty_enabled?: boolean | null
-          loyalty_points_per_dollar?: number | null
-          loyalty_min_redeem_points?: number | null
-          loyalty_redeem_value?: number | null
           enabled_modules?: string[] | null
           created_at?: string
           updated_at?: string
@@ -152,10 +144,6 @@ export type Database = {
           notification_language?: string | null
           custom_domain?: string | null
           custom_domain_status?: string | null
-          loyalty_enabled?: boolean | null
-          loyalty_points_per_dollar?: number | null
-          loyalty_min_redeem_points?: number | null
-          loyalty_redeem_value?: number | null
           enabled_modules?: string[] | null
           created_at?: string
           updated_at?: string

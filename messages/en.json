@@ -254,9 +254,6 @@
     "title": "POS / Checkout",
     "salesHistory": "Transactions",
     "categoryOther": "Other",
-    "loyaltyBanner": "Use {pts} pts → {amount} off",
-    "loyaltyNeedPoints": "has {pts} pts (need {need} to redeem)",
-    "loyaltyDiscount": "Loyalty discount",
     "cart": "Cart",
     "clientLabel": "Client",
     "walkIn": "Walk-in",
@@ -303,7 +300,6 @@
     "offlinePendingSync": "{count} offline sales pending sync",
     "offlineSyncNow": "Sync now",
     "offlineSavedReceipt": "Saved offline. Will sync when internet is restored.",
-    "loyaltyRemoveDiscount": "-{amount} ✓ Remove",
     "durationMin": "{min} min"
   },
   "crm": {
@@ -500,7 +496,6 @@
       "billing": "Billing",
       "account": "Account",
       "domain": "Domain",
-      "loyalty": "Loyalty",
       "modules": "Modules"
     },
     "billing": {
@@ -771,22 +766,6 @@
       "networkError": "Network error. Please try again.",
       "connectError": "Error connecting domain"
     },
-    "loyalty": {
-      "heading": "Loyalty Program",
-      "description": "Reward your clients with points for every visit. They can redeem points for discounts.",
-      "proOnly": "Available on Pro and Agency plans",
-      "proOnlyDesc": "Upgrade to enable the loyalty program for your clients.",
-      "upgradeButton": "Upgrade to Pro →",
-      "descriptionActive": "Reward clients with points for every purchase.",
-      "enableLabel": "Enable loyalty program",
-      "enableHint": "Clients earn points on every POS transaction",
-      "pointsPerDollar": "Points per $1 spent",
-      "minRedeem": "Minimum points to redeem",
-      "redeemValue": "Redemption value ($)",
-      "summary": "Clients earn {points} point(s) per $1. Every {min} points = ${value} discount.",
-      "saveButton": "Save settings",
-      "saved": "Saved!"
-    },
     "modules": {
       "heading": "Feature Modules",
       "description": "Choose which features are active for your business. Data is never deleted when a module is turned off — it reappears when you re-enable it.",
@@ -809,7 +788,7 @@
         },
         "crm": {
           "label": "CRM & Clients",
-          "description": "Client cards, visit history, loyalty points"
+          "description": "Client cards, visit history, tags and notes"
         },
         "pos": {
           "label": "POS & Checkout",
@@ -1022,14 +1001,6 @@
     "appointments": {
       "heading": "Visit history",
       "empty": "No visits yet"
-    },
-    "loyalty": {
-      "heading": "Loyalty Points",
-      "worth": "Worth {amount} in discounts",
-      "visitPayment": "Visit payment",
-      "discountApplied": "Discount applied",
-      "copyLink": "Copy link",
-      "noTransactions": "No loyalty transactions yet."
     },
     "status": {
       "pending": "pending",

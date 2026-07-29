@@ -35,12 +35,11 @@ Auto repair shops · Cafes · Tattoo studios · Retail shops & kiosks
 ### 👥 CRM & Clients
 - Client cards with visit history, notes, tags, birthday
 - CSV import from Fresha, Vagaro, Booksy, Mindbody, Square
-- Loyalty points program with POS integration
 
 ### 🛒 POS & Checkout
 - Fast checkout: services and products in one cart
 - Cash, card, transfer payment methods
-- Sales history with search by client or product name
+- Sales history with search by client
 
 ### 📦 Inventory & Retail
 - Product catalog with barcode, SKU, category, cost/sell price
@@ -123,6 +122,10 @@ Open http://localhost:3000
 ### Cloud (no setup required)
 
 Start free at [trypronto.app](https://trypronto.app) — no credit card, no commission.
+
+A few features are cloud-only and not part of the self-hosted core:
+- Loyalty points program
+- Analytics dashboard
 
 ---
 
@@ -319,7 +322,6 @@ pronto/
 - Omnichannel notifications (Email, Telegram, WhatsApp, Viber)
 - Retail / barcode mode with CSV/Excel import-export
 - Modular system (enable only what you need)
-- Loyalty program
 - Analytics dashboard
 - Multi-language: EN / ES / PT
 - PWA with offline-capable POS

@@ -254,9 +254,6 @@
     "title": "POS / Caja",
     "salesHistory": "Transacciones",
     "categoryOther": "Otro",
-    "loyaltyBanner": "Usar {pts} pts → {amount} de descuento",
-    "loyaltyNeedPoints": "tiene {pts} pts (necesita {need} para canjear)",
-    "loyaltyDiscount": "Descuento de fidelidad",
     "cart": "Carrito",
     "clientLabel": "Cliente",
     "walkIn": "Sin cita",
@@ -303,7 +300,6 @@
     "offlinePendingSync": "{count} venta(s) offline pendiente(s) de sincronización",
     "offlineSyncNow": "Sincronizar ahora",
     "offlineSavedReceipt": "Guardado sin conexión. Se sincronizará cuando haya internet.",
-    "loyaltyRemoveDiscount": "-{amount} ✓ Quitar",
     "durationMin": "{min} min"
   },
   "crm": {
@@ -500,7 +496,6 @@
       "billing": "Facturación",
       "account": "Cuenta",
       "domain": "Dominio",
-      "loyalty": "Fidelidad",
       "modules": "Módulos"
     },
     "billing": {
@@ -771,22 +766,6 @@
       "networkError": "Error de red. Por favor intenta de nuevo.",
       "connectError": "Error al conectar el dominio"
     },
-    "loyalty": {
-      "heading": "Programa de fidelidad",
-      "description": "Recompensa a tus clientes con puntos por cada visita. Pueden canjearlos por descuentos.",
-      "proOnly": "Disponible en los planes Pro y Agency",
-      "proOnlyDesc": "Mejora tu plan para activar el programa de fidelidad.",
-      "upgradeButton": "Mejorar a Pro →",
-      "descriptionActive": "Recompensa a los clientes con puntos por cada compra.",
-      "enableLabel": "Activar programa de fidelidad",
-      "enableHint": "Los clientes acumulan puntos en cada transacción del POS",
-      "pointsPerDollar": "Puntos por $1 gastado",
-      "minRedeem": "Puntos mínimos para canjear",
-      "redeemValue": "Valor de canje ($)",
-      "summary": "Los clientes ganan {points} punto(s) por $1. Cada {min} puntos = ${value} de descuento.",
-      "saveButton": "Guardar configuración",
-      "saved": "¡Guardado!"
-    },
     "modules": {
       "heading": "Módulos de funciones",
       "description": "Elige qué funciones están activas para tu negocio. Los datos nunca se eliminan al desactivar un módulo — reaparecen cuando lo reactivas.",
@@ -809,7 +788,7 @@
         },
         "crm": {
           "label": "CRM y Clientes",
-          "description": "Fichas de clientes, historial de visitas, puntos de fidelidad"
+          "description": "Fichas de clientes, historial de visitas, etiquetas y notas"
         },
         "pos": {
           "label": "POS y Cobro",
@@ -1022,14 +1001,6 @@
     "appointments": {
       "heading": "Historial de visitas",
       "empty": "Aún no hay visitas"
-    },
-    "loyalty": {
-      "heading": "Puntos de fidelidad",
-      "worth": "Vale {amount} en descuentos",
-      "visitPayment": "Pago de visita",
-      "discountApplied": "Descuento aplicado",
-      "copyLink": "Copiar enlace",
-      "noTransactions": "Aún no hay transacciones de fidelidad."
     },
     "status": {
       "pending": "pendiente",

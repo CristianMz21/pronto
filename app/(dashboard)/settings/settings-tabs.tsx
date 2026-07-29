@@ -35,10 +35,6 @@ interface Business {
   custom_domain: string | null
   custom_domain_status: string | null
   logo_url: string | null
-  loyalty_enabled: boolean | null
-  loyalty_points_per_dollar: number | null
-  loyalty_min_redeem_points: number | null
-  loyalty_redeem_value: number | null
   enabled_modules: string[] | null
 }
 interface Service { id: string; name: string; description: string | null; price: number; duration_min: number; category: string | null; is_active: boolean; capacity: number }
@@ -59,14 +55,14 @@ const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
 })
 
 interface Props { business: Business & { telegram_chat_id?: string | null; viber_chat_id?: string | null }; services: Service[]; employees: Employee[]; workingHours: DayHours[]; userEmail: string }
-type Tab = 'general' | 'services' | 'employees' | 'notifications' | 'billing' | 'account' | 'domain' | 'loyalty' | 'modules'
+type Tab = 'general' | 'services' | 'employees' | 'notifications' | 'billing' | 'account' | 'domain' | 'modules'
 
 export function SettingsTabs({ business: initial, services: initServices, employees: initEmployees, workingHours: initHours, userEmail }: Props) {
   const supabase = createClient()
   const router = useRouter()
   const t = useTranslations('settings')
   const searchParams = useSearchParams()
-  const initialTab = (['general', 'services', 'employees', 'notifications', 'billing', 'domain', 'loyalty', 'modules'].includes(searchParams.get('tab') ?? '')
+  const initialTab = (['general', 'services', 'employees', 'notifications', 'billing', 'domain', 'modules'].includes(searchParams.get('tab') ?? '')
     ? searchParams.get('tab')
     : 'general') as Tab
   const [tab, setTab] = useState<Tab>(initialTab)
@@ -106,14 +102,6 @@ export function SettingsTabs({ business: initial, services: initServices, employ
   const [modulesSaving, setModulesSaving] = useState(false)
   const [confirmModule, setConfirmModule] = useState<ModuleKey | null>(null)
   const [modulesSaved, setModulesSaved] = useState(false)
-
-  // Loyalty tab state
-  const [loyaltyEnabled, setLoyaltyEnabled] = useState(initial.loyalty_enabled ?? false)
-  const [loyaltyPPD, setLoyaltyPPD] = useState(initial.loyalty_points_per_dollar ?? 1)
-  const [loyaltyMinRedeem, setLoyaltyMinRedeem] = useState(initial.loyalty_min_redeem_points ?? 100)
-  const [loyaltyRedeemVal, setLoyaltyRedeemVal] = useState(Number(initial.loyalty_redeem_value ?? 5))
-  const [loyaltySaving, setLoyaltySaving] = useState(false)
-  const [loyaltySaved, setLoyaltySaved] = useState(false)
 
   // Logo state
   const [logoUrl, setLogoUrl] = useState<string | null>(initial.logo_url ?? null)
@@ -416,7 +404,6 @@ export function SettingsTabs({ business: initial, services: initServices, employ
     { key: 'notifications', label: t('tabs.notifications') },
     { key: 'billing', label: t('tabs.billing') },
     { key: 'domain', label: t('tabs.domain') },
-    { key: 'loyalty', label: t('tabs.loyalty') },
     { key: 'modules', label: t('tabs.modules') },
     { key: 'account', label: t('tabs.account') },
   ]
@@ -1192,7 +1179,7 @@ export function SettingsTabs({ business: initial, services: initServices, employ
             <div className="bg-green-50 border border-green-200 rounded-xl p-4">
               <p className="text-sm font-medium text-green-800 mb-1">Self-hosted — All features unlocked</p>
               <p className="text-sm text-green-700">
-                Analytics, Loyalty, Custom domain, and all other Pro features are available to you at no charge.
+                All Pro/Agency features — including custom domain — are available to you at no charge.
                 Manage your instance via Docker Compose.
               </p>
             </div>
@@ -1337,98 +1324,6 @@ export function SettingsTabs({ business: initial, services: initServices, employ
                 </div>
               </div>
             )}
-          </div>
-        </div>
-      )}
-
-      {/* Loyalty */}
-      {tab === 'loyalty' && (
-        <div className="space-y-4">
-          <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
-            <div>
-              <h2 className="font-semibold text-gray-900">{t('loyalty.heading')}</h2>
-              <p className="text-sm text-gray-500 mt-1">{t('loyalty.descriptionActive')}</p>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-900">{t('loyalty.enableLabel')}</p>
-                <p className="text-xs text-gray-500 mt-0.5">{t('loyalty.enableHint')}</p>
-              </div>
-              <button
-                onClick={() => setLoyaltyEnabled((v) => !v)}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${loyaltyEnabled ? 'bg-blue-600' : 'bg-gray-200'}`}
-              >
-                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${loyaltyEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
-              </button>
-            </div>
-
-            {loyaltyEnabled && (
-              <div className="space-y-4 pt-2 border-t border-gray-100">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div>
-                    <label className="text-xs font-medium text-gray-500">{t('loyalty.pointsPerDollar')}</label>
-                    <input
-                      type="number"
-                      min={1}
-                      max={100}
-                      value={loyaltyPPD}
-                      onChange={(e) => setLoyaltyPPD(Math.max(1, Math.min(100, Number(e.target.value))))}
-                      className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-500">{t('loyalty.minRedeem')}</label>
-                    <input
-                      type="number"
-                      min={10}
-                      value={loyaltyMinRedeem}
-                      onChange={(e) => setLoyaltyMinRedeem(Math.max(10, Number(e.target.value)))}
-                      className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-500">{t('loyalty.redeemValue')}</label>
-                    <input
-                      type="number"
-                      min={1}
-                      step={0.5}
-                      value={loyaltyRedeemVal}
-                      onChange={(e) => setLoyaltyRedeemVal(Math.max(1, Number(e.target.value)))}
-                      className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-                <div className="bg-blue-50 border border-blue-100 rounded-lg px-4 py-3 text-sm text-blue-800">
-                  {t('loyalty.summary', { points: loyaltyPPD, min: loyaltyMinRedeem, value: loyaltyRedeemVal })}
-                </div>
-              </div>
-            )}
-
-            <button
-              onClick={async () => {
-                setLoyaltySaving(true)
-                setLoyaltySaved(false)
-                await fetch('/api/loyalty/settings', {
-                  method: 'PATCH',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    loyalty_enabled: loyaltyEnabled,
-                    loyalty_points_per_dollar: loyaltyPPD,
-                    loyalty_min_redeem_points: loyaltyMinRedeem,
-                    loyalty_redeem_value: loyaltyRedeemVal,
-                  }),
-                })
-                setLoyaltySaving(false)
-                setLoyaltySaved(true)
-                setTimeout(() => setLoyaltySaved(false), 2500)
-              }}
-              disabled={loyaltySaving}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
-            >
-              {loyaltySaving ? <Loader2 className="w-4 h-4 animate-spin" /> : loyaltySaved ? <Check className="w-4 h-4" /> : null}
-              {loyaltySaved ? t('loyalty.saved') : t('loyalty.saveButton')}
-            </button>
           </div>
         </div>
       )}

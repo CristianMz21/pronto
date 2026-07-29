@@ -5,7 +5,7 @@ export const MODULES = {
   },
   crm: {
     label: 'CRM & Clients',
-    description: 'Client cards, visit history, loyalty points',
+    description: 'Client cards, visit history, tags and notes',
   },
   pos: {
     label: 'POS & Checkout',
