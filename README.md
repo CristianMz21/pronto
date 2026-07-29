@@ -70,9 +70,8 @@ Enable only what you need:
 Toggle modules in **Settings → Modules** — unused tabs disappear from the sidebar.
 
 ### 📊 Analytics
-- Revenue dashboard with sparkline charts
-- Top services and products
-- Client LTV and visit frequency
+- Dashboard shows today's revenue with a 7-day sparkline
+- Full analytics dashboard (top services/products, client LTV, visit frequency) is cloud-only — see below
 
 ### 🌐 Multi-language
 - Interface available in English, Spanish (LatAm), Portuguese (Brazil)
