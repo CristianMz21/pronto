@@ -157,7 +157,7 @@
     },
     "step1": {
       "heading": "Aggiungi il tuo primo servizio",
-      "subheadline": "Potrai aggiungerne altri in seguito nelle Impostazioni",
+      "subheading": "Potrai aggiungerne altri in seguito nelle Impostazioni",
       "serviceNameLabel": "Nome del servizio *",
       "serviceNamePlaceholder": "es. Taglio di capelli, Cambio olio…",
       "priceLabel": "Prezzo *",
