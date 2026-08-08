@@ -74,7 +74,7 @@ Toggle modules in **Settings → Modules** — unused tabs disappear from the si
 - Full analytics dashboard (top services/products, client LTV, visit frequency) is cloud-only — see below
 
 ### 🌐 Multi-language
-- Interface available in English, Spanish (LatAm), Portuguese (Brazil)
+- Interface available in English, Spanish (LatAm), Italian, Portuguese (Brazil)
 
 ---
 
@@ -297,6 +297,7 @@ pronto/
 ├── messages/
 │   ├── en.json          # English strings
 │   ├── es.json          # Spanish strings
+│   ├── it.json          # Italian strings
 │   └── pt.json          # Portuguese strings
 ├── supabase/
 │   └── migrations/      # SQL files — applied automatically on first docker-compose up
@@ -322,7 +323,7 @@ pronto/
 - Retail / barcode mode with CSV/Excel import-export
 - Modular system (enable only what you need)
 - Analytics dashboard
-- Multi-language: EN / ES / PT
+- Multi-language: EN / ES / IT / PT
 - PWA with offline-capable POS
 - Docker one-command install
 
