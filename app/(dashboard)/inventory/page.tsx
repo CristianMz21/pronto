@@ -7,6 +7,7 @@ import { getTranslations } from 'next-intl/server'
 import { InventoryTabs } from './inventory-tabs'
 import { InventoryImportButton } from '@/components/inventory/inventory-import-button'
 import { InventoryExportButton } from '@/components/inventory/inventory-export-button'
+import { InventoryMoreMenu } from '@/components/inventory/inventory-more-menu'
 
 export default async function InventoryPage({
   searchParams,
@@ -34,8 +35,11 @@ export default async function InventoryPage({
         title={t('title')}
         actions={
           <div className="flex items-center gap-2">
-            <InventoryImportButton />
-            <InventoryExportButton />
+            <div className="hidden sm:flex items-center gap-2">
+              <InventoryImportButton />
+              <InventoryExportButton />
+            </div>
+            <InventoryMoreMenu />
             <Link href="/inventory/new">
               <Button size="sm"><Plus className="w-4 h-4 mr-1" /> {t('addItem')}</Button>
             </Link>

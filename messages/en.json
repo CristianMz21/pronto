@@ -329,6 +329,7 @@
     "addItem": "Add item",
     "importCsv": "Import",
     "export": "Export",
+    "moreActions": "More actions",
     "import": {
       "title": "Import Products",
       "uploadHint": "Already have a supplier price list in Excel or CSV? Upload it directly — Pronto will detect the columns automatically.",

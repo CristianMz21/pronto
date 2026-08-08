@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
 import { ShoppingBag, Download } from 'lucide-react'
+import { DatePicker } from '@/components/ui/date-picker'
 
 type Period = 'today' | '7d' | '30d'
 const PERIODS: Period[] = ['today', '7d', '30d']
@@ -136,24 +137,18 @@ export function SalesTab() {
         {/* Custom date range */}
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs text-gray-400 hidden sm:inline">{t('sales.customRange')}</span>
-          <input
-            type="date"
+          <DatePicker
             value={customFrom}
-            onChange={(e) => setCustomFrom(e.target.value)}
-            className={`border rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-              activeRange ? 'border-blue-400 bg-blue-50' : 'border-gray-200'
-            }`}
+            onChange={setCustomFrom}
             placeholder={t('sales.from')}
+            className={`w-32 ${activeRange ? '[&_input]:border-blue-400 [&_input]:bg-blue-50' : ''}`}
           />
           <span className="text-gray-400 text-xs">→</span>
-          <input
-            type="date"
+          <DatePicker
             value={customTo}
-            onChange={(e) => setCustomTo(e.target.value)}
-            className={`border rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-              activeRange ? 'border-blue-400 bg-blue-50' : 'border-gray-200'
-            }`}
+            onChange={setCustomTo}
             placeholder={t('sales.to')}
+            className={`w-32 ${activeRange ? '[&_input]:border-blue-400 [&_input]:bg-blue-50' : ''}`}
           />
           <button
             onClick={applyCustomRange}

@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 
 interface DatePickerProps {
   value: string               // YYYY-MM-DD
@@ -13,12 +14,6 @@ interface DatePickerProps {
   /** Minimum selectable date YYYY-MM-DD — days before it are greyed out */
   minDate?: string
 }
-
-const MONTHS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-]
-const DAY_NAMES = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']
 
 function parseDate(val: string): Date | null {
   if (!val || val.length < 10) return null
@@ -34,6 +29,9 @@ export function DatePicker({
   disabledWeekdays,
   minDate,
 }: DatePickerProps) {
+  const dp = useTranslations('datePicker')
+  const MONTHS = dp.raw('months') as string[]
+  const DAY_NAMES = dp.raw('days') as string[]
   const today = new Date()
   const parsed = parseDate(value)
 
@@ -226,7 +224,7 @@ export function DatePicker({
               onClick={goToday}
               className="text-xs text-blue-600 hover:text-blue-800 font-medium py-0.5"
             >
-              Today
+              {dp('today')}
             </button>
           </div>
         </div>

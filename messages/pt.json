@@ -329,6 +329,7 @@
     "addItem": "Adicionar item",
     "importCsv": "Importar",
     "export": "Exportar",
+    "moreActions": "Mais ações",
     "import": {
       "title": "Importar produtos",
       "uploadHint": "Tem uma lista de preços do fornecedor em Excel ou CSV? Envie diretamente — o Pronto detectará as colunas automaticamente.",

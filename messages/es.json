@@ -329,6 +329,7 @@
     "addItem": "Agregar producto",
     "importCsv": "Importar",
     "export": "Exportar",
+    "moreActions": "Más acciones",
     "import": {
       "title": "Importar productos",
       "uploadHint": "¿Tienes una lista de precios de proveedor en Excel o CSV? Súbela directamente — Pronto detectará las columnas automáticamente.",
