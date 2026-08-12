@@ -35,9 +35,9 @@ export const metadata: Metadata = {
   alternates: {
     canonical: 'https://trypronto.app/es/precios',
     languages: {
-      en: 'https://trypronto.app/pricing',
+      en: 'https://trypronto.app',
       es: 'https://trypronto.app/es/precios',
-      'x-default': 'https://trypronto.app/pricing',
+      'x-default': 'https://trypronto.app',
     },
   },
   openGraph: {
@@ -201,7 +201,7 @@ export default function EsPreciosPage() {
           <Link href="/login" className={styles.navLink}>
             Iniciar sesión
           </Link>
-          <Link href="/pricing" className={`${styles.navLink} lang-switcher`}>
+          <Link href="/" className={`${styles.navLink} lang-switcher`}>
             EN
           </Link>
           <Link href="/register" className={styles.btnNav}>

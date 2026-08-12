@@ -22,9 +22,6 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
           Pronto<span>.</span>
         </Link>
         <div className={styles.navRight}>
-          <Link href="/pricing" className={`${styles.navLink} ${styles.hideMob}`}>
-            Pricing
-          </Link>
           <Link href="/login" className={styles.navLink}>
             Sign in
           </Link>
@@ -42,8 +39,8 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
       </main>
 
       {/* FOOTER — keep in sync with all other pages
-          ES standard: /es/ · /es/precios · /es/para · /es/para/salones · legal · GitHub
-          EN standard: / · /pricing · /for · /for/salons · legal · GitHub */}
+          ES standard: /es/ · /es/precios · /es/para · legal · GitHub
+          EN standard: / · legal · GitHub */}
       <footer className={styles.footer}>
         <div className={styles.footerBrand}>
           Pronto<span>.</span>
@@ -51,9 +48,6 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
         <div className={styles.footerCopy}>© 2026 Pronto. All rights reserved.</div>
         <div className={styles.footerLinks}>
           <Link href="/">Home</Link>
-          <Link href="/pricing">Pricing</Link>
-          <Link href="/for">For businesses</Link>
-          <Link href="/for/salons">Salons</Link>
           <Link href="/terms">Terms</Link>
           <Link href="/privacy">Privacy</Link>
           <Link href="/refund">Refund policy</Link>

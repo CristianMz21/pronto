@@ -132,9 +132,7 @@ export default function RefundPage() {
               </p>
               <p>
                 See also our{' '}
-                <Link href="/terms" className="text-blue-600 hover:underline">Terms of Service</Link>
-                {' '}and{' '}
-                <Link href="/pricing" className="text-blue-600 hover:underline">Pricing</Link>.
+                <Link href="/terms" className="text-blue-600 hover:underline">Terms of Service</Link>.
               </p>
             </div>
           </section>

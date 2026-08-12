@@ -9,9 +9,9 @@ export const metadata: Metadata = {
   alternates: {
     canonical: 'https://trypronto.app/es/para',
     languages: {
-      en: 'https://trypronto.app/for',
+      en: 'https://trypronto.app',
       es: 'https://trypronto.app/es/para',
-      'x-default': 'https://trypronto.app/for',
+      'x-default': 'https://trypronto.app',
     },
   },
   openGraph: {
@@ -168,7 +168,7 @@ const pageContent = `
   <div class="nav-right">
     <a href="/es/precios" class="nav-link hide-mob">Precios</a>
     <a href="/login" class="nav-link">Iniciar sesi&oacute;n</a>
-    <a href="/for" class="nav-link lang-switcher">EN</a>
+    <a href="/" class="nav-link lang-switcher">EN</a>
     <a href="/register" class="btn-nav">Empezar gratis</a>
   </div>
 </nav>
