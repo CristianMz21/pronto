@@ -125,6 +125,31 @@ When adding features, make sure they work in both modes. Wrap SaaS-only UI in:
 )}
 ```
 
+### Porting fixes from the private (SaaS) repo
+
+Some files — `settings-tabs.tsx` above all — mix logic that belongs in both
+repos (general settings) with logic that is SaaS-only (billing, Loyalty,
+custom domain, module gating). When porting a fix from the private repo,
+**copy only the specific lines/sections the fix touches, never the whole
+file.** Copying a whole file pulls along any SaaS-only feature that happens
+to live in it, even if it's unrelated to the fix you're porting.
+
+This has already happened twice: the retail-module port (`dbd67af`, 2026-07-08)
+replaced this repo's `settings-tabs.tsx` with the private repo's version
+wholesale "for SaaS parity," which silently added a Loyalty tab and a Custom
+Domain tab — neither backed by a migration or API route in this repo, so both
+buttons 404'd for every self-hosted user until they were noticed and removed
+weeks later (`daee621` for Loyalty, and the Custom Domain removal that
+followed the same pattern).
+
+**Checklist for any port touching a mixed file:**
+1. Diff only the lines relevant to the fix — don't `cp` or replace the file.
+2. After porting, grep the result for SaaS-only terms (`whop`, `lemonsqueezy`,
+   `loyalty`, `custom_domain`, `plan_limits`) that weren't part of your fix.
+3. Confirm every new UI element that calls an API route has a matching route
+   in *this* repo, and every new DB field has a matching migration in
+   `supabase/migrations/` here — not just in the private repo.
+
 ### Database (Supabase + RLS)
 
 - Every table has Row Level Security enabled

@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Pencil, Trash2, Check, Loader2, CheckCircle2, AlertCircle, Users, Eye, EyeOff, RefreshCw } from 'lucide-react'
+import { Plus, Pencil, Trash2, Check, Loader2, CheckCircle2, AlertCircle, Users, Eye, EyeOff } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { MODULES, ModuleKey } from '@/lib/modules'
 
@@ -17,7 +17,6 @@ interface Business {
   plan_expires_at: string | null
   telegram_bot_token: string | null; viber_bot_token: string | null
   owner_whatsapp: string | null
-  ls_customer_id: string | null
   email_provider: string | null
   smtp_host: string | null; smtp_port: number | null; smtp_user: string | null
   smtp_pass: string | null; smtp_from: string | null
@@ -32,8 +31,6 @@ interface Business {
   wa_template_language: string | null
   brand_color: string | null
   notification_language: string | null
-  custom_domain: string | null
-  custom_domain_status: string | null
   logo_url: string | null
   enabled_modules: string[] | null
 }
@@ -55,14 +52,14 @@ const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
 })
 
 interface Props { business: Business & { telegram_chat_id?: string | null; viber_chat_id?: string | null }; services: Service[]; employees: Employee[]; workingHours: DayHours[]; userEmail: string }
-type Tab = 'general' | 'services' | 'employees' | 'notifications' | 'billing' | 'account' | 'domain' | 'modules'
+type Tab = 'general' | 'services' | 'employees' | 'notifications' | 'billing' | 'account' | 'modules'
 
 export function SettingsTabs({ business: initial, services: initServices, employees: initEmployees, workingHours: initHours, userEmail }: Props) {
   const supabase = createClient()
   const router = useRouter()
   const t = useTranslations('settings')
   const searchParams = useSearchParams()
-  const initialTab = (['general', 'services', 'employees', 'notifications', 'billing', 'domain', 'modules'].includes(searchParams.get('tab') ?? '')
+  const initialTab = (['general', 'services', 'employees', 'notifications', 'billing', 'modules'].includes(searchParams.get('tab') ?? '')
     ? searchParams.get('tab')
     : 'general') as Tab
   const [tab, setTab] = useState<Tab>(initialTab)
@@ -84,15 +81,6 @@ export function SettingsTabs({ business: initial, services: initServices, employ
   const [employees, setEmployees] = useState(initEmployees)
   const [empForm, setEmpForm] = useState<Partial<Employee>>({})
   const [editingEmp, setEditingEmp] = useState<string | null>(null)
-
-  // Domain tab state
-  const [domainInput, setDomainInput] = useState('')
-  const [domainSaving, setDomainSaving] = useState(false)
-  const [domainStatus, setDomainStatus] = useState<string>(initial.custom_domain_status ?? 'inactive')
-  const [domainValue, setDomainValue] = useState<string>(initial.custom_domain ?? '')
-  const [domainError, setDomainError] = useState('')
-  const [domainChecking, setDomainChecking] = useState(false)
-  const [domainConfirmRemove, setDomainConfirmRemove] = useState(false)
 
   // Modules tab state
   const DEFAULT_MODULES = ['bookings', 'crm', 'pos', 'inventory', 'notifications']
@@ -139,64 +127,6 @@ export function SettingsTabs({ business: initial, services: initServices, employ
       setLogoError(t('general.logoErrorRemove'))
     } finally {
       setLogoUploading(false)
-    }
-  }
-
-  useEffect(() => {
-    if (domainStatus !== 'pending') return
-    const interval = setInterval(async () => {
-      try {
-        const res = await fetch('/api/domain/status')
-        const data = await res.json() as { domain: string; status: string }
-        setDomainStatus(data.status)
-        setDomainValue(data.domain ?? '')
-      } catch { /* ignore */ }
-    }, 30_000)
-    return () => clearInterval(interval)
-  }, [domainStatus])
-
-  async function connectDomain() {
-    setDomainError('')
-    setDomainSaving(true)
-    try {
-      const res = await fetch('/api/domain', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ domain: domainInput }),
-      })
-      const data = await res.json() as { status?: string; domain?: string; error?: string }
-      if (!res.ok) { setDomainError(data.error ?? t('domain.connectError')); return }
-      setDomainValue(data.domain ?? domainInput)
-      setDomainStatus('pending')
-      setDomainInput('')
-    } catch {
-      setDomainError(t('domain.networkError'))
-    } finally {
-      setDomainSaving(false)
-    }
-  }
-
-  async function checkDomainStatus() {
-    setDomainChecking(true)
-    try {
-      const res = await fetch('/api/domain/status')
-      const data = await res.json() as { domain: string; status: string }
-      setDomainStatus(data.status)
-      setDomainValue(data.domain ?? '')
-    } catch { /* ignore */ } finally {
-      setDomainChecking(false)
-    }
-  }
-
-  async function removeDomain() {
-    setDomainSaving(true)
-    try {
-      await fetch('/api/domain', { method: 'DELETE' })
-      setDomainValue('')
-      setDomainStatus('inactive')
-      setDomainConfirmRemove(false)
-    } catch { /* ignore */ } finally {
-      setDomainSaving(false)
     }
   }
 
@@ -403,7 +333,6 @@ export function SettingsTabs({ business: initial, services: initServices, employ
     { key: 'employees', label: t('tabs.employees') },
     { key: 'notifications', label: t('tabs.notifications') },
     { key: 'billing', label: t('tabs.billing') },
-    { key: 'domain', label: t('tabs.domain') },
     { key: 'modules', label: t('tabs.modules') },
     { key: 'account', label: t('tabs.account') },
   ]
@@ -1179,151 +1108,10 @@ export function SettingsTabs({ business: initial, services: initServices, employ
             <div className="bg-green-50 border border-green-200 rounded-xl p-4">
               <p className="text-sm font-medium text-green-800 mb-1">Self-hosted — All features unlocked</p>
               <p className="text-sm text-green-700">
-                All Pro/Agency features — including custom domain — are available to you at no charge.
+                All Pro/Agency features are available to you at no charge.
                 Manage your instance via Docker Compose.
               </p>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Domain */}
-      {tab === 'domain' && (
-        <div className="space-y-4">
-          <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
-            <div>
-              <h2 className="font-semibold text-gray-900">{t('domain.heading')}</h2>
-              <p className="text-sm text-gray-500 mt-1">{t('domain.description')}</p>
-            </div>
-
-            {(!domainValue || domainStatus === 'inactive') && (
-              <div className="space-y-3">
-                <div>
-                  <label className="text-xs font-medium text-gray-500">{t('domain.domainLabel')}</label>
-                  <input
-                    type="text"
-                    value={domainInput}
-                    onChange={(e) => setDomainInput(e.target.value)}
-                    placeholder={t('domain.domainPlaceholder')}
-                    className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                {domainError && (
-                  <p className="text-xs text-red-600">{domainError}</p>
-                )}
-                <button
-                  onClick={connectDomain}
-                  disabled={domainSaving || !domainInput.trim()}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                >
-                  {domainSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                  {t('domain.connectButton')}
-                </button>
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-xs text-gray-600 space-y-1">
-                  <p className="font-medium text-gray-700">{t('domain.dnsAfterSave')}</p>
-                  <p><span className="font-mono bg-gray-100 px-1 rounded">Type:</span> CNAME</p>
-                  <p><span className="font-mono bg-gray-100 px-1 rounded">Name:</span> {t('domain.dnsNameHint')}</p>
-                  <p><span className="font-mono bg-gray-100 px-1 rounded">Value:</span> your-server-hostname</p>
-                  <p><span className="font-mono bg-gray-100 px-1 rounded">TTL:</span> Auto</p>
-                  <p className="text-gray-500 pt-1">{t('domain.dnsSslNote')}</p>
-                </div>
-              </div>
-            )}
-
-            {domainValue && domainStatus === 'pending' && (
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-medium text-gray-900">{domainValue}</span>
-                  <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">{t('domain.statusPending')}</span>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={checkDomainStatus}
-                    disabled={domainChecking}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium border border-gray-300 rounded-lg bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
-                  >
-                    {domainChecking ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-                    {t('domain.checkStatus')}
-                  </button>
-                  <button
-                    onClick={removeDomain}
-                    disabled={domainSaving}
-                    className="px-3 py-1.5 text-sm font-medium border border-red-200 rounded-lg bg-white text-red-600 hover:bg-red-50 disabled:opacity-50 transition-colors"
-                  >
-                    {t('domain.removeButton')}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {domainValue && domainStatus === 'active' && (
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-medium text-gray-900">{domainValue}</span>
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-green-100 text-green-800 rounded-full">
-                    <Check className="w-3 h-3" /> {t('domain.statusActive')}
-                  </span>
-                </div>
-                <a
-                  href={`https://${domainValue}/book`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-sm text-blue-600 hover:underline"
-                >
-                  {t('domain.openBookingPage')}
-                </a>
-                {!domainConfirmRemove ? (
-                  <button
-                    onClick={() => setDomainConfirmRemove(true)}
-                    className="block px-3 py-1.5 text-sm font-medium border border-red-200 rounded-lg bg-white text-red-600 hover:bg-red-50 transition-colors"
-                  >
-                    {t('domain.removeDomain')}
-                  </button>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-600">{t('domain.confirmRemove', { domain: domainValue })}</span>
-                    <button
-                      onClick={removeDomain}
-                      disabled={domainSaving}
-                      className="px-3 py-1.5 text-sm font-medium bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
-                    >
-                      {domainSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : t('domain.confirmRemoveButton')}
-                    </button>
-                    <button
-                      onClick={() => setDomainConfirmRemove(false)}
-                      className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700"
-                    >
-                      {t('domain.cancelButton')}
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {domainValue && (domainStatus === 'failed' || domainStatus === 'blocked') && (
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-medium text-gray-900">{domainValue}</span>
-                  <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-red-100 text-red-800 rounded-full">{t('domain.statusFailed')}</span>
-                </div>
-                <p className="text-sm text-gray-500">{t('domain.dnsError')}</p>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => { setDomainInput(domainValue); setDomainValue(''); setDomainStatus('inactive') }}
-                    className="px-3 py-1.5 text-sm font-medium border border-gray-300 rounded-lg bg-white text-gray-700 hover:bg-gray-50 transition-colors"
-                  >
-                    {t('domain.retryButton')}
-                  </button>
-                  <button
-                    onClick={removeDomain}
-                    disabled={domainSaving}
-                    className="px-3 py-1.5 text-sm font-medium border border-red-200 rounded-lg bg-white text-red-600 hover:bg-red-50 disabled:opacity-50 transition-colors"
-                  >
-                    {t('domain.removeButton')}
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       )}

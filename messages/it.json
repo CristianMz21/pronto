@@ -495,7 +495,6 @@
       "notifications": "Notifiche",
       "billing": "Fatturazione",
       "account": "Account",
-      "domain": "Dominio",
       "modules": "Moduli"
     },
     "billing": {
@@ -737,34 +736,6 @@
         "birthdayPlaceholder": "es. happy_birthday",
         "language": "Lingua del modello"
       }
-    },
-    "domain": {
-      "heading": "Dominio personalizzato",
-      "description": "Usa il tuo dominio personale per la pagina di prenotazione (es. ://tuosalone.com).",
-      "proOnly": "Disponibile nei piani Pro e Agency",
-      "proOnlyDesc": "Passa al piano superiore per collegare il tuo dominio personalizzato alla tua pagina di prenotazione.",
-      "upgradeButton": "Passa al piano Pro →",
-      "domainLabel": "Dominio",
-      "domainPlaceholder": "://tuosalone.com",
-      "connectButton": "Collega dominio",
-      "dnsAfterSave": "Dopo aver salvato, aggiungi questo record DNS presso il tuo fornitore di dominio:",
-      "dnsNameHint": "prenotazioni (o qualsiasi sottodominio tu desideri)",
-      "dnsAddRecord": "Aggiungi questo record DNS presso il tuo fornitore di dominio:",
-      "dnsSslNote": "Il certificato SSL verrà rilasciato automaticamente. Questa operazione può richiedere fino a 24 ore.",
-      "statusPending": "Verifica in corso",
-      "checkStatus": "Controlla stato",
-      "removeButton": "Rimuovi",
-      "statusActive": "Attivo",
-      "openBookingPage": "Apri pagina di prenotazione →",
-      "removeDomain": "Rimuovi dominio",
-      "confirmRemove": "Rimuovere {domain}?",
-      "confirmRemoveButton": "Conferma rimozione",
-      "cancelButton": "Annulla",
-      "statusFailed": "Verifica fallita",
-      "dnsError": "Controlla le impostazioni DNS e riprova.",
-      "retryButton": "Riprova",
-      "networkError": "Errore di rete. Riprova.",
-      "connectError": "Errore durante il collegamento del dominio"
     },
     "modules": {
       "heading": "Moduli delle funzionalità",
@@ -1112,12 +1083,6 @@
     "upgradeButton": "Passa di livello",
     "downgradeButton": "Riduci livello",
     "cancelNote": "Per annullare l'abbonamento, gestiscilo direttamente su",
-    "syncTitle": "Il piano non si aggiorna dopo l'acquisto?",
-    "syncDesc": "Sincronizza lo stato del tuo abbonamento da Whop.",
-    "syncButton": "Sincronizza piano",
-    "syncOk": "Piano aggiornato a {tier}!",
-    "syncNotFound": "Nessuna iscrizione attiva a Whop trovata per questo account. Assicurati di aver effettuato l'acquisto utilizzando lo stesso indirizzo email.",
-    "syncError": "Sincronizzazione fallita. Contatta l'assistenza all'indirizzo support@trypronto.app.",
     "plans": {
       "free": {
         "name": "Free",

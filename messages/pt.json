@@ -496,7 +496,6 @@
       "notifications": "Notificações",
       "billing": "Faturamento",
       "account": "Conta",
-      "domain": "Domínio",
       "modules": "Módulos"
     },
     "billing": {
@@ -738,34 +737,6 @@
         "birthdayPlaceholder": "ex. happy_birthday",
         "language": "Idioma do template"
       }
-    },
-    "domain": {
-      "heading": "Domínio personalizado",
-      "description": "Use seu próprio domínio para a página de agendamentos (ex. agendamentos.seu-salao.com.br).",
-      "proOnly": "Disponível nos planos Pro e Agency",
-      "proOnlyDesc": "Faça upgrade para conectar seu domínio personalizado à página de agendamentos.",
-      "upgradeButton": "Fazer upgrade para Pro →",
-      "domainLabel": "Domínio",
-      "domainPlaceholder": "agendamentos.seu-salao.com.br",
-      "connectButton": "Conectar domínio",
-      "dnsAfterSave": "Após salvar, adicione este registro DNS no seu provedor de domínio:",
-      "dnsNameHint": "booking (ou o subdomínio que preferir)",
-      "dnsAddRecord": "Adicione este registro DNS no seu provedor de domínio:",
-      "dnsSslNote": "O certificado SSL será emitido automaticamente. Pode levar até 24 horas.",
-      "statusPending": "Verificação pendente",
-      "checkStatus": "Verificar status",
-      "removeButton": "Remover",
-      "statusActive": "Ativo",
-      "openBookingPage": "Abrir página de agendamentos →",
-      "removeDomain": "Remover domínio",
-      "confirmRemove": "Remover {domain}?",
-      "confirmRemoveButton": "Confirmar remoção",
-      "cancelButton": "Cancelar",
-      "statusFailed": "Verificação falhou",
-      "dnsError": "Verifique suas configurações de DNS e tente novamente.",
-      "retryButton": "Tentar novamente",
-      "networkError": "Erro de rede. Por favor, tente novamente.",
-      "connectError": "Erro ao conectar o domínio"
     },
     "modules": {
       "heading": "Módulos de funcionalidades",
@@ -1113,12 +1084,6 @@
     "upgradeButton": "Upgrade",
     "downgradeButton": "Downgrade",
     "cancelNote": "Para cancelar sua assinatura, gerencie diretamente em",
-    "syncTitle": "O plano não atualizou após a compra?",
-    "syncDesc": "Sincronize seu status de assinatura pelo Whop.",
-    "syncButton": "Sincronizar plano",
-    "syncOk": "Plano atualizado para {tier}!",
-    "syncNotFound": "Nenhuma assinatura ativa do Whop encontrada para esta conta. Verifique se comprou com o mesmo e-mail.",
-    "syncError": "Falha na sincronização. Entre em contato com suporte@trypronto.app.",
     "plans": {
       "free": {
         "name": "Grátis",

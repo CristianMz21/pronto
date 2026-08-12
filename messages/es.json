@@ -496,7 +496,6 @@
       "notifications": "Notificaciones",
       "billing": "Facturación",
       "account": "Cuenta",
-      "domain": "Dominio",
       "modules": "Módulos"
     },
     "billing": {
@@ -738,34 +737,6 @@
         "birthdayPlaceholder": "ej. happy_birthday",
         "language": "Idioma de la plantilla"
       }
-    },
-    "domain": {
-      "heading": "Dominio personalizado",
-      "description": "Usa tu propio dominio para la página de reservas (ej. reservas.tu-salon.com).",
-      "proOnly": "Disponible en los planes Pro y Agency",
-      "proOnlyDesc": "Mejora tu plan para conectar tu dominio personalizado a tu página de reservas.",
-      "upgradeButton": "Mejorar a Pro →",
-      "domainLabel": "Dominio",
-      "domainPlaceholder": "reservas.tu-salon.com",
-      "connectButton": "Conectar dominio",
-      "dnsAfterSave": "Después de guardar, agrega este registro DNS en tu proveedor de dominio:",
-      "dnsNameHint": "booking (o el subdominio que prefieras)",
-      "dnsAddRecord": "Agrega este registro DNS en tu proveedor de dominio:",
-      "dnsSslNote": "El certificado SSL se emitirá automáticamente. Puede tardar hasta 24 horas.",
-      "statusPending": "Verificación pendiente",
-      "checkStatus": "Verificar estado",
-      "removeButton": "Eliminar",
-      "statusActive": "Activo",
-      "openBookingPage": "Abrir página de reservas →",
-      "removeDomain": "Eliminar dominio",
-      "confirmRemove": "¿Eliminar {domain}?",
-      "confirmRemoveButton": "Confirmar eliminación",
-      "cancelButton": "Cancelar",
-      "statusFailed": "Verificación fallida",
-      "dnsError": "Revisa tu configuración DNS e intenta de nuevo.",
-      "retryButton": "Reintentar",
-      "networkError": "Error de red. Por favor intenta de nuevo.",
-      "connectError": "Error al conectar el dominio"
     },
     "modules": {
       "heading": "Módulos de funciones",
@@ -1113,12 +1084,6 @@
     "upgradeButton": "Mejorar",
     "downgradeButton": "Degradar",
     "cancelNote": "Para cancelar tu suscripción, adminístrala directamente en",
-    "syncTitle": "¿El plan no se actualizó después de la compra?",
-    "syncDesc": "Sincroniza tu estado de suscripción desde Whop.",
-    "syncButton": "Sincronizar plan",
-    "syncOk": "¡Plan actualizado a {tier}!",
-    "syncNotFound": "No se encontró membresía activa de Whop para esta cuenta. Asegúrate de haber comprado con el mismo correo.",
-    "syncError": "Error de sincronización. Contacta soporte en support@trypronto.app.",
     "plans": {
       "free": {
         "name": "Gratis",

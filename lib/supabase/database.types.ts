@@ -30,7 +30,6 @@ export type Database = {
           viber_chat_id: string | null
           owner_whatsapp: string | null
           onboarding_completed: boolean
-          ls_customer_id: string | null
           ls_subscription_id: string | null
           ls_variant_id: string | null
           email_provider: string | null
@@ -50,8 +49,6 @@ export type Database = {
           wa_template_language: string | null
           brand_color: string | null
           notification_language: string | null
-          custom_domain: string | null
-          custom_domain_status: string | null
           enabled_modules: string[] | null
           created_at: string
           updated_at: string
@@ -76,7 +73,6 @@ export type Database = {
           viber_chat_id?: string | null
           owner_whatsapp?: string | null
           onboarding_completed?: boolean
-          ls_customer_id?: string | null
           ls_subscription_id?: string | null
           ls_variant_id?: string | null
           email_provider?: string | null
@@ -96,8 +92,6 @@ export type Database = {
           wa_template_language?: string | null
           brand_color?: string | null
           notification_language?: string | null
-          custom_domain?: string | null
-          custom_domain_status?: string | null
           enabled_modules?: string[] | null
           created_at?: string
           updated_at?: string
@@ -122,7 +116,6 @@ export type Database = {
           viber_chat_id?: string | null
           owner_whatsapp?: string | null
           onboarding_completed?: boolean
-          ls_customer_id?: string | null
           ls_subscription_id?: string | null
           ls_variant_id?: string | null
           email_provider?: string | null
@@ -142,8 +135,6 @@ export type Database = {
           wa_template_language?: string | null
           brand_color?: string | null
           notification_language?: string | null
-          custom_domain?: string | null
-          custom_domain_status?: string | null
           enabled_modules?: string[] | null
           created_at?: string
           updated_at?: string

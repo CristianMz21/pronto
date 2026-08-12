@@ -496,7 +496,6 @@
       "notifications": "Notifications",
       "billing": "Billing",
       "account": "Account",
-      "domain": "Domain",
       "modules": "Modules"
     },
     "billing": {
@@ -738,34 +737,6 @@
         "birthdayPlaceholder": "e.g. happy_birthday",
         "language": "Template language"
       }
-    },
-    "domain": {
-      "heading": "Custom Domain",
-      "description": "Use your own domain for the booking page (e.g. booking.your-salon.com).",
-      "proOnly": "Available on Pro and Agency plans",
-      "proOnlyDesc": "Upgrade to connect your custom domain to your booking page.",
-      "upgradeButton": "Upgrade to Pro →",
-      "domainLabel": "Domain",
-      "domainPlaceholder": "booking.your-salon.com",
-      "connectButton": "Connect Domain",
-      "dnsAfterSave": "After saving, add this DNS record at your domain provider:",
-      "dnsNameHint": "booking (or whatever subdomain you want)",
-      "dnsAddRecord": "Add this DNS record at your domain provider:",
-      "dnsSslNote": "SSL certificate will be issued automatically. This may take up to 24 hours.",
-      "statusPending": "Pending verification",
-      "checkStatus": "Check status",
-      "removeButton": "Remove",
-      "statusActive": "Active",
-      "openBookingPage": "Open booking page →",
-      "removeDomain": "Remove domain",
-      "confirmRemove": "Remove {domain}?",
-      "confirmRemoveButton": "Confirm remove",
-      "cancelButton": "Cancel",
-      "statusFailed": "Verification failed",
-      "dnsError": "Please check your DNS settings and try again.",
-      "retryButton": "Retry",
-      "networkError": "Network error. Please try again.",
-      "connectError": "Error connecting domain"
     },
     "modules": {
       "heading": "Feature Modules",
@@ -1113,12 +1084,6 @@
     "upgradeButton": "Upgrade",
     "downgradeButton": "Downgrade",
     "cancelNote": "To cancel your subscription, manage it directly at",
-    "syncTitle": "Plan not updating after purchase?",
-    "syncDesc": "Sync your subscription status from Whop.",
-    "syncButton": "Sync plan",
-    "syncOk": "Plan updated to {tier}!",
-    "syncNotFound": "No active Whop membership found for this account. Make sure you purchased using the same email address.",
-    "syncError": "Sync failed. Please contact support at support@trypronto.app.",
     "plans": {
       "free": {
         "name": "Free",
