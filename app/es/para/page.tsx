@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { redirect } from 'next/navigation'
 
 export const metadata: Metadata = {
   title: 'Pronto para Negocios de Servicios — POS, Reservas y CRM Gratis',
@@ -331,6 +332,10 @@ const pageContent = `
 `
 
 export default function EsParaPage() {
+  if (process.env.NEXT_PUBLIC_DEPLOYMENT_MODE !== 'saas') {
+    redirect('/login')
+  }
+
   return (
     <>
       <script

@@ -1,5 +1,6 @@
 import { Metadata } from 'next'
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { Bricolage_Grotesque, DM_Sans } from 'next/font/google'
 import { Check, Minus } from 'lucide-react'
 import { PricingCards } from './PricingCards'
@@ -185,6 +186,10 @@ function FeatureCell({ value }: { value: FeatureValue }) {
 }
 
 export default function EsPreciosPage() {
+  if (process.env.NEXT_PUBLIC_DEPLOYMENT_MODE !== 'saas') {
+    redirect('/login')
+  }
+
   return (
     <div className={`${styles.page} ${bricolage.variable} ${dmSans.variable}`}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { Bricolage_Grotesque, DM_Sans } from 'next/font/google'
 import styles from './landing.module.css'
 
@@ -126,6 +127,10 @@ const organizationJsonLd = {
 }
 
 export default function RootPage() {
+  if (process.env.NEXT_PUBLIC_DEPLOYMENT_MODE !== 'saas') {
+    redirect('/login')
+  }
+
   return (
     <div className={`${styles.page} ${bricolage.variable} ${dmSans.variable}`}>
       <script
