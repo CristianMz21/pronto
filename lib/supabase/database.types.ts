@@ -251,7 +251,6 @@ export type Database = {
           notes: string | null
           tags: string[]
           telegram_id: string | null
-          viber_id: string | null
           viber_user_id: string | null
           whatsapp_number: string | null
           birthday: string | null
@@ -269,7 +268,6 @@ export type Database = {
           notes?: string | null
           tags?: string[]
           telegram_id?: string | null
-          viber_id?: string | null
           viber_user_id?: string | null
           whatsapp_number?: string | null
           birthday?: string | null
@@ -287,7 +285,6 @@ export type Database = {
           notes?: string | null
           tags?: string[]
           telegram_id?: string | null
-          viber_id?: string | null
           viber_user_id?: string | null
           whatsapp_number?: string | null
           birthday?: string | null
