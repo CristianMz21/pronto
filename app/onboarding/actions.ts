@@ -31,8 +31,11 @@ export async function completeOnboarding(data: {
 
   // Sanitize and validate text fields
   const bizName = data.bizName ? sanitize(data.bizName).slice(0, 100) : undefined
+  // serviceName can be empty — the user may have clicked "Skip" on the
+  // first-service step. See the `if (serviceName && data.servicePrice)`
+  // guard below: an empty name (or a name without a price) simply means
+  // no service gets created, which is the intended Skip behaviour.
   const serviceName = sanitize(data.serviceName).slice(0, 100)
-  if (!serviceName) throw new Error('Service name is required')
 
   // Server-side slug validation (defence against bypassed client checks)
   const finalSlug = data.slug ?? business.slug

@@ -42,7 +42,7 @@ export default async function SettingsPage() {
 
   return (
     <>
-      <Header title={t('pageTitle')} />
+      <Header title={t('title')} />
       <SettingsTabs
         business={business}
         services={services ?? []}
