@@ -798,6 +798,7 @@
     "stepYourDetails": "Seus dados",
     "addToGoogleCalendar": "Adicionar ao Google Agenda",
     "slotTaken": "⚠ Este horário acabou de ser reservado por outra pessoa. Por favor escolha outro horário.",
+    "noStaffAvailable": "Este negócio não tem funcionários disponíveis para receber reservas no momento. Entre em contato diretamente.",
     "demoNotificationsHeading": "Seus clientes recebem notificações instantâneas via:",
     "demoNotificationsFooter": "Configure notificações em 5 minutos · Sem custo extra",
     "selectService": {

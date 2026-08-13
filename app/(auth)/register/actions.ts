@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { slugify } from '@/lib/utils'
+import { insertOwnerAsEmployee } from '@/lib/create-business'
 import { redirect } from 'next/navigation'
 
 export async function register(formData: FormData) {
@@ -53,11 +54,19 @@ export async function register(formData: FormData) {
     slug = `${baseSlug}-${attempt}`
   }
 
-  await admin.from('businesses').insert({
-    owner_id: authData.user.id,
-    name: businessName,
-    slug,
-  })
+  const { data: newBusiness } = await admin
+    .from('businesses')
+    .insert({
+      owner_id: authData.user.id,
+      name: businessName,
+      slug,
+    })
+    .select('id')
+    .single()
+
+  if (newBusiness) {
+    await insertOwnerAsEmployee(admin, newBusiness.id, authData.user)
+  }
 
   // В selfhosted-режиме: принудительно логиним сразу после регистрации,
   // чтобы не блокировать владельца сервера подтверждением email.

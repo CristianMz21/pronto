@@ -174,6 +174,16 @@ export async function POST(req: NextRequest) {
     .single()
 
   if (apptErr || !appt) {
+    // Trigger 034: no active employee exists to assign this booking to —
+    // distinct from a real time conflict, so it gets an honest message
+    // instead of "slot already booked".
+    if (apptErr?.message?.includes('no_staff_available')) {
+      return NextResponse.json(
+        { error: 'no_staff_available', message: 'This business has no staff available to take bookings right now. Please contact them directly.' },
+        { status: 409 }
+      )
+    }
+
     // Trigger 017: the DB raises 'slot_already_booked' when a concurrent
     // request wins the race for the same slot.
     if (apptErr?.message?.includes('slot_already_booked')) {

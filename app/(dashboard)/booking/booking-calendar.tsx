@@ -377,7 +377,9 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
         body: JSON.stringify({ appointmentId: data.id }),
       }).catch(() => {/* non-critical */})
     } else if (error) {
-      if (error.message?.includes('slot_already_booked')) {
+      if (error.message?.includes('no_staff_available')) {
+        setFormError('No active staff available to take this booking. Add an employee in Settings, or select a specific employee.')
+      } else if (error.message?.includes('slot_already_booked')) {
         setFormError('This time slot is already booked for the selected employee. Please choose a different time.')
       } else {
         setFormError('Failed to save the appointment. Please try again.')

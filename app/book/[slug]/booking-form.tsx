@@ -245,6 +245,12 @@ export function PublicBookingForm({ business, services, employees, workingHours,
 
       if (res.status === 409) {
         setSaving(false)
+        const body = await res.json().catch(() => null)
+        if (body?.error === 'no_staff_available') {
+          // Not a real time conflict — retrying with a different slot won't help.
+          setBookingError(t('noStaffAvailable'))
+          return
+        }
         setSlotTakenError(true)
         setTime('')
         setStep('datetime')

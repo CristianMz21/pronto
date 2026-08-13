@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { slugify } from '@/lib/utils'
+import { insertOwnerAsEmployee } from '@/lib/create-business'
 import { NextResponse } from 'next/server'
 
 export async function GET(request: Request) {
@@ -53,11 +54,19 @@ export async function GET(request: Request) {
           slug = `${baseSlug}-${attempt}`
         }
 
-        await admin.from('businesses').insert({
-          owner_id: data.user.id,
-          name: businessName,
-          slug,
-        })
+        const { data: newBusiness } = await admin
+          .from('businesses')
+          .insert({
+            owner_id: data.user.id,
+            name: businessName,
+            slug,
+          })
+          .select('id')
+          .single()
+
+        if (newBusiness) {
+          await insertOwnerAsEmployee(admin, newBusiness.id, data.user)
+        }
 
         return NextResponse.redirect(`${origin}/onboarding`)
       }

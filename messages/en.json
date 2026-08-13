@@ -798,6 +798,7 @@
     "stepYourDetails": "Your details",
     "addToGoogleCalendar": "Add to Google Calendar",
     "slotTaken": "⚠ This time was just booked by someone else. Please choose a different time.",
+    "noStaffAvailable": "This business has no staff available to take bookings right now. Please contact them directly.",
     "demoNotificationsHeading": "Your clients receive instant notifications via:",
     "demoNotificationsFooter": "Set up notifications in 5 minutes · No extra cost",
     "selectService": {

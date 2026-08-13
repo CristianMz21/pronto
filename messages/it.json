@@ -797,6 +797,7 @@
     "stepYourDetails": "I tuoi dati",
     "addToGoogleCalendar": "Aggiungi a Google Calendar",
     "slotTaken": "⚠ Questa fascia oraria è stata appena prenotata da qualcun altro. Scegli un orario diverso.",
+    "noStaffAvailable": "Questa attività non ha personale disponibile per accettare prenotazioni in questo momento. Contattala direttamente.",
     "demoNotificationsHeading": "I tuoi clienti ricevono notifiche istantanee via:",
     "demoNotificationsFooter": "Configura le notifiche in 5 minuti · Senza costi aggiuntivi",
     "selectService": {
