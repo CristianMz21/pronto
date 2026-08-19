@@ -35,7 +35,7 @@ export default async function SettingsPage() {
       .order('name'),
     supabase
       .from('business_hours')
-      .select('day_of_week, is_open, open_time, close_time')
+      .select('day_of_week, is_open, open_time, close_time, break_start, break_end')
       .eq('business_id', business.id)
       .order('day_of_week'),
   ])

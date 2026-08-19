@@ -546,6 +546,9 @@
       "from": "De",
       "to": "Até",
       "closed": "Fechado",
+      "addBreak": "Adicionar um intervalo",
+      "breakInvalidRange": "{day}: o horário de fim do intervalo deve ser depois do início",
+      "breakOutsideHours": "{day}: o intervalo deve estar dentro do horário de funcionamento",
       "saveButton": "Salvar horário",
       "saving": "Salvando…",
       "saved": "Salvo ✓"

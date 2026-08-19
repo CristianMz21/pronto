@@ -11,7 +11,7 @@ import { useTranslations } from 'next-intl'
 interface Service { id: string; name: string; description: string | null; price: number; duration_min: number; category: string | null; capacity: number }
 interface Employee { id: string; name: string }
 interface Business { id: string; name: string; currency: string; slug: string; timezone: string | null; address?: string | null }
-interface DayHours { day_of_week: number; is_open: boolean; open_time: string; close_time: string }
+interface DayHours { day_of_week: number; is_open: boolean; open_time: string; close_time: string; break_start?: string | null; break_end?: string | null }
 
 interface Props {
   business: Business
@@ -29,6 +29,8 @@ const DEFAULT_HOURS: DayHours[] = [0, 1, 2, 3, 4, 5, 6].map((dow) => ({
   is_open: dow >= 1 && dow <= 5,
   open_time: '09:00',
   close_time: '20:00',
+  break_start: null,
+  break_end: null,
 }))
 
 function generateSlots(openTime: string, closeTime: string, durationMin: number): string[] {
@@ -152,6 +154,19 @@ export function PublicBookingForm({ business, services, employees, workingHours,
     }
 
     let slots = generateSlots(dayHours.open_time, dayHours.close_time, svc.duration_min)
+
+    if (dayHours.break_start && dayHours.break_end) {
+      const [brh, brm] = dayHours.break_start.split(':').map(Number)
+      const [beh, bem] = dayHours.break_end.split(':').map(Number)
+      const breakStartMin = brh * 60 + brm
+      const breakEndMin = beh * 60 + bem
+      slots = slots.filter((slot) => {
+        const [sh, sm] = slot.split(':').map(Number)
+        const slotStartMin = sh * 60 + sm
+        const slotEndMin = slotStartMin + svc.duration_min
+        return !(slotStartMin < breakEndMin && slotEndMin > breakStartMin)
+      })
+    }
 
     if (selectedDate === today) {
       const now = new Date()

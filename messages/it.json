@@ -545,6 +545,9 @@
       "from": "Da",
       "to": "A",
       "closed": "Chiuso",
+      "addBreak": "Aggiungi una pausa",
+      "breakInvalidRange": "{day}: l'orario di fine pausa deve essere dopo quello di inizio",
+      "breakOutsideHours": "{day}: la pausa deve rientrare nell'orario di lavoro",
       "saveButton": "Salva orari",
       "saving": "Salvataggio in corso…",
       "saved": "Salva ✓"

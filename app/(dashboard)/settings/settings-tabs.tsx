@@ -36,13 +36,15 @@ interface Business {
 }
 interface Service { id: string; name: string; description: string | null; price: number; duration_min: number; category: string | null; is_active: boolean; capacity: number }
 interface Employee { id: string; name: string; role: string; email: string | null; phone: string | null; is_active: boolean }
-interface DayHours { day_of_week: number; is_open: boolean; open_time: string; close_time: string }
+interface DayHours { day_of_week: number; is_open: boolean; open_time: string; close_time: string; break_start?: string | null; break_end?: string | null }
 
 const DEFAULT_HOURS: DayHours[] = [0, 1, 2, 3, 4, 5, 6].map((dow) => ({
   day_of_week: dow,
   is_open: dow >= 1 && dow <= 5,
   open_time: '09:00',
   close_time: '19:00',
+  break_start: null,
+  break_end: null,
 }))
 
 const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
@@ -143,8 +145,30 @@ export function SettingsTabs({ business: initial, services: initServices, employ
   const bookingUrl = useMemo(() => `${origin}/book/${biz.slug}`, [biz.slug, origin])
 
   const [savedHours, setSavedHours] = useState(false)
+  const [hoursValidationError, setHoursValidationError] = useState<string | null>(null)
+
+  // Break must sit inside the day's open/close window, start < end.
+  function findBreakValidationError(dayHours: DayHours[]): string | null {
+    for (const day of dayHours) {
+      if (!day.is_open || !day.break_start || !day.break_end) continue
+      const dayName = (t.raw('workingHours.dayNames') as string[])[day.day_of_week]
+      if (day.break_start >= day.break_end) {
+        return t('workingHours.breakInvalidRange', { day: dayName })
+      }
+      if (day.break_start < day.open_time || day.break_end > day.close_time) {
+        return t('workingHours.breakOutsideHours', { day: dayName })
+      }
+    }
+    return null
+  }
 
   async function saveWorkingHours() {
+    const validationError = findBreakValidationError(hours)
+    if (validationError) {
+      setHoursValidationError(validationError)
+      setTimeout(() => setHoursValidationError(null), 4000)
+      return
+    }
     setSavingHours(true)
     const rows = hours.map((h) => ({
       business_id: biz.id,
@@ -152,6 +176,8 @@ export function SettingsTabs({ business: initial, services: initServices, employ
       is_open: h.is_open,
       open_time: h.open_time,
       close_time: h.close_time,
+      break_start: h.break_start ?? null,
+      break_end: h.break_end ?? null,
     }))
     await supabase.from('business_hours').upsert(rows, { onConflict: 'business_id,day_of_week' })
     setSavingHours(false)
@@ -603,7 +629,8 @@ export function SettingsTabs({ business: initial, services: initServices, employ
               const day = hours.find((h) => h.day_of_week === dow)!
               const dayName = (t.raw('workingHours.dayNames') as string[])[dow]
               return (
-                <div key={dow} className="flex items-center gap-3">
+                <div key={dow}>
+                  <div className="flex items-center gap-3">
                   <label className="flex items-center cursor-pointer relative">
                     <input
                       type="checkbox"
@@ -640,14 +667,54 @@ export function SettingsTabs({ business: initial, services: initServices, employ
                   ) : (
                     <span className="text-sm text-gray-300 flex-1">{t('workingHours.closed')}</span>
                   )}
+                  </div>
+                  {day.is_open && (
+                    <div className="flex items-center gap-3 pl-12">
+                      <label className="flex items-center cursor-pointer relative">
+                        <input
+                          type="checkbox"
+                          checked={!!(day.break_start && day.break_end)}
+                          onChange={(e) => updateDay(dow, e.target.checked
+                            ? { break_start: day.open_time, break_end: day.close_time }
+                            : { break_start: null, break_end: null })}
+                          className="sr-only"
+                        />
+                        <div className={`w-9 h-5 rounded-full transition-colors relative ${day.break_start && day.break_end ? 'bg-blue-600' : 'bg-gray-200'}`}>
+                          <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${day.break_start && day.break_end ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                        </div>
+                      </label>
+                      <span className="w-24 text-xs text-gray-500">{t('workingHours.addBreak')}</span>
+                      {day.break_start && day.break_end && (
+                        <div className="flex items-center gap-2 flex-1">
+                          <span className="text-xs text-gray-400">{t('workingHours.from')}</span>
+                          <select
+                            value={day.break_start}
+                            onChange={(e) => updateDay(dow, { break_start: e.target.value })}
+                            className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            {TIME_OPTIONS.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+                          </select>
+                          <span className="text-xs text-gray-400">{t('workingHours.to')}</span>
+                          <select
+                            value={day.break_end}
+                            onChange={(e) => updateDay(dow, { break_end: e.target.value })}
+                            className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            {TIME_OPTIONS.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )
             })}
           </div>
-          <div className="mt-5">
+          <div className="mt-5 flex items-center gap-3">
             <Button onClick={saveWorkingHours} disabled={savingHours}>
               {savingHours ? t('workingHours.saving') : savedHours ? <><Check className="w-4 h-4 mr-1" />{t('workingHours.saved')}</> : t('workingHours.saveButton')}
             </Button>
+            {hoursValidationError && <p className="text-xs text-red-500">{hoursValidationError}</p>}
           </div>
         </div>
         </div>

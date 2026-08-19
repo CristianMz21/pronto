@@ -604,6 +604,8 @@ export type Database = {
           is_open: boolean
           open_time: string
           close_time: string
+          break_start: string | null
+          break_end: string | null
         }
         Insert: {
           id?: string
@@ -612,6 +614,8 @@ export type Database = {
           is_open?: boolean
           open_time?: string
           close_time?: string
+          break_start?: string | null
+          break_end?: string | null
         }
         Update: {
           id?: string
@@ -620,6 +624,8 @@ export type Database = {
           is_open?: boolean
           open_time?: string
           close_time?: string
+          break_start?: string | null
+          break_end?: string | null
         }
         Relationships: [
           {

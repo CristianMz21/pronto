@@ -546,6 +546,9 @@
       "from": "Desde",
       "to": "Hasta",
       "closed": "Cerrado",
+      "addBreak": "Añadir un descanso",
+      "breakInvalidRange": "{day}: la hora de fin del descanso debe ser posterior a la de inicio",
+      "breakOutsideHours": "{day}: el descanso debe estar dentro del horario laboral",
       "saveButton": "Guardar horario",
       "saving": "Guardando…",
       "saved": "Guardado ✓"
