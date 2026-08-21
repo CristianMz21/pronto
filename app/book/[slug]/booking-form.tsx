@@ -7,11 +7,11 @@ import { CalendarPlus, Loader2 } from 'lucide-react'
 import { buildGCalUrl } from '@/lib/gcal'
 import { DatePicker } from '@/components/ui/date-picker'
 import { useTranslations } from 'next-intl'
+import { computeEffectiveHours, type DayHours } from '@/lib/booking-availability'
 
 interface Service { id: string; name: string; description: string | null; price: number; duration_min: number; category: string | null; capacity: number }
 interface Employee { id: string; name: string }
 interface Business { id: string; name: string; currency: string; slug: string; timezone: string | null; address?: string | null }
-interface DayHours { day_of_week: number; is_open: boolean; open_time: string; close_time: string; break_start?: string | null; break_end?: string | null }
 
 interface Props {
   business: Business
@@ -23,15 +23,6 @@ interface Props {
 }
 
 type Step = 'service' | 'employee' | 'datetime' | 'contact' | 'done'
-
-const DEFAULT_HOURS: DayHours[] = [0, 1, 2, 3, 4, 5, 6].map((dow) => ({
-  day_of_week: dow,
-  is_open: dow >= 1 && dow <= 5,
-  open_time: '09:00',
-  close_time: '20:00',
-  break_start: null,
-  break_end: null,
-}))
 
 function generateSlots(openTime: string, closeTime: string, durationMin: number): string[] {
   const [oh, om] = openTime.split(':').map(Number)
@@ -120,10 +111,7 @@ export function PublicBookingForm({ business, services, employees, workingHours,
   const [loadingSlots, setLoadingSlots] = useState(false)
   const [dayClosed, setDayClosed] = useState(false)
 
-  const effectiveHours: DayHours[] = [0, 1, 2, 3, 4, 5, 6].map((dow) => {
-    const fromDb = workingHours.find((h) => h.day_of_week === dow)
-    return fromDb ?? DEFAULT_HOURS.find((h) => h.day_of_week === dow)!
-  })
+  const effectiveHours: DayHours[] = computeEffectiveHours(workingHours)
 
   const closedWeekdays = effectiveHours.filter((h) => !h.is_open).map((h) => h.day_of_week)
   const today = new Date().toISOString().slice(0, 10)

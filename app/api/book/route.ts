@@ -9,6 +9,7 @@ import { z } from 'zod'
 import DOMPurify from 'isomorphic-dompurify'
 import { createServiceClient } from '@/lib/supabase/service'
 import { rateLimit, getIp } from '@/lib/rate-limit'
+import { computeEffectiveHours, checkSlotWithinHours, dayOfWeekFromDateString } from '@/lib/booking-availability'
 
 function sanitize(s: string): string {
   return DOMPurify.sanitize(s, { ALLOWED_TAGS: [] }).trim()
@@ -101,6 +102,34 @@ export async function POST(req: NextRequest) {
   }
 
   const timezone = biz?.timezone ?? 'UTC'
+
+  // Server-side availability check — the client (booking-form.tsx) already
+  // restricts the slot picker to open hours / outside break, but that's UI
+  // convenience only. Nothing before this point stopped a direct POST from
+  // requesting a time the business is actually closed for, so repeat the
+  // same check here using the same shared logic (lib/booking-availability.ts)
+  // the client uses to build effectiveHours in the first place.
+  const { data: businessHours } = await supabase
+    .from('business_hours')
+    .select('day_of_week, is_open, open_time, close_time, break_start, break_end')
+    .eq('business_id', businessId)
+
+  const effectiveHours = computeEffectiveHours(businessHours ?? [])
+  const dow = dayOfWeekFromDateString(date)
+  const dayHours = effectiveHours.find((h) => h.day_of_week === dow)
+  const slotCheck = checkSlotWithinHours(dayHours, time, service.duration_min)
+
+  if (!slotCheck.ok) {
+    const messages: Record<typeof slotCheck.reason, string> = {
+      closed: 'This business is closed at the selected date. Please choose another day.',
+      outside_hours: 'This time is outside business hours. Please choose another time.',
+      break: 'This time falls during a break. Please choose another time.',
+    }
+    return NextResponse.json(
+      { error: 'outside_availability', reason: slotCheck.reason, message: messages[slotCheck.reason] },
+      { status: 400 }
+    )
+  }
 
   // Upsert client
   let clientId: string | null = null
