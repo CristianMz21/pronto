@@ -2,6 +2,6 @@
   "name": "pronto-migrate",
   "private": true,
   "dependencies": {
-    "pg": "^8.13.0"
+    "pg": "^8.22.0"
   }
 }
