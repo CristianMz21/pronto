@@ -64,8 +64,7 @@ function openDB(): Promise<IDBDatabase> {
       const db = (e.target as IDBOpenDBRequest).result
 
       if (!db.objectStoreNames.contains('pending_transactions')) {
-        const store = db.createObjectStore('pending_transactions', { keyPath: 'id' })
-        store.createIndex('by_synced', 'synced', { unique: false })
+        db.createObjectStore('pending_transactions', { keyPath: 'id' })
       }
       if (!db.objectStoreNames.contains('services_cache')) {
         db.createObjectStore('services_cache', { keyPath: 'id' })
@@ -109,16 +108,23 @@ export async function queueTransaction(
   })
 }
 
-/** Get all transactions that have not yet been synced. */
+/**
+ * Get all transactions that have not yet been synced.
+ *
+ * Filters in JS rather than via an index: IndexedDB index keys must be a
+ * number, string, Date, binary, or an Array of those — `synced` is a plain
+ * boolean, which is not a valid key type. A `by_synced` index built on it
+ * would silently exclude every record (no error thrown), so `getAll()` on
+ * that index always returns empty regardless of what's actually queued.
+ * The pending queue is a handful of offline sales at most, so a full scan
+ * costs nothing here.
+ */
 export async function getPendingTransactions(): Promise<PendingTransaction[]> {
   const db = await openDB()
   return new Promise((resolve, reject) => {
     const t = db.transaction('pending_transactions', 'readonly')
-    const req = t
-      .objectStore('pending_transactions')
-      .index('by_synced')
-      .getAll(IDBKeyRange.only(0)) // 0 = false in IDB index
-    req.onsuccess = () => resolve(req.result ?? [])
+    const req = t.objectStore('pending_transactions').getAll()
+    req.onsuccess = () => resolve((req.result ?? []).filter((tx: PendingTransaction) => !tx.synced))
     req.onerror = () => reject(req.error)
   })
 }
