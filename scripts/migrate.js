@@ -53,7 +53,26 @@ async function main() {
     process.exit(1)
   }
 
-  const clientOptions = { connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false } }
+  // MIGRATE_SSL=false is an explicit opt-out for DBs that don't speak TLS at all
+  // (e.g. a local Supabase CLI stack) — every real Supabase project (yours
+  // included) requires SSL, so this must stay an explicit flag, never inferred
+  // from the host in DATABASE_URL.
+  //
+  // certs/supabase-ca.crt is Supabase's public root CA (same file for every
+  // Supabase project — download your own copy at Dashboard → Project Settings
+  // → Database → SSL Configuration if you ever need to regenerate it). With it,
+  // rejectUnauthorized:true actually verifies the server cert chain instead of
+  // just encrypting blindly — Supabase's direct-connection Postgres cert isn't
+  // in Node's default CA trust store, so a plain true/false toggle isn't enough;
+  // the ca option is required.
+  const sslDisabled = process.env.MIGRATE_SSL === 'false'
+  const CA_CERT_PATH = path.join(__dirname, '..', 'certs', 'supabase-ca.crt')
+  const clientOptions = {
+    connectionString: DATABASE_URL,
+    ssl: sslDisabled
+      ? false
+      : { rejectUnauthorized: true, ca: fs.readFileSync(CA_CERT_PATH, 'utf8') },
+  }
 
   // Retry connection — free-tier Supabase can temporarily reject if connection
   // slots are exhausted from a previous crashed run. A pg.Client can only ever
