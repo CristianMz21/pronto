@@ -53,12 +53,18 @@ async function main() {
     process.exit(1)
   }
 
-  const pool = new Client({ connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false } })
+  const clientOptions = { connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false } }
 
   // Retry connection — free-tier Supabase can temporarily reject if connection
-  // slots are exhausted from a previous crashed run.
+  // slots are exhausted from a previous crashed run. A pg.Client can only ever
+  // connect once — reusing the same instance across attempts made every retry
+  // after the first fail with "Client has already been connected. You cannot
+  // reuse a client.", masking whatever the real connection error was. A fresh
+  // Client per attempt is required.
+  let pool
   let lastErr
   for (let attempt = 1; attempt <= 5; attempt++) {
+    pool = new Client(clientOptions)
     try {
       await pool.connect()
       lastErr = null
@@ -66,6 +72,7 @@ async function main() {
     } catch (err) {
       lastErr = err
       console.log(`  Connection attempt ${attempt}/5 failed: ${err.message}`)
+      await pool.end().catch(() => {})
       if (attempt < 5) {
         console.log(`  Retrying in 5 s…`)
         await new Promise(r => setTimeout(r, 5000))
