@@ -1,5 +1,5 @@
 import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
+import { cookies } from 'next/headers';
 import type { Database } from './database.types'
 
 // In SaaS mode, cookies must be shared across *.trypronto.app subdomains
@@ -14,8 +14,8 @@ function cookieDomain(): string | undefined {
   return undefined
 }
 
-export function createClient() {
-  const cookieStore = cookies()
+export async function createClient() {
+  const cookieStore = await cookies()
   const domain = cookieDomain()
 
   return createServerClient<Database>(

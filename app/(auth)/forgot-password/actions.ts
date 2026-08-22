@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation'
 
 export async function requestPasswordReset(formData: FormData) {
   const email = (formData.get('email') as string).trim()
-  const supabase = createClient()
+  const supabase = await createClient()
 
   await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback?next=/reset-password`,

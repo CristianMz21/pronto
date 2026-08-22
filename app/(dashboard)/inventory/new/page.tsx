@@ -7,7 +7,7 @@ import { NewInventoryForm } from './new-inventory-form'
 import { getAuthUser } from '@/lib/auth-user'
 
 export default async function NewInventoryItemPage() {
-  const supabase = createClient()
+  const supabase = await createClient()
   const t = await getTranslations('newInventoryItem')
   const user = await getAuthUser()
 

@@ -2,11 +2,12 @@ import { requestPasswordReset } from './actions'
 import Link from 'next/link'
 import { SubmitButton } from './SubmitButton'
 
-export default function ForgotPasswordPage({
-  searchParams,
-}: {
-  searchParams: { sent?: string; email?: string }
-}) {
+export default async function ForgotPasswordPage(
+  props: {
+    searchParams: Promise<{ sent?: string; email?: string }>
+  }
+) {
+  const searchParams = await props.searchParams;
   if (searchParams.sent) {
     return (
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">

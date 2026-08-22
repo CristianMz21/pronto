@@ -7,8 +7,9 @@ import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
 import { getAuthUser } from '@/lib/auth-user'
 
-export default async function InventoryItemPage({ params }: { params: { id: string } }) {
-  const supabase = createClient()
+export default async function InventoryItemPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
+  const supabase = await createClient()
   const t = await getTranslations('inventoryDetail')
   const user = await getAuthUser()
 

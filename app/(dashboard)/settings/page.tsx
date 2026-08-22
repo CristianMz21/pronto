@@ -6,7 +6,7 @@ import { SettingsTabs } from './settings-tabs'
 import { getAuthUser } from '@/lib/auth-user'
 
 export default async function SettingsPage() {
-  const supabase = createClient()
+  const supabase = await createClient()
   const t = await getTranslations('settings')
   const user = await getAuthUser()
   if (!user) redirect('/login')

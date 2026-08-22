@@ -7,7 +7,7 @@ import { insertOwnerAsEmployee } from '@/lib/create-business'
 import { redirect } from 'next/navigation'
 
 export async function register(formData: FormData) {
-  const supabase = createClient()
+  const supabase = await createClient()
   const email = formData.get('email') as string
   const password = formData.get('password') as string
   const businessName = (formData.get('business_name') as string).trim()
@@ -86,7 +86,7 @@ export async function register(formData: FormData) {
 }
 
 export async function loginWithGoogle(formData: FormData) {
-  const supabase = createClient()
+  const supabase = await createClient()
   const redirectTo = (formData.get('redirectTo') as string) || '/dashboard'
 
   const { data, error } = await supabase.auth.signInWithOAuth({

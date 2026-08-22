@@ -3,11 +3,12 @@ import Link from 'next/link'
 import { getTranslations } from 'next-intl/server'
 import { PasswordInput } from '@/components/ui/password-input'
 
-export default async function RegisterPage({
-  searchParams,
-}: {
-  searchParams: { error?: string }
-}) {
+export default async function RegisterPage(
+  props: {
+    searchParams: Promise<{ error?: string }>
+  }
+) {
+  const searchParams = await props.searchParams;
   const t = await getTranslations('auth.register')
 
   return (

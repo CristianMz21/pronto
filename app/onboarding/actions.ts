@@ -16,7 +16,7 @@ export async function completeOnboarding(data: {
   serviceDuration: number
   slug?: string
 }) {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) redirect('/login')

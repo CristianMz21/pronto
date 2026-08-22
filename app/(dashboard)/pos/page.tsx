@@ -14,8 +14,9 @@ interface SearchParams {
   staffId?: string
 }
 
-export default async function POSPage({ searchParams }: { searchParams: SearchParams }) {
-  const supabase = createClient()
+export default async function POSPage(props: { searchParams: Promise<SearchParams> }) {
+  const searchParams = await props.searchParams;
+  const supabase = await createClient()
   const user = await getAuthUser()
 
   const { data: business } = await supabase

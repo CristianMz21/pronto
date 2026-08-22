@@ -19,7 +19,7 @@ const STATUS_STRIPE: Record<string, string> = {
 }
 
 export default async function DashboardPage() {
-  const supabase = createClient()
+  const supabase = await createClient()
   const t = await getTranslations('dashboard')
   const user = await getAuthUser()
 

@@ -10,12 +10,13 @@ import { InventoryExportButton } from '@/components/inventory/inventory-export-b
 import { InventoryMoreMenu } from '@/components/inventory/inventory-more-menu'
 import { getAuthUser } from '@/lib/auth-user'
 
-export default async function InventoryPage({
-  searchParams,
-}: {
-  searchParams: { filter?: string; tab?: string }
-}) {
-  const supabase = createClient()
+export default async function InventoryPage(
+  props: {
+    searchParams: Promise<{ filter?: string; tab?: string }>
+  }
+) {
+  const searchParams = await props.searchParams;
+  const supabase = await createClient()
   const t = await getTranslations('inventory')
   const user = await getAuthUser()
 

@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 
 export async function login(formData: FormData) {
-  const supabase = createClient()
+  const supabase = await createClient()
   const email = formData.get('email') as string
   const password = formData.get('password') as string
   const redirectTo = (formData.get('redirectTo') as string) || '/dashboard'
@@ -18,7 +18,7 @@ export async function login(formData: FormData) {
 }
 
 export async function loginWithGoogle(formData: FormData) {
-  const supabase = createClient()
+  const supabase = await createClient()
   const redirectTo = (formData.get('redirectTo') as string) || '/dashboard'
 
   const { data, error } = await supabase.auth.signInWithOAuth({

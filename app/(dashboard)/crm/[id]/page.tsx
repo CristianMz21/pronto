@@ -8,8 +8,9 @@ import { ChevronLeft } from 'lucide-react'
 import { getTelegramBotInfo } from '@/lib/telegram'
 import { getAuthUser } from '@/lib/auth-user'
 
-export default async function ClientDetailPage({ params }: { params: { id: string } }) {
-  const supabase = createClient()
+export default async function ClientDetailPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
+  const supabase = await createClient()
   const t = await getTranslations('clientDetail')
   const user = await getAuthUser()
 

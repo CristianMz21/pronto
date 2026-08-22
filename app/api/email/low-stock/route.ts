@@ -8,7 +8,7 @@ import { sendWhatsAppMessage, tplLowStock as waTplLowStock } from '@/lib/whatsap
 
 export async function POST(req: NextRequest) {
   // Verify the caller is an authenticated user who owns the business for this item.
-  const sessionClient = createServerClient()
+  const sessionClient = await createServerClient()
   const { data: { user } } = await sessionClient.auth.getUser()
   if (!user) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })

@@ -8,7 +8,7 @@ import { NewClientForm } from './new-client-form'
 import { getAuthUser } from '@/lib/auth-user'
 
 export default async function NewClientPage() {
-  const supabase = createClient()
+  const supabase = await createClient()
   const t = await getTranslations('newClient')
   const user = await getAuthUser()
   if (!user) redirect('/login')

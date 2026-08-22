@@ -4,7 +4,7 @@ import { BookingCalendar } from './booking-calendar'
 import { getAuthUser } from '@/lib/auth-user'
 
 export default async function BookingPage() {
-  const supabase = createClient()
+  const supabase = await createClient()
   const user = await getAuthUser()
 
   const { data: business } = await supabase

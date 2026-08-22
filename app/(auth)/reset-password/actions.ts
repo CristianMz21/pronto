@@ -15,7 +15,7 @@ export async function updatePassword(formData: FormData) {
     redirect("/reset-password?error=Passwords+don%27t+match")
   }
 
-  const supabase = createClient()
+  const supabase = await createClient()
   const { error } = await supabase.auth.updateUser({ password })
 
   if (error) {

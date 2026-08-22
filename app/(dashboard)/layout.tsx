@@ -9,7 +9,7 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
-  const supabase = createClient()
+  const supabase = await createClient()
   const user = await getAuthUser()
 
   if (!user) redirect('/login')
@@ -28,7 +28,7 @@ export default async function DashboardLayout({
   // Covers /dashboard, /settings, /pos, /crm, /inventory, /booking — any app route.
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN
   if (rootDomain && business?.slug) {
-    const headersList = headers()
+    const headersList = await headers()
     const host = headersList.get('host') ?? ''
     if (host === rootDomain || host === `www.${rootDomain}`) {
       // x-pathname is set by middleware on every request

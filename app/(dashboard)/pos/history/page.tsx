@@ -6,12 +6,13 @@ import Link from 'next/link'
 import { HistoryFilters } from './history-filters'
 import { getAuthUser } from '@/lib/auth-user'
 
-export default async function TransactionHistoryPage({
-  searchParams,
-}: {
-  searchParams: { method?: string; from?: string; to?: string; client?: string }
-}) {
-  const supabase = createClient()
+export default async function TransactionHistoryPage(
+  props: {
+    searchParams: Promise<{ method?: string; from?: string; to?: string; client?: string }>
+  }
+) {
+  const searchParams = await props.searchParams;
+  const supabase = await createClient()
   const t = await getTranslations('transactions')
   const user = await getAuthUser()
 

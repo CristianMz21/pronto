@@ -5,7 +5,7 @@ const SUPPORTED = ['en', 'es', 'it', 'pt'] as const
 type Locale = (typeof SUPPORTED)[number]
 
 export default getRequestConfig(async () => {
-  const raw = cookies().get('dashboard_locale')?.value ?? 'en'
+  const raw = (await cookies()).get('dashboard_locale')?.value ?? 'en'
   const locale: Locale = (SUPPORTED as readonly string[]).includes(raw) ? (raw as Locale) : 'en'
   return {
     locale,

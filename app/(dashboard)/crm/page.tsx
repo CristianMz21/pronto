@@ -9,12 +9,13 @@ import Link from 'next/link'
 import { getTranslations } from 'next-intl/server'
 import { getAuthUser } from '@/lib/auth-user'
 
-export default async function CRMPage({
-  searchParams,
-}: {
-  searchParams: { q?: string; tag?: string }
-}) {
-  const supabase = createClient()
+export default async function CRMPage(
+  props: {
+    searchParams: Promise<{ q?: string; tag?: string }>
+  }
+) {
+  const searchParams = await props.searchParams;
+  const supabase = await createClient()
   const t = await getTranslations('crm')
   const user = await getAuthUser()
 
