@@ -5,11 +5,12 @@ import { getTranslations } from 'next-intl/server'
 import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
 import { NewClientForm } from './new-client-form'
+import { getAuthUser } from '@/lib/auth-user'
 
 export default async function NewClientPage() {
   const supabase = createClient()
   const t = await getTranslations('newClient')
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser()
   if (!user) redirect('/login')
 
   const { data: business } = await supabase

@@ -4,11 +4,12 @@ import { getTranslations } from 'next-intl/server'
 import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
 import { NewInventoryForm } from './new-inventory-form'
+import { getAuthUser } from '@/lib/auth-user'
 
 export default async function NewInventoryItemPage() {
   const supabase = createClient()
   const t = await getTranslations('newInventoryItem')
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser()
 
   const { data: business } = await supabase
     .from('businesses').select('id').eq('owner_id', user!.id).maybeSingle()

@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
 import { OnboardingChecklist } from '@/components/onboarding-checklist'
+import { getAuthUser } from '@/lib/auth-user'
 
 const STATUS_STRIPE: Record<string, string> = {
   pending:   '#94a3b8',
@@ -20,7 +21,7 @@ const STATUS_STRIPE: Record<string, string> = {
 export default async function DashboardPage() {
   const supabase = createClient()
   const t = await getTranslations('dashboard')
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser()
 
   const { data: business } = await supabase
     .from('businesses')

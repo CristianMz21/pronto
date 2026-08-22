@@ -4,6 +4,7 @@ import { formatCurrency, formatInBusinessTimezone } from '@/lib/utils'
 import { getTranslations } from 'next-intl/server'
 import Link from 'next/link'
 import { HistoryFilters } from './history-filters'
+import { getAuthUser } from '@/lib/auth-user'
 
 export default async function TransactionHistoryPage({
   searchParams,
@@ -12,7 +13,7 @@ export default async function TransactionHistoryPage({
 }) {
   const supabase = createClient()
   const t = await getTranslations('transactions')
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser()
 
   const { data: business } = await supabase
     .from('businesses').select('id, currency, timezone').eq('owner_id', user!.id).maybeSingle()

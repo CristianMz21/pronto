@@ -1,10 +1,11 @@
 import { createClient } from '@/lib/supabase/server'
 import { Header } from '@/components/layout/header'
 import { BookingCalendar } from './booking-calendar'
+import { getAuthUser } from '@/lib/auth-user'
 
 export default async function BookingPage() {
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser()
 
   const { data: business } = await supabase
     .from('businesses')

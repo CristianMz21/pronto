@@ -50,6 +50,17 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
+  // Forward the already-validated user to Server Components, same mechanism
+  // as x-pathname, so dashboard pages don't each repeat this auth round-trip
+  // (see lib/auth-user.ts). Must recreate supabaseResponse to pick up the
+  // new header — NextResponse.next() snapshots requestHeaders at call time —
+  // while preserving any cookies getUser() already set (e.g. a token refresh).
+  requestHeaders.set('x-user-id', user?.id ?? '')
+  requestHeaders.set('x-user-email', user?.email ?? '')
+  const cookiesSoFar = supabaseResponse.cookies.getAll()
+  supabaseResponse = NextResponse.next({ request: { headers: requestHeaders } })
+  cookiesSoFar.forEach((c) => supabaseResponse.cookies.set(c))
+
   // Authenticated user on root → dashboard
   if (user && pathname === '/') {
     const dashboardUrl = request.nextUrl.clone()

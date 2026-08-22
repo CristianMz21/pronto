@@ -3,11 +3,12 @@ import { redirect } from 'next/navigation'
 import { Header } from '@/components/layout/header'
 import { getTranslations } from 'next-intl/server'
 import { SettingsTabs } from './settings-tabs'
+import { getAuthUser } from '@/lib/auth-user'
 
 export default async function SettingsPage() {
   const supabase = createClient()
   const t = await getTranslations('settings')
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser()
   if (!user) redirect('/login')
 
   const { data: business } = await supabase

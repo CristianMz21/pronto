@@ -5,6 +5,7 @@ import { getTranslations } from 'next-intl/server'
 import Link from 'next/link'
 import { History } from 'lucide-react'
 import { formatInBusinessTimezone } from '@/lib/utils'
+import { getAuthUser } from '@/lib/auth-user'
 
 interface SearchParams {
   bookingId?: string
@@ -15,7 +16,7 @@ interface SearchParams {
 
 export default async function POSPage({ searchParams }: { searchParams: SearchParams }) {
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser()
 
   const { data: business } = await supabase
     .from('businesses')

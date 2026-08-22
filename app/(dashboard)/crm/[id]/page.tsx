@@ -6,11 +6,12 @@ import { ClientDetailView } from './client-detail-view'
 import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
 import { getTelegramBotInfo } from '@/lib/telegram'
+import { getAuthUser } from '@/lib/auth-user'
 
 export default async function ClientDetailPage({ params }: { params: { id: string } }) {
   const supabase = createClient()
   const t = await getTranslations('clientDetail')
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser()
 
   const { data: business } = await supabase
     .from('businesses').select('id, currency, timezone, telegram_bot_token').eq('owner_id', user!.id).maybeSingle()

@@ -8,6 +8,7 @@ import { InventoryTabs } from './inventory-tabs'
 import { InventoryImportButton } from '@/components/inventory/inventory-import-button'
 import { InventoryExportButton } from '@/components/inventory/inventory-export-button'
 import { InventoryMoreMenu } from '@/components/inventory/inventory-more-menu'
+import { getAuthUser } from '@/lib/auth-user'
 
 export default async function InventoryPage({
   searchParams,
@@ -16,7 +17,7 @@ export default async function InventoryPage({
 }) {
   const supabase = createClient()
   const t = await getTranslations('inventory')
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser()
 
   const { data: business } = await supabase
     .from('businesses').select('id, currency').eq('owner_id', user!.id).maybeSingle()

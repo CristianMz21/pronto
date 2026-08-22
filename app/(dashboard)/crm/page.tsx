@@ -7,6 +7,7 @@ import { formatCurrency, formatInBusinessTimezone } from '@/lib/utils'
 import { Plus, Search, Phone, Mail } from 'lucide-react'
 import Link from 'next/link'
 import { getTranslations } from 'next-intl/server'
+import { getAuthUser } from '@/lib/auth-user'
 
 export default async function CRMPage({
   searchParams,
@@ -15,7 +16,7 @@ export default async function CRMPage({
 }) {
   const supabase = createClient()
   const t = await getTranslations('crm')
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser()
 
   const { data: business } = await supabase
     .from('businesses').select('id, currency, timezone').eq('owner_id', user!.id).maybeSingle()
