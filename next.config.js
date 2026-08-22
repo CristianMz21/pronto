@@ -15,6 +15,16 @@ const withSerwist = require('@serwist/next').default({
   // connection reactively (pos-terminal.tsx's own `online` listener +
   // syncQueue()), so there's nothing that needs it.
   reloadOnOnline: false,
+  // @serwist/next's precache manifest only ever contains webpack build
+  // assets (JS/CSS chunks) — it never includes rendered HTML documents,
+  // even for routes marked `force-static`. The `fallbacks` entry in
+  // app/sw.ts serves /offline from precache when a navigation fails
+  // offline, so without this explicit entry that lookup always misses:
+  // the SW's fetch handler rejects with "no-response" and the browser
+  // reports the whole navigation as a network error, not just a missed
+  // cache — offline hard-reloads fail outright instead of showing the
+  // fallback page.
+  additionalPrecacheEntries: ['/offline'],
   // Disable in development to avoid confusing caching during dev, and
   // because @serwist/next's webpack plugin doesn't support Turbopack
   // (this repo's `next dev` uses --turbopack).

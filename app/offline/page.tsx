@@ -1,3 +1,11 @@
+// Serwist's `fallbacks` option (next.config.js / app/sw.ts) requires this
+// route to already be in the build's static precache manifest — it serves
+// this page from cache when a navigation fails offline, and only precached
+// (static) routes are in that manifest. Without this export Next renders
+// the route dynamically (ƒ) and it's silently never precached, so the
+// offline fallback itself 404s inside the service worker.
+export const dynamic = 'force-static'
+
 export default function OfflinePage() {
   return (
     <html lang="en">
