@@ -43,6 +43,11 @@ next-env.d.ts
 # supabase
 supabase/.temp/
 
+# Serwist service-worker build output — regenerated on every `next build`
+# (see next.config.js / app/sw.ts). Never commit this; production Docker
+# builds regenerate public/ from scratch.
+/public/sw.js
+
 # internal / private files — do not publish
 TECHNICAL_AUDIT.md
 Pronto_MVP_v4.docx

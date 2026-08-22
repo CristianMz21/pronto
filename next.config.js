@@ -1,46 +1,24 @@
 const createNextIntlPlugin = require('next-intl/plugin')
-const withPWA = require('next-pwa')({
-  dest: 'public',
+// next-pwa (previous library, dead since 2024) only injected its SW
+// registration script into the Pages Router `main.js` entry — App Router
+// never loads that chunk, so the service worker never registered. Migrated
+// to @serwist/next, which injects into `main-app` too. Service worker
+// source: app/sw.ts (compiled to public/sw.js at build time).
+const withSerwist = require('@serwist/next').default({
+  swSrc: 'app/sw.ts',
+  swDest: 'public/sw.js',
   register: true,
-  skipWaiting: true,
-  // Disable in development to avoid confusing caching during dev
+  // @serwist/next defaults this to true (next-pwa defaulted to false, and
+  // this project never opted in). Left at the default, any reconnect
+  // anywhere in the app — mid CRM edit, mid booking form, not just POS —
+  // would force a full page reload. POS already recovers from a dropped
+  // connection reactively (pos-terminal.tsx's own `online` listener +
+  // syncQueue()), so there's nothing that needs it.
+  reloadOnOnline: false,
+  // Disable in development to avoid confusing caching during dev, and
+  // because @serwist/next's webpack plugin doesn't support Turbopack
+  // (this repo's `next dev` uses --turbopack).
   disable: process.env.NODE_ENV === 'development',
-  // Prevent caching Next.js internal manifests (causes build errors with App Router)
-  buildExcludes: [/middleware-manifest\.json$/, /app-build-manifest\.json$/],
-  // Offline fallback: serve /offline when a navigation request fails
-  fallbacks: {
-    document: '/offline',
-  },
-  runtimeCaching: [
-    // Cache Google Fonts
-    {
-      urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/i,
-      handler: 'CacheFirst',
-      options: {
-        cacheName: 'google-fonts',
-        expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 },
-      },
-    },
-    // Cache static assets (JS, CSS, images)
-    {
-      urlPattern: /\/_next\/static\/.*/i,
-      handler: 'CacheFirst',
-      options: {
-        cacheName: 'next-static',
-        expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 30 },
-      },
-    },
-    // Cache Supabase API responses (stale-while-revalidate for freshness)
-    {
-      urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/.*/i,
-      handler: 'NetworkFirst',
-      options: {
-        cacheName: 'supabase-data',
-        networkTimeoutSeconds: 10,
-        expiration: { maxEntries: 50, maxAgeSeconds: 60 * 60 * 24 },
-      },
-    },
-  ],
 })
 
 const withNextIntl = createNextIntlPlugin('./i18n/request.ts')
@@ -86,4 +64,4 @@ const nextConfig = {
   },
 }
 
-module.exports = withPWA(withNextIntl(nextConfig))
+module.exports = withSerwist(withNextIntl(nextConfig))
