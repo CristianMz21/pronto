@@ -6,7 +6,7 @@
 > Tus datos, tu servidor. Sin comisiones. Instalación con un solo comando.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](../LICENSE)
-[![Next.js](https://img.shields.io/badge/Next.js-14-black)](https://nextjs.org)
+[![Next.js](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org)
 [![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-green)](https://supabase.com)
 [![Docker](https://img.shields.io/badge/Docker-ready-blue)](../docker-compose.yml)
 
@@ -24,11 +24,11 @@ Sin cuotas mensuales. Sin comisiones sobre tus ventas. Tus datos se quedan en tu
 
 | Módulo | Descripción |
 |---|---|
-| **Punto de Venta (POS)** | Cierra una venta en 3 clics. Efectivo, tarjeta, transferencia. Número de recibo generado automáticamente. |
+| **Punto de Venta (POS)** | Cierra una venta en 3 clics. Efectivo, tarjeta, transferencia. Número de recibo generado automáticamente. Funciona sin conexión (PWA) — sincroniza automáticamente al recuperar internet. |
 | **CRM** | Historial completo de clientes — visitas, gastos, etiquetas, cumpleaños, notas. |
 | **Inventario** | Control de stock con alertas de bajo inventario por Telegram y email. |
 | **Calendario de Citas** | Vista semanal, nuevas citas, seguimiento de estado, página pública de reservas. |
-| **Reservas Online** | Los clientes reservan sin registrarse mediante un enlace público (`/book/tu-slug`). Horarios, generación de turnos, sin doble reserva. |
+| **Reservas Online** | Los clientes reservan sin registrarse mediante un enlace público (`/book/tu-slug`). Horarios con descanso/almuerzo configurable, generación de turnos, sin doble reserva. |
 | **Bot de Telegram** | El dueño recibe notificaciones instantáneas: nuevas reservas, recordatorios, stock bajo. Comandos: `/today`, `/help`. |
 | **Bot de Viber** | Las mismas notificaciones que Telegram, entregadas por Viber. Los clientes vinculan su perfil con `/link {teléfono}`. ⚠️ Los bots nuevos requieren acuerdo comercial con Viber (~€100/mes). Funciona con bots creados antes de febrero de 2024. |
 | **WhatsApp** | Mensajes directos a clientes vía Meta Cloud API — confirmaciones, recordatorios, agradecimientos, reactivación, cumpleaños. |
@@ -40,7 +40,7 @@ Sin cuotas mensuales. Sin comisiones sobre tus ventas. Tus datos se quedan en tu
 
 ## Tecnologías
 
-- **Framework**: [Next.js 14](https://nextjs.org) — App Router, Server Actions, Server Components
+- **Framework**: [Next.js 16](https://nextjs.org) — App Router, Server Actions, Server Components
 - **Base de datos**: [Supabase](https://supabase.com) — PostgreSQL + Auth + Row Level Security
 - **UI**: [Tailwind CSS](https://tailwindcss.com) + [shadcn/ui](https://ui.shadcn.com) (Radix UI)
 - **Email**: [Resend](https://resend.com) o cualquier servidor SMTP
@@ -412,12 +412,13 @@ Consulta [CONTRIBUTING.md](../CONTRIBUTING.md) para la configuración de desarro
 
 ## Hoja de Ruta
 
-### ✅ v1.0 — Disponible ahora
+### ✅ v1.1 — Disponible ahora
 - Punto de venta (POS) con modo sin conexión
 - Gestión de clientes (CRM) con historial completo de visitas
 - Control de inventario con alertas de stock bajo
 - Calendario de citas con arrastrar y soltar
 - Página de reservas online — sin registro para el cliente
+- Horario con descanso/almuerzo configurable
 - Notificaciones multicanal: Email · Telegram · WhatsApp · Viber
 - PWA — instalable en cualquier dispositivo sin App Store
 - Instalación con un solo comando mediante Docker

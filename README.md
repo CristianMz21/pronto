@@ -6,7 +6,7 @@ Open-source business management for service businesses and retail shops.
 Self-hosted via Docker or cloud at [trypronto.app](https://trypronto.app)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Next.js](https://img.shields.io/badge/Next.js-14-black)](https://nextjs.org)
+[![Next.js](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org)
 [![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-green)](https://supabase.com)
 [![Docker](https://img.shields.io/badge/Docker-ready-blue.svg)](docker-compose.yml)
 [![CI](https://github.com/SGrappelli/pronto/actions/workflows/ci.yml/badge.svg)](https://github.com/SGrappelli/pronto/actions/workflows/ci.yml)
@@ -29,6 +29,7 @@ Auto repair shops · Cafes · Tattoo studios · Retail shops & kiosks
 ### 📅 Booking & Calendar
 - Online booking page — clients book with name + phone only, no account required
 - Drag-and-drop calendar with staff color coding
+- Configurable break/lunch time in working hours
 - Double-booking prevention (PostgreSQL trigger)
 - Zero commission — 100% of revenue goes to you
 
@@ -40,6 +41,7 @@ Auto repair shops · Cafes · Tattoo studios · Retail shops & kiosks
 - Fast checkout: services and products in one cart
 - Cash, card, transfer payment methods
 - Sales history with search by client
+- Works offline — PWA keeps POS usable without internet, syncs automatically when back online
 
 ### 📦 Inventory & Retail
 - Product catalog with barcode, SKU, category, cost/sell price
@@ -168,7 +170,7 @@ Messenger credentials (Telegram, WhatsApp, Viber) are configured per-business in
 
 | Layer | Technology |
 |---|---|
-| Frontend | Next.js 14 + Tailwind CSS + shadcn/ui |
+| Frontend | Next.js 16 + Tailwind CSS + shadcn/ui |
 | Backend | Next.js API Routes |
 | Database | Supabase (PostgreSQL) with RLS |
 | Auth | Supabase Auth (Email + Google OAuth) |
@@ -317,12 +319,12 @@ pronto/
 
 ## Roadmap
 
-### ✅ Current (v1.0)
+### ✅ Current (v1.1)
 - POS + CRM + Booking + Inventory
 - Omnichannel notifications (Email, Telegram, WhatsApp, Viber)
 - Retail / barcode mode with CSV/Excel import-export
 - Modular system (enable only what you need)
-- Analytics dashboard
+- Configurable break/lunch time in working hours
 - Multi-language: EN / ES / IT / PT
 - PWA with offline-capable POS
 - Docker one-command install

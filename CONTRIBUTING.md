@@ -30,7 +30,7 @@ cp .env.example .env
 # 4. Run database migrations
 # Option A (recommended): migrations run automatically on first docker compose up
 # Option B (local dev without Docker): go to Supabase Dashboard → SQL Editor
-# and run each file in supabase/migrations/ in order (001 → 018)
+# and run each file in supabase/migrations/ in order (001 → 035)
 
 # 5. Start the development server
 npm run dev

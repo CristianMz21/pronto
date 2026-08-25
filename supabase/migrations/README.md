@@ -34,6 +34,8 @@ Each file is self-contained and idempotent (`IF NOT EXISTS` / `IF EXISTS` guards
 | `017_prevent_double_booking.sql` | Adds `check_slot_availability()` trigger function and `prevent_double_booking` trigger on `appointments`. Fires `BEFORE INSERT OR UPDATE` and raises `slot_already_booked` if the same employee already has a non-cancelled booking at the same `starts_at`. Conflict check is skipped when `employee_id IS NULL` (walk-in businesses, fitness classes, etc.). |
 | `018_unique_sku.sql` | Adds a partial unique index `unique_sku_per_business` on `inventory_items (business_id, sku)` where `sku IS NOT NULL AND sku != ''`. Prevents duplicate SKUs within the same business while keeping SKU optional (NULL / empty values are excluded from the constraint). |
 
+The table above covers the foundational migrations (`001`–`018`) in detail. Migrations `019`–`035` add further features and fixes (retail/barcode mode, security hardening, WhatsApp columns, booking-availability fixes, business hours break time, and more) — see the individual files in `supabase/migrations/` for what each one does. All of them run automatically and require no manual steps.
+
 ---
 
 ## How to run

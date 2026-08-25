@@ -6,7 +6,7 @@
 > Seus dados, seu servidor. Sem comissões. Instalação com um único comando.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](../LICENSE)
-[![Next.js](https://img.shields.io/badge/Next.js-14-black)](https://nextjs.org)
+[![Next.js](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org)
 [![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-green)](https://supabase.com)
 [![Docker](https://img.shields.io/badge/Docker-ready-blue)](../docker-compose.yml)
 
@@ -24,11 +24,11 @@ Sem mensalidades. Sem comissões sobre suas vendas. Seus dados ficam no seu pró
 
 | Módulo | Descrição |
 |---|---|
-| **Ponto de Venda (PDV)** | Finalize uma venda em 3 cliques. Dinheiro, cartão, transferência. Número do recibo gerado automaticamente. |
+| **Ponto de Venda (PDV)** | Finalize uma venda em 3 cliques. Dinheiro, cartão, transferência. Número do recibo gerado automaticamente. Funciona offline (PWA) — sincroniza automaticamente ao voltar a conexão. |
 | **CRM** | Histórico completo de clientes — visitas, gastos, tags, aniversário, anotações. |
 | **Estoque** | Controle de estoque com alertas de baixo nível via Telegram e e-mail. |
 | **Agenda de Compromissos** | Visualização semanal, novos agendamentos, acompanhamento de status, página pública de agendamento. |
-| **Agendamento Online** | Clientes agendam sem cadastro pelo link público (`/book/seu-slug`). Horários de funcionamento, geração de slots, sem conflito de horários. |
+| **Agendamento Online** | Clientes agendam sem cadastro pelo link público (`/book/seu-slug`). Horários de funcionamento com intervalo/almoço configurável, geração de slots, sem conflito de horários. |
 | **Bot do Telegram** | O dono recebe notificações instantâneas: novos agendamentos, lembretes, estoque baixo. Comandos: `/today`, `/help`. |
 | **Bot do Viber** | Mesmas notificações do Telegram, entregues pelo Viber. Clientes vinculam seu Viber com `/link {telefone}`. ⚠️ Novos bots exigem acordo comercial com o Viber (~€100/mês). Funciona com bots criados antes de fev/2024. |
 | **WhatsApp** | Mensagens diretas para clientes via Meta Cloud API — confirmações, lembretes, agradecimentos, reativação, aniversário. |
@@ -40,7 +40,7 @@ Sem mensalidades. Sem comissões sobre suas vendas. Seus dados ficam no seu pró
 
 ## Tecnologias
 
-- **Framework**: [Next.js 14](https://nextjs.org) — App Router, Server Actions, Server Components
+- **Framework**: [Next.js 16](https://nextjs.org) — App Router, Server Actions, Server Components
 - **Banco de dados**: [Supabase](https://supabase.com) — PostgreSQL + Auth + Row Level Security
 - **UI**: [Tailwind CSS](https://tailwindcss.com) + [shadcn/ui](https://ui.shadcn.com) (Radix UI)
 - **E-mail**: [Resend](https://resend.com) ou qualquer servidor SMTP
@@ -412,12 +412,13 @@ Pull requests são bem-vindos! Por favor, abra uma issue primeiro para discutir 
 
 ## Roadmap
 
-### ✅ v1.0 — Disponível agora
+### ✅ v1.1 — Disponível agora
 - Ponto de venda (PDV) com modo offline
 - Gestão de clientes (CRM) com histórico completo de visitas
 - Controle de estoque com alertas de baixo nível
 - Agenda de compromissos com arrastar e soltar
 - Página de agendamento online — sem cadastro para o cliente
+- Intervalo/almoço configurável nos horários de funcionamento
 - Notificações multicanal: E-mail · Telegram · WhatsApp · Viber
 - PWA — instalável em qualquer dispositivo sem App Store
 - Instalação com um único comando via Docker
