@@ -33,17 +33,17 @@
 
 **Independent Test**: `Security Advisor` 0 flags, `formatCurrency(30000,'COP')=$30.000`, rate limit en `api/*`
 
-- [ ] T013 [P] [US2] Añadir Zod + DomPurify + `rateLimit(getIp())` en `api/clients/import`, `api/inventory/import`, `api/appointments/*` (patrón `api/book`)
-- [ ] T014 [P] [US2] Parametrizar `formatCurrency/formatDate/formatTime/formatInBusinessTimezone` con `currency/timezone/locale` de `businesses` (Colombia `COP/es-CO/America/Bogota`)
-- [ ] T015 [US2] Validar `proxy.ts` protege `/(dashboard|pos|crm|inventory|booking|settings)` + `api/*` via RLS; agregar tests integration auth
+- [x] T013 [P] [US2] Añadir Zod + DomPurify + `rateLimit(getIp())` en `api/clients/import`, `api/inventory/import`, `api/appointments/*` (patrón `api/book`) — ✅ Zod 422, sanitize DomPurify, 20/10m + 60/10m, build OK
+- [x] T014 [P] [US2] Parametrizar `formatCurrency/formatDate/formatTime/formatInBusinessTimezone` con `currency/timezone/locale` de `businesses` (Colombia `COP/es-CO/America/Bogota`) — ✅ T008 `formatCurrency` CURRENCY_LOCALE es-CO, lib/utils ya soporta locale param (bloqueante resuelto)
+- [x] T015 [US2] Validar `proxy.ts` protege `/(dashboard|pos|crm|inventory|booking|settings)` + `api/*` via RLS; agregar tests integration auth — ✅ proxy.test.ts 9 tests, 23/23 PASSED
 
 ## Phase 5: User Story 3 — Clientes/Barberos/Servicios (P1) 🎯 MVP Core
 
 **Independent Test**: CRUD cliente/barbero/servicio con UI + `employee_services` + `employee_unavailability`
 
-- [ ] T016 [US3] Migración `036_barber_services.sql`: `employee_services` + índices + RLS
-- [ ] T017 [US3] Migración `037_barber_unavailability.sql`: `employee_unavailability` + índices + RLS
-- [ ] T018 [US3] Migración `038_barber_extra.sql`: `employees.color, specialties text[], commission_rate` + `services.cost` nullable
+- [x] T016 [US3] Migración `036_barber_services.sql`: `employee_services` + índices + RLS — ✅ supabase db reset OK, types regen
+- [x] T017 [US3] Migración `037_barber_unavailability.sql`: `employee_unavailability` + índices + RLS — ✅ check tenant trigger
+- [x] T018 [US3] Migración `038_barber_extra.sql`: `employees.color, specialties text[], commission_rate` + `services.cost` nullable — ✅ seed Carlos #2563EB 50% + cost 5k/7k/3k
 - [ ] T019 [P] [US3] UI CRM: ficha cliente con `tags, birthday, total_visits/spent/last_visit_at`, validación `client_phone_unique`
 - [ ] T020 [P] [US3] UI Settings: barberos con foto/color/especialidades/horario/vacaciones + asignación servicios (grid `employee_services`)
 - [ ] T021 [US3] Roles `Owner/Manager/Barber/Receptionist`: enum + `proxy.ts` guard + policies (Owner=`businesses.owner_id`, Manager=employee con `role=manager` owner-equivalent)

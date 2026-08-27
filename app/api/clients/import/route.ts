@@ -1,19 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { z } from 'zod'
+import DOMPurify from 'isomorphic-dompurify'
+import { rateLimit, getIp } from '@/lib/rate-limit'
 
-interface ImportRow {
-  name?: string
-  phone?: string
-  email?: string
-  notes?: string
-}
+const ImportRowSchema = z.object({
+  name:  z.string().max(100).optional(),
+  phone: z.string().max(50).optional(),
+  email: z.string().max(100).optional(),
+  notes: z.string().max(1000).optional(),
+})
+const BodySchema = z.object({ clients: z.array(ImportRowSchema).max(500).optional() })
 
-/** Simple sanitizer: strip leading/trailing whitespace and enforce max length. */
-function clean(s: string, max: number): string {
-  return String(s).trim().slice(0, max)
+function sanitize(s: string, max: number): string {
+  return DOMPurify.sanitize(String(s), { ALLOWED_TAGS: [] }).trim().slice(0, max)
 }
 
 export async function POST(req: NextRequest) {
+  // ── Rate limit: 20 imports per 10 min per IP (bulk operation) ─────────────
+  const ip = getIp(req)
+  if (!rateLimit(`clients-import:${ip}`, { limit: 20, windowMs: 10 * 60 * 1000 })) {
+    return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
+  }
+
   // ── Auth ──────────────────────────────────────────────────────────────────
   const supabase = await createClient()
   const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -32,22 +41,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Business not found' }, { status: 404 })
   }
 
-  // ── Parse body ────────────────────────────────────────────────────────────
-  let body: { clients?: ImportRow[] }
+  // ── Parse + validate body (Zod) ─────────────────────────────────────────
+  let rawBody: unknown
   try {
-    body = await req.json()
+    rawBody = await req.json()
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
+  const parsed = BodySchema.safeParse(rawBody)
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'validation_failed', details: parsed.error.flatten().fieldErrors }, { status: 422 })
+  }
+  const rawRows = parsed.data.clients ?? []
 
-  const rawRows: ImportRow[] = Array.isArray(body?.clients) ? body.clients : []
-
-  // ── Sanitize rows ─────────────────────────────────────────────────────────
+  // ── Sanitize rows (DomPurify + trim) ─────────────────────────────────────
   const sanitized = rawRows.map((row) => ({
-    name:  clean(row.name  ?? '', 100),
-    phone: clean(row.phone ?? '', 50),
-    email: clean(row.email ?? '', 50),
-    notes: clean(row.notes ?? '', 1000),
+    name:  sanitize(row.name  ?? '', 100),
+    phone: sanitize(row.phone ?? '', 50),
+    email: sanitize(row.email ?? '', 100),
+    notes: sanitize(row.notes ?? '', 1000),
   }))
 
   // Skip rows where name is empty after sanitization

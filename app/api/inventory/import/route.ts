@@ -1,19 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { z } from 'zod'
+import DOMPurify from 'isomorphic-dompurify'
+import { rateLimit, getIp } from '@/lib/rate-limit'
 
-const clean = (s: string, max = 500) => s?.trim().slice(0, max) ?? ''
+const ImportRowSchema = z.object({
+  name:        z.string().max(200).optional(),
+  sku:        z.string().max(50).optional(),
+  barcode:    z.string().max(100).optional(),
+  category:   z.string().max(100).optional(),
+  unit:       z.string().max(20).optional(),
+  quantity:   z.string().max(20).optional(),
+  cost_price: z.string().max(20).optional(),
+  sell_price: z.string().max(20).optional(),
+  description: z.string().max(1000).optional(),
+})
+const BodySchema = z.object({ rows: z.array(ImportRowSchema).max(500).optional() })
 
-interface ImportRow {
-  name?: string
-  sku?: string
-  barcode?: string
-  category?: string
-  unit?: string
-  quantity?: string
-  cost_price?: string
-  sell_price?: string
-  description?: string
-}
+const sanitize = (s: string, max = 500) => DOMPurify.sanitize(s ?? '', { ALLOWED_TAGS: [] }).trim().slice(0, max)
 
 function parseNum(val: string | undefined): number | null {
   if (!val) return null
@@ -22,6 +26,11 @@ function parseNum(val: string | undefined): number | null {
 }
 
 export async function POST(req: NextRequest) {
+  const ip = getIp(req)
+  if (!rateLimit(`inventory-import:${ip}`, { limit: 20, windowMs: 10 * 60 * 1000 })) {
+    return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
+  }
+
   const supabase = await createClient()
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) {
@@ -38,26 +47,29 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Business not found' }, { status: 404 })
   }
 
-  let body: { rows?: ImportRow[] }
+  let rawBody: unknown
   try {
-    body = await req.json()
+    rawBody = await req.json()
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
-
-  const rawRows: ImportRow[] = Array.isArray(body?.rows) ? body.rows : []
+  const parsed = BodySchema.safeParse(rawBody)
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'validation_failed', details: parsed.error.flatten().fieldErrors }, { status: 422 })
+  }
+  const rawRows = parsed.data.rows ?? []
 
   const sanitized = rawRows
     .map((row) => ({
-      name:        clean(String(row.name ?? ''), 200),
-      sku:         row.sku     ? clean(String(row.sku),     50) : '',
-      barcode:     row.barcode ? clean(String(row.barcode), 100) : '',
-      category:    row.category ? clean(String(row.category), 100) : '',
-      unit:        row.unit    ? clean(String(row.unit), 20) : 'pcs',
+      name:        sanitize(String(row.name ?? ''), 200),
+      sku:         row.sku     ? sanitize(String(row.sku),     50) : '',
+      barcode:     row.barcode ? sanitize(String(row.barcode), 100) : '',
+      category:    row.category ? sanitize(String(row.category), 100) : '',
+      unit:        row.unit    ? sanitize(String(row.unit), 20) : 'pcs',
       quantity:    String(row.quantity ?? '0'),
       cost_price:  String(row.cost_price ?? ''),
       sell_price:  String(row.sell_price ?? ''),
-      description: row.description ? clean(String(row.description), 1000) : '',
+      description: row.description ? sanitize(String(row.description), 1000) : '',
     }))
     .filter((r) => r.name.length > 0)
 
