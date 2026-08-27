@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers';
 import type { Database } from './database.types'
+import { getSupabaseUrl } from './getUrl'
 
 // In SaaS mode, cookies must be shared across *.trypronto.app subdomains
 // so that a user authenticated on trypronto.app can access their subdomain dashboard.
@@ -19,7 +20,7 @@ export async function createClient() {
   const domain = cookieDomain()
 
   return createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    getSupabaseUrl(),
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {

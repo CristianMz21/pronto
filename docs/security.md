@@ -22,13 +22,14 @@ Env: `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL`, `CRON_SECRET`, `INTERNAL_API_S
 
 DB por negocio: `smtp_pass`, `resend_api_key`, `telegram_bot_token`, `meta_whatsapp_access_token` — protegidos por RLS; 016 ya revocó `public_read_businesses_for_booking` que los exponía anon. No volver a crear políticas `using (true)` en `businesses`.
 
-## PII / pgsodium — BOUNDARY (050, vault-aware, RLS-only fallback local)
+## PII / pgsodium — BOUNDARY (050 local PASS, 051 fallback)
 
-`045` añadió `clients.phone_encrypted / email_encrypted / whatsapp_encrypted bytea`. `050` añade boundary real sin romper `supabase db reset`:
-- `public.encrypt_pii(text) → bytea` / `public.decrypt_pii(bytea) → text` usan `pgsodium.crypto_aead_det_encrypt/decrypt` con `key_id` de `pgsodium.key` `pii_escuderia` (creado lazy via `pgsodium.create_key`). Si `vault` no configurado o sin permiso `pgsodium_keyiduser`, hace `RAISE NOTICE 'Vault not configured — using RLS-only mode, see docs/security.md'` y `RETURN NULL` (no rompe).
+`045` añadió `clients.phone_encrypted / email_encrypted / whatsapp_encrypted bytea`. `050` añadió boundary vault-aware; `051` lo hace **LOCAL PASS** sin romper `supabase db reset`:
+- `public.encrypt_pii(text) → bytea` / `public.decrypt_pii(bytea) → text` usan **pgsodium primary** (`pgsodium.crypto_aead_det_encrypt/decrypt` con `key_id` `pii_escuderia` creado lazy via `pgsodium.create_key`) y **pgcrypto fallback dev-only** (`extensions.pgp_sym_encrypt/decrypt` con key `dev-only-not-prod-32bytes-escuderia`) si pgsodium no tiene permisos / vault no configurado. Local siempre encripta → `phone_encrypted = \x…` (no NULL).
 - Trigger `trg_encrypt_phone` `BEFORE INSERT OR UPDATE OF phone ON clients` dual-write: si `phone IS NOT NULL AND phone_encrypted IS NULL` → `phone_encrypted := encrypt_pii(phone)`; `phone` en claro se mantiene para índices/búsquedas.
-- Vista `clients_secure` (`security_invoker=true` si PG15+) expone `phone_secure = decrypt_pii(phone_encrypted)` solo a `authenticated` (`GRANT SELECT ON clients_secure TO authenticated`, `REVOKE SELECT ON clients FROM anon` reafirmado en 050).
-- Local sin vault: `phone_encrypted` queda `NULL`, RLS protege, `pg_dump` sigue exponiendo `+57` en claro (documentado). Cloud prod: configurar `vault`/`pgsodium` key + `GRANT pgsodium_keyiduser TO postgres` + backfill `UPDATE clients SET phone_encrypted = encrypt_pii(phone) WHERE phone_encrypted IS NULL`.
+- Vista `clients_secure` (`security_invoker=true` si PG15+) expone `phone_secure = decrypt_pii(phone_encrypted)` solo a `authenticated` (`GRANT SELECT ON clients_secure TO authenticated`, `REVOKE SELECT ON clients FROM anon` reafirmado en 050/051).
+- **LOCAL (051)**: `supabase/config.toml` `[db.vault] secret = "dev-only-not-prod-32bytes-escuderia"` (dev-only, determinística) + fallback pgcrypto → `phone_encrypted` activo, `pg_dump` local ya no expone solo clear (existe bytea), RLS + cifrado. Ver `supabase/migrations/051_vault_local_fallback.sql`.
+- **PROD Cloud**: **DEBE rotar** la dev key inmediatamente: generar prod key con `openssl rand -hex 32`, configurar via `supabase secrets` o Cloud Dashboard → Vault, crear `pgsodium` key `pii_escuderia` real, re-backfill `UPDATE clients SET phone_encrypted = encrypt_pii(phone) WHERE phone_encrypted IS NULL` y verificar `select decrypt_pii(phone_encrypted)`.
 - `048` ya había cerrado fuga `businesses` con `businesses_public` view + `REVOKE SELECT ON businesses FROM anon`.
 
 ## Hardening Checklist

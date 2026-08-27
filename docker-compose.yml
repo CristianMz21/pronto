@@ -9,11 +9,13 @@ services:
       network: host
     image: pronto-app:local
     command: node /app/scripts/migrate.js
-    network_mode: host
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     env_file:
       - .env
     environment:
       - NODE_ENV=production
+      - IS_DOCKER=true
     restart: 'no'
 
   # ── Main application ───────────────────────────────────────────────────────
@@ -24,15 +26,19 @@ services:
       network: host
     image: pronto-app:local
     restart: unless-stopped
-    network_mode: host
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     env_file:
       - .env
     environment:
       - NODE_ENV=production
+      - IS_DOCKER=true
       # Hardcoded to "selfhosted" — intentionally overrides any value in .env.
       # This prevents accidentally running the open-source build in SaaS billing mode.
       # To run in SaaS mode, remove this line and set NEXT_PUBLIC_DEPLOYMENT_MODE=saas in .env.
       - NEXT_PUBLIC_DEPLOYMENT_MODE=selfhosted
+    ports:
+      - "3000:3000"
     depends_on:
       migrate:
         condition: service_completed_successfully

@@ -1,6 +1,14 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+function getSupabaseUrlForProxy(): string {
+  let url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
+  if (process.env.IS_DOCKER === 'true' && (url.includes('127.0.0.1') || url.includes('localhost'))) {
+    return url.replace(/127\.0\.0\.1/g, 'host.docker.internal').replace(/localhost/g, 'host.docker.internal')
+  }
+  return url
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl
 
@@ -22,7 +30,7 @@ export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request: { headers: requestHeaders } })
 
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    getSupabaseUrlForProxy(),
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {

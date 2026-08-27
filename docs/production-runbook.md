@@ -197,6 +197,7 @@ curl -I https://<APP_DOMAIN>/ | grep -i "strict\|x-frame\|csp"
 - Escudería Obsidian `#0A0A0A` + Gold `#C5A059` + Ivory `#F9F6F1`
 - `supabase/seed.sql` y `supabase/seed-escuderia.sql` traen `#0A0A0A` para `business.id 17c1a2b5-5d3b-4d84-bbb1-d361077d4c95` (idempotente migración 049 corrige DBs existentes).
 - `isEscuderia` check es `slug === 'escuderia'` primario, `brand_color in ('#0A0A0A','#1a1a1a')` backward compat.
+- **PWA multi-tenant**: `public/site.webmanifest` `name: "Pronto"` es intencional — plataforma multi-tenant (Pronto = OS). `app/escuderia/layout.tsx` hace override tenant con `title: "Escudería — Barbería Contemporánea"` y `themeColor #0A0A0A`. No romper: `site.webmanifest` permanece generico, cada tenant (`/escuderia`, `/book/[slug]`) inyecta `metadata` y `openGraph` propio. Ver `app/escuderia/layout.tsx` vs `public/site.webmanifest`.
 
 ---
 
@@ -215,18 +216,18 @@ curl -I https://<APP_DOMAIN>/ | grep -i "strict\|x-frame\|csp"
 - [ ] 2. `.env` completo con 8 vars requeridas (ver §8) — `openssl rand -hex 32` para secrets
 - [ ] 3. `NEXT_PUBLIC_DEPLOYMENT_MODE=selfhosted` hardcodeado en `docker-compose.yml` (no en `.env`)
 - [ ] 4. `DATABASE_URL` usa `5432` directo (no pooler 6543), `MIGRATE_SSL=true` para Cloud con `certs/supabase-ca.crt`
-- [ ] 5. `docker compose config` muestra `migrate` → `app` `depends_on: service_completed_successfully` y `healthcheck wget /api/health`
-- [ ] 6. `docker compose build` OK (con `build.network: host` para Google Fonts `next/font` en BuildKit)
-- [ ] 7. `docker compose up -d` OK, `docker compose logs migrate` ✓ Migrations complete, `curl /api/health` 200
+- [x] 5. `docker compose config` muestra `migrate` → `app` `depends_on: service_completed_successfully`, `healthcheck wget /api/health`, **sin** `network_mode: host` (solo `build.network: host` para Google Fonts), con `extra_hosts: ["host.docker.internal:host-gateway"]` y `ports: ["3000:3000"]` — PASS local (`docker compose config` valida sin host runtime)
+- [x] 6. `docker compose build` OK (con `build.network: host` para Google Fonts `next/font` en BuildKit) — PASS
+- [x] 7. `docker compose up -d` OK, `docker compose logs migrate` ✓ Migrations complete (bridge + `host.docker.internal` + `IS_DOCKER=true` + `instrumentation.ts` traduce `127.0.0.1` → `host.docker.internal`), `curl /api/health` 200, `curl /escuderia` OK — PASS local
 - [ ] 8. Supabase Storage bucket `inventory` público creado (local `psql` o Cloud Dashboard)
 - [ ] 9. Cron configurado: `cron-job.org` cada 15m `GET /api/cron/notify` `Authorization: Bearer <CRON_SECRET>` o `pg_cron` con `net.http_get`
 
 ### Seguridad
-- [ ] 10. `next.config.js` headers (HSTS, CSP sin unsafe-eval, etc.) verificados con `curl -I`
+- [x] 10. `next.config.js` headers (HSTS, CSP sin unsafe-eval, etc.) verificados con `curl -I` — PASS local (verificado `curl -I` 5 headers, `proxy.ts` + `next.config.js`)
 - [ ] 11. `proxy.ts` protege `/(dashboard|pos|crm|inventory|booking|settings)` → redirect `/login`
 - [ ] 12. RLS habilitado en todas las tablas, `Security Advisor` 0 errors, `supabase gen types` regenerado
 - [ ] 13. Secrets no commiteados (`git grep` limpio), `.env` gitignored
-- [ ] 14. PII boundary: `050` trigger no rompe `supabase db reset`; prod vault key `pii_escuderia` creada si se requiere cifrado
+- [x] 14. PII boundary: `051` local PASS — `supabase/config.toml` `[db.vault]` dev key + `extensions.pgp_sym_encrypt` fallback → `phone_encrypted = \x…` (no NULL) y `decrypt_pii` OK tras `supabase db reset`; prod Cloud **BLOCKED external** hasta rotar dev key por prod key via Vault (`openssl rand -hex 32` + `supabase secrets` / Dashboard)
 
 ### Calidad & Data
 - [ ] 15. `npm run lint` 0 errors (warnings `setState-in-effect` documentados como harmless)
@@ -237,10 +238,10 @@ curl -I https://<APP_DOMAIN>/ | grep -i "strict\|x-frame\|csp"
 - [ ] 20. PWA: `withSerwist` `swSrc: app/sw.ts`, `site.webmanifest` `display standalone` `theme_color #0A0A0A`, `/offline` precache, `curl /site.webmanifest` OK
 - [ ] 21. SEO: `/escuderia` `title Escudería — Barbería Premium`, `canonical`, `openGraph`, `jsonLd BarberShop` con `address Colombia` y `priceRange` dinámico
 
-### Operaciones
-- [ ] 22. Backups: `pg_dump` nightly (crontab `0 3 * * *`), PITR 7d Supabase Cloud, RPO 24h, RTO 1h, restore `supabase db reset --linked` o `pg_restore` verificado
-- [ ] 23. Runbook probado: `supabase status`/`pg_isready`/`docker compose restart`, `git revert` + `supabase db reset --linked`, rotación `CRON_SECRET`
-- [ ] 24. Monitoreo: `cron-job.org` o UptimeRobot cada 5m en `/api/health`, alerta si != 200
+### Operaciones — BLOCKED external (requiere Cloud/DNS real, no resoluble local)
+- [ ] 22. Backups: `pg_dump` nightly (crontab `0 3 * * *`), PITR 7d Supabase Cloud, RPO 24h, RTO 1h, restore `supabase db reset --linked` o `pg_restore` verificado — **BLOCKED external** (requiere Supabase Cloud + PITR real, no local)
+- [ ] 23. Runbook probado: `supabase status`/`pg_isready`/`docker compose restart`, `git revert` + `supabase db reset --linked`, rotación `CRON_SECRET` — **BLOCKED external** (DNS/origin real para `APP_DOMAIN` y `NEXT_PUBLIC_APP_URL`)
+- [ ] 24. Monitoreo: `cron-job.org` o UptimeRobot cada 5m en `/api/health`, alerta si != 200 — **BLOCKED external** (requiere dominio + SPF/DMARC para Resend, `origin` + `DNS A` Cloud)
 - [ ] 25. E2E manual: `/register` → `/onboarding` → `/dashboard` → `/booking` → `/book/<slug>` → POS → `/caja` → `/crm` OK
 
 ---

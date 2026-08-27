@@ -19,8 +19,29 @@ const path     = require('path')
 
 // ── Configuration ────────────────────────────────────────────────────────────
 
-const DATABASE_URL   = process.env.DATABASE_URL
+let DATABASE_URL   = process.env.DATABASE_URL
 const MIGRATIONS_DIR = path.join(__dirname, '..', 'supabase', 'migrations')
+
+// Docker without host network: translate 127.0.0.1 / localhost to host.docker.internal
+// when running inside container (/.dockerenv or IS_DOCKER=true) and MIGRATE_SSL=false (local dev).
+// Cloud DATABASE_URL (db.<ref>.supabase.co) is unaffected.
+try {
+  const isDocker = process.env.IS_DOCKER === 'true' || (() => {
+    try { return fs.existsSync('/.dockerenv') } catch { return false }
+  })()
+  if (
+    DATABASE_URL &&
+    process.env.MIGRATE_SSL === 'false' &&
+    isDocker &&
+    (DATABASE_URL.includes('127.0.0.1') || DATABASE_URL.includes('localhost'))
+  ) {
+    const original = DATABASE_URL
+    DATABASE_URL = DATABASE_URL.replace(/127\.0\.0\.1/g, 'host.docker.internal').replace(/localhost/g, 'host.docker.internal')
+    console.log(`  ↻ Translated DATABASE_URL for Docker bridge: ${original} → ${DATABASE_URL}`)
+  }
+} catch (_) {
+  // ignore translation errors, fall through to normal connection
+}
 
 // Migrations that depend on optional Supabase extensions.
 // If they fail with a "schema not found" or "function not found" error
