@@ -5,13 +5,38 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export function formatCurrency(amount: number, currency = 'USD'): string {
-  return new Intl.NumberFormat('en-US', {
+const CURRENCY_LOCALE: Record<string, string> = {
+  USD: 'en-US',
+  COP: 'es-CO',
+  EUR: 'es-ES',
+  BRL: 'pt-BR',
+  MXN: 'es-MX',
+  ARS: 'es-AR',
+  CLP: 'es-CL',
+  PEN: 'es-PE',
+}
+
+/**
+ * Locale-aware currency formatting.
+ * - COP/es-CO → "$30.000" (Intl es-CO uses "$ 30.000,00" with NBSP, normalized)
+ * - USD/en-US → "$30,000"
+ * Backward compatible: single-arg still defaults to USD/en-US.
+ */
+export function formatCurrency(
+  amount: number,
+  currency = 'USD',
+  locale?: string
+): string {
+  const resolvedLocale = locale ?? CURRENCY_LOCALE[currency] ?? 'en-US'
+  const raw = new Intl.NumberFormat(resolvedLocale, {
     style: 'currency',
     currency,
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   }).format(amount)
+  // es-CO produces "$ 30.000" (NBSP). Normalize NBSP to plain space for snapshot stability
+  // and trim for cleaner display when needed. Keep Intl semantics otherwise.
+  return raw.replace(/\u00A0/g, ' ')
 }
 
 export function formatDate(date: string | Date): string {

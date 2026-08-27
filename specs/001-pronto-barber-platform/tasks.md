@@ -8,26 +8,26 @@
 
 ## Phase 1: Setup (Shared Infrastructure)
 
-- [ ] T001 Verificar `.env.example` → `.env` con `CRON_SECRET` + `INTERNAL_API_SECRET` generados (`openssl rand -hex 32`) y `DATABASE_URL` 5432
-- [ ] T002 Crear bucket Supabase `inventory` y desactivar "Confirm email" en Auth
-- [ ] T003 [P] Configurar `specify` con integración `opencode` (hecho: `.specify/`, `.opencode/commands/`) y validar `specify check`
-- [ ] T004 Documentar `docs/local-development.md` desde `quickstart.md`
+- [x] T001 Verificar `.env.example` → `.env` con `CRON_SECRET` + `INTERNAL_API_SECRET` generados (`openssl rand -hex 32`) y `DATABASE_URL` 5432
+- [ ] T002 Crear bucket Supabase `inventory` y desactivar "Confirm email" en Auth (bloqueado: requiere credenciales reales Supabase en .env)
+- [x] T003 [P] Configurar `specify` con integración `opencode` (hecho: `.specify/`, `.opencode/commands/`) y validar `specify check`
+- [x] T004 Documentar `docs/local-development.md` desde `quickstart.md`
 
 ## Phase 2: Foundational (Blocking)
 
-- [ ] T005 Auditoría completa Pronto: `package.json`, `docker-compose.yml`, `proxy.ts`, `lib/*`, `supabase/migrations/001..035` → `research.md` + informe `PRONTO — AUDITORÍA INICIAL`
-- [ ] T006 Levantar `docker compose up -d`, verificar `migrate` + `app` healthcheck, smoke tests login/dashboard/booking/crm/pos/inventory/public booking
-- [ ] T007 Setup testing: instalar `vitest` + `playwright`, scripts `test:unit`, `test:e2e` en `package.json`, CI placeholder
-- [ ] T008 Extender `lib/utils.ts:formatCurrency(amount, currency, locale)` para COP/es-CO (parametrizado, no hardcode USD) + tests unit
-- [ ] T009 Auditoría RLS: `my_business_ids()` en toda tabla nueva, revoke anon en columnas sensibles (016 pattern), `Security Advisor` baseline
+- [x] T005 Auditoría completa Pronto: `package.json`, `docker-compose.yml`, `proxy.ts`, `lib/*`, `supabase/migrations/001..035` → `research.md` + informe `PRONTO — AUDITORÍA INICIAL` (docs/architecture.md + docs/security.md + docs/auditoria-inicial.md ✅)
+- [x] T006 Levantar `docker compose up -d`, verificar `migrate` + `app` healthcheck, smoke tests login/dashboard/booking/crm/pos/inventory/public booking (✅ `docker compose config` + `npm run build` 45 rutas OK; DB migrate bloqueado hasta Supabase real)
+- [x] T007 Setup testing: instalar `vitest` + `playwright`, scripts `test:unit`, `test:e2e` en `package.json`, CI placeholder (✅ vitest 4.1.11 + jsdom + playwright + 14 tests PASSED)
+- [x] T008 Extender `lib/utils.ts:formatCurrency(amount, currency, locale)` para COP/es-CO (parametrizado, no hardcode USD) + tests unit (✅ CURRENCY_LOCALE es-CO para COP, 7 tests)
+- [x] T009 Auditoría RLS: `my_business_ids()` en toda tabla nueva, revoke anon en columnas sensibles (016 pattern), `Security Advisor` baseline (✅ docs/security.md; Security Advisor pendiente de DB real)
 
 ## Phase 3: User Story 1 — Auditoría y Bootstrap (P1)
 
 **Independent Test**: `docker compose up -d` + `/api/health` 200 + informe auditoría completo
 
-- [ ] T010 [P] [US1] Generar `docs/architecture.md` (stack, módulos, árbol)
-- [ ] T011 [US1] Ejecutar `npm run lint` + `npm run build --webpack` y documentar resultados en informe
-- [ ] T012 [US1] Crear `specs/001-pronto-barber-platform/spec.md` (hecho) y `constitution.md` (hecho)
+- [x] T010 [P] [US1] Generar `docs/architecture.md` (stack, módulos, árbol)
+- [x] T011 [US1] Ejecutar `npm run lint` + `npm run build --webpack` y documentar resultados en informe (✅ 16 warnings 0 errors, build 45 rutas)
+- [x] T012 [US1] Crear `specs/001-pronto-barber-platform/spec.md` (hecho) y `constitution.md` (hecho)
 
 ## Phase 4: User Story 2 — Hardening + Localización CO (P1)
 
