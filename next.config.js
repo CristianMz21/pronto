@@ -48,6 +48,23 @@ if (appHost && !allowedOrigins.includes(appHost)) {
 const nextConfig = {
   output: 'standalone', // required for Docker multi-stage build
   agentRules: false, // repo has no CLAUDE.md convention; don't let Next scaffold one
+  // Escudería: single barbería ahora, headers críticos (HSTS, CSP, etc.)
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains; preload' },
+          { key: 'X-Frame-Options', value: 'DENY' },
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+          // CSP: self + supabase + tailwind CDN is NOT used (next/font), so default-src self is safe
+          { key: 'Content-Security-Policy', value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.supabase.co; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co" },
+        ],
+      },
+    ]
+  },
   experimental: {
     serverActions: {
       allowedOrigins,
