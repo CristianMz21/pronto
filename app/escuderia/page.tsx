@@ -2,19 +2,22 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { formatCurrency } from '@/lib/utils'
-import { Clock, MapPin, Phone, Star, Scissors, Award, Users } from 'lucide-react'
+import { Playfair_Display, Montserrat } from 'next/font/google'
+
+const playfair = Playfair_Display({ subsets: ['latin'], weight: ['500','600','700'], variable: '--font-playfair' })
+const montserrat = Montserrat({ subsets: ['latin'], weight: ['400','500','600'], variable: '--font-montserrat' })
 
 export const metadata: Metadata = {
-  title: 'Escudería — Barbería en Colombia | Corte, Barba y Estilo',
+  title: 'Escudería — Barbería Contemporánea | Colombia',
   description: 'Escudería Barbería en Colombia. Corte Clásico $30.000, Corte + Barba $45.000. Lun-Sáb 09:00-20:00. Reserva online sin registro. +57 300 123 4567',
   openGraph: {
-    title: 'Escudería — Barbería',
-    description: 'Corte, Barba y Estilo en Colombia. Reserva online.',
+    title: 'Escudería — Barbería Contemporánea',
+    description: 'Tu estilo. Nuestra precisión. Barbería en Colombia.',
     images: [{ url: '/og-image.png' }],
   },
 }
 
-export default async function EscuderiaLanding() {
+export default async function EscuderiaLandingPremium() {
   const supabase = await createClient()
   const { data: business } = await supabase.from('businesses').select('id, name, slug, phone, address, timezone, currency, brand_color').eq('slug', 'escuderia').maybeSingle()
   const bizId = business?.id ?? '17c1a2b5-5d3b-4d84-bbb1-d361077d4c95'
@@ -22,154 +25,193 @@ export default async function EscuderiaLanding() {
 
   const [{ data: services }, { data: employees }] = await Promise.all([
     supabase.from('services').select('id, name, description, price, duration_min, category').eq('business_id', bizId).eq('is_active', true).order('price'),
-    supabase.from('employees').select('id, name, specialties, color, bio').eq('business_id', bizId).eq('is_active', true).order('name'),
+    supabase.from('employees').select('id, name, specialties, color').eq('business_id', bizId).eq('is_active', true).order('name'),
   ])
 
-  const brand = business?.brand_color || '#1a1a1a'
+  const svc = services ?? []
+  const emps = employees ?? []
 
   return (
-    <div className="min-h-screen bg-[#FBF8F5]">
-      {/* Header */}
-      <header className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-[#E8E0D8]">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-sm" style={{ background: brand }}>E</div>
-            <span className="font-bold text-[#2D2926]">Escudería</span>
-            <span className="hidden sm:inline text-xs bg-[#1a1a1a] text-white px-2 py-0.5 rounded-full">Barbería</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <a href="tel:+573001234567" className="hidden sm:flex items-center gap-1.5 text-sm text-[#6b7280] hover:text-[#1a1a1a]">
-              <Phone className="w-4 h-4" /> +57 300 123 4567
-            </a>
-            <Link href="/book/escuderia" className="px-4 py-2 rounded-full text-white text-sm font-medium" style={{ background: brand }}>
-              Reservar
-            </Link>
-          </div>
-        </div>
-      </header>
+    <div className={`${playfair.variable} ${montserrat.variable} min-h-screen bg-[#0A0A0A] text-[#e5e2e1] selection:bg-[#C5A059] selection:text-black antialiased`}>
+      <style>{`
+        .nav-link{position:relative}
+        .nav-link::after{content:'';position:absolute;width:0;height:1px;bottom:-2px;left:50%;background:#C5A059;transition:all .3s ease;transform:translateX(-50%)}
+        .nav-link:hover::after{width:100%}
+        .btn-gold{position:relative;overflow:hidden;transition:all .4s ease}
+        .btn-gold::before{content:'';position:absolute;inset:0;background:#C5A059;transform:scaleX(0);transform-origin:left;transition:transform .4s ease;z-index:-1}
+        .btn-gold:hover::before{transform:scaleX(1)}
+        .btn-gold:hover{color:#000}
+        .gold-dashed{border-bottom:1px dashed rgba(142,121,94,.2)}
+        .fade-up{opacity:0;transform:translateY(24px);transition:opacity .7s ease,transform .7s ease}
+        .fade-up.visible{opacity:1;transform:none}
+      `}</style>
 
-      {/* Hero */}
-      <section className="relative overflow-hidden">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-20 grid lg:grid-cols-2 gap-8 items-center">
-          <div>
-            <div className="inline-flex items-center gap-2 bg-white border border-[#E8E0D8] rounded-full px-3 py-1 text-xs text-[#6b7280] mb-4">
-              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" /> Abierto hoy • 09:00-20:00
-            </div>
-            <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-[#2D2926] leading-[1.05]">
-              Corte, <span style={{ color: brand }}>Barba</span><br />y Estilo
-            </h1>
-            <p className="mt-4 text-[#6b7280] leading-relaxed max-w-xl">
-              Barbería en Colombia. Técnica clásica, acabado moderno. Reserva online sin registro, paga en efectivo, tarjeta o transferencia. Lun-Sáb 09:00-20:00.
-            </p>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Link href="/book/escuderia" className="px-6 py-3 rounded-full text-white font-medium shadow" style={{ background: brand }}>
-                Reservar ahora — sin registro
-              </Link>
-              <a href="#servicios" className="px-6 py-3 rounded-full bg-white border border-[#E8E0D8] text-[#2D2926] font-medium">
-                Ver servicios
-              </a>
-            </div>
-            <div className="mt-6 flex items-center gap-4 text-sm text-[#6b7280]">
-              <span className="flex items-center gap-1"><Star className="w-4 h-4 text-amber-500" /> 4.9 (120+)</span>
-              <span className="flex items-center gap-1"><Scissors className="w-4 h-4" /> 7.863 citas año</span>
-              <span className="flex items-center gap-1"><Users className="w-4 h-4" /> 4 barberos</span>
-            </div>
-          </div>
-          <div className="relative">
-            <div className="aspect-[4/3] rounded-2xl overflow-hidden bg-gradient-to-br from-[#1a1a1a] to-[#333] p-1">
-              <div className="w-full h-full rounded-xl bg-[#111] flex items-center justify-center text-white/60">
-                <div className="text-center p-8">
-                  <Scissors className="w-12 h-12 mx-auto mb-3 text-white/80" />
-                  <p className="text-sm text-white/70">Escudería — Barbería</p>
-                  <p className="text-xs text-white/50 mt-1">Colombia • COP • America/Bogota</p>
-                </div>
-              </div>
-            </div>
-            <div className="absolute -bottom-4 -left-4 bg-white rounded-xl shadow-lg border border-[#E8E0D8] p-3 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center"><Award className="w-5 h-5 text-green-600" /></div>
-              <div>
-                <div className="text-sm font-bold text-[#2D2926]">$187M</div>
-                <div className="text-xs text-[#6b7280]">revenue año • 7.169 ventas</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Servicios */}
-      <section id="servicios" className="max-w-6xl mx-auto px-4 sm:px-6 py-12">
-        <div className="flex items-end justify-between mb-6">
-          <h2 className="text-2xl font-bold text-[#2D2926]">Servicios</h2>
-          <span className="text-sm text-[#6b7280]">Precios en COP</span>
-        </div>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {(services ?? []).map((s) => (
-            <div key={s.id} className="bg-white rounded-xl border border-[#E8E0D8] p-5 hover:shadow-md transition-shadow">
-              <div className="flex justify-between items-start gap-3">
-                <h3 className="font-semibold text-[#2D2926]">{s.name}</h3>
-                <span className="text-sm font-bold" style={{ color: brand }}>{formatCurrency(Number(s.price), currency)}</span>
-              </div>
-              <p className="text-sm text-[#6b7280] mt-1 line-clamp-2">{s.description}</p>
-              <div className="mt-3 flex items-center gap-2 text-xs text-[#9A8E85]">
-                <Clock className="w-3.5 h-3.5" /> {s.duration_min} min
-                {s.category && <span className="px-2 py-0.5 bg-[#FBF8F5] border border-[#E8E0D8] rounded-full">{s.category}</span>}
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className="mt-6 text-center">
-          <Link href="/book/escuderia" className="inline-flex px-6 py-3 rounded-full text-white font-medium" style={{ background: brand }}>
-            Reservar {services?.[0]?.name ?? 'ahora'}
+      {/* Nav */}
+      <nav className="fixed top-0 w-full z-50 bg-[#0A0A0A]/40 backdrop-blur-xl border-b border-[#8E795E]/20">
+        <div className="flex justify-between items-center px-5 md:px-16 h-20 w-full mx-auto max-w-[1280px]">
+          <Link href="/escuderia" className="font-[var(--font-playfair)] text-[22px] font-bold tracking-tight text-[#C5A059] flex items-center gap-3">
+            <span className="w-7 h-7 border border-[#C5A059] flex items-center justify-center text-[11px]">◈</span> ESCUDERÍA
           </Link>
+          <ul className="hidden md:flex gap-8 items-center">
+            <li><a className="font-[var(--font-montserrat)] text-[12px] tracking-[0.2em] font-semibold text-[#d0c5b9] hover:text-[#C5A059] nav-link" href="#experience">EXPERIENCE</a></li>
+            <li><a className="font-[var(--font-montserrat)] text-[12px] tracking-[0.2em] font-semibold text-[#d0c5b9] hover:text-[#C5A059] nav-link" href="#services">SERVICES</a></li>
+            <li><a className="font-[var(--font-montserrat)] text-[12px] tracking-[0.2em] font-semibold text-[#d0c5b9] hover:text-[#C5A059] nav-link" href="#barberos">BARBEROS</a></li>
+            <li><a className="font-[var(--font-montserrat)] text-[12px] tracking-[0.2em] font-semibold text-[#d0c5b9] hover:text-[#C5A059] nav-link" href="#location">LOCATION</a></li>
+          </ul>
+          <Link href="/book/escuderia" className="hidden md:inline-flex border border-[#C5A059] text-[#C5A059] px-6 py-2.5 font-[var(--font-montserrat)] text-[14px] tracking-[0.15em] font-medium hover:bg-[#C5A059] hover:text-black transition-colors">
+            BOOK NOW
+          </Link>
+          <a href="tel:+573001234567" className="md:hidden text-[#d0c5b9] text-sm">+57 300 123</a>
         </div>
-      </section>
+      </nav>
 
-      {/* Barberos */}
-      <section className="bg-white border-y border-[#E8E0D8]">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12">
-          <h2 className="text-2xl font-bold text-[#2D2926] mb-6">Barberos</h2>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {(employees ?? []).map((e) => (
-              <div key={e.id} className="rounded-xl border border-[#E8E0D8] p-5 text-center">
-                <div className="w-16 h-16 rounded-full mx-auto flex items-center justify-center text-white font-bold" style={{ background: (e.color as string) || brand }}>
+      <main>
+        {/* Hero */}
+        <section className="relative h-screen w-full flex items-center justify-center overflow-hidden">
+          <div className="absolute inset-0">
+            <div className="w-full h-full bg-cover bg-center opacity-60" style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuDlfxhfBbn3c67fptZ2goGECpVDSVGmZVBAEHpW_wQ0YL05RFsyAW7nFxSHen_plRL4KuQQlrPHCQWkgiRTADV9aB3WLMjAN0sPO6dgoqqSsTjyZ0OVovrjq_3pYYM7A8ubr_DqepwbdwxQD1gcXKS3pqY8qWL-EquupcIKWTM916zLoHxCS3fuKsB1kt-PRzR-9WzV4Q7xrJCyK-CGr5Rr79Ab0ySQdJlLtOE0WOMs4cLY2wTMbiKI')" }} />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-transparent to-transparent" />
+          </div>
+          <div className="relative z-10 flex flex-col items-center text-center px-5 md:px-16 max-w-[1280px] mx-auto mt-16">
+            <h1 className="font-[var(--font-playfair)] text-[36px] md:text-[72px] font-bold leading-[44px] md:leading-[80px] tracking-[-0.02em] text-white max-w-3xl">
+              Tu estilo.<br />Nuestra precisión.
+            </h1>
+            <p className="font-[var(--font-montserrat)] text-[18px] leading-7 text-[#d0c5b9] mt-6 max-w-xl">
+              Barbería contemporánea para hombres que entienden que los detalles hacen la diferencia.
+            </p>
+            <Link href="/book/escuderia" className="btn-gold mt-10 border border-[#C5A059] text-[#C5A059] px-10 py-4 font-[var(--font-montserrat)] text-[14px] tracking-[0.15em] font-medium inline-flex items-center gap-3 bg-transparent">
+              RESERVAR CITA <span>→</span>
+            </Link>
+            <div className="mt-6 flex items-center gap-3 text-[11px] tracking-[0.2em] font-[var(--font-montserrat)] font-semibold text-[#d0c5b9]">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#C5A059] animate-pulse" /> 7.863 CITAS AÑO • 4 BARBEROS • COP
+            </div>
+          </div>
+        </section>
+
+        {/* Experience */}
+        <section id="experience" className="py-[80px] md:py-[120px] px-5 md:px-16 max-w-[1280px] mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+            <div className="md:col-span-5">
+              <span className="font-[var(--font-montserrat)] text-[12px] tracking-[0.2em] font-semibold text-[#C5A059] block mb-4">EL ENTORNO</span>
+              <h2 className="font-[var(--font-playfair)] text-[36px] md:text-[48px] font-semibold leading-[44px] md:leading-[56px] text-white">Mucho más que una barbería.</h2>
+              <p className="font-[var(--font-montserrat)] text-[16px] leading-6 text-[#d0c5b9] mt-6">
+                Diseñado como un santuario para el caballero moderno. Texturas crudas —cuero envejecido, acero oscuro y maderas nobles— con absoluta privacidad. Un ritual donde el tiempo se detiene.
+              </p>
+              <div className="mt-8 grid grid-cols-3 gap-4 text-center border-t border-[#8E795E]/20 pt-6">
+                <div><div className="font-[var(--font-playfair)] text-xl text-white">09-20</div><div className="font-[var(--font-montserrat)] text-[11px] tracking-[0.15em] text-[#d0c5b9]">LUN-SÁB</div></div>
+                <div><div className="font-[var(--font-playfair)] text-xl text-white">COP</div><div className="font-[var(--font-montserrat)] text-[11px] tracking-[0.15em] text-[#d0c5b9]">BOGOTÁ</div></div>
+                <div><div className="font-[var(--font-playfair)] text-xl text-white">+57</div><div className="font-[var(--font-montserrat)] text-[11px] tracking-[0.15em] text-[#d0c5b9]">COLOMBIA</div></div>
+              </div>
+            </div>
+            <div className="md:col-span-7 grid grid-cols-2 gap-4 h-[420px] md:h-[600px]">
+              <div className="pt-8 md:pt-12 h-full">
+                <img alt="Cuero barbería" className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-700 border border-[#8E795E]/20" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCqeO3EyUizlwpKSi_5JIH9ulTJbPJu9DI057Qbx3QQLobzzbYlIBYB5FksyPAZ7pnunOqf4xsAGVB9pFmqEICXipvxrrY7hFVCuepZsFUt1G7B80JNt5GLBxMvX01aNouSoimcF5yxQHohNNFfM1j1nG4TKwLFJC1cvR_mmw898R9tfEQkXkc8NBptHDc9ayiWPvbP4qw0N5pMW_J0LtSLQNcu55X3p7JcL0Tts7ekOTPLg7rnkCfd" />
+              </div>
+              <div className="pb-8 md:pb-12 h-full">
+                <img alt="Tijeras acero" className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-700 border border-[#8E795E]/20" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCgwhr313IXfNN8OoljJnvJSYBPXwF7JnV7wSQaz75okGoK60DeEu1WoGq3czq2GNv-8XA2ppbOomEFviISyCqFKTD4jZ40uDQD_Aic9DaZmW-GKo9oKjPgQd1AZNKQWoy1xIGA1dQPiTF1wtF7vRW8CY60-yFV_yKzc9Z4OkiC1ad3Stpum-m85msLFFyh-lksLmLAY8pXpn8evPnbAqGcTLVO73NTCWHG5rnhwZgP5flhLhoEX5Zs8a" />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Services - restaurant menu */}
+        <section id="services" className="py-[80px] md:py-[120px] px-5 md:px-16 bg-[#0e0e0e] border-y border-[#8E795E]/10">
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center mb-12">
+              <span className="font-[var(--font-montserrat)] text-[12px] tracking-[0.2em] font-semibold text-[#C5A059] block mb-4">MENÚ DE SERVICIOS</span>
+              <h2 className="font-[var(--font-playfair)] text-[36px] md:text-[48px] font-semibold leading-tight text-white">El ritual comienza aquí.</h2>
+              <p className="font-[var(--font-montserrat)] text-[14px] text-[#d0c5b9] mt-3">Precios en COP • America/Bogota</p>
+            </div>
+            <div className="flex flex-col">
+              {svc.length === 0 ? (
+                <p className="font-[var(--font-montserrat)] text-sm text-[#d0c5b9] text-center py-8">Pronto: servicios Escudería</p>
+              ) : (
+                svc.map((s) => (
+                  <div key={s.id} className="gold-dashed py-6 flex justify-between items-baseline group">
+                    <div className="pr-8">
+                      <h3 className="font-[var(--font-montserrat)] text-[14px] tracking-[0.15em] font-medium text-white group-hover:text-[#C5A059] transition-colors">{s.name.toUpperCase()}</h3>
+                      <p className="font-[var(--font-montserrat)] text-[14px] text-[#d0c5b9] mt-1 line-clamp-2">{s.description}</p>
+                      <span className="font-[var(--font-montserrat)] text-[11px] tracking-[0.15em] text-[#8E795E]">{s.duration_min} MIN • {s.category}</span>
+                    </div>
+                    <div className="font-[var(--font-playfair)] text-[20px] text-[#C5A059] shrink-0">
+                      {formatCurrency(Number(s.price), currency)}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+            <div className="mt-10 text-center">
+              <Link href="/book/escuderia" className="btn-gold border border-[#C5A059] text-[#C5A059] px-8 py-3 font-[var(--font-montserrat)] text-[14px] tracking-[0.15em] font-medium inline-block">
+                RESERVAR AHORA
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* Barberos */}
+        <section id="barberos" className="py-[80px] md:py-[120px] px-5 md:px-16 max-w-[1280px] mx-auto">
+          <div className="text-center mb-10">
+            <span className="font-[var(--font-montserrat)] text-[12px] tracking-[0.2em] font-semibold text-[#C5A059]">EL EQUIPO</span>
+            <h2 className="font-[var(--font-playfair)] text-[32px] md:text-[48px] font-semibold text-white mt-3">Barberos Escudería</h2>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {emps.map((e) => (
+              <div key={e.id} className="border border-[#8E795E]/20 p-6 text-center bg-[#121212] hover:bg-[#201f1f] transition-colors">
+                <div className="w-16 h-16 mx-auto flex items-center justify-center text-white font-bold border border-[#C5A059]/30" style={{ background: (e.color as string) || '#1a1a1a' }}>
                   {e.name.split(' ').map(w=>w[0]).slice(0,2).join('')}
                 </div>
-                <div className="mt-3 font-semibold text-[#2D2926]">{e.name}</div>
-                <div className="text-xs text-[#6b7280] mt-1">{(e.specialties as string[] | null)?.join(' • ') || 'Barbero'}</div>
+                <div className="mt-4 font-[var(--font-montserrat)] text-[13px] tracking-[0.1em] font-semibold text-white">{e.name.toUpperCase()}</div>
+                <div className="font-[var(--font-montserrat)] text-[11px] tracking-[0.15em] text-[#8E795E] mt-1">{(e.specialties as string[] | null)?.join(' • ') || 'BARBERO'}</div>
               </div>
             ))}
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Info */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 py-12 grid lg:grid-cols-3 gap-6">
-        <div className="bg-white rounded-xl border border-[#E8E0D8] p-6">
-          <h3 className="font-semibold text-[#2D2926] flex items-center gap-2"><Clock className="w-4 h-4" /> Horario</h3>
-          <p className="text-sm text-[#6b7280] mt-2">Lun-Sáb 09:00-20:00<br/>Domingo cerrado</p>
-          <p className="text-xs text-[#9A8E85] mt-2">America/Bogota • Sin break — atención continua</p>
-        </div>
-        <div className="bg-white rounded-xl border border-[#E8E0D8] p-6">
-          <h3 className="font-semibold text-[#2D2926] flex items-center gap-2"><MapPin className="w-4 h-4" /> Ubicación</h3>
-          <p className="text-sm text-[#6b7280] mt-2">Colombia<br/>Barbería Escudería</p>
-          <a href="tel:+573001234567" className="inline-flex mt-3 text-sm text-white px-4 py-2 rounded-full" style={{ background: brand }}><Phone className="w-4 h-4 mr-2" /> +57 300 123 4567</a>
-        </div>
-        <div className="bg-white rounded-xl border border-[#E8E0D8] p-6">
-          <h3 className="font-semibold text-[#2D2926] flex items-center gap-2"><Star className="w-4 h-4" /> Reserva</h3>
-          <p className="text-sm text-[#6b7280] mt-2">Sin registro. Eliges servicio → barbero → fecha → hora → nombre + cel → confirmar.</p>
-          <Link href="/book/escuderia" className="inline-flex mt-3 text-sm border border-[#E8E0D8] px-4 py-2 rounded-full hover:bg-[#FBF8F5]">Ir a reservas →</Link>
-        </div>
-      </section>
+        {/* Signature */}
+        <section className="py-[80px] md:py-[120px] relative overflow-hidden">
+          <div className="absolute inset-0">
+            <div className="w-full h-full bg-cover bg-center opacity-30" style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuDzm19bnJ5J5Iby1ns8UX_-SCZzAsqPBPl0l8aNFwjqgeRaIFXHrpz-bTLnx6Kov-DvBCv9nTLmCA9sI_cGh38zYTthUKzk8Un0rFx2tJxWg3DLcKZCtpQVRb_qxqIQANh7gbiNfDC62I289uylwhGutGaC-yIAMjNERQUDdxvVCwxDurg4aZ2ia5GxF4lp_67ycR9zJszbGGEtyMx4HYDUKelNF2RpfHmhAMqf_-x6YGuE8eqC9s8a')" }} />
+            <div className="absolute inset-0 bg-[#0A0A0A]/80" />
+          </div>
+          <div className="relative z-10 max-w-[1280px] mx-auto px-5 md:px-16 text-center">
+            <div className="inline-block border border-[#C5A059]/30 px-6 py-2 mb-8">
+              <span className="font-[var(--font-montserrat)] text-[12px] tracking-[0.3em] font-semibold text-[#C5A059]">THE SIGNATURE EXPERIENCE</span>
+            </div>
+            <h2 className="font-[var(--font-playfair)] text-[32px] md:text-[48px] font-semibold text-white max-w-2xl mx-auto leading-tight">El máximo nivel de cuidado personal.</h2>
+            <p className="font-[var(--font-montserrat)] text-[16px] leading-6 text-[#d0c5b9] mt-6 max-w-xl mx-auto">
+              90 minutos: corte impecable, afeitado navaja con toallas calientes, facial express y masaje capilar. Bebida premium incluida.
+            </p>
+            <Link href="/book/escuderia" className="btn-gold mt-10 border border-[#C5A059] text-[#C5A059] px-8 py-3 font-[var(--font-montserrat)] text-[14px] tracking-[0.15em] font-medium inline-block bg-[#121212]">
+              RESERVAR EXPERIENCIA | {svc.find(s=>s.category==='combo') ? formatCurrency(Number(svc.find(s=>s.category==='combo')!.price), currency) : '$45.000'}
+            </Link>
+          </div>
+        </section>
 
-      {/* Footer */}
-      <footer className="border-t border-[#E8E0D8] bg-white">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 flex flex-col sm:flex-row justify-between gap-3 text-sm text-[#6b7280]">
-          <span>© 2026 Escudería • Barbería • Colombia • COP</span>
-          <span className="flex gap-4">
-            <Link href="/book/escuderia" className="hover:text-[#1a1a1a]">Reservar</Link>
-            <Link href="/login" className="hover:text-[#1a1a1a]">Staff</Link>
-            <a href="https://wa.me/573001234567" target="_blank" className="hover:text-green-600">WhatsApp</a>
-          </span>
+        {/* Location */}
+        <section id="location" className="py-[80px] px-5 md:px-16 max-w-[1280px] mx-auto grid md:grid-cols-3 gap-6">
+          {[
+            { k: 'Horario', v: 'Lun-Sáb 09:00-20:00', sub: 'Dom cerrado • America/Bogota' },
+            { k: 'Ubicación', v: 'Colombia', sub: 'Escudería • Barbería' },
+            { k: 'Reserva', v: '+57 300 123 4567', sub: 'Sin registro • Online 24/7' },
+          ].map((c) => (
+            <div key={c.k} className="border border-[#8E795E]/20 p-6 bg-[#121212]">
+              <div className="font-[var(--font-montserrat)] text-[11px] tracking-[0.2em] font-semibold text-[#C5A059]">{c.k.toUpperCase()}</div>
+              <div className="font-[var(--font-playfair)] text-lg text-white mt-2">{c.v}</div>
+              <div className="font-[var(--font-montserrat)] text-[12px] text-[#d0c5b9] mt-1">{c.sub}</div>
+            </div>
+          ))}
+        </section>
+      </main>
+
+      <footer className="w-full py-12 bg-[#0e0e0e] border-t border-[#8E795E]/10">
+        <div className="flex flex-col md:flex-row justify-between items-center px-5 md:px-16 gap-8 w-full max-w-[1280px] mx-auto">
+          <div className="font-[var(--font-playfair)] text-xl font-bold text-[#C5A059]">ESCUDERÍA</div>
+          <div className="flex gap-8 font-[var(--font-montserrat)] text-[12px] tracking-[0.2em] font-semibold text-[#d0c5b9]">
+            <Link href="/book/escuderia" className="hover:text-[#C5A059]">RESERVAR</Link>
+            <Link href="/login" className="hover:text-[#C5A059]">STAFF</Link>
+            <a href="https://wa.me/573001234567" target="_blank" className="hover:text-[#C5A059]">WHATSAPP</a>
+          </div>
+          <div className="font-[var(--font-montserrat)] text-[11px] tracking-[0.15em] text-[#8E795E]">© 2026 ESCUDERÍA • COLOMBIA • COP</div>
         </div>
       </footer>
     </div>
