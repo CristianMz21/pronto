@@ -31,7 +31,7 @@ export default async function SettingsPage() {
       .order('name'),
     supabase
       .from('employees')
-      .select('id, name, role, email, phone, is_active')
+      .select('id, name, role, email, phone, is_active, color, specialties, commission_rate, commission_fixed, bio, avatar_url')
       .eq('business_id', business.id)
       .order('name'),
     supabase

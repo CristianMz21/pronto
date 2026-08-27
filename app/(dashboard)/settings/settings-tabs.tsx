@@ -34,8 +34,8 @@ interface Business {
   logo_url: string | null
   enabled_modules: string[] | null
 }
-interface Service { id: string; name: string; description: string | null; price: number; duration_min: number; category: string | null; is_active: boolean; capacity: number }
-interface Employee { id: string; name: string; role: string; email: string | null; phone: string | null; is_active: boolean }
+interface Service { id: string; name: string; description: string | null; price: number; duration_min: number; category: string | null; is_active: boolean; capacity: number; cost?: number | null }
+interface Employee { id: string; name: string; role: string; email: string | null; phone: string | null; is_active: boolean; color?: string | null; specialties?: string[]; commission_rate?: number | null; commission_fixed?: number | null; bio?: string | null; avatar_url?: string | null }
 interface DayHours { day_of_week: number; is_open: boolean; open_time: string; close_time: string; break_start?: string | null; break_end?: string | null }
 
 const DEFAULT_HOURS: DayHours[] = [0, 1, 2, 3, 4, 5, 6].map((dow) => ({

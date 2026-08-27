@@ -213,7 +213,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Trigger 017: the DB raises 'slot_already_booked' when a concurrent
+    // Trigger 017/032: the DB raises 'slot_already_booked' when a concurrent
     // request wins the race for the same slot.
     if (apptErr?.message?.includes('slot_already_booked')) {
       return NextResponse.json(
@@ -221,6 +221,39 @@ export async function POST(req: NextRequest) {
         { status: 409 }
       )
     }
+
+    // Barber availability triggers (040)
+    if (apptErr?.message?.includes('barber_not_qualified')) {
+      return NextResponse.json(
+        { error: 'barber_not_qualified', message: 'Selected barber cannot perform this service. Please choose another barber or service.' },
+        { status: 400 }
+      )
+    }
+    if (apptErr?.message?.includes('barber_unavailable')) {
+      return NextResponse.json(
+        { error: 'barber_unavailable', message: 'Selected barber is on vacation or break at that time. Please choose another time or barber.' },
+        { status: 409 }
+      )
+    }
+    if (apptErr?.message?.includes('barber_inactive')) {
+      return NextResponse.json(
+        { error: 'barber_inactive', message: 'Selected barber is inactive. Please choose another barber.' },
+        { status: 400 }
+      )
+    }
+    if (apptErr?.message?.includes('outside_availability')) {
+      const reason = apptErr.message.includes('closed') ? 'closed' : apptErr.message.includes('break') ? 'break' : 'outside_hours'
+      const messages: Record<string, string> = {
+        closed: 'This business is closed at the selected date. Please choose another day.',
+        outside_hours: 'This time is outside business hours. Please choose another time.',
+        break: 'This time falls during a break. Please choose another time.',
+      }
+      return NextResponse.json(
+        { error: 'outside_availability', reason, message: messages[reason] },
+        { status: 400 }
+      )
+    }
+
     console.error('[api/book] insert error:', apptErr?.message)
     return NextResponse.json({ error: 'booking_failed' }, { status: 500 })
   }

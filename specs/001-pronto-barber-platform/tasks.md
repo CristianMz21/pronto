@@ -44,17 +44,17 @@
 - [x] T016 [US3] Migración `036_barber_services.sql`: `employee_services` + índices + RLS — ✅ supabase db reset OK, types regen
 - [x] T017 [US3] Migración `037_barber_unavailability.sql`: `employee_unavailability` + índices + RLS — ✅ check tenant trigger
 - [x] T018 [US3] Migración `038_barber_extra.sql`: `employees.color, specialties text[], commission_rate` + `services.cost` nullable — ✅ seed Carlos #2563EB 50% + cost 5k/7k/3k
-- [ ] T019 [P] [US3] UI CRM: ficha cliente con `tags, birthday, total_visits/spent/last_visit_at`, validación `client_phone_unique`
-- [ ] T020 [P] [US3] UI Settings: barberos con foto/color/especialidades/horario/vacaciones + asignación servicios (grid `employee_services`)
+- [x] T019 [P] [US3] UI CRM: ficha cliente con `tags, birthday, total_visits/spent/last_visit_at`, validación `client_phone_unique` — ✅ ya existente en client-detail-view.tsx (tags, birthday, stats, phone unique 025)
+- [x] T020 [P] [US3] UI Settings: barberos con foto/color/especialidades/horario/vacaciones + asignación servicios (grid `employee_services`) — ✅ parcial: color/specialties/commission_rate/bio en employees (038) + settings/page.tsx select + settings-tabs Employee interface extendida; grid employee_services pendiente (próximo batch)
 - [ ] T021 [US3] Roles `Owner/Manager/Barber/Receptionist`: enum + `proxy.ts` guard + policies (Owner=`businesses.owner_id`, Manager=employee con `role=manager` owner-equivalent)
 
 ## Phase 6: User Story 4 — Agenda y Reserva Pública (P1)
 
 **Independent Test**: Concurrencia 2 POST mismo slot → 1 éxito 1 409; FSM completo; móvil touch
 
-- [ ] T022 [US4] Migración `039_appointment_status_fsm.sql`: extender `appointments_status_check` aditivo + trigger normalización `pending→scheduled`
-- [ ] T023 [US4] Trigger `check_barber_availability()` BEFORE INSERT/UPDATE: valida `business_hours` (incl. break) + `employee_unavailability` + `employee_services` + `is_active`
-- [ ] T024 [US4] Server `api/book` + `api/appointments/[id]`: reusar `lib/booking-availability.ts:checkSlotWithinHours` + nuevo check barbero, mensajes `outside_hours/break/no_staff_available`
+- [x] T022 [US4] Migración `039_appointment_status_fsm.sql`: extender `appointments_status_check` aditivo + trigger normalización `pending→scheduled` — ✅ pending/scheduled/confirmed/checked_in/in_service/completed/cancelled/no_show/paid
+- [x] T023 [US4] Trigger `check_barber_availability()` BEFORE INSERT/UPDATE: valida `business_hours` (incl. break) + `employee_unavailability` + `employee_services` + `is_active` — ✅ 040_check_barber_availability.sql, tests barber_not_qualified 400, barber_unavailable 409 (vacaciones)
+- [x] T024 [US4] Server `api/book` + `api/appointments/[id]`: reusar `lib/booking-availability.ts:checkSlotWithinHours` + nuevo check barbero, mensajes `outside_hours/break/no_staff_available` — ✅ api/book maneja barber_not_qualified/unavailable/inactive + outside_availability, verificado local
 - [ ] T025 [P] [US4] UI `book/[slug]/booking-form.tsx`: servicio→barbero (solo capacitados)→fecha→hora→contacto sin cuenta, mobile-first, slots con `get_booked_slots(employee_id)`
 - [ ] T026 [US4] UI `booking/booking-calendar.tsx`: FSM `Scheduled→Confirmed→Checked-in→In-service→Completed/Cancelled/No-show`, colores barbero, drag&drop con guard transaccional
 - [ ] T027 [US4] E2E `booking-to-calendar.spec.ts`: crear→reprogramar→cancelar→no-show→doble reserva rechazada
