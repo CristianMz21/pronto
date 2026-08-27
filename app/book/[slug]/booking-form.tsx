@@ -22,6 +22,7 @@ interface Props {
   viberBotUri: string | null
   initialServiceId?: string | null
   initialEmployeeId?: string | null
+  theme?: 'default' | 'escuderia'
 }
 
 type Step = 'service' | 'employee' | 'datetime' | 'contact' | 'done'
@@ -41,47 +42,62 @@ function generateSlots(openTime: string, closeTime: string, durationMin: number)
 }
 
 // ─── Shared style atoms ───────────────────────────────────────────────────────
-
-const baseCard: React.CSSProperties = {
-  background: 'white',
-  border: '0.5px solid #E8E0D8',
-  borderRadius: 12,
-  padding: '14px 16px',
-  marginBottom: 8,
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  cursor: 'pointer',
-  width: '100%',
-  textAlign: 'left',
+function getBaseCard(theme: string): React.CSSProperties {
+  return {
+    background: theme === 'escuderia' ? '#121212' : 'white',
+    border: theme === 'escuderia' ? '1px solid rgba(197,160,89,0.2)' : '0.5px solid #E8E0D8',
+    borderRadius: theme === 'escuderia' ? 0 : 12,
+    padding: '14px 16px',
+    marginBottom: 8,
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    cursor: 'pointer',
+    width: '100%',
+    textAlign: 'left',
+  }
 }
 
-function StepBadge({ label }: { label: string }) {
+function StepBadge({ label, theme }: { label: string; theme?: string }) {
   return (
-    <span style={{ display: 'inline-block', background: 'var(--brand-light)', color: 'var(--brand)', fontSize: 11, fontWeight: 500, padding: '3px 10px', borderRadius: 20, marginBottom: 10 }}>
-      {label}
+    <span style={{
+      display: 'inline-block',
+      background: theme === 'escuderia' ? 'rgba(197,160,89,0.15)' : 'var(--brand-light)',
+      color: theme === 'escuderia' ? '#C5A059' : 'var(--brand)',
+      fontSize: 11, fontWeight: 600, letterSpacing: '0.1em',
+      padding: '3px 10px', borderRadius: theme === 'escuderia' ? 0 : 20, marginBottom: 10
+    }}>
+      {label.toUpperCase()}
     </span>
   )
 }
 
-function SectionTitle({ text }: { text: string }) {
-  return <h2 style={{ fontSize: 17, fontWeight: 500, color: '#2D2926', marginBottom: 14, marginTop: 0 }}>{text}</h2>
+function SectionTitle({ text, theme }: { text: string; theme?: string }) {
+  return <h2 style={{ fontSize: 17, fontWeight: 500, color: theme === 'escuderia' ? '#e5e2e1' : '#2D2926', marginBottom: 14, marginTop: 0, fontFamily: theme === 'escuderia' ? 'var(--font-playfair)' : undefined }}>{text}</h2>
 }
 
-function BackLink({ label, onClick }: { label: string; onClick: () => void }) {
+function BackLink({ label, onClick, theme }: { label: string; onClick: () => void; theme?: string }) {
   return (
-    <button onClick={onClick} style={{ fontSize: 13, color: '#9A8E85', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 16, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+    <button onClick={onClick} style={{ fontSize: 13, color: theme === 'escuderia' ? '#8E795E' : '#9A8E85', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 16, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
       {label}
     </button>
   )
 }
 
-function CtaButton({ label, onClick, disabled }: { label: string; onClick: () => void; disabled?: boolean }) {
+function CtaButton({ label, onClick, disabled, theme }: { label: string; onClick: () => void; disabled?: boolean; theme?: string }) {
+  const isEsc = theme === 'escuderia'
   return (
     <button
       onClick={onClick}
       disabled={disabled}
-      style={{ background: disabled ? '#C4BAB3' : 'var(--brand)', color: 'white', border: 'none', borderRadius: 10, padding: '13px 20px', fontSize: 14, fontWeight: 500, width: '100%', marginTop: 16, cursor: disabled ? 'not-allowed' : 'pointer' }}
+      style={{
+        background: disabled ? (isEsc ? '#353534' : '#C4BAB3') : isEsc ? '#C5A059' : 'var(--brand)',
+        color: disabled ? (isEsc ? '#8E795E' : 'white') : isEsc ? '#000' : 'white',
+        border: isEsc ? '1px solid #C5A059' : 'none',
+        borderRadius: isEsc ? 0 : 10,
+        padding: '13px 20px', fontSize: 14, fontWeight: 500, letterSpacing: isEsc ? '0.1em' : undefined,
+        width: '100%', marginTop: 16, cursor: disabled ? 'not-allowed' : 'pointer'
+      }}
     >
       {label}
     </button>
@@ -90,11 +106,13 @@ function CtaButton({ label, onClick, disabled }: { label: string; onClick: () =>
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function PublicBookingForm({ business, services, employees, workingHours, telegramBotUsername, viberBotUri, initialServiceId, initialEmployeeId }: Props) {
+export function PublicBookingForm({ business, services, employees, workingHours, telegramBotUsername, viberBotUri, initialServiceId, initialEmployeeId, theme = 'default' }: Props) {
   const supabase = createClient()
   const t = useTranslations('publicBooking')
 
   const hasEmployeeStep = employees.length > 1
+  const isEsc = theme === 'escuderia'
+  const baseCard = getBaseCard(theme)
 
   const initialSvc = initialServiceId ? services.find(s => s.id === initialServiceId) ?? null : null
   const [step, setStep] = useState<Step>(initialSvc ? (hasEmployeeStep ? 'employee' : 'datetime') : 'service')
@@ -332,19 +350,25 @@ export function PublicBookingForm({ business, services, employees, workingHours,
       ? `viber://pa?chatURI=${viberBotUri}&context=client_${clientId}`
       : null
 
+    const doneBg = isEsc ? '#121212' : 'white'
+    const doneBorder = isEsc ? '1px solid rgba(197,160,89,0.2)' : '0.5px solid #E8E0D8'
+    const doneRadius = isEsc ? 0 : 16
+    const textPrimary = isEsc ? '#e5e2e1' : '#2D2926'
+    const textMuted = isEsc ? '#d0c5b9' : '#9A8E85'
+
     return (
-      <div style={{ background: 'white', border: '0.5px solid #E8E0D8', borderRadius: 16, padding: '32px 24px', textAlign: 'center' }}>
+      <div style={{ background: doneBg, border: doneBorder, borderRadius: doneRadius, padding: '32px 24px', textAlign: 'center' }}>
         <svg width="56" height="56" viewBox="0 0 56 56" fill="none" style={{ margin: '0 auto 16px', display: 'block' }}>
-          <circle cx="28" cy="28" r="27" stroke="var(--brand)" strokeWidth="2" fill="var(--brand-light)" />
-          <path d="M17 28L24 35L39 20" stroke="var(--brand)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+          <circle cx="28" cy="28" r="27" stroke={isEsc ? '#C5A059' : 'var(--brand)'} strokeWidth="2" fill={isEsc ? 'rgba(197,160,89,0.15)' : 'var(--brand-light)'} />
+          <path d="M17 28L24 35L39 20" stroke={isEsc ? '#C5A059' : 'var(--brand)'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
 
-        <h2 style={{ fontSize: 20, fontWeight: 500, color: '#2D2926', margin: '0 0 8px' }}>{t('success.heading')}</h2>
-        <p style={{ fontSize: 14, color: '#9A8E85', margin: '0 0 4px' }}>
+        <h2 style={{ fontSize: 20, fontWeight: 500, color: textPrimary, margin: '0 0 8px', fontFamily: isEsc ? 'var(--font-playfair)' : undefined }}>{t('success.heading')}</h2>
+        <p style={{ fontSize: 14, color: textMuted, margin: '0 0 4px' }}>
           {selectedService?.name} · {date} at {time ? formatSlot(time) : ''}
           {selectedEmployeeObj && ` · ${selectedEmployeeObj.name}`}
         </p>
-        <p style={{ fontSize: 14, color: '#9A8E85', margin: '0 0 24px' }}>{t('success.body')}</p>
+        <p style={{ fontSize: 14, color: textMuted, margin: '0 0 24px' }}>{t('success.body')}</p>
 
         {/* Messenger opt-in — hidden if client already has Telegram connected */}
         {!clientHasTelegram && (telegramLink || viberLink) && (
@@ -398,25 +422,32 @@ export function PublicBookingForm({ business, services, employees, workingHours,
     )
   }
 
+  const cardText = isEsc ? '#e5e2e1' : '#2D2926'
+  const cardMuted = isEsc ? '#d0c5b9' : '#9A8E85'
+  const cardBg = isEsc ? '#121212' : 'white'
+  const inputBg = isEsc ? '#1c1b1b' : 'white'
+  const inputBorder = isEsc ? '1px solid rgba(197,160,89,0.2)' : '0.5px solid #E8E0D8'
+  const inputRadius = isEsc ? 0 : 10
+
   return (
     <div>
 
       {/* ── Step 1: Service ───────────────────────────────────────────────── */}
       {step === 'service' && (
         <div>
-          <StepBadge label="Select service" />
-          <SectionTitle text={t('selectService.heading')} />
+          <StepBadge label="Seleccionar servicio" theme={theme} />
+          <SectionTitle text={t('selectService.heading')} theme={theme} />
           {services.length === 0 ? (
-            <p style={{ fontSize: 14, color: '#9A8E85' }}>{t('selectService.empty')}</p>
+            <p style={{ fontSize: 14, color: cardMuted }}>{t('selectService.empty')}</p>
           ) : (
             services.map((s) => (
               <button key={s.id} onClick={() => handleSelectService(s)} style={baseCard}>
                 <div>
-                  <div style={{ fontSize: 14, fontWeight: 500, color: '#2D2926' }}>{s.name}</div>
-                  {s.description && <div style={{ fontSize: 12, color: '#9A8E85', marginTop: 2 }}>{s.description}</div>}
-                  <div style={{ fontSize: 12, color: '#9A8E85', marginTop: 2 }}>{t('selectService.minutes', { duration: s.duration_min })}</div>
+                  <div style={{ fontSize: 14, fontWeight: 500, color: cardText }}>{s.name}</div>
+                  {s.description && <div style={{ fontSize: 12, color: cardMuted, marginTop: 2 }}>{s.description}</div>}
+                  <div style={{ fontSize: 12, color: cardMuted, marginTop: 2 }}>{t('selectService.minutes', { duration: s.duration_min })}</div>
                 </div>
-                <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--brand)', flexShrink: 0, marginLeft: 12 }}>
+                <div style={{ fontSize: 14, fontWeight: 500, color: isEsc ? '#C5A059' : 'var(--brand)', flexShrink: 0, marginLeft: 12 }}>
                   {formatCurrency(s.price, business.currency)}
                 </div>
               </button>
@@ -428,27 +459,27 @@ export function PublicBookingForm({ business, services, employees, workingHours,
       {/* ── Step 2: Employee ──────────────────────────────────────────────── */}
       {step === 'employee' && selectedService && (
         <div>
-          <BackLink label={t('selectEmployee.back')} onClick={handleBackFromEmployee} />
-          <StepBadge label="Choose specialist" />
-          <SectionTitle text={t('selectEmployee.heading')} />
-          <p style={{ fontSize: 13, color: '#9A8E85', marginTop: -8, marginBottom: 14 }}>{selectedService.name}</p>
+          <BackLink label={t('selectEmployee.back')} onClick={handleBackFromEmployee} theme={theme} />
+          <StepBadge label="Elegir especialista" theme={theme} />
+          <SectionTitle text={t('selectEmployee.heading')} theme={theme} />
+          <p style={{ fontSize: 13, color: cardMuted, marginTop: -8, marginBottom: 14 }}>{selectedService.name}</p>
 
-          <button onClick={() => handleSelectEmployee('')} style={{ ...baseCard, borderStyle: 'dashed' }}>
+          <button onClick={() => handleSelectEmployee('')} style={{ ...baseCard, borderStyle: 'dashed', background: isEsc ? '#1c1b1b' : baseCard.background }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#F0EBE6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <span style={{ fontSize: 18, color: '#9A8E85' }}>?</span>
+              <div style={{ width: 36, height: 36, borderRadius: '50%', background: isEsc ? '#2a2a2a' : '#F0EBE6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <span style={{ fontSize: 18, color: isEsc ? '#8E795E' : '#9A8E85' }}>?</span>
               </div>
-              <span style={{ fontSize: 14, fontWeight: 500, color: '#9A8E85' }}>{t('selectEmployee.anyone')}</span>
+              <span style={{ fontSize: 14, fontWeight: 500, color: cardMuted }}>{t('selectEmployee.anyone')}</span>
             </div>
           </button>
 
           {employees.map((e) => (
             <button key={e.id} onClick={() => handleSelectEmployee(e.id)} style={baseCard}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--brand-light)', color: 'var(--brand)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: 14, flexShrink: 0 }}>
+                <div style={{ width: 36, height: 36, borderRadius: '50%', background: isEsc ? 'rgba(197,160,89,0.15)' : 'var(--brand-light)', color: isEsc ? '#C5A059' : 'var(--brand)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: 14, flexShrink: 0 }}>
                   {e.name[0].toUpperCase()}
                 </div>
-                <span style={{ fontSize: 14, fontWeight: 500, color: '#2D2926' }}>{e.name}</span>
+                <span style={{ fontSize: 14, fontWeight: 500, color: cardText }}>{e.name}</span>
               </div>
             </button>
           ))}
@@ -458,23 +489,23 @@ export function PublicBookingForm({ business, services, employees, workingHours,
       {/* ── Step 3: Date & Time ───────────────────────────────────────────── */}
       {step === 'datetime' && selectedService && (
         <div>
-          <BackLink label={t('datetime.back')} onClick={handleBackFromDatetime} />
-          <StepBadge label="Date & time" />
-          <SectionTitle text={t('datetime.heading')} />
+          <BackLink label={t('datetime.back')} onClick={handleBackFromDatetime} theme={theme} />
+          <StepBadge label={isEsc ? 'Fecha y hora' : 'Date & time'} theme={theme} />
+          <SectionTitle text={t('datetime.heading')} theme={theme} />
 
           {slotTakenError && (
-            <div style={{ marginBottom: 16, padding: 12, background: '#FFF8ED', border: '0.5px solid #F5C842', borderRadius: 10, fontSize: 13, color: '#7A5C00' }}>
-              ⚠ This time was just booked by someone else. Please choose a different time.
+            <div style={{ marginBottom: 16, padding: 12, background: isEsc ? '#1c1b1b' : '#FFF8ED', border: isEsc ? '1px solid rgba(197,160,89,0.3)' : '0.5px solid #F5C842', borderRadius: isEsc ? 0 : 10, fontSize: 13, color: isEsc ? '#C5A059' : '#7A5C00' }}>
+              ⚠ Este horario acaba de ser reservado. Elige otro.
             </div>
           )}
 
-          <p style={{ fontSize: 13, color: '#9A8E85', marginTop: -8, marginBottom: 16 }}>
+          <p style={{ fontSize: 13, color: cardMuted, marginTop: -8, marginBottom: 16 }}>
             {selectedService.name} · {selectedService.duration_min} min
             {selectedEmployeeObj && ` · ${selectedEmployeeObj.name}`}
           </p>
 
           <div style={{ marginBottom: 16 }}>
-            <label style={{ fontSize: 13, fontWeight: 500, color: '#2D2926', marginBottom: 6, display: 'block' }}>{t('datetime.dateLabel')}</label>
+            <label style={{ fontSize: 13, fontWeight: 500, color: cardText, marginBottom: 6, display: 'block' }}>{t('datetime.dateLabel')}</label>
             <DatePicker
               value={date}
               onChange={(v) => { setDate(v); setSlotTakenError(false) }}
@@ -486,19 +517,19 @@ export function PublicBookingForm({ business, services, employees, workingHours,
 
           {date && (
             <div>
-              <label style={{ fontSize: 13, fontWeight: 500, color: '#2D2926', marginBottom: 6, display: 'block' }}>{t('datetime.timeLabel')}</label>
+              <label style={{ fontSize: 13, fontWeight: 500, color: cardText, marginBottom: 6, display: 'block' }}>{t('datetime.timeLabel')}</label>
               {loadingSlots ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: '#9A8E85' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: cardMuted }}>
                   <Loader2 style={{ width: 16, height: 16 }} className="animate-spin" />
-                  Loading available times&hellip;
+                  Cargando horarios...
                 </div>
               ) : dayClosed ? (
-                <div style={{ padding: 12, background: '#F5F0EB', borderRadius: 10, fontSize: 14, color: '#9A8E85' }}>
-                  This day is outside working hours. Please choose another date.
+                <div style={{ padding: 12, background: isEsc ? '#1c1b1b' : '#F5F0EB', border: isEsc ? '1px solid #353534' : 'none', borderRadius: isEsc ? 0 : 10, fontSize: 14, color: cardMuted }}>
+                  Fuera de horario. Elige otro día.
                 </div>
               ) : availableSlots.length === 0 ? (
-                <div style={{ padding: 12, background: '#F5F0EB', borderRadius: 10, fontSize: 14, color: '#9A8E85' }}>
-                  No available times for this day. Please choose another date.
+                <div style={{ padding: 12, background: isEsc ? '#1c1b1b' : '#F5F0EB', border: isEsc ? '1px solid #353534' : 'none', borderRadius: isEsc ? 0 : 10, fontSize: 14, color: cardMuted }}>
+                  Sin horarios para este día. Elige otro.
                 </div>
               ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
@@ -510,20 +541,20 @@ export function PublicBookingForm({ business, services, employees, workingHours,
                     return (
                       <button key={ts} onClick={() => { setTime(ts); setSlotTakenError(false) }}
                         style={{
-                          background: isSelected ? 'var(--brand)' : 'white',
-                          border: `0.5px solid ${isSelected ? 'var(--brand)' : '#E8E0D8'}`,
-                          borderRadius: 10,
+                          background: isSelected ? (isEsc ? '#C5A059' : 'var(--brand)') : isEsc ? '#121212' : 'white',
+                          border: isSelected ? `1px solid ${isEsc ? '#C5A059' : 'var(--brand)'}` : isEsc ? '1px solid rgba(197,160,89,0.2)' : '0.5px solid #E8E0D8',
+                          borderRadius: isEsc ? 0 : 10,
                           padding: '10px 4px',
                           textAlign: 'center',
                           fontSize: 13,
                           fontWeight: 500,
-                          color: isSelected ? 'white' : '#2D2926',
+                          color: isSelected ? (isEsc ? '#000' : 'white') : cardText,
                           cursor: 'pointer',
                         }}>
                         <div>{formatSlot(ts)}</div>
                         {isPartial && (
-                          <div style={{ fontSize: 10, color: isSelected ? 'rgba(255,255,255,0.8)' : 'var(--brand)', marginTop: 2 }}>
-                            {spotsLeft} spots left
+                          <div style={{ fontSize: 10, color: isSelected ? (isEsc ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.8)') : isEsc ? '#C5A059' : 'var(--brand)', marginTop: 2 }}>
+                            {spotsLeft} lugares
                           </div>
                         )}
                       </button>
@@ -534,16 +565,16 @@ export function PublicBookingForm({ business, services, employees, workingHours,
             </div>
           )}
 
-          <CtaButton label={t('datetime.continue')} onClick={() => setStep('contact')} disabled={!date || !time} />
+          <CtaButton label={isEsc ? 'Continuar →' : t('datetime.continue')} onClick={() => setStep('contact')} disabled={!date || !time} theme={theme} />
         </div>
       )}
 
       {/* ── Step 4: Contact ───────────────────────────────────────────────── */}
       {step === 'contact' && (
         <div>
-          <BackLink label={t('contact.back')} onClick={() => setStep('datetime')} />
-          <StepBadge label="Your details" />
-          <SectionTitle text={t('contact.heading')} />
+          <BackLink label={t('contact.back')} onClick={() => setStep('datetime')} theme={theme} />
+          <StepBadge label={isEsc ? 'Tus datos' : 'Your details'} theme={theme} />
+          <SectionTitle text={t('contact.heading')} theme={theme} />
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {([
@@ -552,22 +583,22 @@ export function PublicBookingForm({ business, services, employees, workingHours,
               { key: 'email' as const, label: t('contact.emailLabel'), placeholder: t('contact.emailPlaceholder'), type: 'email' },
             ] as const).map(({ key, label, placeholder, type }) => (
               <div key={key}>
-                <label style={{ fontSize: 13, fontWeight: 500, color: '#2D2926', marginBottom: 6, display: 'block' }}>{label}</label>
+                <label style={{ fontSize: 13, fontWeight: 500, color: cardText, marginBottom: 6, display: 'block' }}>{label}</label>
                 <input
                   type={type}
                   value={contact[key]}
                   onChange={(e) => setContact((c) => ({ ...c, [key]: e.target.value }))}
                   placeholder={placeholder}
-                  style={{ border: '0.5px solid #E8E0D8', borderRadius: 10, padding: '11px 14px', fontSize: 14, color: '#2D2926', width: '100%', background: 'white', outline: 'none', boxSizing: 'border-box' }}
-                  onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--brand)' }}
-                  onBlur={(e) => { e.currentTarget.style.borderColor = '#E8E0D8' }}
+                  style={{ border: inputBorder, borderRadius: inputRadius, padding: '11px 14px', fontSize: 14, color: cardText, width: '100%', background: inputBg, outline: 'none', boxSizing: 'border-box' }}
+                  onFocus={(e) => { e.currentTarget.style.borderColor = isEsc ? '#C5A059' : 'var(--brand)' }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = isEsc ? 'rgba(197,160,89,0.2)' : '#E8E0D8' }}
                 />
               </div>
             ))}
           </div>
 
           {bookingError && (
-            <div style={{ marginTop: 16, padding: 12, background: '#FFF0F0', border: '0.5px solid #F5AAAA', borderRadius: 10, fontSize: 13, color: '#B00020' }}>
+            <div style={{ marginTop: 16, padding: 12, background: isEsc ? '#1c1b1b' : '#FFF0F0', border: isEsc ? '1px solid #93000a' : '0.5px solid #F5AAAA', borderRadius: isEsc ? 0 : 10, fontSize: 13, color: isEsc ? '#ffb4ab' : '#B00020' }}>
               {bookingError}
             </div>
           )}
@@ -576,21 +607,18 @@ export function PublicBookingForm({ business, services, employees, workingHours,
             onClick={submit}
             disabled={!contact.name || saving}
             style={{
-              background: (!contact.name || saving) ? '#C4BAB3' : 'var(--brand)',
-              color: 'white',
-              border: 'none',
-              borderRadius: 10,
+              background: (!contact.name || saving) ? (isEsc ? '#353534' : '#C4BAB3') : isEsc ? '#C5A059' : 'var(--brand)',
+              color: (!contact.name || saving) ? (isEsc ? '#8E795E' : 'white') : isEsc ? '#000' : 'white',
+              border: isEsc ? '1px solid #C5A059' : 'none',
+              borderRadius: isEsc ? 0 : 10,
               padding: '13px 20px',
-              fontSize: 14,
-              fontWeight: 500,
-              width: '100%',
-              marginTop: 16,
-              cursor: (!contact.name || saving) ? 'not-allowed' : 'pointer',
+              fontSize: 14, fontWeight: 500, letterSpacing: isEsc ? '0.1em' : undefined,
+              width: '100%', marginTop: 16, cursor: (!contact.name || saving) ? 'not-allowed' : 'pointer',
             }}
           >
             {saving ? t('contact.booking') : t('contact.confirm', { price: formatCurrency(selectedService?.price ?? 0, business.currency) })}
           </button>
-          <p style={{ fontSize: 11, color: '#9A8E85', textAlign: 'center', marginTop: 12 }}>{t('contact.noRegistration')}</p>
+          <p style={{ fontSize: 11, color: cardMuted, textAlign: 'center', marginTop: 12 }}>{t('contact.noRegistration')}</p>
         </div>
       )}
 
