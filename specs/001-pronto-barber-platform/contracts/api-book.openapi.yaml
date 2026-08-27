@@ -1,0 +1,42 @@
+openapi: 3.1.0
+info:
+  title: Pronto Barber — Booking API
+  version: 1.0.0
+paths:
+  /api/book:
+    post:
+      summary: Crear reserva pública (sin auth)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [businessId, serviceId, date, time, name]
+              properties:
+                businessId: { type: string, format: uuid }
+                serviceId: { type: string, format: uuid }
+                employeeId: { type: string, format: uuid, nullable: true }
+                date: { type: string, pattern: "^\\d{4}-\\d{2}-\\d{2}$" }
+                time: { type: string, pattern: "^\\d{2}:\\d{2}$" }
+                name: { type: string, minLength: 1, maxLength: 100 }
+                phone: { type: string, maxLength: 30, nullable: true }
+                email: { type: string, format: email, nullable: true }
+      responses:
+        "200": { description: Creada, content: { application/json: { schema: { type: object, properties: { appointmentId: { type: string }, clientId: { type: string }, hasTelegram: { type: boolean }, hasViber: { type: boolean } } } } } }
+        "400": { description: "outside_availability | contact_required" }
+        "409": { description: "slot_taken | no_staff_available" }
+        "422": { description: validation_failed }
+        "429": { description: rate_limited }
+
+  /api/appointments/{id}:
+    patch:
+      summary: Reasignar barbero (owner)
+      security: [{ cookieAuth: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody: { content: { application/json: { schema: { type: object, properties: { employee_id: { type: string, nullable: true } } } } } }
+      responses:
+        "200": { description: Actualizado }
+        "401": { description: unauthorized }
+        "403": { description: forbidden }
+        "500": { description: slot_already_booked via trigger }

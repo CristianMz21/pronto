@@ -53,5 +53,6 @@ TECHNICAL_AUDIT.md
 Pronto_MVP_v4.docx
 unpacked_docx/
 
-# claude code session files
+# claude code / opencode session files — may contain tokens
 .claude/
+.opencode/
