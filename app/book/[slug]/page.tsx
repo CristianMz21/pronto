@@ -20,8 +20,9 @@ export async function generateMetadata(props: { params: Promise<{ slug: string }
   }
 }
 
-export default async function PublicBookingPage(props: { params: Promise<{ slug: string }> }) {
+export default async function PublicBookingPage(props: { params: Promise<{ slug: string }>, searchParams?: Promise<{ service?: string, employee?: string }> }) {
   const params = await props.params;
+  const searchParams = await props.searchParams;
   const supabase = createServiceClient()
 
   // Public data — brand_color included for warm/premium design
@@ -112,6 +113,8 @@ export default async function PublicBookingPage(props: { params: Promise<{ slug:
             workingHours={businessHours ?? []}
             telegramBotUsername={telegramBotUsername}
             viberBotUri={viberBotUri}
+            initialServiceId={searchParams?.service ?? null}
+            initialEmployeeId={searchParams?.employee ?? null}
           />
         </div>
       </div>

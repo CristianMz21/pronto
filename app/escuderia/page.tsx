@@ -46,7 +46,7 @@ export default async function EscuderiaLandingPremium() {
         .fade-up.visible{opacity:1;transform:none}
       `}</style>
 
-      {/* Nav */}
+      {/* Nav — glass, mobile hamburger */}
       <nav className="fixed top-0 w-full z-50 bg-[#0A0A0A]/40 backdrop-blur-xl border-b border-[#8E795E]/20">
         <div className="flex justify-between items-center px-5 md:px-16 h-20 w-full mx-auto max-w-[1280px]">
           <Link href="/escuderia" className="font-[var(--font-playfair)] text-[22px] font-bold tracking-tight text-[#C5A059] flex items-center gap-3">
@@ -59,32 +59,48 @@ export default async function EscuderiaLandingPremium() {
             <li><a className="font-[var(--font-montserrat)] text-[12px] tracking-[0.2em] font-semibold text-[#d0c5b9] hover:text-[#C5A059] nav-link" href="#barberos">BARBEROS</a></li>
             <li><a className="font-[var(--font-montserrat)] text-[12px] tracking-[0.2em] font-semibold text-[#d0c5b9] hover:text-[#C5A059] nav-link" href="#location">UBICACIÓN</a></li>
           </ul>
-          <Link href="/book/escuderia" className="hidden md:inline-flex border border-[#C5A059] text-[#C5A059] px-6 py-2.5 font-[var(--font-montserrat)] text-[14px] tracking-[0.15em] font-medium hover:bg-[#C5A059] hover:text-black transition-colors">
-            RESERVAR
-          </Link>
-          <a href="tel:+573001234567" className="md:hidden text-[#d0c5b9] text-sm">+57 300 123</a>
+          <div className="flex items-center gap-3">
+            <Link href="/book/escuderia" className="hidden md:inline-flex border border-[#C5A059] text-[#C5A059] px-6 py-2.5 font-[var(--font-montserrat)] text-[14px] tracking-[0.15em] font-medium hover:bg-[#C5A059] hover:text-black transition-colors">
+              RESERVAR
+            </Link>
+            <Link href="/book/escuderia" className="md:hidden border border-[#C5A059] text-[#C5A059] px-4 py-2 font-[var(--font-montserrat)] text-[11px] tracking-[0.15em] font-medium">RESERVAR</Link>
+          </div>
         </div>
       </nav>
 
-      <main>
-        {/* Hero */}
-        <section className="relative h-screen w-full flex items-center justify-center overflow-hidden">
+      <main className="pt-20">
+        {/* Hero — mobile h-[80vh] bottom, desktop h-screen centered */}
+        <section className="relative h-[80vh] md:h-screen w-full flex flex-col justify-end md:items-center md:justify-center overflow-hidden pb-12 md:pb-0">
           <div className="absolute inset-0">
             <div className="w-full h-full bg-cover bg-center opacity-60" style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuDlfxhfBbn3c67fptZ2goGECpVDSVGmZVBAEHpW_wQ0YL05RFsyAW7nFxSHen_plRL4KuQQlrPHCQWkgiRTADV9aB3WLMjAN0sPO6dgoqqSsTjyZ0OVovrjq_3pYYM7A8ubr_DqepwbdwxQD1gcXKS3pqY8qWL-EquupcIKWTM916zLoHxCS3fuKsB1kt-PRzR-9WzV4Q7xrJCyK-CGr5Rr79Ab0ySQdJlLtOE0WOMs4cLY2wTMbiKI')" }} />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-transparent to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-[#0A0A0A]/50 to-transparent" />
           </div>
-          <div className="relative z-10 flex flex-col items-center text-center px-5 md:px-16 max-w-[1280px] mx-auto mt-16">
-            <h1 className="font-[var(--font-playfair)] text-[36px] md:text-[72px] font-bold leading-[44px] md:leading-[80px] tracking-[-0.02em] text-white max-w-3xl">
-              Tu estilo.<br />Nuestra precisión.
-            </h1>
-            <p className="font-[var(--font-montserrat)] text-[18px] leading-7 text-[#d0c5b9] mt-6 max-w-xl">
-              Barbería contemporánea para hombres que entienden que los detalles hacen la diferencia.
-            </p>
-            <Link href="/book/escuderia" className="btn-gold mt-10 border border-[#C5A059] text-[#C5A059] px-10 py-4 font-[var(--font-montserrat)] text-[14px] tracking-[0.15em] font-medium inline-flex items-center gap-3 bg-transparent">
-              RESERVAR CITA <span>→</span>
-            </Link>
-            <div className="mt-6 flex items-center gap-3 text-[11px] tracking-[0.2em] font-[var(--font-montserrat)] font-semibold text-[#d0c5b9]">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#C5A059] animate-pulse" /> 7.863 CITAS AÑO • 4 BARBEROS • COP
+          {/* Mobile: bottom aligned, desktop: centered */}
+          <div className="relative z-10 w-full max-w-[1280px] mx-auto px-5 md:px-16">
+            <div className="md:hidden w-full max-w-[350px]">
+              <h1 className="font-[var(--font-playfair)] text-[36px] font-bold leading-[44px] tracking-[-0.02em] text-white">
+                Tu estilo.<br />Nuestra precisión.
+              </h1>
+              <p className="font-[var(--font-montserrat)] text-[16px] leading-6 text-[#d0c5b9] mt-4 w-4/5">
+                Barbería contemporánea para hombres que entienden que los detalles hacen la diferencia.
+              </p>
+              <Link href="/book/escuderia" className="btn-gold mt-8 border border-[#C5A059] text-[#C5A059] w-full py-4 font-[var(--font-montserrat)] text-[14px] tracking-[0.15em] font-medium inline-flex items-center justify-center gap-2 bg-transparent">
+                RESERVAR CITA <span>→</span>
+              </Link>
+            </div>
+            <div className="hidden md:flex flex-col items-center text-center mx-auto">
+              <h1 className="font-[var(--font-playfair)] text-[72px] font-bold leading-[80px] tracking-[-0.02em] text-white max-w-3xl">
+                Tu estilo.<br />Nuestra precisión.
+              </h1>
+              <p className="font-[var(--font-montserrat)] text-[18px] leading-7 text-[#d0c5b9] mt-6 max-w-xl">
+                Barbería contemporánea para hombres que entienden que los detalles hacen la diferencia.
+              </p>
+              <Link href="/book/escuderia" className="btn-gold mt-10 border border-[#C5A059] text-[#C5A059] px-10 py-4 font-[var(--font-montserrat)] text-[14px] tracking-[0.15em] font-medium inline-flex items-center gap-3 bg-transparent">
+                RESERVAR CITA <span>→</span>
+              </Link>
+              <div className="mt-6 flex items-center gap-3 text-[11px] tracking-[0.2em] font-[var(--font-montserrat)] font-semibold text-[#d0c5b9]">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#C5A059] animate-pulse" /> 7.863 CITAS AÑO • 4 BARBEROS • COP
+              </div>
             </div>
           </div>
         </section>
@@ -128,7 +144,7 @@ export default async function EscuderiaLandingPremium() {
                 <p className="font-[var(--font-montserrat)] text-sm text-[#d0c5b9] text-center py-8">Pronto: servicios Escudería</p>
               ) : (
                 svc.map((s) => (
-                  <div key={s.id} className="gold-dashed py-6 flex justify-between items-baseline group">
+                  <Link key={s.id} href={`/book/escuderia?service=${s.id}`} className="gold-dashed py-6 flex justify-between items-baseline group hover:pl-2 transition-all">
                     <div className="pr-8">
                       <h3 className="font-[var(--font-montserrat)] text-[14px] tracking-[0.15em] font-medium text-white group-hover:text-[#C5A059] transition-colors">{s.name.toUpperCase()}</h3>
                       <p className="font-[var(--font-montserrat)] text-[14px] text-[#d0c5b9] mt-1 line-clamp-2">{s.description}</p>
@@ -137,7 +153,7 @@ export default async function EscuderiaLandingPremium() {
                     <div className="font-[var(--font-playfair)] text-[20px] text-[#C5A059] shrink-0">
                       {formatCurrency(Number(s.price), currency)}
                     </div>
-                  </div>
+                  </Link>
                 ))
               )}
             </div>

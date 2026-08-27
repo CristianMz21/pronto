@@ -20,6 +20,8 @@ interface Props {
   workingHours: DayHours[]
   telegramBotUsername: string | null
   viberBotUri: string | null
+  initialServiceId?: string | null
+  initialEmployeeId?: string | null
 }
 
 type Step = 'service' | 'employee' | 'datetime' | 'contact' | 'done'
@@ -88,15 +90,16 @@ function CtaButton({ label, onClick, disabled }: { label: string; onClick: () =>
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function PublicBookingForm({ business, services, employees, workingHours, telegramBotUsername, viberBotUri }: Props) {
+export function PublicBookingForm({ business, services, employees, workingHours, telegramBotUsername, viberBotUri, initialServiceId, initialEmployeeId }: Props) {
   const supabase = createClient()
   const t = useTranslations('publicBooking')
 
   const hasEmployeeStep = employees.length > 1
 
-  const [step, setStep] = useState<Step>('service')
-  const [selectedService, setSelectedService] = useState<Service | null>(null)
-  const [selectedEmployee, setSelectedEmployee] = useState('')
+  const initialSvc = initialServiceId ? services.find(s => s.id === initialServiceId) ?? null : null
+  const [step, setStep] = useState<Step>(initialSvc ? (hasEmployeeStep ? 'employee' : 'datetime') : 'service')
+  const [selectedService, setSelectedService] = useState<Service | null>(initialSvc)
+  const [selectedEmployee, setSelectedEmployee] = useState(initialEmployeeId ?? '')
   const [date, setDate] = useState('')
   const [time, setTime] = useState('')
   const [contact, setContact] = useState({ name: '', phone: '', email: '' })
