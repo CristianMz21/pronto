@@ -34,7 +34,7 @@ export async function POST(req: Request) {
   const txSum = (txs ?? []).reduce((s, r) => s + Number(r.amount), 0)
   const inSum = (moves ?? []).filter((m) => m.type === 'in').reduce((s, r) => s + Number(r.amount), 0)
   const outSum = (moves ?? []).filter((m) => m.type === 'out').reduce((s, r) => s + Number(r.amount), 0)
-  const expected = Number(register.opening_cash) + txSum + inSum - outSum
+  const expected = Math.round((Number(register.opening_cash) + txSum + inSum - outSum) * 100) / 100
 
   const { data, error } = await supabase.from('cash_registers').update({
     actual_cash: parsed.data.actual_cash,

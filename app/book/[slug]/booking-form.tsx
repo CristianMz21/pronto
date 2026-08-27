@@ -589,7 +589,7 @@ export function PublicBookingForm({ business, services, employees, workingHours,
                   value={contact[key]}
                   onChange={(e) => setContact((c) => ({ ...c, [key]: e.target.value }))}
                   placeholder={placeholder}
-                  style={{ border: inputBorder, borderRadius: inputRadius, padding: '11px 14px', fontSize: 14, color: cardText, width: '100%', background: inputBg, outline: 'none', boxSizing: 'border-box' }}
+                  style={{ border: inputBorder, borderRadius: inputRadius, padding: '11px 14px', fontSize: 14, color: cardText, width: '100%', background: inputBg, outline: 'none', boxSizing: 'border-box', minHeight: '44px' }}
                   onFocus={(e) => { e.currentTarget.style.borderColor = isEsc ? '#C5A059' : 'var(--brand)' }}
                   onBlur={(e) => { e.currentTarget.style.borderColor = isEsc ? 'rgba(197,160,89,0.2)' : '#E8E0D8' }}
                 />

@@ -38,7 +38,7 @@ export default async function PublicBookingPage(props: { params: Promise<{ slug:
 
   if (!business) notFound()
 
-  const isEscuderia = business.slug === 'escuderia' || business.brand_color === '#1a1a1a'
+  const isEscuderia = business.slug === 'escuderia' || business.brand_color === '#0A0A0A' || business.brand_color === '#1a1a1a'
 
   const { data: bizTokens } = await supabase
     .from('businesses')

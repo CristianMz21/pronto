@@ -27,7 +27,7 @@ export default async function CajaPage() {
     txSum = (txs ?? []).reduce((s, r) => s + Number(r.amount), 0)
     inSum = (moves ?? []).filter((m) => m.type === 'in').reduce((s, r) => s + Number(r.amount), 0)
     outSum = (moves ?? []).filter((m) => m.type === 'out').reduce((s, r) => s + Number(r.amount), 0)
-    expected = Number(openRegister.opening_cash) + txSum + inSum - outSum
+    expected = Math.round((Number(openRegister.opening_cash) + txSum + inSum - outSum) * 100) / 100
   }
 
   const { data: history } = await supabase

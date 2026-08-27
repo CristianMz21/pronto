@@ -19,7 +19,7 @@ COPY auth.users (instance_id, id, aud, role, email, encrypted_password, email_co
 
 COPY public.businesses (id, owner_id, name, slug, type, phone, email, address, timezone, currency, logo_url, plan, plan_expires_at, telegram_bot_token, viber_bot_token, created_at, updated_at, telegram_chat_id, ls_subscription_id, ls_customer_id, ls_variant_id, viber_chat_id, owner_whatsapp, onboarding_completed, email_provider, smtp_host, smtp_port, smtp_user, smtp_pass, smtp_from, resend_api_key, brand_color, enabled_modules, notification_language, meta_whatsapp_phone_number_id, meta_whatsapp_access_token, wa_template_confirmation, wa_template_reminder, wa_template_thankyou, wa_template_reactivation, wa_template_birthday, wa_template_language) FROM stdin;
 48e04ab8-7dee-4526-b98f-45a262218869	ceccb7fb-36de-46ca-b539-573ce8421e5e	Cristain	cristain	barbershop	\N	\N	\N	UTC	USD	\N	free	\N	\N	\N	2026-08-27 18:13:17.894741+00	2026-08-27 18:13:39.949871+00	\N	\N	\N	\N	\N	\N	t	\N	\N	587	\N	\N	\N	\N	#2D2926	{bookings,pos,crm,inventory,notifications}	en	\N	\N	\N	\N	\N	\N	\N	en
-17c1a2b5-5d3b-4d84-bbb1-d361077d4c95	b8f773b2-11e7-40d0-8f52-929b480d42b8	Escudería	escuderia	barbershop	+57 300 123 4567	\N	Colombia	America/Bogota	COP	\N	free	\N	\N	\N	2026-08-27 17:43:26.150942+00	2026-08-27 18:16:42.898333+00	\N	\N	\N	\N	\N	\N	t	\N	\N	587	\N	\N	\N	\N	#1a1a1a	{bookings,pos,crm,inventory,notifications}	es	\N	\N	\N	\N	\N	\N	\N	en
+17c1a2b5-5d3b-4d84-bbb1-d361077d4c95	b8f773b2-11e7-40d0-8f52-929b480d42b8	Escudería	escuderia	barbershop	+57 300 123 4567	\N	Colombia	America/Bogota	COP	\N	free	\N	\N	\N	2026-08-27 17:43:26.150942+00	2026-08-27 18:16:42.898333+00	\N	\N	\N	\N	\N	\N	t	\N	\N	587	\N	\N	\N	\N	#0A0A0A	{bookings,pos,crm,inventory,notifications}	es	\N	\N	\N	\N	\N	\N	\N	en
 \.
 
 

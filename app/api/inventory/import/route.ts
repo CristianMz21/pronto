@@ -21,8 +21,23 @@ const sanitize = (s: string, max = 500) => DOMPurify.sanitize(s ?? '', { ALLOWED
 
 function parseNum(val: string | undefined): number | null {
   if (!val) return null
-  const n = parseFloat(String(val).replace(',', '.'))
-  return isNaN(n) ? null : n
+  const raw = String(val).replace(',', '.').trim()
+  if (!raw) return null
+  const n = Number(raw)
+  if (!Number.isFinite(n)) return null
+  return n
+}
+function parseMoney(val: string | undefined): number | null {
+  const n = parseNum(val)
+  if (n == null) return null
+  // COP: integer (no centavos), other currencies 2 decimals. Store as numeric(10,2) and round to 2 decimals;
+  // Math.round avoids floating errors (e.g. 0.1+0.2). COP values like 30000 remain 30000 after rounding.
+  return Math.round(n * 100) / 100
+}
+function parseQty(val: string | undefined): number {
+  const n = parseNum(val)
+  if (n == null) return 0
+  return Math.round(n * 1000) / 1000
 }
 
 export async function POST(req: NextRequest) {
@@ -129,9 +144,9 @@ export async function POST(req: NextRequest) {
     barcode:             r.barcode || null,
     category:            r.category || null,
     unit:                r.unit || 'pcs',
-    quantity:            parseNum(r.quantity) ?? 0,
-    cost_price:          parseNum(r.cost_price),
-    sell_price:          parseNum(r.sell_price),
+    quantity:            parseQty(r.quantity),
+    cost_price:          parseMoney(r.cost_price),
+    sell_price:          parseMoney(r.sell_price),
     description:         r.description || null,
     low_stock_threshold: 5,
   }))

@@ -8,12 +8,24 @@ const playfair = Playfair_Display({ subsets: ['latin'], weight: ['500','600','70
 const montserrat = Montserrat({ subsets: ['latin'], weight: ['400','500','600'], variable: '--font-montserrat' })
 
 export const metadata: Metadata = {
-  title: 'Escudería — Barbería Contemporánea | Colombia',
+  title: 'Escudería — Barbería Premium | Colombia',
   description: 'Escudería Barbería en Colombia. Corte Clásico $30.000, Corte + Barba $45.000. Lun-Sáb 09:00-20:00. Reserva online sin registro. +57 300 123 4567',
+  alternates: {
+    canonical: '/escuderia',
+  },
   openGraph: {
-    title: 'Escudería — Barbería Contemporánea',
+    title: 'Escudería — Barbería Premium',
     description: 'Tu estilo. Nuestra precisión. Barbería en Colombia.',
-    images: [{ url: '/og-image.png' }],
+    url: '/escuderia',
+    type: 'website',
+    locale: 'es_CO',
+    images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'Escudería Barbería' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Escudería — Barbería Premium',
+    description: 'Tu estilo. Nuestra precisión. Barbería en Colombia.',
+    images: ['/og-image.png'],
   },
 }
 
@@ -44,9 +56,31 @@ export default async function EscuderiaLandingPremium() {
   const diasAbiertos = hours ? `${hours.filter(h=>h.is_open).length} días` : 'Lun-Sáb'
   // Stats dinámicos para hero
   const heroStats = `${apptCount > 0 ? apptCount.toLocaleString('es-CO') : '7.863'} CITAS AÑO • ${empCount} BARBEROS • ${currency}`
+  // JSON-LD LocalBusiness BarberShop — priceRange dinámico desde DB, sin rating hardcodeado
+  const minPrice = svc.length > 0 ? Math.min(...svc.map(s => Number(s.price))) : 30000
+  const maxPrice = svc.length > 0 ? Math.max(...svc.map(s => Number(s.price))) : 45000
+  const priceRange = svc.length > 0 ? `${formatCurrency(minPrice, currency)} - ${formatCurrency(maxPrice, currency)}` : '$$'
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BarberShop',
+    name: bizName,
+    address: {
+      '@type': 'PostalAddress',
+      addressLocality: 'Colombia',
+      addressRegion: 'Bogotá',
+      streetAddress: bizAddress,
+      addressCountry: 'CO',
+    },
+    telephone: bizPhone,
+    priceRange,
+    currenciesAccepted: currency,
+    openingHours: hours?.filter(h=>h.is_open).map(h=>`Mo-Su ${h.open_time.slice(0,5)}-${h.close_time.slice(0,5)}`) ?? ['Mo-Sa 09:00-20:00'],
+    url: '/escuderia',
+  }
 
   return (
-    <div className={`${playfair.variable} ${montserrat.variable} min-h-screen bg-[#0A0A0A] text-[#e5e2e1] selection:bg-[#C5A059] selection:text-black antialiased`}>
+    <div className={`${playfair.variable} ${montserrat.variable} min-h-screen bg-[#0A0A0A] text-[#e5e2e1] selection:bg-[#C5A059] selection:text-black antialiased max-w-full overflow-hidden`}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <style>{`
         .nav-link{position:relative}
         .nav-link::after{content:'';position:absolute;width:0;height:1px;bottom:-2px;left:50%;background:#C5A059;transition:all .3s ease;transform:translateX(-50%)}
