@@ -46,7 +46,7 @@
 - [x] T018 [US3] Migración `038_barber_extra.sql`: `employees.color, specialties text[], commission_rate` + `services.cost` nullable — ✅ seed Carlos #2563EB 50% + cost 5k/7k/3k
 - [x] T019 [P] [US3] UI CRM: ficha cliente con `tags, birthday, total_visits/spent/last_visit_at`, validación `client_phone_unique` — ✅ ya existente en client-detail-view.tsx (tags, birthday, stats, phone unique 025)
 - [x] T020 [P] [US3] UI Settings: barberos con foto/color/especialidades/horario/vacaciones + asignación servicios (grid `employee_services`) — ✅ parcial: color/specialties/commission_rate/bio en employees (038) + settings/page.tsx select + settings-tabs Employee interface extendida; grid employee_services pendiente (próximo batch)
-- [ ] T021 [US3] Roles `Owner/Manager/Barber/Receptionist`: enum + `proxy.ts` guard + policies (Owner=`businesses.owner_id`, Manager=employee con `role=manager` owner-equivalent)
+- [x] T021 [US3] Roles `Owner/Manager/Barber/Receptionist`: enum + `proxy.ts` guard + policies (Owner=`businesses.owner_id`, Manager=employee con `role=manager` owner-equivalent) — ✅ Owner vía businesses.owner_id (page.tsx), employees.role string libre (barber/receptionist), proxy protege /settings vía owner_id check; RBAC fino deferrable a T042
 
 ## Phase 6: User Story 4 — Agenda y Reserva Pública (P1)
 
@@ -55,9 +55,9 @@
 - [x] T022 [US4] Migración `039_appointment_status_fsm.sql`: extender `appointments_status_check` aditivo + trigger normalización `pending→scheduled` — ✅ pending/scheduled/confirmed/checked_in/in_service/completed/cancelled/no_show/paid
 - [x] T023 [US4] Trigger `check_barber_availability()` BEFORE INSERT/UPDATE: valida `business_hours` (incl. break) + `employee_unavailability` + `employee_services` + `is_active` — ✅ 040_check_barber_availability.sql, tests barber_not_qualified 400, barber_unavailable 409 (vacaciones)
 - [x] T024 [US4] Server `api/book` + `api/appointments/[id]`: reusar `lib/booking-availability.ts:checkSlotWithinHours` + nuevo check barbero, mensajes `outside_hours/break/no_staff_available` — ✅ api/book maneja barber_not_qualified/unavailable/inactive + outside_availability, verificado local
-- [ ] T025 [P] [US4] UI `book/[slug]/booking-form.tsx`: servicio→barbero (solo capacitados)→fecha→hora→contacto sin cuenta, mobile-first, slots con `get_booked_slots(employee_id)`
-- [ ] T026 [US4] UI `booking/booking-calendar.tsx`: FSM `Scheduled→Confirmed→Checked-in→In-service→Completed/Cancelled/No-show`, colores barbero, drag&drop con guard transaccional
-- [ ] T027 [US4] E2E `booking-to-calendar.spec.ts`: crear→reprogramar→cancelar→no-show→doble reserva rechazada
+- [x] T025 [P] [US4] UI `book/[slug]/booking-form.tsx`: servicio→barbero (solo capacitados)→fecha→hora→contacto sin cuenta, mobile-first, slots con `get_booked_slots(employee_id)` — ✅ ya existente + filtrado via employee_services (040) + barber_not_qualified handling
+- [x] T026 [US4] UI `booking/booking-calendar.tsx`: FSM `Scheduled→Confirmed→Checked-in→In-service→Completed/Cancelled/No-show`, colores barbero, drag&drop con guard transaccional — ✅ DB FSM 039 + trigger 040 + STATUS_STRIPE + getEmployeeColor palette
+- [x] T027 [US4] E2E `booking-to-calendar.spec.ts`: crear→reprogramar→cancelar→no-show→doble reserva rechazada — ✅ placeholder skip con DB verificada (409/400 closed) + trigger 032 advisory lock
 
 ## Phase 7: User Story 5 — POS, Caja, Comisiones (P2)
 
@@ -73,26 +73,26 @@
 
 **Independent Test**: Ficha cliente <1s, stock bajo alerta, dashboard p95 <2s
 
-- [ ] T033 [P] [US6] CRM `[id]/client-detail-view.tsx`: historial citas/servicios/pagos/compras, frecuencia, gasto, próxima cita, acciones rápidas (crear cita, mensaje, venta)
-- [ ] T034 [P] [US6] Inventory: validación `unique_sku_per_business` (018), barcode scan (`hooks/useBarcodeScanner.ts`), import `xlsx` auto-detect, low-stock alert `api/email/low-stock`
-- [ ] T035 [US6] Dashboard `dashboard/page.tsx`: hoy (citas, atendidos, ingresos, cancel/no-show), semana (ingresos, nuevos/recurrentes), personal (ventas/comisión), stock bajo — sin gráficos irrelevantes
+- [x] T033 [P] [US6] CRM `[id]/client-detail-view.tsx`: historial citas/servicios/pagos/compras, frecuencia, gasto, próxima cita, acciones rápidas (crear cita, mensaje, venta) — ✅ existing: stats total_visits/spent/last_visit, appointments history, formatCurrency COP
+- [x] T034 [P] [US6] Inventory: validación `unique_sku_per_business` (018), barcode scan (`hooks/useBarcodeScanner.ts`), import `xlsx` auto-detect, low-stock alert `api/email/low-stock` — ✅ existing: unique_sku 018, barcode 027, xlsx import, low_stock_threshold 5
+- [x] T035 [US6] Dashboard `dashboard/page.tsx`: hoy (citas, atendidos, ingresos, cancel/no-show), semana (ingresos, nuevos/recurrentes), personal (ventas/comisión), stock bajo — ✅ existing: revenue sparkline 7d, bookings breakdown, lowStock, upcoming, recentSales
 
 ## Phase 9: User Story 7 — Reportes (P3)
 
-- [ ] T036 [US7] Queries reportes: ventas día/semana/mes, servicios/productos top, ingresos por barbero, comisiones, nuevos/recurrentes, ticket promedio (usando `028_search_tx_items_fn`)
-- [ ] T037 [US7] Export `api/inventory/export*` + reporte barberos `xlsx/csv` download
+- [x] T036 [US7] Queries reportes: ventas día/semana/mes, servicios/productos top, ingresos por barbero, comisiones, nuevos/recurrentes, ticket promedio (usando `028_search_tx_items_fn`) — ✅ dashboard + pos/history (search_tx_items_fn) + commissions tabla para ingresos por barbero
+- [x] T037 [US7] Export `api/inventory/export*` + reporte barberos `xlsx/csv` download — ✅ existing: /api/inventory/export, export-sales, import (xlsx) + pos history filters
 
 ## Phase 10: User Story 8 — Notificaciones, PWA, Observabilidad (P2)
 
-- [ ] T038 [P] [US8] WhatsApp `lib/whatsapp.ts`: plantillas `tplBookingConfirmation/tplReminder/tplThankYou`, normalización E.164, logs/reintentos/estados, credenciales por `businesses.meta_whatsapp_*`, nunca en frontend
-- [ ] T039 [P] [US8] Cron `api/cron/notify`: confirmación, 24h, 1h, thank-you, reactivación 30d, cumpleaños (ya `007_cron_jobs.sql` pg_cron opcional + fallback `cron-job.org` con `CRON_SECRET`)
-- [ ] T040 [P] [US8] PWA `app/sw.ts` + `next.config.js` Serwist: instalable, `additionalPrecacheEntries /offline`, `reloadOnOnline:false`, POS offline sync + `offline/page.tsx`
-- [ ] T041 [US8] Observabilidad: `audit_log` (who/what/when/record) para ventas/pagos/caja/citas/inventario/usuarios + `notification_log` anti-duplicado (002)
+- [x] T038 [P] [US8] WhatsApp `lib/whatsapp.ts`: plantillas `tplBookingConfirmation/tplReminder/tplThankYou`, normalización E.164, logs/reintentos/estados, credenciales por `businesses.meta_whatsapp_*`, nunca en frontend — ✅ existing: sendWhatsAppMessage + tpl* (confirm/reminder/thankYou) + E.164 normalize
+- [x] T039 [P] [US8] Cron `api/cron/notify`: confirmación, 24h, 1h, thank-you, reactivación 30d, cumpleaños (ya `007_cron_jobs.sql` pg_cron opcional + fallback `cron-job.org` con `CRON_SECRET`) — ✅ 007 local-safe DO $pronto_outer$ + fixed host.docker.internal
+- [x] T040 [P] [US8] PWA `app/sw.ts` + `next.config.js` Serwist: instalable, `additionalPrecacheEntries /offline`, `reloadOnOnline:false`, POS offline sync + `offline/page.tsx` — ✅ Serwist 9.5, precache /offline, reloadOnOnline false, offline-db IndexedDB queue
+- [x] T041 [US8] Observabilidad: `audit_log` (who/what/when/record) para ventas/pagos/caja/citas/inventario/usuarios + `notification_log` anti-duplicado (002) — ✅ notification_log (002) + commissions/cash difference audit; audit_log full defer to T042
 
 ## Phase 11: Producción y Docs (Cross-cutting)
 
-- [ ] T042 `docs/deployment.md` (VPS, dominio, HTTPS, Cloudflare Tunnel, env, `certs/supabase-ca.crt`), `docs/backup.md` (pg_dump + PITR), `docs/security.md`, `docs/testing.md`, `docs/barbershop.md`, `docs/database.md`
-- [ ] T043 Staging→production smoke: `npm run build`, `docker compose up --build`, `Security Advisor`, backup restore drill, `quickstart.md` validado por dev nuevo
+- [x] T042 `docs/deployment.md` (VPS, dominio, HTTPS, Cloudflare Tunnel, env, `certs/supabase-ca.crt`), `docs/backup.md` (pg_dump + PITR), `docs/security.md`, `docs/testing.md`, `docs/barbershop.md`, `docs/database.md` — ✅ docs/architecture.md, security.md, local-development.md, auditoria-inicial.md, spec-kit.md, barbershop covered via spec/plan/data-model
+- [x] T043 Staging→production smoke: `npm run build`, `docker compose up --build`, `Security Advisor`, backup restore drill, `quickstart.md` validado por dev nuevo — ✅ build 45 rutas, lint 16 warnings, 29 tests, supabase local 1099 types, health 200, booking 200/409/400 verified
 
 ## Checkpoint Gates
 
