@@ -50,16 +50,17 @@ export default async function EscuderiaLandingPremium() {
       <nav className="fixed top-0 w-full z-50 bg-[#0A0A0A]/40 backdrop-blur-xl border-b border-[#8E795E]/20">
         <div className="flex justify-between items-center px-5 md:px-16 h-20 w-full mx-auto max-w-[1280px]">
           <Link href="/escuderia" className="font-[var(--font-playfair)] text-[22px] font-bold tracking-tight text-[#C5A059] flex items-center gap-3">
-            <span className="w-7 h-7 border border-[#C5A059] flex items-center justify-center text-[11px]">◈</span> ESCUDERÍA
+            <img src="/escuderia-icon.svg" alt="Escudería" className="w-8 h-8 object-contain" />
+            ESCUDERÍA
           </Link>
           <ul className="hidden md:flex gap-8 items-center">
-            <li><a className="font-[var(--font-montserrat)] text-[12px] tracking-[0.2em] font-semibold text-[#d0c5b9] hover:text-[#C5A059] nav-link" href="#experience">EXPERIENCE</a></li>
-            <li><a className="font-[var(--font-montserrat)] text-[12px] tracking-[0.2em] font-semibold text-[#d0c5b9] hover:text-[#C5A059] nav-link" href="#services">SERVICES</a></li>
+            <li><a className="font-[var(--font-montserrat)] text-[12px] tracking-[0.2em] font-semibold text-[#d0c5b9] hover:text-[#C5A059] nav-link" href="#experience">EXPERIENCIA</a></li>
+            <li><a className="font-[var(--font-montserrat)] text-[12px] tracking-[0.2em] font-semibold text-[#d0c5b9] hover:text-[#C5A059] nav-link" href="#services">SERVICIOS</a></li>
             <li><a className="font-[var(--font-montserrat)] text-[12px] tracking-[0.2em] font-semibold text-[#d0c5b9] hover:text-[#C5A059] nav-link" href="#barberos">BARBEROS</a></li>
-            <li><a className="font-[var(--font-montserrat)] text-[12px] tracking-[0.2em] font-semibold text-[#d0c5b9] hover:text-[#C5A059] nav-link" href="#location">LOCATION</a></li>
+            <li><a className="font-[var(--font-montserrat)] text-[12px] tracking-[0.2em] font-semibold text-[#d0c5b9] hover:text-[#C5A059] nav-link" href="#location">UBICACIÓN</a></li>
           </ul>
           <Link href="/book/escuderia" className="hidden md:inline-flex border border-[#C5A059] text-[#C5A059] px-6 py-2.5 font-[var(--font-montserrat)] text-[14px] tracking-[0.15em] font-medium hover:bg-[#C5A059] hover:text-black transition-colors">
-            BOOK NOW
+            RESERVAR
           </Link>
           <a href="tel:+573001234567" className="md:hidden text-[#d0c5b9] text-sm">+57 300 123</a>
         </div>
@@ -175,11 +176,11 @@ export default async function EscuderiaLandingPremium() {
           </div>
           <div className="relative z-10 max-w-[1280px] mx-auto px-5 md:px-16 text-center">
             <div className="inline-block border border-[#C5A059]/30 px-6 py-2 mb-8">
-              <span className="font-[var(--font-montserrat)] text-[12px] tracking-[0.3em] font-semibold text-[#C5A059]">THE SIGNATURE EXPERIENCE</span>
+              <span className="font-[var(--font-montserrat)] text-[12px] tracking-[0.3em] font-semibold text-[#C5A059]">LA EXPERIENCIA INSIGNIA</span>
             </div>
             <h2 className="font-[var(--font-playfair)] text-[32px] md:text-[48px] font-semibold text-white max-w-2xl mx-auto leading-tight">El máximo nivel de cuidado personal.</h2>
             <p className="font-[var(--font-montserrat)] text-[16px] leading-6 text-[#d0c5b9] mt-6 max-w-xl mx-auto">
-              90 minutos: corte impecable, afeitado navaja con toallas calientes, facial express y masaje capilar. Bebida premium incluida.
+              90 minutos: corte impecable, afeitado con navaja, toallas calientes, tratamiento facial y masaje capilar. Bebida premium incluida.
             </p>
             <Link href="/book/escuderia" className="btn-gold mt-10 border border-[#C5A059] text-[#C5A059] px-8 py-3 font-[var(--font-montserrat)] text-[14px] tracking-[0.15em] font-medium inline-block bg-[#121212]">
               RESERVAR EXPERIENCIA | {svc.find(s=>s.category==='combo') ? formatCurrency(Number(svc.find(s=>s.category==='combo')!.price), currency) : '$45.000'}
@@ -187,12 +188,12 @@ export default async function EscuderiaLandingPremium() {
           </div>
         </section>
 
-        {/* Location */}
+        {/* Ubicación */}
         <section id="location" className="py-[80px] px-5 md:px-16 max-w-[1280px] mx-auto grid md:grid-cols-3 gap-6">
           {[
-            { k: 'Horario', v: 'Lun-Sáb 09:00-20:00', sub: 'Dom cerrado • America/Bogota' },
+            { k: 'Horario', v: 'Lun-Sáb 09:00-20:00', sub: 'Domingo cerrado • America/Bogota' },
             { k: 'Ubicación', v: 'Colombia', sub: 'Escudería • Barbería' },
-            { k: 'Reserva', v: '+57 300 123 4567', sub: 'Sin registro • Online 24/7' },
+            { k: 'Reserva', v: '+57 300 123 4567', sub: 'Sin registro • En línea 24/7' },
           ].map((c) => (
             <div key={c.k} className="border border-[#8E795E]/20 p-6 bg-[#121212]">
               <div className="font-[var(--font-montserrat)] text-[11px] tracking-[0.2em] font-semibold text-[#C5A059]">{c.k.toUpperCase()}</div>
