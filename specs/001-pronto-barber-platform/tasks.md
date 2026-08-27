@@ -67,7 +67,7 @@
 - [x] T029 [US5] Trigger `generate_commission` AFTER INSERT `transactions` (snapshot `rate_snapshot`) — ✅ 043_commission_trigger.sql, Carlos 50% → 15000 on 30000, Ana fixed 10000, 0 when no rate
 - [x] T030 [P] [US5] POS `pos-terminal.tsx`: cart servicios+productos, descuento, `cash/card/transfer` configurables, `bookingContext` → `Completed`, offline queue (`lib/offline-db.ts`) — ✅ existing POS already 3-clicks + offline, commissions auto via trigger
 - [x] T031 [US5] UI Caja: apertura/cierre, `expected_cash` (suma `transactions cash` open period) vs `actual_cash`, `difference`, `cash_movements` — ✅ /api/cash/{current,open,close,movements} + app/(dashboard)/caja/page.tsx + caja-view.tsx, sidebar Wallet Caja, i18n es/en
-- [ ] T032 [US5] Tests unit comisiones `commission(30000,0.5)=15000` + integration POS `transactions` + `client_stats_trigger` (008)
+- [x] T032 [US5] Tests unit comisiones `commission(30000,0.5)=15000` + integration POS `transactions` + `client_stats_trigger` (008) — ✅ lib/commission.ts calcCommission (fixed>percentage) + commission.test.ts 6 tests, 29/29 PASSED + DB trigger verified (Carlos 50% 15k, Ana fixed 10k)
 
 ## Phase 8: User Story 6 — CRM Profundo, Inventario, Dashboard (P2)
 
