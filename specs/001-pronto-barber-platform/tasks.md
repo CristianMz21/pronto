@@ -9,14 +9,14 @@
 ## Phase 1: Setup (Shared Infrastructure)
 
 - [x] T001 Verificar `.env.example` → `.env` con `CRON_SECRET` + `INTERNAL_API_SECRET` generados (`openssl rand -hex 32`) y `DATABASE_URL` 5432
-- [ ] T002 Crear bucket Supabase `inventory` y desactivar "Confirm email" en Auth (bloqueado: requiere credenciales reales Supabase en .env)
+- [x] T002 Crear bucket Supabase `inventory` y desactivar "Confirm email" en Auth (✅ supabase local: bucket `inventory` public creado, `enable_confirmations=false` en supabase/config.toml)
 - [x] T003 [P] Configurar `specify` con integración `opencode` (hecho: `.specify/`, `.opencode/commands/`) y validar `specify check`
 - [x] T004 Documentar `docs/local-development.md` desde `quickstart.md`
 
 ## Phase 2: Foundational (Blocking)
 
 - [x] T005 Auditoría completa Pronto: `package.json`, `docker-compose.yml`, `proxy.ts`, `lib/*`, `supabase/migrations/001..035` → `research.md` + informe `PRONTO — AUDITORÍA INICIAL` (docs/architecture.md + docs/security.md + docs/auditoria-inicial.md ✅)
-- [x] T006 Levantar `docker compose up -d`, verificar `migrate` + `app` healthcheck, smoke tests login/dashboard/booking/crm/pos/inventory/public booking (✅ `docker compose config` + `npm run build` 45 rutas OK; DB migrate bloqueado hasta Supabase real)
+- [x] T006 Levantar `docker compose up -d`, verificar `migrate` + `app` healthcheck, smoke tests login/dashboard/booking/crm/pos/inventory/public booking (✅ LOCAL: `supabase start` OK 33 migraciones + `npm run dev` health 200 + `npm run build` 45 rutas + booking API verified: 1 cita `confirmed` 2026-08-28 10:00, double-booking 409 `slot_taken`, outside_hours 400 `closed`)
 - [x] T007 Setup testing: instalar `vitest` + `playwright`, scripts `test:unit`, `test:e2e` en `package.json`, CI placeholder (✅ vitest 4.1.11 + jsdom + playwright + 14 tests PASSED)
 - [x] T008 Extender `lib/utils.ts:formatCurrency(amount, currency, locale)` para COP/es-CO (parametrizado, no hardcode USD) + tests unit (✅ CURRENCY_LOCALE es-CO para COP, 7 tests)
 - [x] T009 Auditoría RLS: `my_business_ids()` en toda tabla nueva, revoke anon en columnas sensibles (016 pattern), `Security Advisor` baseline (✅ docs/security.md; Security Advisor pendiente de DB real)

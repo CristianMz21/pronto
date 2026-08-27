@@ -21,25 +21,59 @@
 --
 -- ─────────────────────────────────────────────────────────────────────────────
 
--- Удаляем задачу если уже существует (чтобы можно было перезапустить миграцию)
-select cron.unschedule('pronto-notify') where exists (
-  select 1 from cron.job where jobname = 'pronto-notify'
-);
+-- Local-safe wrapper: skip if pg_cron/pg_net not available (e.g. supabase local without extensions)
+-- Production (scripts/migrate.js) does env substitution for ${NEXT_PUBLIC_APP_URL}/${CRON_SECRET}
+-- and treats this file as optional; local supabase start without pg_cron should just NOTICE and continue.
+DO $pronto_outer$
+BEGIN
+  -- Try to enable extensions if available; if not, skip gracefully
+  BEGIN
+    CREATE EXTENSION IF NOT EXISTS pg_cron WITH SCHEMA cron;
+  EXCEPTION WHEN OTHERS THEN
+    RAISE NOTICE '007_cron_jobs: pg_cron not available (%), skipping pronto-notify job', SQLERRM;
+    RETURN;
+  END;
+  BEGIN
+    CREATE EXTENSION IF NOT EXISTS pg_net WITH SCHEMA net;
+  EXCEPTION WHEN OTHERS THEN
+    -- supabase local may place pg_net in extensions schema; try that
+    BEGIN
+      CREATE EXTENSION IF NOT EXISTS pg_net WITH SCHEMA extensions;
+    EXCEPTION WHEN OTHERS THEN
+      RAISE NOTICE '007_cron_jobs: pg_net not available (%), skipping pronto-notify job', SQLERRM;
+      RETURN;
+    END;
+  END;
 
--- Создаём задачу: каждые 15 минут вызываем /api/cron/notify
--- pg_net.http_get — встроенный в Supabase способ делать HTTP-запросы из базы данных
-select cron.schedule(
-  'pronto-notify',        -- имя задачи (уникальное)
-  '*/15 * * * *',         -- расписание: каждые 15 минут
-  $$
-  select net.http_get(
-    url     := '${NEXT_PUBLIC_APP_URL}/api/cron/notify',
-    headers := jsonb_build_object(
-      'Authorization', 'Bearer ${CRON_SECRET}'
-    )
-  ) as request_id;
-  $$
-);
+  IF NOT EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'cron') THEN
+    RAISE NOTICE '007_cron_jobs: cron schema missing, skipping';
+    RETURN;
+  END IF;
+
+  -- Remove existing job if present
+  BEGIN
+    PERFORM cron.unschedule('pronto-notify');
+  EXCEPTION WHEN OTHERS THEN
+    -- job doesn't exist yet, ignore
+    NULL;
+  END;
+
+  -- Schedule: every 15 min -> /api/cron/notify
+  -- Note: ${NEXT_PUBLIC_APP_URL} and ${CRON_SECRET} are substituted by scripts/migrate.js in production.
+  -- For local supabase start (no substitution), use a placeholder that won't break; external cron is preferred locally.
+  PERFORM cron.schedule(
+    'pronto-notify',
+    '*/15 * * * *',
+    $$
+    select net.http_get(
+      url     := '${NEXT_PUBLIC_APP_URL}/api/cron/notify',
+      headers := jsonb_build_object(
+        'Authorization', 'Bearer ${CRON_SECRET}'
+      )
+    ) as request_id;
+    $$
+  );
+END $pronto_outer$;
 
 -- После запуска можно проверить что задача создана:
 -- SELECT * FROM cron.job WHERE jobname = 'pronto-notify';

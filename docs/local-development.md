@@ -3,7 +3,9 @@
 > Fuente: `specs/001-pronto-barber-platform/quickstart.md`. Este archivo es la guía operativa para levantar Pronto Barber desde cero.
 
 **Stack**: Next.js 16 + React 19 + Supabase (PostgreSQL) + Docker + Serwist PWA
-**Prerrequisitos**: Docker, Docker Compose, cuenta Supabase gratuita, Node 20+ (local Node 24 verificado), `openssl`, `git`
+**Prerrequisitos**: Docker, Docker Compose, **Supabase CLI** (`brew install supabase/tap/supabase`), Node 20+ (local Node 24 verificado), `openssl`, `git`
+
+> **Modo LOCAL 100%** (recomendado, verificado 2026-08-27): `supabase start` local en `127.0.0.1:54321/54322/54323` + `npm run dev` en `localhost:3000`. No necesitas cuenta Supabase Cloud. Ver sección 2B.
 
 ## 1. Clonar y remotos
 
@@ -26,6 +28,7 @@ openssl rand -hex 32 # → INTERNAL_API_SECRET
 
 **Valores obligatorios en `.env`**:
 
+### Opción A — Supabase Cloud
 ```
 NEXT_PUBLIC_SUPABASE_URL=https://<ref>.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon>
@@ -37,36 +40,62 @@ CRON_SECRET=<hex32>            # ya generado por setup (ver .env)
 INTERNAL_API_SECRET=<hex32>    # ya generado
 ```
 
-**Supabase Dashboard** (hacer antes de `docker compose up`):
+### Opción B — Local 100% (verificado, recomendado para dev)
+```bash
+supabase start # crea supabase/config.toml si no existe, levanta DB 54322 + API 54321 + Studio 54323
+supabase status -o env # copia ANON_KEY, SERVICE_ROLE_KEY, DB_URL
+# .env local (ya configurado en este repo):
+NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOi... (ANON_KEY de status)
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOi... (SERVICE_ROLE_KEY)
+DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres
+MIGRATE_SSL=false
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+```
+
+**Supabase Dashboard** (Cloud, antes de `docker compose up`):
 
 1. `Authentication → Providers → Email` → desmarcar **Confirm email** → Save.
 2. `Storage → New bucket` → nombre `inventory` → Public → Create.
 3. `Database → Extensions` → habilitar `pg_cron` + `pg_net` si quieres cron DB-level (opcional; si no, ver paso 6).
 
-> `.env` ya fue generado por T001 con `CRON_SECRET=8c7a1001...` y `INTERNAL_API_SECRET=9490ca6b...`. Solo falta completar `NEXT_PUBLIC_SUPABASE_URL` / keys y `DATABASE_URL` apuntando a tu proyecto.
+**Local**: `supabase/config.toml` ya tiene `enable_confirmations=false` (no confirma email) y bucket `inventory` se crea vía `psql` o Studio. `007_cron_jobs.sql` ya es local-safe (DO $pronto_outer$ con pg_cron conditional).
 
-## 3. Levantar
+> `.env` ya está configurado para LOCAL con `CRON_SECRET=8c7a1001...` y `INTERNAL_API_SECRET=9490ca6b...`.
+
+## 3. Levantar — Local 100% (verificado)
+
+```bash
+# Terminal 1 — Supabase Local
+supabase start
+# esperar "Started supabase local development setup" → Studio http://127.0.0.1:54323, API http://127.0.0.1:54321, DB 54322
+supabase status -o env # verificar ANON_KEY etc
+# Crear bucket inventory (si no existe)
+PGPASSWORD=postgres psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -c "insert into storage.buckets (id,name,public) values ('inventory','inventory',true) on conflict (id) do nothing;"
+
+# Terminal 2 — Next.js
+npm ci # primera vez
+npm run dev -- --turbopack # http://localhost:3000
+# esperar "Ready in 620ms" → http://localhost:3000
+```
+
+Chequeos:
+
+```bash
+curl -i http://localhost:3000/api/health # → 200 {"status":"ok"}
+curl -i http://127.0.0.1:54321/auth/v1/health # → GoTrue
+open http://127.0.0.1:54323 # Studio
+open http://127.0.0.1:54324 # Mailpit (emails locales)
+```
+
+**Con Docker (Cloud)**:
 
 ```bash
 docker compose up -d
 docker compose logs -f migrate  # esperar "✓ Migrations complete."
 docker compose logs -f app      # esperar "Ready on http://0.0.0.0:3000"
 open http://localhost:3000
-```
-
-Chequeos:
-
-```bash
-docker compose ps
-curl -i http://localhost:3000/api/health # → 200 {"status":"ok"}
-```
-
-**Sin Docker** (dev directo):
-
-```bash
-npm ci
-npm run dev -- --turbopack # http://localhost:3000
-# Migraciones manuales: Supabase Dashboard → SQL Editor → pegar cada 001..035 en orden
 ```
 
 ## 4. Verificar baseline (FASE 1 — smoke tests)
