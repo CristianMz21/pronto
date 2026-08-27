@@ -783,6 +783,7 @@
   "sidebar": {
     "dashboard": "Panel",
     "pos": "POS",
+    "cash": "Caja",
     "clients": "Clientes",
     "inventory": "Inventario",
     "booking": "Reservas",

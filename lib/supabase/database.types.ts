@@ -287,6 +287,107 @@ export type Database = {
         }
         Relationships: []
       }
+      cash_movements: {
+        Row: {
+          amount: number
+          business_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          reason: string | null
+          register_id: string
+          type: string
+        }
+        Insert: {
+          amount: number
+          business_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          reason?: string | null
+          register_id: string
+          type: string
+        }
+        Update: {
+          amount?: number
+          business_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          reason?: string | null
+          register_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_movements_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_movements_register_id_fkey"
+            columns: ["register_id"]
+            isOneToOne: false
+            referencedRelation: "cash_registers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cash_registers: {
+        Row: {
+          actual_cash: number | null
+          business_id: string
+          closed_at: string | null
+          created_at: string
+          difference: number | null
+          expected_cash: number | null
+          id: string
+          notes: string | null
+          opened_at: string
+          opened_by: string
+          opening_cash: number
+          status: string
+        }
+        Insert: {
+          actual_cash?: number | null
+          business_id: string
+          closed_at?: string | null
+          created_at?: string
+          difference?: number | null
+          expected_cash?: number | null
+          id?: string
+          notes?: string | null
+          opened_at?: string
+          opened_by: string
+          opening_cash?: number
+          status?: string
+        }
+        Update: {
+          actual_cash?: number | null
+          business_id?: string
+          closed_at?: string | null
+          created_at?: string
+          difference?: number | null
+          expected_cash?: number | null
+          id?: string
+          notes?: string | null
+          opened_at?: string
+          opened_by?: string
+          opening_cash?: number
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_registers_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           birthday: string | null
@@ -345,6 +446,71 @@ export type Database = {
             columns: ["business_id"]
             isOneToOne: false
             referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      commissions: {
+        Row: {
+          amount: number
+          business_id: string
+          created_at: string
+          employee_id: string
+          id: string
+          rate_snapshot: number | null
+          service_id: string | null
+          transaction_id: string
+          type: string
+        }
+        Insert: {
+          amount: number
+          business_id: string
+          created_at?: string
+          employee_id: string
+          id?: string
+          rate_snapshot?: number | null
+          service_id?: string | null
+          transaction_id: string
+          type: string
+        }
+        Update: {
+          amount?: number
+          business_id?: string
+          created_at?: string
+          employee_id?: string
+          id?: string
+          rate_snapshot?: number | null
+          service_id?: string | null
+          transaction_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commissions_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commissions_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commissions_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commissions_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
             referencedColumns: ["id"]
           },
         ]

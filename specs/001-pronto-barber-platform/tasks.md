@@ -63,10 +63,10 @@
 
 **Independent Test**: Venta 3 clicks + caja open/close con diferencia + comisión 50%
 
-- [ ] T028 [US5] Migraciones `040_cash_registers.sql` + `041_commissions.sql` (data-model.md) + RLS + índices
-- [ ] T029 [US5] Trigger `generate_commission` AFTER INSERT `transactions` (snapshot `rate_snapshot`)
-- [ ] T030 [P] [US5] POS `pos-terminal.tsx`: cart servicios+productos, descuento, `cash/card/transfer` configurables, `bookingContext` → `Completed`, offline queue (`lib/offline-db.ts`)
-- [ ] T031 [US5] UI Caja: apertura/cierre, `expected_cash` (suma `transactions cash` open period) vs `actual_cash`, `difference`, `cash_movements`
+- [x] T028 [US5] Migraciones `041_cash_registers.sql` + `042_commissions.sql` (data-model.md) + RLS + índices — ✅ 041 cash_registers (open/closed, unique open per business) + 042 commissions (tenant trigger) — psql verify 0 rows clean
+- [x] T029 [US5] Trigger `generate_commission` AFTER INSERT `transactions` (snapshot `rate_snapshot`) — ✅ 043_commission_trigger.sql, Carlos 50% → 15000 on 30000, Ana fixed 10000, 0 when no rate
+- [x] T030 [P] [US5] POS `pos-terminal.tsx`: cart servicios+productos, descuento, `cash/card/transfer` configurables, `bookingContext` → `Completed`, offline queue (`lib/offline-db.ts`) — ✅ existing POS already 3-clicks + offline, commissions auto via trigger
+- [x] T031 [US5] UI Caja: apertura/cierre, `expected_cash` (suma `transactions cash` open period) vs `actual_cash`, `difference`, `cash_movements` — ✅ /api/cash/{current,open,close,movements} + app/(dashboard)/caja/page.tsx + caja-view.tsx, sidebar Wallet Caja, i18n es/en
 - [ ] T032 [US5] Tests unit comisiones `commission(30000,0.5)=15000` + integration POS `transactions` + `client_stats_trigger` (008)
 
 ## Phase 8: User Story 6 — CRM Profundo, Inventario, Dashboard (P2)

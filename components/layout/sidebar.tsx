@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, ShoppingCart, Users, Package, CalendarDays, Settings, LogOut, Menu, X } from 'lucide-react'
+import { LayoutDashboard, ShoppingCart, Users, Package, CalendarDays, Settings, LogOut, Menu, X, Wallet } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -24,6 +24,7 @@ export function Sidebar({ businessName }: SidebarProps) {
   const nav = [
     { href: '/dashboard', label: t('dashboard'), icon: LayoutDashboard },
     { href: '/pos', label: t('pos'), icon: ShoppingCart },
+    { href: '/caja', label: (t as any)('cash') ?? 'Caja', icon: Wallet },
     { href: '/crm', label: t('clients'), icon: Users },
     { href: '/inventory', label: t('inventory'), icon: Package },
     { href: '/booking', label: t('booking'), icon: CalendarDays },
