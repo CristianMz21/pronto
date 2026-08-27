@@ -68,8 +68,9 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(dashboardUrl)
   }
 
-  // Protected routes — redirect unauthenticated users to login
-  const protectedPaths = ['/dashboard', '/pos', '/crm', '/inventory', '/booking', '/settings']
+  // Protected routes — admin panel (single Escudería now, multi-sede ready via locations)
+  // Public: /, /escuderia, /book/[slug], /login, /register, /privacy, /terms, /offline
+  const protectedPaths = ['/dashboard', '/pos', '/caja', '/crm', '/inventory', '/booking', '/settings']
   const isProtected = protectedPaths.some((p) => pathname.startsWith(p))
 
   if (isProtected && !user) {

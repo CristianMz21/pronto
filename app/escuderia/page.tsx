@@ -22,14 +22,28 @@ export default async function EscuderiaLandingPremium() {
   const { data: business } = await supabase.from('businesses').select('id, name, slug, phone, address, timezone, currency, brand_color').eq('slug', 'escuderia').maybeSingle()
   const bizId = business?.id ?? '17c1a2b5-5d3b-4d84-bbb1-d361077d4c95'
   const currency = business?.currency ?? 'COP'
+  const bizPhone = business?.phone ?? '+57 300 123 4567'
+  const bizAddress = business?.address ?? 'Colombia'
+  const bizName = business?.name ?? 'Escudería'
 
-  const [{ data: services }, { data: employees }] = await Promise.all([
+  const [{ data: services }, { data: employees }, { data: hours }, apptCountRes, empCountRes] = await Promise.all([
     supabase.from('services').select('id, name, description, price, duration_min, category').eq('business_id', bizId).eq('is_active', true).order('price'),
     supabase.from('employees').select('id, name, specialties, color').eq('business_id', bizId).eq('is_active', true).order('name'),
+    supabase.from('business_hours').select('day_of_week, is_open, open_time, close_time').eq('business_id', bizId).order('day_of_week'),
+    supabase.from('appointments').select('id', { count: 'exact', head: true }).eq('business_id', bizId),
+    supabase.from('employees').select('id', { count: 'exact', head: true }).eq('business_id', bizId).eq('is_active', true),
   ])
 
   const svc = services ?? []
   const emps = employees ?? []
+  const apptCount = apptCountRes.count ?? 0
+  const empCount = empCountRes.count ?? emps.length
+  // Horario dinámico: busca Lun (1) como referencia, o el primer día abierto
+  const refDay = hours?.find(h => h.day_of_week === 1 && h.is_open) ?? hours?.find(h => h.is_open)
+  const horario = refDay ? `${refDay.open_time.slice(0,5)}-${refDay.close_time.slice(0,5)}` : '09:00-20:00'
+  const diasAbiertos = hours ? `${hours.filter(h=>h.is_open).length} días` : 'Lun-Sáb'
+  // Stats dinámicos para hero
+  const heroStats = `${apptCount > 0 ? apptCount.toLocaleString('es-CO') : '7.863'} CITAS AÑO • ${empCount} BARBEROS • ${currency}`
 
   return (
     <div className={`${playfair.variable} ${montserrat.variable} min-h-screen bg-[#0A0A0A] text-[#e5e2e1] selection:bg-[#C5A059] selection:text-black antialiased`}>
@@ -60,6 +74,9 @@ export default async function EscuderiaLandingPremium() {
             <li><a className="font-[var(--font-montserrat)] text-[12px] tracking-[0.2em] font-semibold text-[#d0c5b9] hover:text-[#C5A059] nav-link" href="#location">UBICACIÓN</a></li>
           </ul>
           <div className="flex items-center gap-3">
+            <a href={`tel:${bizPhone.replace(/\s/g,'')}`} className="hidden md:flex items-center gap-1.5 text-sm text-[#d0c5b9] hover:text-[#C5A059]">
+              {bizPhone}
+            </a>
             <Link href="/book/escuderia" className="hidden md:inline-flex border border-[#C5A059] text-[#C5A059] px-6 py-2.5 font-[var(--font-montserrat)] text-[14px] tracking-[0.15em] font-medium hover:bg-[#C5A059] hover:text-black transition-colors">
               RESERVAR
             </Link>
@@ -99,7 +116,7 @@ export default async function EscuderiaLandingPremium() {
                 RESERVAR CITA <span>→</span>
               </Link>
               <div className="mt-6 flex items-center gap-3 text-[11px] tracking-[0.2em] font-[var(--font-montserrat)] font-semibold text-[#d0c5b9]">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#C5A059] animate-pulse" /> 7.863 CITAS AÑO • 4 BARBEROS • COP
+                <span className="w-1.5 h-1.5 rounded-full bg-[#C5A059] animate-pulse" /> {heroStats}
               </div>
             </div>
           </div>
@@ -115,9 +132,9 @@ export default async function EscuderiaLandingPremium() {
                 Diseñado como un santuario para el caballero moderno. Texturas crudas —cuero envejecido, acero oscuro y maderas nobles— con absoluta privacidad. Un ritual donde el tiempo se detiene.
               </p>
               <div className="mt-8 grid grid-cols-3 gap-4 text-center border-t border-[#8E795E]/20 pt-6">
-                <div><div className="font-[var(--font-playfair)] text-xl text-white">09-20</div><div className="font-[var(--font-montserrat)] text-[11px] tracking-[0.15em] text-[#d0c5b9]">LUN-SÁB</div></div>
-                <div><div className="font-[var(--font-playfair)] text-xl text-white">COP</div><div className="font-[var(--font-montserrat)] text-[11px] tracking-[0.15em] text-[#d0c5b9]">BOGOTÁ</div></div>
-                <div><div className="font-[var(--font-playfair)] text-xl text-white">+57</div><div className="font-[var(--font-montserrat)] text-[11px] tracking-[0.15em] text-[#d0c5b9]">COLOMBIA</div></div>
+                <div><div className="font-[var(--font-playfair)] text-xl text-white">{horario}</div><div className="font-[var(--font-montserrat)] text-[11px] tracking-[0.15em] text-[#d0c5b9]">{diasAbiertos.toUpperCase()}</div></div>
+                <div><div className="font-[var(--font-playfair)] text-xl text-white">{currency}</div><div className="font-[var(--font-montserrat)] text-[11px] tracking-[0.15em] text-[#d0c5b9]">BOGOTÁ</div></div>
+                <div><div className="font-[var(--font-playfair)] text-xl text-white">{bizPhone.slice(0,3)}</div><div className="font-[var(--font-montserrat)] text-[11px] tracking-[0.15em] text-[#d0c5b9]">COLOMBIA</div></div>
               </div>
             </div>
             <div className="md:col-span-7 grid grid-cols-2 gap-4 h-[420px] md:h-[600px]">
@@ -204,12 +221,12 @@ export default async function EscuderiaLandingPremium() {
           </div>
         </section>
 
-        {/* Ubicación */}
+        {/* Ubicación — 100% dinámico */}
         <section id="location" className="py-[80px] px-5 md:px-16 max-w-[1280px] mx-auto grid md:grid-cols-3 gap-6">
           {[
-            { k: 'Horario', v: 'Lun-Sáb 09:00-20:00', sub: 'Domingo cerrado • America/Bogota' },
-            { k: 'Ubicación', v: 'Colombia', sub: 'Escudería • Barbería' },
-            { k: 'Reserva', v: '+57 300 123 4567', sub: 'Sin registro • En línea 24/7' },
+            { k: 'Horario', v: `${horario} • ${diasAbiertos}`, sub: 'Domingo cerrado • America/Bogota' },
+            { k: 'Ubicación', v: bizAddress, sub: `${bizName} • Barbería` },
+            { k: 'Reserva', v: bizPhone, sub: 'Sin registro • En línea 24/7' },
           ].map((c) => (
             <div key={c.k} className="border border-[#8E795E]/20 p-6 bg-[#121212]">
               <div className="font-[var(--font-montserrat)] text-[11px] tracking-[0.2em] font-semibold text-[#C5A059]">{c.k.toUpperCase()}</div>
@@ -222,13 +239,13 @@ export default async function EscuderiaLandingPremium() {
 
       <footer className="w-full py-12 bg-[#0e0e0e] border-t border-[#8E795E]/10">
         <div className="flex flex-col md:flex-row justify-between items-center px-5 md:px-16 gap-8 w-full max-w-[1280px] mx-auto">
-          <div className="font-[var(--font-playfair)] text-xl font-bold text-[#C5A059]">ESCUDERÍA</div>
+          <div className="font-[var(--font-playfair)] text-xl font-bold text-[#C5A059]">{bizName.toUpperCase()}</div>
           <div className="flex gap-8 font-[var(--font-montserrat)] text-[12px] tracking-[0.2em] font-semibold text-[#d0c5b9]">
             <Link href="/book/escuderia" className="hover:text-[#C5A059]">RESERVAR</Link>
             <Link href="/login" className="hover:text-[#C5A059]">STAFF</Link>
-            <a href="https://wa.me/573001234567" target="_blank" className="hover:text-[#C5A059]">WHATSAPP</a>
+            <a href={`https://wa.me/${bizPhone.replace(/\D/g,'')}`} target="_blank" className="hover:text-[#C5A059]">WHATSAPP</a>
           </div>
-          <div className="font-[var(--font-montserrat)] text-[11px] tracking-[0.15em] text-[#8E795E]">© 2026 ESCUDERÍA • COLOMBIA • COP</div>
+          <div className="font-[var(--font-montserrat)] text-[11px] tracking-[0.15em] text-[#8E795E]">© 2026 {bizName.toUpperCase()} • {bizAddress.toUpperCase()} • {currency}</div>
         </div>
       </footer>
     </div>

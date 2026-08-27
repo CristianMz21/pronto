@@ -14,13 +14,34 @@ export default async function DashboardLayout({
 
   if (!user) redirect('/login')
 
-  const { data: business } = await supabase
+  // Single barbería now (Escudería), multi-sede ready: business → locations (1 default)
+  // Owner check first, then employee check via my_business_ids() (RLS helper) for future barber logins
+  let business: { id: string; name: string; slug: string; plan: string } | null = null
+
+  const { data: owned } = await supabase
     .from('businesses')
     .select('id, name, slug, plan')
     .eq('owner_id', user.id)
     .order('created_at', { ascending: true })
     .limit(1)
     .maybeSingle()
+
+  if (owned) {
+    business = owned
+  } else {
+    // Fallback: user is an employee (barbero) — find their business via my_business_ids()
+    const { data: empBiz } = await supabase
+      .from('employees')
+      .select('business_id, businesses!inner(id, name, slug, plan)')
+      .eq('user_id', user.id)
+      .eq('is_active', true)
+      .limit(1)
+      .maybeSingle()
+    if (empBiz?.businesses) {
+      const b = empBiz.businesses as unknown as { id: string; name: string; slug: string; plan: string }
+      business = b
+    }
+  }
 
   if (!business) redirect('/onboarding')
 
