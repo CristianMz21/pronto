@@ -83,7 +83,7 @@ Como owner de Escudería quiero que nadie vea `cristain` si es de otro tester, y
 ### Measurable Outcomes
 
 - **SC-001**: `curl signup` con `pass=123` → 422 <100ms; con `Strong1!` → 200 y `encrypted_password` `$2a$`
-- **SC-002**: `select phone_encrypted from clients` muestra `\\x...` (bytea) y `select phone from clients_view` muestra `+57...` solo para `authenticated`
+- **SC-002**: `select phone_encrypted from clients` muestra `\\x...` (bytea) y `select phone from clients_view` muestra `+57...` solo para `authenticated` — **PARTIAL en local**: columnas `phone_encrypted bytea` existen (045) pero `phone` sigue en claro; cifrado real requiere `vault` key en Cloud (ver `docs/security.md` PII PARTIAL). Local protege via RLS + `businesses_public` view (048).
 - **SC-003**: `anon` `select smtp_pass` → 0 rows; `authenticated` owner → 1 row `escuderia`
 - **SC-004**: `curl -I https://localhost:3000/` → headers `strict-transport-security` + `x-frame-options: DENY`
 - **SC-005**: `pg_dump` filtrado no expone `phone` en claro si `pgsodium` activo

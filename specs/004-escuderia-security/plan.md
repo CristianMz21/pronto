@@ -26,7 +26,7 @@ Hardening crítico para Escudería single (1 business) con `locations` multi-sed
 
 **Constraints**: `pgsodium` conditional `IF NOT EXISTS` + `RAISE NOTICE`, no bloqueo `supabase db reset`, `location_id` nullable
 
-**Scale/Scope**: 1 migration (045), 1 config (8 chars), 1 next.config headers
+**Scale/Scope**: 4 migrations (045 pgsodium bytea + 046 commission UPDATE + 047 FSM guard + 048 RLS view), seed.sql+seed-escuderia.sql (5 services/4 barberos/15 links), 1 config (8 chars), 1 next.config headers (no unsafe-eval)
 
 ## Constitution Check
 
@@ -43,7 +43,7 @@ next.config.js (headers)
 specs/004-escuderia-security/{spec,plan,tasks}.md
 ```
 
-**Structure Decision**: Single migration 045 + config + headers, no new `src/`.
+**Structure Decision**: 045-048 + seed.sql + lib/utils (es-CO) + lib/booking-availability (Lun-Sáb) + app/escuderia/layout.tsx. No new src architecture.
 
 ## Complexity Tracking
 

@@ -8,11 +8,11 @@ import {
 } from '@/lib/booking-availability'
 
 describe('booking-availability — lib/booking-availability.ts', () => {
-  it('DEFAULT_HOURS: Lun-Vie abiertos 09:00-20:00, fin de semana cerrados', () => {
-    // Nota: DEFAULT_HOURS es 09:00-20:00 según código, no 09-19
+  it('DEFAULT_HOURS: Lun-Sáb abiertos 09:00-20:00, Dom cerrado', () => {
+    // Nota: DEFAULT_HOURS es 09:00-20:00 Lun-Sáb, Dom cerrado (seed reality)
     expect(DEFAULT_HOURS.find((h) => h.day_of_week === 1)?.is_open).toBe(true)
     expect(DEFAULT_HOURS.find((h) => h.day_of_week === 0)?.is_open).toBe(false)
-    expect(DEFAULT_HOURS.find((h) => h.day_of_week === 6)?.is_open).toBe(false)
+    expect(DEFAULT_HOURS.find((h) => h.day_of_week === 6)?.is_open).toBe(true)
   })
 
   it('computeEffectiveHours rellena días faltantes con default', () => {

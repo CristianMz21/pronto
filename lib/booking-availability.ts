@@ -20,7 +20,7 @@ export interface DayHours {
 
 export const DEFAULT_HOURS: DayHours[] = [0, 1, 2, 3, 4, 5, 6].map((dow) => ({
   day_of_week: dow,
-  is_open: dow >= 1 && dow <= 5,
+  is_open: dow >= 1 && dow <= 6,
   open_time: '09:00',
   close_time: '20:00',
   break_start: null,

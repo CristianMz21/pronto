@@ -39,8 +39,8 @@ export function formatCurrency(
   return raw.replace(/\u00A0/g, ' ')
 }
 
-export function formatDate(date: string | Date): string {
-  return new Intl.DateTimeFormat('en-US', {
+export function formatDate(date: string | Date, locale = 'es-CO'): string {
+  return new Intl.DateTimeFormat(locale, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -52,7 +52,7 @@ export function uses12HourClock(locale: string): boolean {
   return /am|pm/i.test(sample)
 }
 
-export function formatTime(date: string | Date, locale = 'en-US'): string {
+export function formatTime(date: string | Date, locale = 'es-CO'): string {
   return new Intl.DateTimeFormat(locale, {
     hour: '2-digit',
     minute: '2-digit',
@@ -64,7 +64,7 @@ export function formatInBusinessTimezone(
   date: string | Date,
   timezone: string,
   part: 'date' | 'time' = 'date',
-  locale = 'en-US'
+  locale = 'es-CO'
 ): string {
   const opts: Intl.DateTimeFormatOptions = { timeZone: timezone }
   if (part === 'date') {
