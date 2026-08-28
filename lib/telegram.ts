@@ -67,6 +67,18 @@ export async function getTelegramBotInfo(
   }
 }
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
+export function escapeTelegramHtml(str: string): string {
+  return escapeHtml(str)
+}
+
 // ─── Шаблоны сообщений ────────────────────────────────────────────────────────
 
 export function tplNewBooking(opts: {
@@ -81,10 +93,10 @@ export function tplNewBooking(opts: {
   return [
     `📅 <b>New booking${source}</b>`,
     ``,
-    `👤 Client: ${opts.clientName}`,
-    `✂️ Service: ${opts.serviceName}`,
-    `🕐 ${opts.date} at ${opts.time}`,
-    opts.employeeName ? `👷 Employee: ${opts.employeeName}` : '',
+    `👤 Client: ${escapeHtml(opts.clientName)}`,
+    `✂️ Service: ${escapeHtml(opts.serviceName)}`,
+    `🕐 ${escapeHtml(opts.date)} at ${escapeHtml(opts.time)}`,
+    opts.employeeName ? `👷 Employee: ${escapeHtml(opts.employeeName)}` : '',
   ]
     .filter(Boolean)
     .join('\n')
@@ -101,9 +113,9 @@ export function tplReminder(opts: {
   return [
     `🔔 <b>Appointment ${when}</b>`,
     ``,
-    `👤 ${opts.clientName}`,
-    `✂️ ${opts.serviceName}`,
-    `🕐 ${opts.date} at ${opts.time}`,
+    `👤 ${escapeHtml(opts.clientName)}`,
+    `✂️ ${escapeHtml(opts.serviceName)}`,
+    `🕐 ${escapeHtml(opts.date)} at ${escapeHtml(opts.time)}`,
   ].join('\n')
 }
 
@@ -116,8 +128,8 @@ export function tplLowStock(opts: {
   return [
     `⚠️ <b>Low stock alert</b>`,
     ``,
-    `📦 ${opts.itemName}`,
-    `Current: <b>${opts.quantity} ${opts.unit}</b> (threshold: ${opts.threshold})`,
+    `📦 ${escapeHtml(opts.itemName)}`,
+    `Current: <b>${opts.quantity} ${escapeHtml(opts.unit)}</b> (threshold: ${opts.threshold})`,
   ].join('\n')
 }
 
@@ -128,8 +140,8 @@ export function tplThankYou(opts: {
   return [
     `✅ <b>Visit completed</b>`,
     ``,
-    `👤 ${opts.clientName}`,
-    `✂️ ${opts.serviceName}`,
+    `👤 ${escapeHtml(opts.clientName)}`,
+    `✂️ ${escapeHtml(opts.serviceName)}`,
     `Thank-you message sent to client.`,
   ].join('\n')
 }
@@ -140,7 +152,7 @@ export function tplReactivation(opts: {
   return [
     `📤 <b>Reactivation sent</b>`,
     ``,
-    `👤 ${opts.clientName}`,
+    `👤 ${escapeHtml(opts.clientName)}`,
     `We invited this client to return after 30 days of inactivity.`,
   ].join('\n')
 }
@@ -151,7 +163,7 @@ export function tplBirthday(opts: {
   return [
     `🎂 <b>Birthday message sent</b>`,
     ``,
-    `👤 ${opts.clientName}`,
+    `👤 ${escapeHtml(opts.clientName)}`,
     `We sent them birthday wishes today.`,
   ].join('\n')
 }
@@ -171,12 +183,12 @@ export function tplReminderClient(opts: {
   const lines = [
     `🔔 <b>Appointment reminder ${when}</b>`,
     ``,
-    `👤 ${opts.clientName}`,
-    `✂️ ${opts.serviceName}`,
-    `🕐 ${opts.date} at ${opts.time}`,
-    `🏠 ${opts.businessName}`,
+    `👤 ${escapeHtml(opts.clientName)}`,
+    `✂️ ${escapeHtml(opts.serviceName)}`,
+    `🕐 ${escapeHtml(opts.date)} at ${escapeHtml(opts.time)}`,
+    `🏠 ${escapeHtml(opts.businessName)}`,
   ]
-  if (opts.address) lines.push(`📍 ${opts.address}`)
+  if (opts.address) lines.push(`📍 ${escapeHtml(opts.address)}`)
   return lines.join('\n')
 }
 
@@ -187,10 +199,10 @@ export function tplThankYouClient(opts: {
   bookingUrl?: string
 }): string {
   const lines = [
-    `✅ <b>Thank you for your visit, ${opts.clientName}!</b>`,
+    `✅ <b>Thank you for your visit, ${escapeHtml(opts.clientName)}!</b>`,
     ``,
-    `✂️ ${opts.serviceName}`,
-    `🏠 ${opts.businessName}`,
+    `✂️ ${escapeHtml(opts.serviceName)}`,
+    `🏠 ${escapeHtml(opts.businessName)}`,
     ``,
     `We'd love to see you again!`,
   ]
@@ -204,9 +216,9 @@ export function tplReactivationClient(opts: {
   bookingUrl?: string
 }): string {
   const lines = [
-    `👋 <b>${opts.clientName}, it's been a while!</b>`,
+    `👋 <b>${escapeHtml(opts.clientName)}, it's been a while!</b>`,
     ``,
-    `Come back to ${opts.businessName} — we'd love to see you!`,
+    `Come back to ${escapeHtml(opts.businessName)} — we'd love to see you!`,
   ]
   if (opts.bookingUrl) lines.push(``, `📅 Book now: ${opts.bookingUrl}`)
   return lines.join('\n')
@@ -218,9 +230,9 @@ export function tplBirthdayClient(opts: {
   bookingUrl?: string
 }): string {
   const lines = [
-    `🎂 <b>Happy Birthday, ${opts.clientName}!</b>`,
+    `🎂 <b>Happy Birthday, ${escapeHtml(opts.clientName)}!</b>`,
     ``,
-    `The team at ${opts.businessName} wishes you all the best! 🎉`,
+    `The team at ${escapeHtml(opts.businessName)} wishes you all the best! 🎉`,
   ]
   if (opts.bookingUrl) lines.push(``, `🎁 Treat yourself: ${opts.bookingUrl}`)
   return lines.join('\n')

@@ -62,7 +62,8 @@ const nextConfig = {
           // CSP: self + supabase + tailwind CDN is NOT used (next/font), so default-src self is safe
           // 045 audit: removed 'unsafe-eval' (not needed for Next 16) and added object-src/base-uri hardening
           // 050: added upgrade-insecure-requests (safe with wss://*.supabase.co in connect-src)
-          { key: 'Content-Security-Policy', value: "upgrade-insecure-requests; default-src 'self'; script-src 'self' 'unsafe-inline' https://*.supabase.co; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; object-src 'none'; base-uri 'self'" },
+          // 051: allow local Supabase (127.0.0.1:54321, localhost, host.docker.internal) for selfhosted dev/Docker
+          { key: 'Content-Security-Policy', value: "upgrade-insecure-requests; default-src 'self'; script-src 'self' 'unsafe-inline' https://*.supabase.co; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co http://127.0.0.1:54321 http://localhost:54321 http://host.docker.internal:54321 ws://127.0.0.1:54321 ws://localhost:54321 ws://host.docker.internal:54321 wss://127.0.0.1:54321 wss://localhost:54321 wss://host.docker.internal:54321; object-src 'none'; base-uri 'self'" },
         ],
       },
     ]

@@ -13,7 +13,11 @@ const BASE = 'https://graph.facebook.com/v20.0'
 // WhatsApp требует E.164 без '+': "79001234567", "12025551234" и т.д.
 
 function normalizePhone(phone: string): string {
-  return phone.replace(/^\+/, '').replace(/[\s\-().]/g, '')
+  return phone.trim().replace(/^\+/, '').replace(/[\s\-().]/g, '')
+}
+
+export function __testNormalizePhone(phone: string): string {
+  return normalizePhone(phone)
 }
 
 // ─── Отправить текстовое сообщение ────────────────────────────────────────────
