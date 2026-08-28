@@ -156,17 +156,16 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
   const supabase = createClient()
   const router = useRouter()
   const t = useTranslations('booking')
-  const [weekStart, setWeekStart] = useState(() => getMonday(new Date()))
-  const [origin, setOrigin] = useState('')
-  useEffect(() => { setOrigin(window.location.origin) }, [])
+  const [weekStart, setWeekStart] = useState<Date | null>(null)
+  useEffect(() => { setWeekStart(getMonday(new Date())) }, [])
   const bookingUrl = useMemo(() => {
     if (process.env.NEXT_PUBLIC_DEPLOYMENT_MODE === 'saas') {
       const baseDomain = (process.env.NEXT_PUBLIC_APP_URL ?? 'https://trypronto.app')
         .replace(/^https?:\/\//, '').replace(/\/$/, '')
       return `https://${slug}.${baseDomain}/book`
     }
-    return `${origin}/book/${slug}`
-  }, [slug, origin])
+    return `/book/${slug}`
+  }, [slug])
   const [appointments, setAppointments] = useState(initial)
   const [clientsList, setClientsList] = useState<Client[]>(initialClients)
 
@@ -322,11 +321,16 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
 
   const days = t.raw('calendar.days') as string[]
 
-  const weekDates = Array.from({ length: 7 }, (_, i) => {
+  const weekDates = weekStart ? Array.from({ length: 7 }, (_, i) => {
     const d = new Date(weekStart)
     d.setDate(d.getDate() + i)
     return d
-  })
+  }) : []
+
+  // Load week when weekStart is set (client only, after mount)
+  useEffect(() => {
+    if (weekStart) loadWeek(weekStart)
+  }, [weekStart])
 
   async function loadWeek(start: Date) {
     const end = new Date(start); end.setDate(start.getDate() + 7)
@@ -441,13 +445,17 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
     }
   }, [showLegend])
 
+  if (!weekStart) {
+    return <div className="flex-1 flex items-center justify-center p-6 text-sm text-gray-500">Cargando calendario...</div>
+  }
+
   return (
     <div className="flex-1 flex flex-col min-h-0 p-3 sm:p-6 gap-4">
       {/* Toolbar */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           <button onClick={() => navigate(-1)} className="p-1.5 rounded-lg hover:bg-gray-100"><ChevronLeft className="w-4 h-4" /></button>
-          <span suppressHydrationWarning className="text-sm font-medium text-gray-700 w-40 text-center">
+          <span className="text-sm font-medium text-gray-700 w-40 text-center">
             {weekDates[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} –{' '}
             {weekDates[6].toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
           </span>
