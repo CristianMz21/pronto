@@ -447,7 +447,7 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           <button onClick={() => navigate(-1)} className="p-1.5 rounded-lg hover:bg-gray-100"><ChevronLeft className="w-4 h-4" /></button>
-          <span className="text-sm font-medium text-gray-700 w-40 text-center">
+          <span suppressHydrationWarning className="text-sm font-medium text-gray-700 w-40 text-center">
             {weekDates[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} –{' '}
             {weekDates[6].toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
           </span>
