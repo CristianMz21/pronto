@@ -190,6 +190,43 @@ curl -I https://<APP_DOMAIN>/ | grep -i "strict\|x-frame\|csp"
 - Prod (Supabase Cloud): habilita `[db.vault]` o crea `pgsodium` key `pii_escuderia` via `pgsodium.create_key`. Luego trigger dual-write `phone_encrypted`; `clients_secure` view `phone_secure = decrypt_pii(phone_encrypted)` para `authenticated`. Mantén `phone` plain para índices hasta backfill + cutover.
 - View: `clients_secure` `GRANT SELECT TO authenticated` solo; `REVOKE SELECT ON clients FROM anon` reforzado por 048/050.
 
+### Vault rotation Cloud (prod)
+
+> **BLOCKED external**: requiere Supabase Cloud real (`<ref>`) + Vault prod. No ejecutar en local.
+
+Comandos exactos copiar-pegar para rotar la key dev por una prod real:
+
+```bash
+# 1. Generar nueva prod key (guárdala en 1Password/Vault, no en git)
+openssl rand -hex 32  # nueva prod key
+
+# 2. Vincular proyecto Cloud (reemplaza <ref> por tu Project ref)
+supabase link --project-ref <ref>
+
+# 3. Setear secret en Cloud (elige UNA de las dos vías)
+supabase secrets set VAULT_SECRET=<new>  # o Dashboard → Vault
+
+# 4. Crear pgsodium key prod en la DB Cloud
+PGPASSWORD=postgres psql -h db.<ref>.supabase.co -U postgres -c "SELECT pgsodium.create_key(name := 'pii_escuderia');"
+
+# 5. Backfill: encriptar phones existentes que aún están en claro
+psql "postgresql://postgres.<ref>:<pass>@db.<ref>.supabase.co:5432/postgres?sslmode=require" -c "UPDATE clients SET phone_encrypted=encrypt_pii(phone) WHERE phone_encrypted IS NULL;"
+
+# 6. Verificar
+psql "postgresql://postgres.<ref>:<pass>@db.<ref>.supabase.co:5432/postgres?sslmode=require" -c "SELECT id, phone, phone_encrypted IS NOT NULL AS has_encrypted, decrypt_pii(phone_encrypted) AS phone_secure FROM clients LIMIT 5;"
+```
+
+> **NOTA CRÍTICA**: `dev-only-not-prod-32bytes-escuderia` debe borrarse de `supabase/config.toml` `[db.vault]` antes de `supabase db push --linked`:
+>
+> ```toml
+> # supabase/config.toml — ELIMINAR estas líneas antes de push a Cloud prod:
+> # [db.vault]
+> # secret = "dev-only-not-prod-32bytes-escuderia"
+> # secret_key = "dev-only-not-prod-32bytes-escuderia"
+> ```
+>
+> Validación local: `grep -r "dev-only-not-prod" supabase/config.toml` debe dar salida vacía en el commit que se pushea a prod. `scripts/go-live.sh` ya advierte si la encuentra.
+
 ---
 
 ## 7. Branding
@@ -273,4 +310,111 @@ npm run test:unit 2>&1 | tail -20
 npm run build -- --webpack 2>&1 | tail -40
 ```
 
-Ver también: `docs/security.md`, `docs/deployment.md`, `docs/backup.md`, `specs/004-escuderia-security/spec.md`.
+---
+
+## 11. BLOCKED external — Go-Live manual (3 comandos, requiere Cloud/DNS real)
+
+> **Estos 3 BLOCKED son los ÚNICOS pendientes para prod.** Todo lo demás ya es `PRODUCTION READY` local. No adivines URLs — usa placeholders `<...>` y reemplaza con tus valores reales.
+
+### 11.1 Origin privado (GitHub)
+
+```bash
+# Ver remotes actuales (debe mostrar upstream https://github.com/SGrappelli/pronto.git)
+git remote -v
+
+# Añadir origin privado — reemplaza <private_url> por tu repo privado
+git remote add origin <private_url>  # ej: git@github.com:<org>/escuderia.git
+# Si origin ya existe:
+# git remote set-url origin <private_url>
+
+# Push inicial
+git push -u origin main
+
+# Verificación
+git remote -v  # debe listar origin → <private_url> y upstream → pronto
+git status --porcelain  # debe estar clean antes de push
+```
+
+### 11.2 Supabase Cloud — link + push migraciones
+
+```bash
+# 1. Link a tu proyecto Cloud (reemplaza <ref> por Project ref de Dashboard → General)
+supabase link --project-ref <ref>
+
+# 2. ANTES de push: borra dev key de supabase/config.toml [db.vault]
+#    Elimina estas 2 líneas si existen:
+#    secret = "dev-only-not-prod-32bytes-escuderia"
+#    secret_key = "dev-only-not-prod-32bytes-escuderia"
+#    Valida: grep -r "dev-only-not-prod" supabase/config.toml (debe ser vacío)
+#    Ver §6 Vault rotation para rotar por key prod real con openssl rand -hex 32
+
+# 3. Push migraciones (001..051) a Cloud
+supabase db push --linked
+
+# Alternativas:
+# supabase db reset --linked  # ¡BORRA DATA! solo para DB nueva/vacía
+# supabase db lint --linked   # valida sin push
+
+# 4. Verificar en Cloud
+PGPASSWORD=<pass> psql "postgresql://postgres.<ref>:<pass>@db.<ref>.supabase.co:5432/postgres?sslmode=require" -c "SELECT count(*) FROM schema_migrations;"
+curl -s https://<APP_DOMAIN>/api/health | jq
+```
+
+### 11.3 DNS / TLS + APP_DOMAIN + SPF/DKIM (Resend)
+
+```bash
+# 1. .env en VPS prod — copia template y completa (NO commitees .env)
+cp .env.production.example .env
+# Edita .env (reemplaza <...> con valores reales):
+#   APP_DOMAIN=<APP_DOMAIN>                  # ej: <APP_DOMAIN> sin https ni www
+#   NEXT_PUBLIC_APP_URL=https://<APP_DOMAIN> # ej: https://<APP_DOMAIN>
+#   NEXT_PUBLIC_SUPABASE_URL=https://<ref>.supabase.co
+#   DATABASE_URL=postgresql://postgres.<ref>:<pass>@db.<ref>.supabase.co:5432/postgres?sslmode=require
+#   CRON_SECRET=<openssl rand -hex 32>       # genera con: openssl rand -hex 32
+#   INTERNAL_API_SECRET=<openssl rand -hex 32>
+#   RESEND_API_KEY=re_<...>
+
+# 2. next.config.js ya hace redirect www → non-www automático si APP_DOMAIN está seteado:
+#    www.<APP_DOMAIN> → https://<APP_DOMAIN> (301)
+#    Verifica: grep -A5 "redirects" next.config.js
+
+# 3. DNS en tu provider (Cloudflare / Route 53 / etc) — reemplaza <VPS_IP> y <APP_DOMAIN>
+#   Tipo  Nombre              Valor                               TTL
+#   A     @                   <VPS_IP>                            300
+#   A     www                 <VPS_IP>                            300  # o CNAME www → <APP_DOMAIN>
+#   TXT   @                   v=spf1 include:amazonses.com ~all   300
+#   TXT   resend._domainkey   <DKIM valor de Resend Dashboard>    300
+
+# 4. Resend Dashboard → Domains → Add Domain → copia DKIM
+#   SPF:  TXT @ v=spf1 include:amazonses.com ~all
+#   DKIM: TXT resend._domainkey  p=MIGfMA0GCSqGSIb3DQEBAQUAA4...
+
+# 5. Verificación DNS/TLS
+dig +short <APP_DOMAIN>                          # debe → <VPS_IP>
+dig TXT <APP_DOMAIN> | grep spf                   # debe contener include:amazonses.com
+dig TXT resend._domainkey.<APP_DOMAIN>            # debe → p=MIGf...
+curl -I https://<APP_DOMAIN>/ | grep -i "strict\|hsts\|x-frame\|csp"
+curl -I https://www.<APP_DOMAIN>/                 # debe → 301 → https://<APP_DOMAIN>/
+curl -s https://<APP_DOMAIN>/api/health | jq      # {"status":"ok"}
+```
+
+### Resumen GO-LIVE (3 comandos externos)
+
+```bash
+# 1) Origin privado
+git remote add origin <private_url>  # ej: git@github.com:<org>/escuderia.git
+git push -u origin main
+
+# 2) Supabase Cloud (después de borrar [db.vault] dev key)
+supabase link --project-ref <ref> && supabase db push --linked
+
+# 3) DNS + .env prod + TLS (APP_DOMAIN + SPF/DKIM ya documentados arriba)
+#    APP_DOMAIN=<APP_DOMAIN> NEXT_PUBLIC_APP_URL=https://<APP_DOMAIN> en .env prod
+#    + docker compose up -d && curl -I https://<APP_DOMAIN>/
+```
+
+> Checklist `scripts/go-live.sh` valida todo lo local y printea este bloque BLOCKED al final. Ejecuta `./scripts/go-live.sh` antes de cada deploy.
+
+---
+
+Ver también: `docs/security.md`, `docs/deployment.md`, `docs/backup.md`, `specs/004-escuderia-security/spec.md`, `scripts/go-live.sh`, `.env.production.example`.
