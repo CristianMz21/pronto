@@ -235,23 +235,23 @@ export function POSTerminal({ businessId, currency, services: initialServices, e
         setReceiptNumber(queued.local_receipt)
         setPendingCount((n) => n + 1)
       } else {
-        // ── Online: normal Supabase insert ────────────────────────────────
+        // ── Online: via API (service_role + my_business_ids check, no direct RLS)
         const wasWalkin = !selectedClient
-        const { data, error } = await supabase
-          .from('transactions')
-          .insert({
+        const res = await fetch('/api/pos/transaction', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
             business_id: businessId,
             client_id: selectedClient || null,
             employee_id: selectedEmployee || null,
             amount: total,
             payment_method: paymentMethod,
-            status: 'completed',
             items,
-          })
-          .select('receipt_number, id')
-          .single()
-
-        if (error) throw error
+          }),
+        })
+        const json = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(json.error ?? 'transaction failed')
+        const data = json as { receipt_number: string; id: string }
         setReceiptNumber(data.receipt_number ?? '')
         router.refresh()
 
