@@ -123,7 +123,7 @@ export default async function EscuderiaLandingPremium() {
         {/* Hero — mobile h-[80vh] bottom, desktop h-screen centered */}
         <section className="relative h-[80vh] md:h-screen w-full flex flex-col justify-end md:items-center md:justify-center overflow-hidden pb-12 md:pb-0">
           <div className="absolute inset-0">
-            <div className="w-full h-full bg-cover bg-center opacity-60" style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuDlfxhfBbn3c67fptZ2goGECpVDSVGmZVBAEHpW_wQ0YL05RFsyAW7nFxSHen_plRL4KuQQlrPHCQWkgiRTADV9aB3WLMjAN0sPO6dgoqqSsTjyZ0OVovrjq_3pYYM7A8ubr_DqepwbdwxQD1gcXKS3pqY8qWL-EquupcIKWTM916zLoHxCS3fuKsB1kt-PRzR-9WzV4Q7xrJCyK-CGr5Rr79Ab0ySQdJlLtOE0WOMs4cLY2wTMbiKI')" }} />
+            <div className="w-full h-full bg-cover bg-center opacity-60" style={{ backgroundImage: "url('/escuderia/hero.jpg')" }} />
             <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-[#0A0A0A]/50 to-transparent" />
           </div>
           {/* Mobile: bottom aligned, desktop: centered */}
@@ -173,10 +173,10 @@ export default async function EscuderiaLandingPremium() {
             </div>
             <div className="md:col-span-7 grid grid-cols-2 gap-4 h-[420px] md:h-[600px]">
               <div className="pt-8 md:pt-12 h-full">
-                <img alt="Cuero barbería" className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-700 border border-[#8E795E]/20" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCqeO3EyUizlwpKSi_5JIH9ulTJbPJu9DI057Qbx3QQLobzzbYlIBYB5FksyPAZ7pnunOqf4xsAGVB9pFmqEICXipvxrrY7hFVCuepZsFUt1G7B80JNt5GLBxMvX01aNouSoimcF5yxQHohNNFfM1j1nG4TKwLFJC1cvR_mmw898R9tfEQkXkc8NBptHDc9ayiWPvbP4qw0N5pMW_J0LtSLQNcu55X3p7JcL0Tts7ekOTPLg7rnkCfd" />
+                <img alt="Cuero barbería — textura cuero envejecido Escudería" className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-700 border border-[#8E795E]/20" src="/escuderia/cuero.png" loading="lazy" decoding="async" />
               </div>
               <div className="pb-8 md:pb-12 h-full">
-                <img alt="Tijeras acero" className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-700 border border-[#8E795E]/20" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCgwhr313IXfNN8OoljJnvJSYBPXwF7JnV7wSQaz75okGoK60DeEu1WoGq3czq2GNv-8XA2ppbOomEFviISyCqFKTD4jZ40uDQD_Aic9DaZmW-GKo9oKjPgQd1AZNKQWoy1xIGA1dQPiTF1wtF7vRW8CY60-yFV_yKzc9Z4OkiC1ad3Stpum-m85msLFFyh-lksLmLAY8pXpn8evPnbAqGcTLVO73NTCWHG5rnhwZgP5flhLhoEX5Zs8a" />
+                <img alt="Tijeras acero profesional Escudería — detalle tijeras japonesas" className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-700 border border-[#8E795E]/20" src="/escuderia/tijeras.png" loading="lazy" decoding="async" />
               </div>
             </div>
           </div>
@@ -238,7 +238,7 @@ export default async function EscuderiaLandingPremium() {
         {/* Signature */}
         <section className="py-[80px] md:py-[120px] relative overflow-hidden">
           <div className="absolute inset-0">
-            <div className="w-full h-full bg-cover bg-center opacity-30" style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuDzm19bnJ5J5Iby1ns8UX_-SCZzAsqPBPl0l8aNFwjqgeRaIFXHrpz-bTLnx6Kov-DvBCv9nTLmCA9sI_cGh38zYTthUKzk8Un0rFx2tJxWg3DLcKZCtpQVRb_qxqIQANh7gbiNfDC62I289uylwhGutGaC-yIAMjNERQUDdxvVCwxDurg4aZ2ia5GxF4lp_67ycR9zJszbGGEtyMx4HYDUKelNF2RpfHmhAMqf_-x6YGuE8eqC9s8a')" }} />
+            <div className="w-full h-full bg-cover bg-center opacity-30" style={{ backgroundImage: "url('/escuderia/signature.jpg')" }} />
             <div className="absolute inset-0 bg-[#0A0A0A]/80" />
           </div>
           <div className="relative z-10 max-w-[1280px] mx-auto px-5 md:px-16 text-center">
