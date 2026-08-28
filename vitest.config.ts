@@ -7,6 +7,13 @@ export default defineConfig({
     globals: true,
     include: ['tests/unit/**/*.{test,spec}.{ts,tsx}'],
     setupFiles: ['tests/setup.ts'],
+    coverage: {
+      provider: 'v8',
+      reportsDirectory: 'coverage',
+      include: ['lib/**/*.ts', 'app/**/*.ts', 'proxy.ts'],
+      all: true,
+      thresholds: { lines: 80, branches: 75 },
+    },
   },
   resolve: {
     alias: {

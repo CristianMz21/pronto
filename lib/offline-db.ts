@@ -92,9 +92,15 @@ export async function queueTransaction(
 ): Promise<PendingTransaction> {
   const db = await openDB()
   localReceiptCounter++
+  const generateId = () => {
+    try {
+      if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID()
+    } catch {}
+    return `fallback-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+  }
   const record: PendingTransaction = {
     ...tx,
-    id: crypto.randomUUID(),
+    id: generateId(),
     created_at: new Date().toISOString(),
     synced: false,
     local_receipt: `OFFLINE-${localReceiptCounter}`,

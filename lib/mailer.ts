@@ -86,9 +86,14 @@ export async function sendMail(msg: MailMessage): Promise<{ id?: string; error?:
  *  Если передан businessName — заменяет display name на имя бизнеса:
  *  "Pronto <noreply@...>" → "Ananda <noreply@...>"
  */
+export function sanitizeBusinessName(name: string): string {
+  return name.replace(/<[^>]*>/g, '').replace(/[\r\n<>"]/g, '').trim().slice(0, 80)
+}
+
 export function getFromAddress(businessName?: string): string {
   const base = process.env.RESEND_FROM_EMAIL ?? process.env.SMTP_FROM ?? 'Pronto <noreply@trypronto.app>'
   if (!businessName) return base
-  // Заменяем всё до '<' на имя бизнеса, сохраняя email-адрес
-  return base.replace(/^[^<]*</, `${businessName} <`)
+  const safe = sanitizeBusinessName(businessName)
+  if (!safe) return base
+  return base.replace(/^[^<]*</, `${safe} <`)
 }
