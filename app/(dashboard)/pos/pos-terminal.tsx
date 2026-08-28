@@ -84,6 +84,10 @@ export function POSTerminal({ businessId, currency, services: initialServices, e
   const [pendingCount, setPendingCount] = useState(0)
   const [syncing, setSyncing] = useState(false)
   const [syncError, setSyncError] = useState('')
+  // Hydration-safe: server and initial client both render with isOnline=true / pendingCount=0 (no banners)
+  // so hydration matches. After mount we sync real navigator.onLine and IndexedDB count.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
 
   // Active data — switches between server-loaded props and IndexedDB cache
   const [activeServices, setActiveServices] = useState<Service[]>(initialServices)
@@ -395,9 +399,9 @@ export function POSTerminal({ businessId, currency, services: initialServices, e
   // ─── Main POS UI ──────────────────────────────────────────────────────────
   return (
     <div className="flex-1 flex flex-col min-h-0">
-      {/* Offline / sync banners */}
-      {!isOnline && (
-        <div suppressHydrationWarning className="flex items-center gap-2 px-4 py-2 bg-orange-50 border-b border-orange-200 text-orange-800 text-sm">
+      {/* Offline / sync banners — hydration-safe: only render after mount so server (no navigator/IndexedDB) and initial client match (no banner) */}
+      {mounted && !isOnline && (
+        <div className="flex items-center gap-2 px-4 py-2 bg-orange-50 border-b border-orange-200 text-orange-800 text-sm">
           <WifiOff className="w-4 h-4 shrink-0" />
           <span className="font-medium">Offline mode</span>
           <span className="text-orange-600">— Sales will sync automatically when you reconnect.</span>
@@ -407,8 +411,8 @@ export function POSTerminal({ businessId, currency, services: initialServices, e
         </div>
       )}
 
-      {isOnline && pendingCount > 0 && (
-        <div suppressHydrationWarning className="flex items-center gap-2 px-4 py-2 bg-blue-50 border-b border-blue-200 text-blue-800 text-sm">
+      {mounted && isOnline && pendingCount > 0 && (
+        <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 border-b border-blue-200 text-blue-800 text-sm">
           {syncing ? (
             <RefreshCw className="w-4 h-4 shrink-0 animate-spin" />
           ) : (

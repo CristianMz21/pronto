@@ -149,7 +149,7 @@ export default async function EscuderiaLandingPremium() {
               <Link href="/book/escuderia" className="btn-gold mt-10 border border-[#C5A059] text-[#C5A059] px-10 py-4 font-[var(--font-montserrat)] text-[14px] tracking-[0.15em] font-medium inline-flex items-center gap-3 bg-transparent">
                 RESERVAR CITA <span>→</span>
               </Link>
-              <div suppressHydrationWarning className="mt-6 flex items-center gap-3 text-[11px] tracking-[0.2em] font-[var(--font-montserrat)] font-semibold text-[#d0c5b9]">
+              <div className="mt-6 flex items-center gap-3 text-[11px] tracking-[0.2em] font-[var(--font-montserrat)] font-semibold text-[#d0c5b9]">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#C5A059] animate-pulse" /> {heroStats}
               </div>
             </div>

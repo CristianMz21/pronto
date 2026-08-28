@@ -135,7 +135,11 @@ export function PublicBookingForm({ business, services, employees, workingHours,
   const effectiveHours: DayHours[] = computeEffectiveHours(workingHours)
 
   const closedWeekdays = effectiveHours.filter((h) => !h.is_open).map((h) => h.day_of_week)
-  const today = new Date().toISOString().slice(0, 10)
+  // Hydration-safe: server UTC date may differ from client local date (especially near midnight
+  // or when server is UTC and client is America/Bogota). Use deterministic fallback '' for
+  // initial render (both server and client), then hydrate real today after mount.
+  const [today, setToday] = useState('')
+  useEffect(() => { setToday(new Date().toISOString().slice(0, 10)) }, [])
 
   useEffect(() => {
     if (!date || !selectedService) {
@@ -327,11 +331,15 @@ export function PublicBookingForm({ business, services, employees, workingHours,
     setBookingError(null)
   }
 
-  const locale = typeof navigator !== 'undefined' ? navigator.language : 'en-US'
-  const is12h = uses12HourClock(locale)
+  // Hydration-safe locale: server always 'en-US', client detects navigator.language after mount
+  const [locale, setLocale] = useState('en-US')
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setLocale(navigator.language); setMounted(true) }, [])
+  const is12h = uses12HourClock(mounted ? locale : 'en-US')
 
   function formatSlot(slot: string): string {
     const [h, m] = slot.split(':').map(Number)
+    // While not mounted locale is 'en-US' on both server and client, so no mismatch
     return new Intl.DateTimeFormat(locale, {
       hour: '2-digit',
       minute: '2-digit',

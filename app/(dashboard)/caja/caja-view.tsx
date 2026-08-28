@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { formatCurrency } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -24,6 +24,12 @@ export function CajaView({ currency, openRegister, history, movements }: Props) 
   const [moveType, setMoveType] = useState<'in' | 'out'>('in')
   const [loading, setLoading] = useState(false)
   const [msg, setMsg] = useState('')
+  // Hydration-safe date formatting: server and initial client render use deterministic
+  // ISO fallback (UTC). After mount we switch to locale-aware 'es-CO' formatting.
+  // This prevents text mismatch when server timezone (UTC) differs from client (America/Bogota)
+  // or when Intl formatting differs between Node and browser.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
 
   async function open() {
     setLoading(true); setMsg('')
@@ -54,7 +60,7 @@ export function CajaView({ currency, openRegister, history, movements }: Props) 
     <div className="p-6 max-w-4xl space-y-6">
       {openRegister ? (
         <Card>
-          <CardHeader><CardTitle className="flex items-center gap-2"><Unlock className="w-4 h-4 text-green-600" /> Caja abierta — {new Date(openRegister.opened_at).toLocaleString('es-CO')}</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="flex items-center gap-2"><Unlock className="w-4 h-4 text-green-600" /> Caja abierta — {mounted ? new Date(openRegister.opened_at).toLocaleString('es-CO') : new Date(openRegister.opened_at).toISOString().slice(0, 16).replace('T', ' ')}</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
               <div className="bg-gray-50 p-3 rounded-lg"><div className="text-gray-500 text-xs">Apertura</div><div className="font-bold">{formatCurrency(Number(openRegister.opening_cash), currency)}</div></div>
@@ -84,7 +90,7 @@ export function CajaView({ currency, openRegister, history, movements }: Props) 
                   {movements.map((m) => (
                     <div key={m.id} className="flex justify-between border-b py-1">
                       <span>{m.type === 'in' ? '↑' : '↓'} {formatCurrency(Number(m.amount), currency)} {m.reason ? `— ${m.reason}` : ''}</span>
-                      <span className="text-gray-400">{new Date(m.created_at).toLocaleTimeString('es-CO')}</span>
+                      <span className="text-gray-400">{mounted ? new Date(m.created_at).toLocaleTimeString('es-CO') : new Date(m.created_at).toISOString().slice(11, 16)}</span>
                     </div>
                   ))}
                 </div>
@@ -115,7 +121,7 @@ export function CajaView({ currency, openRegister, history, movements }: Props) 
               {history.map((h) => (
                 <div key={h.id} className="flex justify-between items-center border-b py-2">
                   <div>
-                    <div className="font-medium">{new Date(h.opened_at).toLocaleDateString('es-CO')} {h.status === 'open' ? '— abierta' : `→ ${h.closed_at ? new Date(h.closed_at).toLocaleDateString('es-CO') : ''}`}</div>
+                    <div className="font-medium">{mounted ? new Date(h.opened_at).toLocaleDateString('es-CO') : new Date(h.opened_at).toISOString().slice(0, 10)} {h.status === 'open' ? '— abierta' : `→ ${mounted && h.closed_at ? new Date(h.closed_at).toLocaleDateString('es-CO') : h.closed_at ? new Date(h.closed_at).toISOString().slice(0, 10) : ''}`}</div>
                     <div className="text-xs text-gray-500">Apertura {formatCurrency(Number(h.opening_cash), currency)} · Esperado {h.expected_cash != null ? formatCurrency(Number(h.expected_cash), currency) : '—'} · Real {h.actual_cash != null ? formatCurrency(Number(h.actual_cash), currency) : '—'}</div>
                   </div>
                   <div className={`text-sm font-bold ${Number(h.difference) < 0 ? 'text-red-600' : Number(h.difference) > 0 ? 'text-green-600' : 'text-gray-600'}`}>

@@ -158,6 +158,11 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
   const t = useTranslations('booking')
   const [weekStart, setWeekStart] = useState<Date | null>(null)
   useEffect(() => { setWeekStart(getMonday(new Date())) }, [])
+  // Hydration-safe isToday: server and initial client render with no highlight (null),
+  // after mount we compute the real today string. This prevents mismatch where
+  // server's "today" (UTC) differs from client's local date, or hydration at midnight boundary.
+  const [todayStr, setTodayStr] = useState<string | null>(null)
+  useEffect(() => { setTodayStr(new Date().toDateString()) }, [])
   const bookingUrl = useMemo(() => {
     if (process.env.NEXT_PUBLIC_DEPLOYMENT_MODE === 'saas') {
       const baseDomain = (process.env.NEXT_PUBLIC_APP_URL ?? 'https://trypronto.app')
@@ -188,8 +193,13 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
   }, [businessHours, appointments, timezone])
   const [showForm, setShowForm] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
-  const locale = typeof navigator !== 'undefined' ? navigator.language : 'en-US'
-  const is12h = uses12HourClock(locale)
+  const [locale, setLocale] = useState('en-US')
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => {
+    setLocale(navigator.language)
+    setMounted(true)
+  }, [])
+  const is12h = uses12HourClock(mounted ? locale : 'en-US')
 
   // hour/minute always stored in 24h internally; period only used when is12h
   const [form, setForm] = useState({ client_id: '', employee_id: '', service_id: '', date: '', hour: '', minute: '00', period: 'AM' as 'AM' | 'PM', notes: '' })
@@ -456,8 +466,7 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
         <div className="flex items-center gap-2">
           <button onClick={() => navigate(-1)} className="p-1.5 rounded-lg hover:bg-gray-100"><ChevronLeft className="w-4 h-4" /></button>
           <span className="text-sm font-medium text-gray-700 w-40 text-center">
-            {weekDates[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} –{' '}
-            {weekDates[6].toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+            {weekDates.length ? `${weekDates[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${weekDates[6].toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : '—'}
           </span>
           <button onClick={() => navigate(1)} className="p-1.5 rounded-lg hover:bg-gray-100"><ChevronRight className="w-4 h-4" /></button>
           <button onClick={() => { const m = getMonday(new Date()); setWeekStart(m); loadWeek(m) }}
@@ -527,7 +536,7 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
               <tr>
                 <th className="sticky top-0 z-10 w-14 border-b border-r border-gray-100 py-2 text-gray-400 font-normal bg-white" />
                 {weekDates.map((d, i) => {
-                  const isToday = d.toDateString() === new Date().toDateString()
+                  const isToday = todayStr ? d.toDateString() === todayStr : false
                   return (
                     <th key={i} className={`sticky top-0 z-10 border-b border-r border-gray-100 py-2 font-medium text-center ${isToday ? 'bg-blue-50 text-blue-700' : 'text-gray-600 bg-white'}`}>
                       <div>{days[i]}</div>

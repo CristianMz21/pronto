@@ -71,7 +71,7 @@ export function formatTime(date: string | Date, locale = 'es-CO'): string {
 export function formatInBusinessTimezone(
   date: string | Date,
   timezone: string,
-  part: 'date' | 'time' = 'date',
+  part: 'date' | 'time' | 'datetime' = 'date',
   locale = 'es-CO'
 ): string {
   const d = new Date(date)
@@ -79,7 +79,10 @@ export function formatInBusinessTimezone(
   const opts: Intl.DateTimeFormatOptions = { timeZone: timezone }
   if (part === 'date') {
     opts.year = 'numeric'; opts.month = 'short'; opts.day = 'numeric'
+  } else if (part === 'time') {
+    opts.hour = '2-digit'; opts.minute = '2-digit'; opts.hour12 = uses12HourClock(locale)
   } else {
+    opts.year = 'numeric'; opts.month = 'short'; opts.day = 'numeric'
     opts.hour = '2-digit'; opts.minute = '2-digit'; opts.hour12 = uses12HourClock(locale)
   }
   try {

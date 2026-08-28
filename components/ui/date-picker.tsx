@@ -32,13 +32,26 @@ export function DatePicker({
   const dp = useTranslations('datePicker')
   const MONTHS = dp.raw('months') as string[]
   const DAY_NAMES = dp.raw('days') as string[]
-  const today = new Date()
+  // Hydration-safe: `new Date()` differs between server (UTC) and client (local timezone)
+  // and across midnight boundaries. Use deterministic fallback for initial render,
+  // then hydrate real today after mount.
   const parsed = parseDate(value)
-
+  const [mounted, setMounted] = useState(false)
+  const [today, setToday] = useState<Date | null>(null)
+  const [viewYear, setViewYear] = useState(() => parsed?.getFullYear() ?? 2026)
+  const [viewMonth, setViewMonth] = useState(() => parsed?.getMonth() ?? 0)
   const [open, setOpen] = useState(false)
-  const [viewYear, setViewYear] = useState(parsed?.getFullYear() ?? today.getFullYear())
-  const [viewMonth, setViewMonth] = useState(parsed?.getMonth() ?? today.getMonth())
   const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const now = new Date()
+    setToday(now)
+    setMounted(true)
+    if (!parsed) {
+      setViewYear(now.getFullYear())
+      setViewMonth(now.getMonth())
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sync view to value when value changes externally
   useEffect(() => {
@@ -101,11 +114,12 @@ export function DatePicker({
   }
 
   function goToday() {
-    const yyyy = today.getFullYear()
-    const mm = String(today.getMonth() + 1).padStart(2, '0')
-    const dd = String(today.getDate()).padStart(2, '0')
+    const now = today ?? new Date()
+    const yyyy = now.getFullYear()
+    const mm = String(now.getMonth() + 1).padStart(2, '0')
+    const dd = String(now.getDate()).padStart(2, '0')
     onChange(`${yyyy}-${mm}-${dd}`)
-    setViewYear(yyyy); setViewMonth(today.getMonth())
+    setViewYear(yyyy); setViewMonth(now.getMonth())
     setOpen(false)
   }
 
@@ -120,7 +134,7 @@ export function DatePicker({
 
   const selDay = parsed && parsed.getFullYear() === viewYear && parsed.getMonth() === viewMonth
     ? parsed.getDate() : null
-  const todayDay = today.getFullYear() === viewYear && today.getMonth() === viewMonth
+  const todayDay = mounted && today && today.getFullYear() === viewYear && today.getMonth() === viewMonth
     ? today.getDate() : null
 
   // ── Render ────────────────────────────────────────────────────────────────

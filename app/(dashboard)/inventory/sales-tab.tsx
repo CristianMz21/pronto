@@ -40,8 +40,12 @@ function fmt(n: number, currency: string) {
 
 function fmtDate(iso: string) {
   const d = new Date(iso)
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) +
-    ', ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
+  if (isNaN(d.getTime())) return 'Invalid Date'
+  // Hydration-safe: explicit America/Bogota timezone ensures server (UTC) and client (America/Bogota)
+  // render the same string. Without timeZone, toLocaleDateString uses the runtime's local zone,
+  // causing UTC vs America/Bogota mismatch (React #418).
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/Bogota' }) +
+    ', ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Bogota' })
 }
 
 export function SalesTab() {

@@ -61,6 +61,13 @@ export default async function RootLayout({
   const messages = await getMessages()
 
   return (
+    // suppressHydrationWarning is required here:
+    // - <html lang> is set from next-intl's getLocale() on the server, but browser extensions
+    //   (e.g. translators) may mutate <html> attributes before React hydrates, causing a mismatch.
+    // - next-intl docs explicitly recommend suppressHydrationWarning on <html> for this reason.
+    // - <body> may also be mutated by theme/dark-mode scripts before hydration.
+    // All other suppressHydrationWarning usages were removed in favor of hydration-safe rendering
+    // (useState+useEffect with deterministic fallback or explicit 'en-US'/'es-CO' locale).
     <html lang={locale} suppressHydrationWarning>
       <body className={inter.className} suppressHydrationWarning>
         <NextIntlClientProvider messages={messages}>
