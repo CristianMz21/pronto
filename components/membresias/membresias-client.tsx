@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Plus, Pencil, Trash2, Users, Calendar, Coins } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
+import { EmptyState } from '@/components/ui/empty-state'
 
 interface Membership {
   id: string
@@ -126,7 +127,7 @@ export function MembresiasClient({
       </div>
 
       {memberships.length === 0 ? (
-        <Card><CardContent className="py-12 text-center text-gray-500">Sin membresías. Crea “4 cortes/mes $99k”.</CardContent></Card>
+        <EmptyState variant="memberships" actionLabel="Nueva membresía" onAction={openCreate} />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {memberships.map((m) => (
@@ -173,7 +174,7 @@ export function MembresiasClient({
         <CardContent className="p-4">
           <h3 className="font-medium text-sm flex items-center gap-2 mb-3"><Users className="w-4 h-4" /> Membresías de clientes <span className="text-xs text-gray-500">({clientMemberships.length})</span></h3>
           {clientMemberships.length === 0 ? (
-            <p className="text-sm text-gray-400">Aún sin ventas.</p>
+            <EmptyState variant="generic" title="Aún sin ventas" description="Vende una membresía a un cliente para verla aquí." className="py-8 border-dashed" />
           ) : (
             <div className="overflow-auto">
               <table className="w-full text-xs">

@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Plus, Pencil, Trash2, Tag, Calendar } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
+import { EmptyState } from '@/components/ui/empty-state'
 
 interface Promotion {
   id: string
@@ -133,7 +134,7 @@ export function PromocionesClient({ promotions, locations, services }: { promoti
       </div>
 
       {promotions.length === 0 ? (
-        <Card><CardContent className="py-12 text-center text-gray-500">Sin promociones. Crea “Cumple 20%” o “2x1 martes”.</CardContent></Card>
+        <EmptyState variant="promotions" actionLabel="Nueva promoción" onAction={openCreate} />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {promotions.map((p) => {
