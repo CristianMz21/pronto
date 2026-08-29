@@ -36,6 +36,9 @@ interface Client {
   telegram_id: string | null
   viber_user_id: string | null
   whatsapp_number: string | null
+  preferences?: unknown
+  preferred_barber_id?: string | null
+  location_id?: string | null
 }
 
 interface Props {
@@ -45,6 +48,8 @@ interface Props {
   timezone: string
   businessId: string
   telegramBotUsername: string | null
+  preferredBarber?: { id: string; name: string } | null
+  location?: { id: string; name: string } | null
 }
 
 const statusColors: Record<string, string> = {
@@ -71,7 +76,7 @@ function validateBirthday(birthday: string): string | null {
   return null
 }
 
-export function ClientDetailView({ client: initial, appointments, currency, timezone, businessId, telegramBotUsername }: Props) {
+export function ClientDetailView({ client: initial, appointments, currency, timezone, businessId, telegramBotUsername, preferredBarber, location }: Props) {
   const supabase = createClient()
   const router = useRouter()
   const t = useTranslations('clientDetail')
@@ -341,6 +346,31 @@ export function ClientDetailView({ client: initial, appointments, currency, time
                     </a>
                   </div>
                 )}
+                {location && (
+                  <div className="flex gap-2">
+                    <span className="text-gray-400 w-16 shrink-0">Sede</span>
+                    <span className="text-gray-700">{location.name}</span>
+                  </div>
+                )}
+                {preferredBarber && (
+                  <div className="flex gap-2">
+                    <span className="text-gray-400 w-16 shrink-0">Barbero</span>
+                    <span className="text-gray-700">{preferredBarber.name}</span>
+                  </div>
+                )}
+                {client.preferences && typeof client.preferences === 'object' && Object.keys(client.preferences as Record<string, unknown>).length > 0 && (
+                  <div className="flex gap-2">
+                    <span className="text-gray-400 w-16 shrink-0">Prefs</span>
+                    <span className="text-xs bg-gray-50 px-2 py-1 rounded border">{JSON.stringify(client.preferences)}</span>
+                  </div>
+                )}
+
+                {/* Quick actions */}
+                <div className="flex flex-wrap gap-2 pt-2">
+                  <a href={`/booking?clientId=${client.id}`} className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Crear cita</a>
+                  {client.phone && <a href={`https://wa.me/${client.phone.replace(/^\+/, '').replace(/\s/g, '')}`} target="_blank" className="text-xs px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700">WhatsApp</a>}
+                  <a href={`/pos?clientId=${client.id}`} className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-gray-50">Registrar venta</a>
+                </div>
 
                 {/* Messenger connection status */}
                 <div className="pt-2 border-t border-gray-100 space-y-1.5">

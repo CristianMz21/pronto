@@ -9,9 +9,21 @@ import Link from 'next/link'
 import { getTranslations } from 'next-intl/server'
 import { getAuthUser } from '@/lib/auth-user'
 
+function inDaysFromNow(dateStr: string, days: number): boolean {
+  if (!dateStr) return false
+  const d = new Date(dateStr + 'T00:00:00')
+  if (isNaN(d.getTime())) return false
+  const now = new Date()
+  // Birthday handling: compare month/day ignore year, within next 7 days
+  const thisYear = now.getFullYear()
+  const bThisYear = new Date(thisYear, d.getMonth(), d.getDate())
+  const diff = Math.ceil((bThisYear.getTime() - now.getTime()) / 86400000)
+  return diff >= 0 && diff <= days
+}
+
 export default async function CRMPage(
   props: {
-    searchParams: Promise<{ q?: string; tag?: string }>
+    searchParams: Promise<{ q?: string; tag?: string; segment?: string }>
   }
 ) {
   const searchParams = await props.searchParams;
@@ -19,16 +31,23 @@ export default async function CRMPage(
   const t = await getTranslations('crm')
   const user = await getAuthUser()
 
-  const { data: business } = await supabase
-    .from('businesses').select('id, currency, timezone').eq('owner_id', user!.id).maybeSingle()
-
-  if (!business) return null
+  let businessId: string | null = null
+  let businessCurrency = 'COP'
+  let businessTz = 'America/Bogota'
+  const { data: ownedBiz } = await supabase.from('businesses').select('id, currency, timezone').eq('owner_id', user!.id).maybeSingle()
+  if (ownedBiz) { businessId = (ownedBiz as { id: string }).id; businessCurrency = (ownedBiz as { currency: string }).currency ?? 'COP'; businessTz = (ownedBiz as { timezone: string }).timezone ?? 'America/Bogota' }
+  else {
+    const { data: empBiz } = await supabase.from('employees').select('business_id, businesses!inner(id, currency, timezone)').eq('user_id', user!.id).eq('is_active', true).limit(1).maybeSingle()
+    if (empBiz) { businessId = (empBiz as { business_id: string }).business_id; const b = (empBiz as unknown as { businesses: { currency: string; timezone: string } }).businesses; businessCurrency = b?.currency ?? 'COP'; businessTz = b?.timezone ?? 'America/Bogota' }
+  }
+  if (!businessId) return null
+  const business = { id: businessId, currency: businessCurrency, timezone: businessTz }
 
   let query = supabase.from('clients')
-    .select('id, name, phone, email, tags, created_at')
+    .select('id, name, phone, email, tags, created_at, birthday, last_visit_at, preferences, preferred_barber_id, location_id')
     .eq('business_id', business.id)
     .order('name')
-    .limit(50)
+    .limit(80)
 
   if (searchParams.q) {
     query = query.or(`name.ilike.%${searchParams.q}%,phone.ilike.%${searchParams.q}%,email.ilike.%${searchParams.q}%`)
@@ -37,7 +56,8 @@ export default async function CRMPage(
     query = query.contains('tags', [searchParams.tag])
   }
 
-  const { data: clients } = await query
+  const { data: clientsRaw } = await query
+  let clients = clientsRaw ?? []
 
   // Compute visits, spent, last visit, and last service name live from transactions
   const clientIds = (clients ?? []).map((c) => c.id)
@@ -50,7 +70,7 @@ export default async function CRMPage(
       .eq('status', 'completed')
       .in('client_id', clientIds)
       .order('created_at', { ascending: false })
-      .limit(500)
+      .limit(800)
     for (const tx of txs ?? []) {
       if (!tx.client_id) continue
       if (!statsMap[tx.client_id]) {
@@ -67,6 +87,27 @@ export default async function CRMPage(
     }
   }
 
+  // Segment filtering (FR-CRM-003)
+  const segment = searchParams.segment
+  if (segment) {
+    const now = Date.now()
+    clients = clients.filter((c) => {
+      const stats = statsMap[c.id]
+      const last = stats?.last_visit_at ?? (c as unknown as { last_visit_at?: string | null }).last_visit_at ?? null
+      const visits = stats?.total_visits ?? 0
+      const tags = (c.tags ?? []) as string[]
+      const bd = (c as unknown as { birthday?: string | null }).birthday
+      if (segment === 'inactive_30') return last ? (now - new Date(last).getTime()) / 86400000 >= 30 : true
+      if (segment === 'inactive_42') return last ? (now - new Date(last).getTime()) / 86400000 >= 42 : true
+      if (segment === 'inactive_60') return last ? (now - new Date(last).getTime()) / 86400000 >= 60 : true
+      if (segment === 'birthday_7') return bd ? inDaysFromNow(bd, 7) : false
+      if (segment === 'vip') return tags.includes('vip') || tags.includes('VIP')
+      if (segment === 'new') return visits > 0 && visits < 3
+      if (segment === 'frequent') return visits >= 10
+      return true
+    })
+  }
+
   return (
     <>
       <Header
@@ -81,13 +122,33 @@ export default async function CRMPage(
         }
       />
       <main className="p-6">
-        <div className="mb-4 relative">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <form>
-            <input name="q" defaultValue={searchParams.q} type="search"
-              placeholder={t('searchPlaceholder')}
-              className="w-full max-w-sm pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white" />
-          </form>
+        <div className="mb-4 flex flex-wrap gap-2 items-center">
+          <div className="relative">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <form>
+              <input name="q" defaultValue={searchParams.q} type="search"
+                placeholder={t('searchPlaceholder')}
+                className="w-full max-w-sm pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white" />
+            </form>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {[
+              { key: '', label: 'Todos' },
+              { key: 'inactive_30', label: 'Inactivos 30d' },
+              { key: 'inactive_42', label: '42d' },
+              { key: 'inactive_60', label: '60d' },
+              { key: 'birthday_7', label: 'Cumple 7d' },
+              { key: 'vip', label: 'VIP' },
+              { key: 'new', label: 'Nuevos' },
+            ].map((s) => (
+              <Link key={s.key} href={`/crm${s.key ? `?segment=${s.key}` : ''}`} className={`text-xs px-3 py-1.5 rounded-full border ${searchParams.segment === s.key || (!searchParams.segment && s.key === '') ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>{s.label}</Link>
+            ))}
+          </div>
+          {searchParams.segment && (
+            <Link href={`/crm?segment=${searchParams.segment}`} onClick={(e) => { e.preventDefault(); window.location.href = `/api/crm/segments?segment=${searchParams.segment}` }} className="text-xs text-blue-600 hover:underline ml-2">
+              Crear campaña →
+            </Link>
+          )}
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
