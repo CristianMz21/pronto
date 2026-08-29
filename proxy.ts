@@ -9,6 +9,16 @@ function getSupabaseUrlForProxy(): string {
   return url
 }
 
+function getCookieName(): string {
+  try {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
+    const hostname = new URL(url).hostname
+    return `sb-${hostname.split('.')[0]}-auth-token`
+  } catch {
+    return 'sb-127-auth-token'
+  }
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl
 
@@ -26,6 +36,8 @@ export async function proxy(request: NextRequest) {
 
   const requestHeaders = new Headers(request.headers)
   requestHeaders.set('x-pathname', pathname)
+  const locationId = searchParams.get('location') ?? request.headers.get('x-location-id') ?? ''
+  if (locationId) requestHeaders.set('x-location-id', locationId)
 
   let supabaseResponse = NextResponse.next({ request: { headers: requestHeaders } })
 
@@ -33,6 +45,7 @@ export async function proxy(request: NextRequest) {
     getSupabaseUrlForProxy(),
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      cookieOptions: { name: getCookieName() },
       cookies: {
         getAll() {
           return request.cookies.getAll()
@@ -77,7 +90,7 @@ export async function proxy(request: NextRequest) {
   }
 
   // Protected routes — admin panel (single Escudería now, multi-sede ready via locations)
-  // Public: /, /escuderia, /book/[slug], /login, /register, /privacy, /terms, /offline
+  // Public: /, /escuderia, /book/[slug], /login, /register, /privacy, /terms, /offline, /client/login, /client/register
   const protectedPaths = ['/dashboard', '/pos', '/caja', '/crm', '/inventory', '/booking', '/settings']
   const isProtected = protectedPaths.some((p) => pathname.startsWith(p))
 
@@ -85,6 +98,14 @@ export async function proxy(request: NextRequest) {
     const loginUrl = request.nextUrl.clone()
     loginUrl.pathname = '/login'
     loginUrl.searchParams.set('redirectTo', pathname)
+    return NextResponse.redirect(loginUrl)
+  }
+
+  // Client portal protected
+  if (pathname.startsWith('/client/dashboard') && !user) {
+    const loginUrl = request.nextUrl.clone()
+    loginUrl.pathname = '/client/login'
+    loginUrl.searchParams.set('redirect', pathname)
     return NextResponse.redirect(loginUrl)
   }
 
@@ -111,6 +132,10 @@ export async function proxy(request: NextRequest) {
 
   return supabaseResponse
 }
+
+// Next.js 16: proxy.ts must have default export (middleware.ts used named `middleware`)
+// Keep both for backwards compat — `proxy` named for manual import, default for Next's loader.
+export default proxy
 
 export const config = {
   matcher: [
