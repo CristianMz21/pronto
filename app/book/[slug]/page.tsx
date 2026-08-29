@@ -8,11 +8,11 @@ import { getViberBotInfo } from '@/lib/viber'
 import Link from 'next/link'
 import { Playfair_Display, Montserrat } from 'next/font/google'
 
-const playfair = Playfair_Display({ subsets: ['latin'], weight: ['500','600','700'] })
-const montserrat = Montserrat({ subsets: ['latin'], weight: ['400','500','600'] })
+const playfair = Playfair_Display({ subsets: ['latin'], weight: ['500', '600', '700'] })
+const montserrat = Montserrat({ subsets: ['latin'], weight: ['400', '500', '600'] })
 
 export async function generateMetadata(props: { params: Promise<{ slug: string }> }) {
-  const params = await props.params;
+  const params = await props.params
   const supabase = createServiceClient()
   const { data } = await supabase
     .from('businesses')
@@ -25,20 +25,28 @@ export async function generateMetadata(props: { params: Promise<{ slug: string }
   }
 }
 
-export default async function PublicBookingPage(props: { params: Promise<{ slug: string }>, searchParams?: Promise<{ service?: string, employee?: string }> }) {
-  const params = await props.params;
-  const searchParams = await props.searchParams;
+export default async function PublicBookingPage(props: {
+  params: Promise<{ slug: string }>
+  searchParams?: Promise<{ service?: string; employee?: string }>
+}) {
+  const params = await props.params
+  const searchParams = await props.searchParams
   const supabase = createServiceClient()
 
   const { data: business } = await supabase
     .from('businesses')
-    .select('id, name, type, phone, logo_url, currency, slug, timezone, address, brand_color, min_advance_minutes, booking_lead_time_enabled, allow_guest_bookings')
+    .select(
+      'id, name, type, phone, logo_url, currency, slug, timezone, address, brand_color, min_advance_minutes, booking_lead_time_enabled, allow_guest_bookings',
+    )
     .eq('slug', params.slug)
     .maybeSingle()
 
   if (!business) notFound()
 
-  const isEscuderia = business.slug === 'escuderia' || business.brand_color === '#0A0A0A' || business.brand_color === '#1a1a1a'
+  const isEscuderia =
+    business.slug === 'escuderia' ||
+    business.brand_color === '#0A0A0A' ||
+    business.brand_color === '#1a1a1a'
 
   const { data: bizTokens } = await supabase
     .from('businesses')
@@ -85,8 +93,10 @@ export default async function PublicBookingPage(props: { params: Promise<{ slug:
       : Promise.resolve({ ok: false as const }),
   ])
 
-  const telegramBotUsername = telegramInfo.ok ? (telegramInfo as { ok: true; result: { username: string } }).result?.username ?? null : null
-  const viberBotUri = viberInfo.ok ? (viberInfo as { ok: true; uri?: string }).uri ?? null : null
+  const telegramBotUsername = telegramInfo.ok
+    ? ((telegramInfo as { ok: true; result: { username: string } }).result?.username ?? null)
+    : null
+  const viberBotUri = viberInfo.ok ? ((viberInfo as { ok: true; uri?: string }).uri ?? null) : null
 
   const brand = business.brand_color || '#1a1a1a'
   const gold = '#C5A059'
@@ -94,7 +104,10 @@ export default async function PublicBookingPage(props: { params: Promise<{ slug:
   // Escudería premium dark theme
   if (isEscuderia) {
     return (
-      <div className={`${playfair.className} ${montserrat.className} min-h-screen bg-[#0A0A0A]`} style={{ '--brand': brand, '--gold': gold } as React.CSSProperties}>
+      <div
+        className={`${playfair.className} ${montserrat.className} min-h-screen bg-[#0A0A0A]`}
+        style={{ '--brand': brand, '--gold': gold } as React.CSSProperties}
+      >
         <style>{`
           :root{--brand:${brand};--gold:${gold}}
           .btn-gold{position:relative;overflow:hidden;transition:all .4s ease}
@@ -109,15 +122,26 @@ export default async function PublicBookingPage(props: { params: Promise<{ slug:
               <img src="/escuderia-icon.svg" alt="Escudería" className="w-7 h-7 object-contain" />
               <span className="font-bold tracking-tight text-[#C5A059] text-[15px]">ESCUDERÍA</span>
             </Link>
-            <Link href="/escuderia" className="text-[11px] tracking-[0.15em] font-semibold text-[#d0c5b9] hover:text-[#C5A059]">← VOLVER</Link>
+            <Link
+              href="/escuderia"
+              className="text-[11px] tracking-[0.15em] font-semibold text-[#d0c5b9] hover:text-[#C5A059]"
+            >
+              ← VOLVER
+            </Link>
           </div>
         </header>
 
         <div className="max-w-[448px] mx-auto px-4 py-6">
           <div className="text-center mb-6">
-            <p className="font-[Montserrat] text-[11px] tracking-[0.2em] font-semibold text-[#C5A059]">RESERVA ONLINE</p>
-            <h1 className="font-[Playfair_Display] text-[22px] font-semibold text-white mt-1">Reserva en {business.name}</h1>
-            <p className="font-[Montserrat] text-[12px] text-[#d0c5b9] mt-1">Sin registro • Confirma en segundos • COP</p>
+            <p className="font-[Montserrat] text-[11px] tracking-[0.2em] font-semibold text-[#C5A059]">
+              RESERVA ONLINE
+            </p>
+            <h1 className="font-[Playfair_Display] text-[22px] font-semibold text-white mt-1">
+              Reserva en {business.name}
+            </h1>
+            <p className="font-[Montserrat] text-[12px] text-[#d0c5b9] mt-1">
+              Sin registro • Confirma en segundos • COP
+            </p>
           </div>
 
           <div className="bg-[#121212] border border-[#8E795E]/20 p-4 sm:p-6">
@@ -147,18 +171,46 @@ export default async function PublicBookingPage(props: { params: Promise<{ slug:
   const brandColor = business.brand_color || '#2D2926'
   return (
     <div
-      style={{
-        '--brand': brandColor,
-        '--brand-light': `${brandColor}18`,
-      } as React.CSSProperties}
+      style={
+        {
+          '--brand': brandColor,
+          '--brand-light': `${brandColor}18`,
+        } as React.CSSProperties
+      }
     >
-      <header style={{ background: 'white', borderBottom: '0.5px solid #E8E0D8', padding: '14px 16px' }}>
-        <div style={{ maxWidth: 448, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 12 }}>
+      <header
+        style={{ background: 'white', borderBottom: '0.5px solid #E8E0D8', padding: '14px 16px' }}
+      >
+        <div
+          style={{
+            maxWidth: 448,
+            margin: '0 auto',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+          }}
+        >
           {business.logo_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={business.logo_url} alt={business.name} style={{ width: 38, height: 38, borderRadius: 10, objectFit: 'cover' }} />
+            <img
+              src={business.logo_url}
+              alt={business.name}
+              style={{ width: 38, height: 38, borderRadius: 10, objectFit: 'cover' }}
+            />
           ) : (
-            <div style={{ width: 38, height: 38, borderRadius: 10, background: 'var(--brand)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 500, fontSize: 16 }}>
+            <div
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: 10,
+                background: 'var(--brand)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'white',
+                fontWeight: 500,
+                fontSize: 16,
+              }}
+            >
               {business.name[0]}
             </div>
           )}

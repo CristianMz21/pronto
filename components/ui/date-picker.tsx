@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 
 interface DatePickerProps {
-  value: string               // YYYY-MM-DD
+  value: string // YYYY-MM-DD
   onChange: (value: string) => void
   placeholder?: string
   className?: string
@@ -54,12 +54,15 @@ export function DatePicker({
       setViewYear(now.getFullYear())
       setViewMonth(now.getMonth())
     }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [])
 
   // Sync view to value when value changes externally
   useEffect(() => {
     const d = parseDate(value)
-    if (d) { setViewYear(d.getFullYear()); setViewMonth(d.getMonth()) }
+    if (d) {
+      setViewYear(d.getFullYear())
+      setViewMonth(d.getMonth())
+    }
   }, [value])
 
   // Close on outside click
@@ -83,13 +86,17 @@ export function DatePicker({
   }
 
   function prevMonth() {
-    if (viewMonth === 0) { setViewMonth(11); setViewYear((y) => y - 1) }
-    else setViewMonth((m) => m - 1)
+    if (viewMonth === 0) {
+      setViewMonth(11)
+      setViewYear((y) => y - 1)
+    } else setViewMonth((m) => m - 1)
   }
 
   function nextMonth() {
-    if (viewMonth === 11) { setViewMonth(0); setViewYear((y) => y + 1) }
-    else setViewMonth((m) => m + 1)
+    if (viewMonth === 11) {
+      setViewMonth(0)
+      setViewYear((y) => y + 1)
+    } else setViewMonth((m) => m + 1)
   }
 
   /** Returns true if the given day number in the current view is disabled */
@@ -124,7 +131,8 @@ export function DatePicker({
     const mm = String(now.getMonth() + 1).padStart(2, '0')
     const dd = String(now.getDate()).padStart(2, '0')
     onChange(`${yyyy}-${mm}-${dd}`)
-    setViewYear(yyyy); setViewMonth(now.getMonth())
+    setViewYear(yyyy)
+    setViewMonth(now.getMonth())
     setOpen(false)
   }
 
@@ -137,10 +145,14 @@ export function DatePicker({
   ]
   while (cells.length % 7 !== 0) cells.push(null)
 
-  const selDay = parsed && parsed.getFullYear() === viewYear && parsed.getMonth() === viewMonth
-    ? parsed.getDate() : null
-  const todayDay = mounted && today && today.getFullYear() === viewYear && today.getMonth() === viewMonth
-    ? today.getDate() : null
+  const selDay =
+    parsed && parsed.getFullYear() === viewYear && parsed.getMonth() === viewMonth
+      ? parsed.getDate()
+      : null
+  const todayDay =
+    mounted && today && today.getFullYear() === viewYear && today.getMonth() === viewMonth
+      ? today.getDate()
+      : null
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (

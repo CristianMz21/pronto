@@ -43,7 +43,7 @@ export function OnboardingWizard({ initialSlug, initialName, isSaas, rootDomain 
   const [slug, setSlug] = useState(initialSlug)
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(false)
   const [slugStatus, setSlugStatus] = useState<SlugStatus>(
-    isSaas ? (SLUG_RE.test(initialSlug) ? 'checking' : 'idle') : 'idle'
+    isSaas ? (SLUG_RE.test(initialSlug) ? 'checking' : 'idle') : 'idle',
   )
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -55,7 +55,11 @@ export function OnboardingWizard({ initialSlug, initialName, isSaas, rootDomain 
   const [holidayReason, setHolidayReason] = useState('')
   const [taxRate, setTaxRate] = useState('0')
   const [paymentMethods, setPaymentMethods] = useState<string[]>(['cash', 'card'])
-  const [membershipPreview, setMembershipPreview] = useState({ name: '4 cortes/mes', price: '99000', duration: '30' })
+  const [membershipPreview, setMembershipPreview] = useState({
+    name: '4 cortes/mes',
+    price: '99000',
+    duration: '30',
+  })
   const [configSaving, setConfigSaving] = useState(false)
   const [configMsg, setConfigMsg] = useState('')
 
@@ -118,10 +122,9 @@ export function OnboardingWizard({ initialSlug, initialName, isSaas, rootDomain 
   useEffect(() => {
     if (!isSaas || !initialSlug) return
     // Trigger the effect above by keeping slug === initialSlug (already set)
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [])
 
-  const canContinueStep0 =
-    !!bizName.trim() && !!bizType && (!isSaas || slugStatus === 'available')
+  const canContinueStep0 = !!bizName.trim() && !!bizType && (!isSaas || slugStatus === 'available')
 
   function handleBizNameChange(e: React.ChangeEvent<HTMLInputElement>) {
     const newName = e.target.value
@@ -154,7 +157,11 @@ export function OnboardingWizard({ initialSlug, initialName, isSaas, rootDomain 
         await fetch('/api/holidays', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ date: holidayDate, reason: holidayReason || 'Festivo', is_open: false }),
+          body: JSON.stringify({
+            date: holidayDate,
+            reason: holidayReason || 'Festivo',
+            is_open: false,
+          }),
         })
       }
       // Save tax/payment config
@@ -171,7 +178,13 @@ export function OnboardingWizard({ initialSlug, initialName, isSaas, rootDomain 
         await fetch('/api/memberships', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: membershipPreview.name, price: Number(membershipPreview.price), duration_days: Number(membershipPreview.duration) || 30, benefits: { cuts: 4 }, is_active: true }),
+          body: JSON.stringify({
+            name: membershipPreview.name,
+            price: Number(membershipPreview.price),
+            duration_days: Number(membershipPreview.duration) || 30,
+            benefits: { cuts: 4 },
+            is_active: true,
+          }),
         }).catch(() => {})
       }
       setConfigMsg('Configuración guardada ✓')
@@ -194,7 +207,7 @@ export function OnboardingWizard({ initialSlug, initialName, isSaas, rootDomain 
         bizName: bizName.trim() || undefined,
         serviceName: service.name,
         servicePrice: Number(service.price),
-        serviceDuration: showDuration ? (Number(service.duration_min) || 60) : 0,
+        serviceDuration: showDuration ? Number(service.duration_min) || 60 : 0,
         ...(isSaas ? { slug } : {}),
       })
     } catch {
@@ -205,20 +218,28 @@ export function OnboardingWizard({ initialSlug, initialName, isSaas, rootDomain 
 
   function slugStatusText() {
     switch (slugStatus) {
-      case 'checking': return t('step0.slugChecking')
-      case 'available': return t('step0.slugAvailable')
-      case 'taken': return t('step0.slugTaken')
-      case 'invalid': return t('step0.slugInvalid')
-      default: return ''
+      case 'checking':
+        return t('step0.slugChecking')
+      case 'available':
+        return t('step0.slugAvailable')
+      case 'taken':
+        return t('step0.slugTaken')
+      case 'invalid':
+        return t('step0.slugInvalid')
+      default:
+        return ''
     }
   }
 
   function slugStatusColor() {
     switch (slugStatus) {
-      case 'available': return 'text-green-600'
+      case 'available':
+        return 'text-green-600'
       case 'taken':
-      case 'invalid': return 'text-red-500'
-      default: return 'text-gray-400'
+      case 'invalid':
+        return 'text-red-500'
+      default:
+        return 'text-gray-400'
     }
   }
 
@@ -234,12 +255,22 @@ export function OnboardingWizard({ initialSlug, initialName, isSaas, rootDomain 
         <div className="flex items-center justify-center gap-3 mb-8">
           {steps.map((s, i) => (
             <div key={s} className="flex items-center gap-2">
-              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold transition-colors ${
-                i < step ? 'bg-green-500 text-white' : i === step ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-400'
-              }`}>
+              <div
+                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold transition-colors ${
+                  i < step
+                    ? 'bg-green-500 text-white'
+                    : i === step
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-200 text-gray-400'
+                }`}
+              >
                 {i < step ? <CheckCircle2 className="w-4 h-4" /> : i + 1}
               </div>
-              <span className={`text-xs font-medium hidden sm:block ${i === step ? 'text-gray-900' : 'text-gray-400'}`}>{s}</span>
+              <span
+                className={`text-xs font-medium hidden sm:block ${i === step ? 'text-gray-900' : 'text-gray-400'}`}
+              >
+                {s}
+              </span>
               {i < steps.length - 1 && <ChevronRight className="w-4 h-4 text-gray-300" />}
             </div>
           ))}
@@ -267,13 +298,20 @@ export function OnboardingWizard({ initialSlug, initialName, isSaas, rootDomain 
                 />
               </div>
 
-              <p className="text-xs font-medium text-gray-500 mb-3">{t('step0.businessTypeLabel')}</p>
+              <p className="text-xs font-medium text-gray-500 mb-3">
+                {t('step0.businessTypeLabel')}
+              </p>
               <div className="grid grid-cols-2 gap-3">
                 {businessTypes.map((bt) => (
-                  <button key={bt.value} onClick={() => setBizType(bt.value)}
+                  <button
+                    key={bt.value}
+                    onClick={() => setBizType(bt.value)}
                     className={`p-4 rounded-xl border text-sm text-left transition-colors ${
-                      bizType === bt.value ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium' : 'border-gray-200 hover:border-gray-300 text-gray-700'
-                    }`}>
+                      bizType === bt.value
+                        ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium'
+                        : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                    }`}
+                  >
                     {bt.label}
                   </button>
                 ))}
@@ -334,31 +372,63 @@ export function OnboardingWizard({ initialSlug, initialName, isSaas, rootDomain 
               <p className="text-sm text-gray-500 mb-6">{t('step1.subheading')}</p>
               <div className="space-y-4">
                 <div>
-                  <label className="text-xs font-medium text-gray-500">{t('step1.serviceNameLabel')}</label>
-                  <input type="text" value={service.name} onChange={(e) => setService((s) => ({ ...s, name: e.target.value }))}
+                  <label className="text-xs font-medium text-gray-500">
+                    {t('step1.serviceNameLabel')}
+                  </label>
+                  <input
+                    type="text"
+                    value={service.name}
+                    onChange={(e) => setService((s) => ({ ...s, name: e.target.value }))}
                     placeholder={t('step1.serviceNamePlaceholder')}
-                    className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
                 </div>
                 <div className={showDuration ? 'grid grid-cols-2 gap-3' : ''}>
                   <div>
-                    <label className="text-xs font-medium text-gray-500">{t('step1.priceLabel')}</label>
-                    <input type="number" min={0} value={service.price} onChange={(e) => setService((s) => ({ ...s, price: e.target.value }))}
+                    <label className="text-xs font-medium text-gray-500">
+                      {t('step1.priceLabel')}
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={service.price}
+                      onChange={(e) => setService((s) => ({ ...s, price: e.target.value }))}
                       placeholder="0"
-                      className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
                   </div>
                   {showDuration && (
                     <div>
-                      <label className="text-xs font-medium text-gray-500">{t('step1.durationLabel')}</label>
-                      <input type="number" min={5} value={service.duration_min} onChange={(e) => setService((s) => ({ ...s, duration_min: e.target.value }))}
-                        className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      <label className="text-xs font-medium text-gray-500">
+                        {t('step1.durationLabel')}
+                      </label>
+                      <input
+                        type="number"
+                        min={5}
+                        value={service.duration_min}
+                        onChange={(e) =>
+                          setService((s) => ({ ...s, duration_min: e.target.value }))
+                        }
+                        className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
                     </div>
                   )}
                 </div>
               </div>
               <div className="flex gap-3 mt-6">
-                <Button variant="outline" onClick={() => setStep(0)}>{t('step1.back')}</Button>
-                <Button variant="ghost" onClick={() => setStep(2)}>{t('step1.skip')}</Button>
-                <Button className="flex-1" onClick={() => setStep(2)} disabled={!service.name || !service.price}>{t('step1.continue')}</Button>
+                <Button variant="outline" onClick={() => setStep(0)}>
+                  {t('step1.back')}
+                </Button>
+                <Button variant="ghost" onClick={() => setStep(2)}>
+                  {t('step1.skip')}
+                </Button>
+                <Button
+                  className="flex-1"
+                  onClick={() => setStep(2)}
+                  disabled={!service.name || !service.price}
+                >
+                  {t('step1.continue')}
+                </Button>
               </div>
             </div>
           )}
@@ -372,29 +442,45 @@ export function OnboardingWizard({ initialSlug, initialName, isSaas, rootDomain 
                 <div className="flex items-center gap-3 p-4 rounded-xl bg-blue-50 border border-blue-100">
                   <div className="text-2xl">✉️</div>
                   <div>
-                    <div className="text-sm font-medium text-gray-900">{t('step2.emailChannel')}</div>
+                    <div className="text-sm font-medium text-gray-900">
+                      {t('step2.emailChannel')}
+                    </div>
                     <div className="text-xs text-gray-500">{t('step2.emailChannelSub')}</div>
                   </div>
-                  <span className="ml-auto text-xs text-green-600 font-medium">{t('step2.emailChannelStatus')}</span>
+                  <span className="ml-auto text-xs text-green-600 font-medium">
+                    {t('step2.emailChannelStatus')}
+                  </span>
                 </div>
                 <div className="flex items-center gap-3 p-4 rounded-xl border border-gray-200">
                   <div className="text-2xl">📱</div>
                   <div>
-                    <div className="text-sm font-medium text-gray-900">{t('step2.messengerChannel')}</div>
+                    <div className="text-sm font-medium text-gray-900">
+                      {t('step2.messengerChannel')}
+                    </div>
                     <div className="text-xs text-gray-500">{t('step2.messengerChannelSub')}</div>
                   </div>
-                  <span className="ml-auto text-xs text-gray-400">{t('step2.messengerChannelStatus')}</span>
+                  <span className="ml-auto text-xs text-gray-400">
+                    {t('step2.messengerChannelStatus')}
+                  </span>
                 </div>
               </div>
               {error && (
-                <div className="mt-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">{error}</div>
+                <div className="mt-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+                  {error}
+                </div>
               )}
               <div className="flex gap-3 mt-6">
-                <Button variant="outline" onClick={() => setStep(1)} disabled={saving}>{t('step1.back')}</Button>
-                <Button className="flex-1" onClick={() => setStep(3)} disabled={saving}>Continuar → sucursales</Button>
+                <Button variant="outline" onClick={() => setStep(1)} disabled={saving}>
+                  {t('step1.back')}
+                </Button>
+                <Button className="flex-1" onClick={() => setStep(3)} disabled={saving}>
+                  Continuar → sucursales
+                </Button>
               </div>
               <div className="mt-3 text-center">
-                <button onClick={finish} className="text-xs text-gray-400 hover:text-gray-600">Omitir y finalizar</button>
+                <button onClick={finish} className="text-xs text-gray-400 hover:text-gray-600">
+                  Omitir y finalizar
+                </button>
               </div>
             </div>
           )}
@@ -402,31 +488,75 @@ export function OnboardingWizard({ initialSlug, initialName, isSaas, rootDomain 
           {/* ── Step 3: Sucursal + Festivo (T077) ───────────────────────────── */}
           {step === 3 && (
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-1">Sucursales &amp; Festivos</h2>
-              <p className="text-sm text-gray-500 mb-6">Configurá tu sede extra y festivos. Todo es opcional — podés hacerlo luego en Settings.</p>
+              <h2 className="text-lg font-semibold text-gray-900 mb-1">
+                Sucursales &amp; Festivos
+              </h2>
+              <p className="text-sm text-gray-500 mb-6">
+                Configurá tu sede extra y festivos. Todo es opcional — podés hacerlo luego en
+                Settings.
+              </p>
               <div className="space-y-4">
                 <div>
-                  <label className="text-xs font-medium text-gray-500">Nueva sucursal (opcional)</label>
-                  <input type="text" value={locationName} onChange={(e) => setLocationName(e.target.value)} placeholder="Ej: Escudería Norte" maxLength={80} className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                  <p className="text-xs text-gray-400 mt-1">Se crea con slug automático. Sin sede extra, operás solo Centro.</p>
+                  <label className="text-xs font-medium text-gray-500">
+                    Nueva sucursal (opcional)
+                  </label>
+                  <input
+                    type="text"
+                    value={locationName}
+                    onChange={(e) => setLocationName(e.target.value)}
+                    placeholder="Ej: Escudería Norte"
+                    maxLength={80}
+                    className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">
+                    Se crea con slug automático. Sin sede extra, operás solo Centro.
+                  </p>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs font-medium text-gray-500">Festivo (opcional)</label>
-                    <input type="date" value={holidayDate} onChange={(e) => setHolidayDate(e.target.value)} className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2.5 text-sm" />
+                    <input
+                      type="date"
+                      value={holidayDate}
+                      onChange={(e) => setHolidayDate(e.target.value)}
+                      className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2.5 text-sm"
+                    />
                   </div>
                   <div>
                     <label className="text-xs font-medium text-gray-500">Motivo</label>
-                    <input type="text" value={holidayReason} onChange={(e) => setHolidayReason(e.target.value)} placeholder="Navidad" maxLength={100} className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2.5 text-sm" />
+                    <input
+                      type="text"
+                      value={holidayReason}
+                      onChange={(e) => setHolidayReason(e.target.value)}
+                      placeholder="Navidad"
+                      maxLength={100}
+                      className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2.5 text-sm"
+                    />
                   </div>
                 </div>
-                {configMsg && <div className="text-xs text-green-600 bg-green-50 border border-green-200 rounded-lg px-3 py-2">{configMsg}</div>}
+                {configMsg && (
+                  <div className="text-xs text-green-600 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                    {configMsg}
+                  </div>
+                )}
               </div>
               <div className="flex gap-3 mt-6">
-                <Button variant="outline" onClick={() => setStep(2)}>Atrás</Button>
-                <Button variant="ghost" onClick={() => setStep(4)}>Omitir</Button>
-                <Button className="flex-1" onClick={async () => { await saveConfigStep(); setStep(4); }} disabled={configSaving}>
-                  {configSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null} Guardar y continuar
+                <Button variant="outline" onClick={() => setStep(2)}>
+                  Atrás
+                </Button>
+                <Button variant="ghost" onClick={() => setStep(4)}>
+                  Omitir
+                </Button>
+                <Button
+                  className="flex-1"
+                  onClick={async () => {
+                    await saveConfigStep()
+                    setStep(4)
+                  }}
+                  disabled={configSaving}
+                >
+                  {configSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null} Guardar
+                  y continuar
                 </Button>
               </div>
             </div>
@@ -435,20 +565,40 @@ export function OnboardingWizard({ initialSlug, initialName, isSaas, rootDomain 
           {/* ── Step 4: Impuestos & membresía preview + checklist (T077) ────── */}
           {step === 4 && (
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-1">Impuestos &amp; Membresía</h2>
-              <p className="text-sm text-gray-500 mb-6">Define impuestos y una membresía de prueba. Checklist final antes de arrancar.</p>
+              <h2 className="text-lg font-semibold text-gray-900 mb-1">
+                Impuestos &amp; Membresía
+              </h2>
+              <p className="text-sm text-gray-500 mb-6">
+                Define impuestos y una membresía de prueba. Checklist final antes de arrancar.
+              </p>
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs font-medium text-gray-500">Tax %</label>
-                    <input type="number" min={0} max={100} step={0.5} value={taxRate} onChange={(e) => setTaxRate(e.target.value)} className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2.5 text-sm" />
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      step={0.5}
+                      value={taxRate}
+                      onChange={(e) => setTaxRate(e.target.value)}
+                      className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2.5 text-sm"
+                    />
                   </div>
                   <div>
                     <label className="text-xs font-medium text-gray-500">Métodos pago</label>
                     <div className="flex flex-wrap gap-2 mt-1">
-                      {(['cash','card','transfer','digital'] as const).map((m) => (
+                      {(['cash', 'card', 'transfer', 'digital'] as const).map((m) => (
                         <label key={m} className="flex items-center gap-1 text-xs">
-                          <input type="checkbox" checked={paymentMethods.includes(m)} onChange={(e) => setPaymentMethods((prev) => e.target.checked ? [...prev, m] : prev.filter((x) => x !== m))} />
+                          <input
+                            type="checkbox"
+                            checked={paymentMethods.includes(m)}
+                            onChange={(e) =>
+                              setPaymentMethods((prev) =>
+                                e.target.checked ? [...prev, m] : prev.filter((x) => x !== m),
+                              )
+                            }
+                          />
                           {m}
                         </label>
                       ))}
@@ -456,33 +606,111 @@ export function OnboardingWizard({ initialSlug, initialName, isSaas, rootDomain 
                   </div>
                 </div>
                 <div className="border border-gray-200 rounded-xl p-4 bg-gray-50">
-                  <div className="text-xs font-medium text-gray-500 mb-2">Membresía preview (opcional)</div>
-                  <div className="grid grid-cols-3 gap-2">
-                    <input type="text" value={membershipPreview.name} onChange={(e) => setMembershipPreview((p) => ({ ...p, name: e.target.value }))} placeholder="Nombre" className="border border-gray-200 rounded-lg px-2 py-2 text-sm" />
-                    <input type="number" min={0} value={membershipPreview.price} onChange={(e) => setMembershipPreview((p) => ({ ...p, price: e.target.value }))} placeholder="Precio" className="border border-gray-200 rounded-lg px-2 py-2 text-sm" />
-                    <input type="number" min={1} value={membershipPreview.duration} onChange={(e) => setMembershipPreview((p) => ({ ...p, duration: e.target.value }))} placeholder="Días" className="border border-gray-200 rounded-lg px-2 py-2 text-sm" />
+                  <div className="text-xs font-medium text-gray-500 mb-2">
+                    Membresía preview (opcional)
                   </div>
-                  <p className="text-xs text-gray-400 mt-2">Se creará como membresía activa &quot;{membershipPreview.name}&quot; por ${membershipPreview.price} / {membershipPreview.duration}d con 4 cortes.</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    <input
+                      type="text"
+                      value={membershipPreview.name}
+                      onChange={(e) =>
+                        setMembershipPreview((p) => ({ ...p, name: e.target.value }))
+                      }
+                      placeholder="Nombre"
+                      className="border border-gray-200 rounded-lg px-2 py-2 text-sm"
+                    />
+                    <input
+                      type="number"
+                      min={0}
+                      value={membershipPreview.price}
+                      onChange={(e) =>
+                        setMembershipPreview((p) => ({ ...p, price: e.target.value }))
+                      }
+                      placeholder="Precio"
+                      className="border border-gray-200 rounded-lg px-2 py-2 text-sm"
+                    />
+                    <input
+                      type="number"
+                      min={1}
+                      value={membershipPreview.duration}
+                      onChange={(e) =>
+                        setMembershipPreview((p) => ({ ...p, duration: e.target.value }))
+                      }
+                      placeholder="Días"
+                      className="border border-gray-200 rounded-lg px-2 py-2 text-sm"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-400 mt-2">
+                    Se creará como membresía activa &quot;{membershipPreview.name}&quot; por $
+                    {membershipPreview.price} / {membershipPreview.duration}d con 4 cortes.
+                  </p>
                 </div>
 
                 <div className="bg-white border border-gray-200 rounded-xl p-4">
                   <div className="text-xs font-semibold text-gray-700 mb-2">Checklist</div>
                   <ul className="text-xs text-gray-600 space-y-1">
-                    <li className="flex gap-2"><CheckCircle2 className={`w-4 h-4 ${bizName ? 'text-green-500' : 'text-gray-300'}`} /> Negocio: {bizName || '—'}</li>
-                    <li className="flex gap-2"><CheckCircle2 className={`w-4 h-4 ${service.name ? 'text-green-500' : 'text-gray-300'}`} /> Servicio: {service.name || '—'}</li>
-                    <li className="flex gap-2"><CheckCircle2 className={`w-4 h-4 ${locationName ? 'text-green-500' : 'text-gray-300'}`} /> Sucursal: {locationName || 'Centro (default)'}</li>
-                    <li className="flex gap-2"><CheckCircle2 className={`w-4 h-4 ${holidayDate ? 'text-green-500' : 'text-gray-300'}`} /> Festivo: {holidayDate || '— (luego en Settings)'}</li>
-                    <li className="flex gap-2"><CheckCircle2 className={`w-4 h-4 ${Number(taxRate) > 0 ? 'text-green-500' : 'text-gray-300'}`} /> Tax: {taxRate}% — {paymentMethods.join(', ')}</li>
-                    <li className="flex gap-2"><CheckCircle2 className={`w-4 h-4 ${membershipPreview.name ? 'text-green-500' : 'text-gray-300'}`} /> Membresía: {membershipPreview.name}</li>
+                    <li className="flex gap-2">
+                      <CheckCircle2
+                        className={`w-4 h-4 ${bizName ? 'text-green-500' : 'text-gray-300'}`}
+                      />{' '}
+                      Negocio: {bizName || '—'}
+                    </li>
+                    <li className="flex gap-2">
+                      <CheckCircle2
+                        className={`w-4 h-4 ${service.name ? 'text-green-500' : 'text-gray-300'}`}
+                      />{' '}
+                      Servicio: {service.name || '—'}
+                    </li>
+                    <li className="flex gap-2">
+                      <CheckCircle2
+                        className={`w-4 h-4 ${locationName ? 'text-green-500' : 'text-gray-300'}`}
+                      />{' '}
+                      Sucursal: {locationName || 'Centro (default)'}
+                    </li>
+                    <li className="flex gap-2">
+                      <CheckCircle2
+                        className={`w-4 h-4 ${holidayDate ? 'text-green-500' : 'text-gray-300'}`}
+                      />{' '}
+                      Festivo: {holidayDate || '— (luego en Settings)'}
+                    </li>
+                    <li className="flex gap-2">
+                      <CheckCircle2
+                        className={`w-4 h-4 ${Number(taxRate) > 0 ? 'text-green-500' : 'text-gray-300'}`}
+                      />{' '}
+                      Tax: {taxRate}% — {paymentMethods.join(', ')}
+                    </li>
+                    <li className="flex gap-2">
+                      <CheckCircle2
+                        className={`w-4 h-4 ${membershipPreview.name ? 'text-green-500' : 'text-gray-300'}`}
+                      />{' '}
+                      Membresía: {membershipPreview.name}
+                    </li>
                   </ul>
                 </div>
-                {configMsg && <div className="text-xs text-green-600 bg-green-50 border border-green-200 rounded-lg px-3 py-2">{configMsg}</div>}
-                {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">{error}</div>}
+                {configMsg && (
+                  <div className="text-xs text-green-600 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                    {configMsg}
+                  </div>
+                )}
+                {error && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+                    {error}
+                  </div>
+                )}
               </div>
               <div className="flex gap-3 mt-6">
-                <Button variant="outline" onClick={() => setStep(3)} disabled={saving}>Atrás</Button>
+                <Button variant="outline" onClick={() => setStep(3)} disabled={saving}>
+                  Atrás
+                </Button>
                 <Button className="flex-1" onClick={finish} disabled={saving}>
-                  {saving ? <span className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />{t('step2.settingUp')}</span> : t('step2.submit')}
+                  {saving ? (
+                    <span className="flex items-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      {t('step2.settingUp')}
+                    </span>
+                  ) : (
+                    t('step2.submit')
+                  )}
                 </Button>
               </div>
             </div>

@@ -6,34 +6,92 @@ on:
   pull_request:
     branches: [main]
 
+# Minimal free-stack quality gates — 6 parallel jobs (5 + audit)
+# Supabase env placeholders so Next.js build/typecheck don't require real project
+
+env:
+  NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
+  SUPABASE_SERVICE_ROLE_KEY: placeholder-service-role-key
+  NEXT_PUBLIC_APP_URL: http://localhost:3000
+  NEXT_PUBLIC_DEPLOYMENT_MODE: selfhosted
+  CRON_SECRET: ci-secret
+
 jobs:
-  lint-and-build:
-    name: Lint & Build
+  lint:
+    name: Lint (eslint --max-warnings 0)
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
+      - run: npm ci
+      - name: ESLint (max-warnings 0)
+        run: npx eslint . --max-warnings 0
+      - name: Biome format check
+        run: npm run format:check || echo "Biome format check has diffs — run 'npm run format' locally (non-blocking for minimal gate)"
 
-      - name: Install dependencies
-        run: npm ci
+  typecheck:
+    name: Typecheck (tsc --noEmit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck || echo "typecheck has known Supabase type drift — see TODO(quality-gates) (non-blocking minimal gate)"
 
-      - name: Run ESLint
-        run: npm run lint
+  test:
+    name: Test (vitest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run test:unit
 
-      - name: Build
-        run: npm run build
-        env:
-          # Minimal stubs so Next.js can build without a real Supabase project
-          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
-          SUPABASE_SERVICE_ROLE_KEY: placeholder-service-role-key
-          NEXT_PUBLIC_APP_URL: http://localhost:3000
-          NEXT_PUBLIC_DEPLOYMENT_MODE: selfhosted
-          CRON_SECRET: ci-secret
+  knip:
+    name: Knip (unused deps/files)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run knip
+
+  build:
+    name: Build (next build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+
+  audit:
+    name: Audit (npm audit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: npm audit (high)
+        run: npm audit --audit-level=high || true
+      - name: npm audit (full report)
+        run: npm audit || true

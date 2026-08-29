@@ -1,0 +1,60 @@
+{
+  "$schema": "https://unpkg.com/knip@5.63.1/schema.json",
+  "entry": [
+    "next.config.js",
+    "app/**/page.tsx",
+    "app/**/layout.tsx",
+    "app/**/route.ts",
+    "app/sw.ts",
+    "proxy.ts",
+    "instrumentation.ts",
+    "drizzle.config.ts",
+    "drizzle/seed.ts",
+    "playwright.config.ts",
+    "vitest.config.ts",
+    "vitest.config.*.ts"
+  ],
+  "project": ["**/*.{js,ts,jsx,tsx}"],
+  "ignore": [
+    ".next/**",
+    ".next-*/**",
+    "coverage/**",
+    "public/**",
+    "drizzle/**",
+    "lib/supabase/database.types.ts",
+    ".serena/**",
+    "scripts/**",
+    "src/**",
+    "tests/helpers/**"
+  ],
+  "ignoreDependencies": [
+    "@types/*",
+    "autoprefixer",
+    "postcss",
+    "tailwindcss",
+    "tsx",
+    "pg",
+    "@dnd-kit/utilities",
+    "@radix-ui/react-avatar",
+    "@radix-ui/react-dropdown-menu",
+    "@radix-ui/react-label",
+    "@radix-ui/react-select",
+    "@radix-ui/react-separator",
+    "@radix-ui/react-tabs",
+    "@radix-ui/react-toast",
+    "@swc/helpers",
+    "date-fns",
+    "drizzle-zod",
+    "pdfkit"
+  ],
+  "ignoreBinaries": ["supabase"],
+  "rules": {
+    "files": "warn",
+    "dependencies": "warn",
+    "unlisted": "warn",
+    "unresolved": "error",
+    "exports": "off",
+    "types": "off",
+    "duplicates": "off"
+  }
+}
