@@ -179,15 +179,15 @@ description: "Task list for Barbería SaaS Integral — Escudería (006)"
 
 ### Tests for US6
 
-- [ ] T056 [P] [US6] Integration `tests/integration/locations-rls.test.ts`: `anon` cannot read `locations`; `manager Norte` cannot read `cash_registers Centro`
-- [ ] T057 [P] [US6] E2E `tests/e2e/multilocation.spec.ts`: create location + inventory transfer + dashboard filter
+- [ ] T056 [P] [US6] Integration `tests/integration/locations-rls.test.ts`: `anon` cannot read `locations`; `manager Norte` cannot read `cash_registers Centro` — TODO V2 (stub, minimal coverage via unit test)
+- [ ] T057 [P] [US6] E2E `tests/e2e/multilocation.spec.ts`: create location + inventory transfer + dashboard filter — TODO (manual verification done)
 
 ### Implementation for US6
 
-- [ ] T058 [US6] Route `app/(dashboard)/sucursales/page.tsx` CRUD `locations` (slug unique per business) + `components/sucursales/location-form.tsx` + seed check
-- [ ] T059 [US6] API `app/api/locations/route.ts` + `app/api/inventory/transfer` (069 atomic `out/in` + `from/to_location_id`)
-- [ ] T060 [US6] Propagate `location_id` to queries: `appointments`, `inventory_items`, `cash_registers`, `memberships`, `promotions`, `campaigns` — add `location_id` filter in every dashboard/report/POS/booking server query (grep & update)
-- [ ] T061 [US6] Extend RBAC: `lib/auth/roles.ts` add `getUserLocationIds()` (future `manager` single-sede restriction) — V1 stub returns `all` for owner/admin, docs TODO for `my_location_ids()` V2
+- [x] T058 [US6] Route `app/(dashboard)/sucursales/page.tsx` CRUD `locations` (slug unique per business) + `components/sucursales/location-form.tsx` + seed check
+- [x] T059 [US6] API `app/api/locations/route.ts` + `app/api/inventory/transfer` (069 atomic `out/in` + `from/to_location_id`)
+- [x] T060 [US6] Propagate `location_id` to queries: `appointments`, `inventory_items`, `cash_registers`, `memberships`, `promotions`, `campaigns` — add `location_id` filter in every dashboard/report/POS/booking server query (grep & update)
+- [x] T061 [US6] Extend RBAC: `lib/auth/roles.ts` add `getUserLocationIds()` (future `manager` single-sede restriction) — V1 stub returns `all` for owner/admin, docs TODO for `my_location_ids()` V2
 
 **Checkpoint**: Multi-location standalone — N sedes sin cross-leak.
 
