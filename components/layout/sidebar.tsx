@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, ShoppingCart, Users, Package, CalendarDays, Settings, LogOut, Menu, X, Wallet, Scissors, UserCircle, BarChart3 } from 'lucide-react'
+import { LayoutDashboard, ShoppingCart, Users, Package, CalendarDays, Settings, LogOut, Menu, X, Wallet, Scissors, UserCircle, BarChart3, Crown, Tag, Boxes } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -33,6 +33,8 @@ export function Sidebar({ businessName, role }: SidebarProps) {
     { href: '/pos', label: t('pos'), icon: ShoppingCart },
     { href: '/caja', label: (t as any)('cash') ?? 'Caja', icon: Wallet },
     { href: '/inventory', label: t('inventory'), icon: Package },
+    { href: '/membresias', label: 'Membresías', icon: Crown },
+    { href: '/promociones', label: 'Promociones', icon: Tag },
     { href: '/reportes', label: (t as any)('reports') ?? 'Reportes', icon: BarChart3 },
   ]
 

@@ -39,13 +39,17 @@ export default async function ClientDetailPage(props: { params: Promise<{ id: st
     ? (telegramInfo as { ok: true; result?: { username: string } }).result?.username ?? null
     : null
 
-  const { data: appointments } = await supabase
-    .from('appointments')
-    .select('id, starts_at, ends_at, status, price, services(name), employees(name)')
-    .eq('client_id', client.id)
-    .eq('business_id', business.id)
-    .order('starts_at', { ascending: false })
-    .limit(20)
+  const [{ data: appointments }, { data: loyalty }, { data: memberships }] = await Promise.all([
+    supabase
+      .from('appointments')
+      .select('id, starts_at, ends_at, status, price, services(name), employees(name)')
+      .eq('client_id', client.id)
+      .eq('business_id', business.id)
+      .order('starts_at', { ascending: false })
+      .limit(20),
+    supabase.from('loyalty_accounts').select('points').eq('client_id', client.id).maybeSingle(),
+    supabase.from('client_memberships').select('id, remaining, expires_at, status, memberships(name)').eq('client_id', client.id).eq('business_id', business.id).order('expires_at', { ascending: true }).limit(10),
+  ])
 
   return (
     <>
@@ -66,6 +70,8 @@ export default async function ClientDetailPage(props: { params: Promise<{ id: st
         telegramBotUsername={telegramBotUsername}
         preferredBarber={preferredBarber as unknown as { id: string; name: string } | null}
         location={location as unknown as { id: string; name: string } | null}
+        loyaltyPoints={(loyalty as { points: number } | null)?.points ?? 0}
+        memberships={(memberships as unknown as { id: string; remaining: number; expires_at: string; status: string; memberships: { name: string } | null }[] | null) ?? []}
       />
     </>
   )

@@ -22,6 +22,9 @@ export const ROLE_PERMISSIONS: Record<CanonicalRole, Record<string, boolean>> = 
     '/barberos': true,
     '/servicios': true,
     '/reportes': true,
+    '/membresias': true,
+    '/promociones': true,
+    '/combos': true,
   },
   admin: {
     '/dashboard': true,
@@ -34,6 +37,9 @@ export const ROLE_PERMISSIONS: Record<CanonicalRole, Record<string, boolean>> = 
     '/barberos': true,
     '/servicios': true,
     '/reportes': true,
+    '/membresias': true,
+    '/promociones': true,
+    '/combos': true,
   },
   staff: {
     '/dashboard': true,
@@ -46,6 +52,9 @@ export const ROLE_PERMISSIONS: Record<CanonicalRole, Record<string, boolean>> = 
     '/barberos': true,
     '/servicios': true,
     '/reportes': false,
+    '/membresias': false,
+    '/promociones': false,
+    '/combos': false,
   },
   barbero: {
     '/dashboard': true,
@@ -58,6 +67,9 @@ export const ROLE_PERMISSIONS: Record<CanonicalRole, Record<string, boolean>> = 
     '/barberos': false,
     '/servicios': false,
     '/reportes': false,
+    '/membresias': false,
+    '/promociones': false,
+    '/combos': false,
   },
 }
 

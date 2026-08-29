@@ -33,6 +33,11 @@ const BookingSchema = z.object({
   name:       z.string().min(1).max(100),
   phone:      z.string().max(30).optional().nullable(),
   email:      z.string().email().optional().nullable().or(z.literal('')),
+  // US5 loyalty extensions (validated via libs, stack guard enforced)
+  membership_id: z.string().uuid().optional().nullable(),
+  promo_code: z.string().max(50).optional().nullable(),
+  loyalty_redeem_points: z.coerce.number().int().min(0).max(1_000_000).optional().nullable(),
+  location_id: z.string().uuid().optional().nullable(),
 })
 
 export async function POST(req: NextRequest) {
@@ -58,8 +63,14 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const { businessId, serviceId, employeeId, date, time, phone, email } = parsed.data
+  const { businessId, serviceId, employeeId, date, time, phone, email, membership_id, promo_code, loyalty_redeem_points } = parsed.data
   const name = sanitize(parsed.data.name)
+
+  // US5 stack guard: only one promo/membership/loyalty discount at a time
+  const discountCount = [membership_id, promo_code, loyalty_redeem_points ? String(loyalty_redeem_points) : null].filter(Boolean).length
+  if (discountCount > 1) {
+    return NextResponse.json({ error: 'promo_stack_guard', message: 'Solo un beneficio por reserva (membresía, promo o puntos)' }, { status: 409 })
+  }
 
   if (!phone && !email) {
     return NextResponse.json(
@@ -285,6 +296,60 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // --- US5 loyalty validation (membership / promo / points) ---
+  // Note: booking is net price; if membership valid we will consume one use after appointment insert (advisory lock via lib)
+  // For promo/loyalty we validate eligibility but apply discount at POS stage; booking just validates not to block slot
+  if (clientId && membership_id) {
+    try {
+      const { isEligible } = await import('@/lib/memberships')
+      const { data: cm } = await supabase.from('client_memberships').select('remaining, expires_at, status').eq('id', membership_id).eq('client_id', clientId).eq('business_id', businessId).maybeSingle()
+      if (!cm) return NextResponse.json({ error: 'membership_not_found' }, { status: 404 })
+      if (!isEligible(cm as { remaining: number; expires_at: string; status: string })) {
+        const r = (cm as { remaining: number }).remaining <= 0 ? 'no_uses_left' : 'membership_expired'
+        return NextResponse.json({ error: r, message: r === 'no_uses_left' ? 'Membresía sin usos' : 'Membresía expirada' }, { status: 409 })
+      }
+    } catch (e) {
+      console.error('[api/book] membership check error', e)
+      return NextResponse.json({ error: 'membership_check_failed' }, { status: 500 })
+    }
+  }
+  if (promo_code && clientId) {
+    try {
+      const { evaluatePromotion } = await import('@/lib/promotions')
+      const { data: promo } = await supabase.from('promotions').select('id, type, value, promo_code, valid_from, valid_to, rules, is_active, business_id, location_id').eq('business_id', businessId).eq('promo_code', promo_code.toUpperCase()).maybeSingle()
+      if (!promo) return NextResponse.json({ error: 'promo_not_found' }, { status: 404 })
+      // Fetch client for segment
+      const { data: c } = await supabase.from('clients').select('birthday, tags, last_visit_at, total_visits').eq('id', clientId).maybeSingle()
+      const evalRes = evaluatePromotion(
+        promo as unknown as Parameters<typeof evaluatePromotion>[0],
+        {
+          date,
+          serviceIds: [serviceId],
+          client: c as unknown as Parameters<typeof evaluatePromotion>[1]['client'],
+          amount: Number(service.price),
+          now: new Date(),
+          promoCode: promo_code,
+        }
+      )
+      if (!evalRes.eligible) return NextResponse.json({ error: 'promo_not_eligible', reason: evalRes.reason }, { status: 409 })
+    } catch (e) {
+      console.error('[api/book] promo check error', e)
+      return NextResponse.json({ error: 'promo_check_failed' }, { status: 500 })
+    }
+  }
+  if (loyalty_redeem_points && loyalty_redeem_points > 0 && clientId) {
+    try {
+      const { getBalance, canRedeem } = await import('@/lib/loyalty')
+      const bal = await getBalance(supabase as unknown as Parameters<typeof getBalance>[0], clientId)
+      if (!canRedeem(bal, Number(loyalty_redeem_points))) return NextResponse.json({ error: 'insufficient_points', balance: bal }, { status: 409 })
+    } catch (e) {
+      const err = e as Error & { code?: string }
+      if (String(err.message).includes('insufficient')) return NextResponse.json({ error: 'insufficient_points' }, { status: 409 })
+      console.error('[api/book] loyalty check error', e)
+      return NextResponse.json({ error: 'loyalty_check_failed' }, { status: 500 })
+    }
+  }
+
   // Create appointment — parse wall-clock time in the business timezone
   const startsAt = parseDateTimeInTz(date, time, timezone)
   const endsAt   = new Date(startsAt.getTime() + service.duration_min * 60_000)
@@ -378,6 +443,21 @@ export async function POST(req: NextRequest) {
 
     console.error('[api/book] insert error:', apptErr?.message)
     return NextResponse.json({ error: 'booking_failed' }, { status: 500 })
+  }
+
+  // US5: consume membership if used (booking descuenta remaining)
+  if (clientId && membership_id && appt) {
+    try {
+      const { consumeMembership } = await import('@/lib/memberships')
+      await consumeMembership(supabase as unknown as Parameters<typeof consumeMembership>[0], membership_id)
+    } catch (e) {
+      const err = e as Error & { code?: string }
+      await supabase.from('appointments').delete().eq('id', appt.id)
+      if (err.code === 'no_uses_left') return NextResponse.json({ error: 'no_uses_left', message: 'Membresía sin usos restantes' }, { status: 409 })
+      if (err.code === 'membership_expired') return NextResponse.json({ error: 'membership_expired', message: 'Membresía expirada' }, { status: 409 })
+      console.error('[api/book] membership consume failed', e)
+      return NextResponse.json({ error: 'membership_consume_failed', message: err.message }, { status: 409 })
+    }
   }
 
   // Trigger notifications (fire-and-forget — non-blocking)

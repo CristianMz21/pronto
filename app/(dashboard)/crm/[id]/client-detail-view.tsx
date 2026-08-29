@@ -50,6 +50,8 @@ interface Props {
   telegramBotUsername: string | null
   preferredBarber?: { id: string; name: string } | null
   location?: { id: string; name: string } | null
+  loyaltyPoints?: number
+  memberships?: { id: string; remaining: number; expires_at: string; status: string; memberships: { name: string } | null }[]
 }
 
 const statusColors: Record<string, string> = {
@@ -76,7 +78,7 @@ function validateBirthday(birthday: string): string | null {
   return null
 }
 
-export function ClientDetailView({ client: initial, appointments, currency, timezone, businessId, telegramBotUsername, preferredBarber, location }: Props) {
+export function ClientDetailView({ client: initial, appointments, currency, timezone, businessId, telegramBotUsername, preferredBarber, location, loyaltyPoints = 0, memberships = [] }: Props) {
   const supabase = createClient()
   const router = useRouter()
   const t = useTranslations('clientDetail')
@@ -163,6 +165,18 @@ export function ClientDetailView({ client: initial, appointments, currency, time
           </Card>
         ))}
       </div>
+
+      {/* US5 loyalty/membership chips */}
+      {(loyaltyPoints > 0 || memberships.length > 0) && (
+        <div className="flex flex-wrap gap-2">
+          {loyaltyPoints > 0 && <Badge variant="outline" className="bg-amber-50 text-amber-800 border-amber-200">⭐ {loyaltyPoints} pts · {formatCurrency(loyaltyPoints * 100, currency)} </Badge>}
+          {memberships.map((m) => (
+            <Badge key={m.id} variant="outline" className={m.status === 'active' && m.remaining >0 && new Date(m.expires_at) > new Date() ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-100 text-gray-500'}>
+              👑 {m.memberships?.name ?? m.id.slice(0,8)} · {m.remaining} usos · vence {new Date(m.expires_at).toLocaleDateString('es-CO')}
+            </Badge>
+          ))}
+        </div>
+      )}
 
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Client info card */}
