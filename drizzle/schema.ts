@@ -6,7 +6,7 @@ export const receiptSeq = pgSequence("receipt_seq", {  startWith: "1000", increm
 
 export const users = pgTable("users", {
 	id: uuid().primaryKey().notNull(),
-}, (table) => [])
+}, (_table) => [])
 
 export const employeeUnavailability = pgTable("employee_unavailability", {
 	id: uuid().default(sql`uuid_generate_v4()`).primaryKey().notNull(),

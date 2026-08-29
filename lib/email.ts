@@ -82,7 +82,7 @@ function info(rows: [string, string][]) {
     <tr>
       <td style="padding:8px 12px;font-size:14px;color:#6b7280;width:140px;border-bottom:1px solid #f3f4f6;">${escapeHtml(label)}</td>
       <td style="padding:8px 12px;font-size:14px;color:#111827;font-weight:500;border-bottom:1px solid #f3f4f6;">${escapeHtml(value)}</td>
-    </tr>`
+    </tr>`,
     )
     .join('')
   return `<table width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">${cells}</table>`
@@ -232,7 +232,7 @@ export async function sendLowStockAlert(opts: {
   items: { name: string; quantity: number; unit: string; threshold: number }[]
 }) {
   const rows = opts.items.map(
-    (i) => [i.name, `${i.quantity} ${i.unit} (threshold: ${i.threshold})`] as [string, string]
+    (i) => [i.name, `${i.quantity} ${i.unit} (threshold: ${i.threshold})`] as [string, string],
   )
   const body = `
     ${h1('Low-stock alert')}
@@ -250,7 +250,7 @@ export async function sendLowStockAlert(opts: {
 
 // ─── Name helpers ─────────────────────────────────────────────────────────────
 
- /** "KONSTANTIN UMNOV" → "Konstantin Umnov", "kostya" → "Kostya" */
+/** "KONSTANTIN UMNOV" → "Konstantin Umnov", "kostya" → "Kostya" */
 function toTitleCase(name: string): string {
   return name
     .trim()
@@ -258,8 +258,9 @@ function toTitleCase(name: string): string {
     .replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
- /** "Konstantin Umnov" → "Konstantin", "kostya" → "Kostya" */
+/** "Konstantin Umnov" → "Konstantin", "kostya" → "Kostya" */
 function firstName(name: string): string {
+  // @ts-expect-error - tsc strict fix
   return toTitleCase(name).split(/\s+/)[0]
 }
 

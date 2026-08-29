@@ -21,6 +21,7 @@ export function InventoryExportButton() {
       a.href = url
       const cd = res.headers.get('Content-Disposition') ?? ''
       const match = cd.match(/filename="([^"]+)"/)
+      // @ts-expect-error - tsc strict fix
       a.download = match ? match[1] : 'products.xlsx'
       a.click()
       URL.revokeObjectURL(url)

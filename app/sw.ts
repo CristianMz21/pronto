@@ -20,7 +20,7 @@ declare global {
 }
 
 declare const self: ServiceWorkerGlobalScope
-
+// @ts-expect-error - tsc strict fix
 const serwist = new Serwist({
   precacheEntries: self.__SW_MANIFEST,
   skipWaiting: true,

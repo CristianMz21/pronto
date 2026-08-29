@@ -157,7 +157,6 @@ describe('offline-db strict 100%', () => {
   it('getCachedData handles openDB error', async () => {
     // Force error by making indexedDB.open throw
     const origOpen = globalThis.indexedDB.open
-    // @ts-ignore
     globalThis.indexedDB.open = () => {
       throw new Error('open fail')
     }

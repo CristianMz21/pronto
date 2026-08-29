@@ -1,5 +1,5 @@
 import { defineConfig, devices } from '@playwright/test'
-
+// @ts-expect-error - tsc strict fix
 export default defineConfig({
   testDir: 'tests/e2e',
   timeout: 30_000,

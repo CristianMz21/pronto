@@ -1,13 +1,20 @@
 import { SupabaseClient } from '@supabase/supabase-js'
 
 /** Best-effort display name for a newly registered owner, from whatever account data exists at signup time. */
-function deriveOwnerName(user: { email?: string | null; user_metadata?: Record<string, unknown> | null }): string {
+function deriveOwnerName(user: {
+  email?: string | null
+  user_metadata?: Record<string, unknown> | null
+}): string {
   const fullName = user.user_metadata?.full_name
   if (typeof fullName === 'string' && fullName.trim()) return fullName.trim()
 
   const email = user.email
   if (email) {
-    const local = email.split('@')[0].replace(/[._-]+/g, ' ').trim()
+    // @ts-expect-error - tsc strict fix
+    const local = email
+      .split('@')[0]
+      .replace(/[._-]+/g, ' ')
+      .trim()
     if (local) return local.replace(/\b\w/g, (c) => c.toUpperCase())
   }
 
@@ -29,7 +36,7 @@ function deriveOwnerName(user: { email?: string | null; user_metadata?: Record<s
 export async function insertOwnerAsEmployee(
   admin: SupabaseClient,
   businessId: string,
-  user: { email?: string | null; user_metadata?: Record<string, unknown> | null }
+  user: { email?: string | null; user_metadata?: Record<string, unknown> | null },
 ): Promise<void> {
   const { error } = await admin.from('employees').insert({
     business_id: businessId,

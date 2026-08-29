@@ -34,6 +34,56 @@ import { rateLimit, getIp } from '@/lib/rate-limit'
 import { createClient as createAuthClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 
+type ServiceRow = {
+  id: string
+  durationMin: number
+  price: string | number
+  locationId: string | null
+} | null
+type BusinessRow = {
+  timezone: string
+  minAdvanceMinutes: number | null
+  bookingLeadTimeEnabled: boolean | null
+  allowGuestBookings: boolean | null
+} | null
+type BusinessHoursRow = {
+  id: string
+  businessId: string
+  locationId: string | null
+  dayOfWeek: number
+  isOpen: boolean
+  openTime: string
+  closeTime: string
+  breakStart: string | null
+  breakEnd: string | null
+}
+type HolidayRow = {
+  id: string
+  businessId: string
+  locationId: string | null
+  date: string
+  reason: string | null
+  isOpen: boolean
+}
+type ClientRow = {
+  id: string
+  name: string
+  phone: string | null
+  email: string | null
+  telegramId: string | null
+  viberUserId: string | null
+  userId: string | null
+}
+type ClientCandidate = {
+  id: string
+  name: string
+  phone: string | null
+  email: string | null
+  telegramId: string | null
+  viberUserId: string | null
+  userId: string | null
+}
+
 function sanitize(s: string): string {
   return DOMPurify.sanitize(s, { ALLOWED_TAGS: [] }).trim()
 }
@@ -120,7 +170,7 @@ export async function POST(req: NextRequest) {
 
   // Drizzle: verify service and business (portable, no Supabase vendor lock) — fallback to Supabase for legacy test mocks
   const supabaseFallback = createServiceClient()
-  const [service, biz]: [unknown, unknown] = await Promise.all([
+  const [serviceRaw, bizRaw]: [unknown, unknown] = await Promise.all([
     tryDrizzle(
       () =>
         db.query.services.findFirst({
@@ -139,7 +189,7 @@ export async function POST(req: NextRequest) {
           .eq('business_id', businessId)
           .eq('is_active', true)
           .maybeSingle()
-        if (!data) return null as unknown as typeof service
+        if (!data) return null as unknown as ServiceRow
         const d = data as unknown as {
           id: string
           duration_min: number
@@ -149,9 +199,9 @@ export async function POST(req: NextRequest) {
         return {
           id: d.id,
           durationMin: d.duration_min,
-          price: d.price as unknown as string,
+          price: d.price as string,
           locationId: d.location_id,
-        } as unknown as typeof service
+        } as ServiceRow
       },
     ),
     tryDrizzle(
@@ -171,7 +221,7 @@ export async function POST(req: NextRequest) {
           .select('timezone, min_advance_minutes, booking_lead_time_enabled, allow_guest_bookings')
           .eq('id', businessId)
           .maybeSingle()
-        if (!data) return null as unknown as typeof biz
+        if (!data) return null as unknown as BusinessRow
         const d = data as unknown as {
           timezone: string
           min_advance_minutes: number | null
@@ -183,30 +233,29 @@ export async function POST(req: NextRequest) {
           minAdvanceMinutes: d.min_advance_minutes,
           bookingLeadTimeEnabled: d.booking_lead_time_enabled,
           allowGuestBookings: d.allow_guest_bookings,
-        } as unknown as typeof biz
+        } as BusinessRow
       },
     ),
   ])
+  const service = serviceRaw as ServiceRow
+  const biz = bizRaw as BusinessRow
 
   if (!service) {
     return NextResponse.json({ error: 'service_not_found' }, { status: 404 })
   }
 
-  const timezone = biz?.timezone ?? 'UTC'
-  const minAdvance =
-    (biz as { minAdvanceMinutes?: number | null } | null)?.minAdvanceMinutes ?? DEFAULT_LEAD_MINUTES
-  const leadEnabled =
-    (biz as { bookingLeadTimeEnabled?: boolean | null } | null)?.bookingLeadTimeEnabled ?? true
-  const allowGuest =
-    (biz as { allowGuestBookings?: boolean | null } | null)?.allowGuestBookings ?? true
+  const timezone = (biz as BusinessRow)?.timezone ?? 'UTC'
+  const minAdvance = (biz as BusinessRow)?.minAdvanceMinutes ?? DEFAULT_LEAD_MINUTES
+  const leadEnabled = (biz as BusinessRow)?.bookingLeadTimeEnabled ?? true
+  const allowGuest = (biz as BusinessRow)?.allowGuestBookings ?? true
 
-  let authUser: { id: string; email?: string | null } | null = null
+  let authUser: { id: string; email: string | null } | null = null
   try {
     const authClient = await createAuthClient()
     const {
       data: { user },
     } = await authClient.auth.getUser()
-    if (user) authUser = { id: user.id, email: user.email }
+    if (user) authUser = { id: user.id, email: user.email ?? null }
   } catch {}
 
   if (!allowGuest && !authUser) {
@@ -217,7 +266,7 @@ export async function POST(req: NextRequest) {
   }
 
   if (location_id) {
-    const loc: unknown = await tryDrizzle(
+    const loc = (await tryDrizzle(
       () =>
         db.query.locations.findFirst({
           where: and(eq(locations.id, location_id), eq(locations.businessId, businessId)),
@@ -230,9 +279,9 @@ export async function POST(req: NextRequest) {
           .eq('id', location_id)
           .eq('business_id', businessId)
           .maybeSingle()
-        return data as unknown as typeof loc
+        return data as unknown as { id: string } | null
       },
-    )
+    )) as { id: string } | null
     if (!loc) {
       return NextResponse.json(
         { error: 'location_not_found', message: 'Sucursal no encontrada en este negocio' },
@@ -240,8 +289,8 @@ export async function POST(req: NextRequest) {
       )
     }
     if (
-      (service as { locationId: string | null }).locationId &&
-      (service as { locationId: string | null }).locationId !== location_id
+      (service as ServiceRow)?.locationId &&
+      (service as ServiceRow)!.locationId !== location_id
     ) {
       return NextResponse.json(
         { error: 'service_location_mismatch', message: 'Servicio no disponible en esta sucursal' },
@@ -249,7 +298,7 @@ export async function POST(req: NextRequest) {
       )
     }
     if (employeeId) {
-      const empLoc: unknown = await tryDrizzle(
+      const empLoc = (await tryDrizzle(
         () =>
           db.query.employees.findFirst({
             where: and(eq(employees.id, employeeId), eq(employees.businessId, businessId)),
@@ -262,14 +311,14 @@ export async function POST(req: NextRequest) {
             .eq('id', employeeId)
             .eq('business_id', businessId)
             .maybeSingle()
-          if (!data) return null as unknown as typeof empLoc
+          if (!data) return null as unknown as { locationId: string | null } | null
           const d = data as unknown as { location_id: string | null }
-          return { locationId: d.location_id } as unknown as typeof empLoc
+          return { locationId: d.location_id } as unknown as { locationId: string | null } | null
         },
-      )
+      )) as { locationId: string | null } | null
       if (
         (empLoc as { locationId: string | null } | null)?.locationId &&
-        (empLoc as { locationId: string | null }).locationId !== location_id
+        (empLoc as { locationId: string | null } | null)!.locationId !== location_id
       ) {
         return NextResponse.json(
           {
@@ -282,7 +331,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const businessHoursRows: unknown = await tryDrizzle(
+  const businessHoursRows = (await tryDrizzle(
     () =>
       db.query.businessHours.findMany({
         where: eq(businessHours.businessId, businessId),
@@ -292,7 +341,7 @@ export async function POST(req: NextRequest) {
         .from('business_hours')
         .select('day_of_week, is_open, open_time, close_time, break_start, break_end')
         .eq('business_id', businessId)
-      if (!data) return [] as unknown as typeof businessHoursRows
+      if (!data) return [] as unknown as BusinessHoursRow[]
       return (
         data as unknown as Array<{
           day_of_week: number
@@ -302,18 +351,30 @@ export async function POST(req: NextRequest) {
           break_start: string | null
           break_end: string | null
         }>
-      ).map((h: unknown) => ({
-        dayOfWeek: h.day_of_week,
-        isOpen: h.is_open,
-        openTime: h.open_time,
-        closeTime: h.close_time,
-        breakStart: h.break_start,
-        breakEnd: h.break_end,
-      })) as unknown as typeof businessHoursRows
+      ).map(
+        (h: {
+          day_of_week: number
+          is_open: boolean
+          open_time: string
+          close_time: string
+          break_start: string | null
+          break_end: string | null
+        }) => ({
+          id: '',
+          businessId,
+          locationId: null,
+          dayOfWeek: h.day_of_week,
+          isOpen: h.is_open,
+          openTime: h.open_time,
+          closeTime: h.close_time,
+          breakStart: h.break_start,
+          breakEnd: h.break_end,
+        }),
+      ) as unknown as BusinessHoursRow[]
     },
-  )
+  )) as BusinessHoursRow[]
   const effectiveHours = computeEffectiveHours(
-    businessHoursRows.map((h: unknown) => ({
+    businessHoursRows.map((h) => ({
       day_of_week: h.dayOfWeek,
       is_open: h.isOpen,
       open_time: h.openTime,
@@ -323,10 +384,10 @@ export async function POST(req: NextRequest) {
     })),
   )
   const dow = dayOfWeekFromDateString(date)
-  const dayHours = effectiveHours.find((h: unknown) => h.day_of_week === dow)
+  const dayHours = effectiveHours.find((h) => h.day_of_week === dow)
 
   // Holiday check via Drizzle (with Supabase fallback for tests)
-  const holidayRows: unknown = await tryDrizzle(
+  const holidayRows = (await tryDrizzle(
     () =>
       db.query.holidays.findMany({
         where: and(
@@ -349,14 +410,13 @@ export async function POST(req: NextRequest) {
             unknown
           >
           if (sel && typeof (sel as Record<string, unknown>).eq === 'function') {
-            const withEq = (sel as Record<string, (...a: unknown[]) => unknown>).eq(
+            const withEq = (sel as Record<string, (...a: unknown[]) => unknown>).eq?.(
               'business_id',
               businessId,
-            ) as unknown as Record<string, unknown>
-            const withEq2 = (withEq as Record<string, (...a: unknown[]) => unknown>).eq?.(
-              'date',
-              date,
-            ) as unknown as Promise<{ data: unknown }>
+            ) as unknown as Record<string, unknown> | undefined
+            const withEq2 = (
+              withEq as Record<string, (...a: unknown[]) => unknown> | undefined
+            )?.eq?.('date', date) as unknown as Promise<{ data: unknown }> | undefined
             if (withEq2 && typeof withEq2.then === 'function') res = await withEq2
             else if (withEq && typeof (withEq as unknown as Promise<unknown>).then === 'function')
               res = await (withEq as unknown as Promise<{ data: unknown }>)
@@ -371,36 +431,39 @@ export async function POST(req: NextRequest) {
           res = r
         }
         const data = (res as { data: unknown })?.data
-        if (!data || !Array.isArray(data)) return [] as unknown as typeof holidayRows
+        if (!data || !Array.isArray(data)) return [] as unknown as HolidayRow[]
         return (data as Array<{ date: string; is_open: boolean; location_id: string | null }>).map(
-          (h: unknown) => ({
-            date: h.date as unknown as string,
-            isOpen: h.is_open,
+          (h) => ({
+            id: '',
+            businessId,
             locationId: h.location_id,
+            date: h.date,
+            reason: null,
+            isOpen: h.is_open,
           }),
-        ) as unknown as typeof holidayRows
+        ) as unknown as HolidayRow[]
       } catch {
-        return [] as unknown as typeof holidayRows
+        return [] as unknown as HolidayRow[]
       }
     },
-  )
-  const holidaysMapped = holidayRows.map((h: unknown) => ({
-    date: typeof h.date === 'string' ? (h.date as string).slice(0, 10) : String(h.date),
-    is_open: h.isOpen as boolean,
-    location_id: h.locationId as string | null,
+  )) as HolidayRow[]
+  const holidaysMapped = holidayRows.map((h) => ({
+    date: typeof h.date === 'string' ? h.date.slice(0, 10) : String(h.date),
+    is_open: h.isOpen,
+    location_id: h.locationId,
   }))
 
   const { checkSlotWithHolidays } = await import('@/lib/booking-availability')
   const slotCheck = checkSlotWithHolidays(
     dayHours,
     time,
-    service.durationMin,
+    (service as ServiceRow)!.durationMin,
     date,
     holidaysMapped as unknown as import('@/lib/booking-availability').HolidayCheck[],
   )
 
   const locationHoliday = holidaysMapped.some(
-    (h: unknown) =>
+    (h) =>
       h.date === date &&
       h.is_open === false &&
       (!h.location_id || !location_id || h.location_id === location_id),
@@ -439,7 +502,7 @@ export async function POST(req: NextRequest) {
   let hasViber = false
   if (phone || email) {
     if (authUser) {
-      const linked: unknown = await tryDrizzle(
+      const linked = (await tryDrizzle(
         () =>
           db.query.clients.findFirst({
             where: and(eq(clients.businessId, businessId), eq(clients.userId, authUser.id)),
@@ -452,7 +515,7 @@ export async function POST(req: NextRequest) {
             .eq('user_id', authUser.id)
             .limit(1)
             .maybeSingle()
-          if (!data) return null as unknown as typeof linked
+          if (!data) return null as unknown as ClientRow | null
           const d = data as unknown as {
             id: string
             name: string
@@ -468,35 +531,41 @@ export async function POST(req: NextRequest) {
             telegramId: d.telegram_id,
             viberUserId: d.viber_user_id,
             userId: d.user_id,
-          } as unknown as typeof linked
+          } as unknown as ClientRow | null
         },
-      )
+      )) as ClientRow | null
       if (linked) {
-        clientId = linked.id
-        hasTelegram = !!linked.telegramId
-        hasViber = !!linked.viberUserId
+        clientId = (linked as ClientRow).id
+        hasTelegram = !!(linked as ClientRow).telegramId
+        hasViber = !!(linked as ClientRow).viberUserId
         const updates: Record<string, unknown> = {}
-        if (name && name !== linked.name) (updates as Record<string, string>).name = name
-        if (phone && phone !== linked.phone) (updates as Record<string, string>).phone = phone
-        if (email && email !== linked.email) (updates as Record<string, string>).email = email
+        if (name && name !== (linked as ClientRow).name)
+          (updates as Record<string, string>).name = name
+        if (phone && phone !== (linked as ClientRow).phone)
+          (updates as Record<string, string>).phone = phone
+        if (email && email !== (linked as ClientRow).email)
+          (updates as Record<string, string>).email = email
         if (Object.keys(updates).length > 0) {
           await tryDrizzle(
-            () =>
+            (() =>
               db
                 .update(clients)
-                .set(updates as unknown)
-                .where(eq(clients.id, linked.id)),
+                .set(updates as unknown as never)
+                .where(
+                  eq(clients.id, (linked as ClientRow).id),
+                )) as unknown as () => Promise<unknown>,
             async (): Promise<unknown> => {
               await supabaseFallback
                 .from('clients')
-                .update(updates as unknown)
-                .eq('id', linked.id)
+                .update(updates as unknown as never)
+                .eq('id', (linked as ClientRow).id)
+              return null
             },
           )
         }
       } else {
         // Try to claim by phone/email if guest record exists — portable via Drizzle or filter in-memory
-        const candidates: unknown = await tryDrizzle(
+        const candidates = (await tryDrizzle(
           () =>
             db.query.clients.findMany({
               where: eq(clients.businessId, businessId),
@@ -527,14 +596,14 @@ export async function POST(req: NextRequest) {
                   const r = await lim
                   if (r && 'data' in r && Array.isArray(r.data)) {
                     return (r.data as Array<Record<string, unknown>>).map((d) => ({
-                      id: d.id,
-                      name: d.name,
-                      email: d.email,
-                      telegramId: d.telegram_id,
-                      viberUserId: d.viber_user_id,
-                      userId: d.user_id,
-                      phone: d.phone,
-                    })) as unknown as typeof candidates
+                      id: d.id as string,
+                      name: d.name as string,
+                      email: d.email as string | null,
+                      telegramId: d.telegram_id as string | null,
+                      viberUserId: d.viber_user_id as string | null,
+                      userId: d.user_id as string | null,
+                      phone: d.phone as string | null,
+                    })) as unknown as ClientCandidate[]
                   }
                 }
               }
@@ -546,37 +615,37 @@ export async function POST(req: NextRequest) {
                 const r2 = await lim2
                 if (r2 && 'data' in r2 && Array.isArray(r2.data)) {
                   return (r2.data as Array<Record<string, unknown>>).map((d) => ({
-                    id: d.id,
-                    name: d.name,
-                    email: d.email,
-                    telegramId: d.telegram_id,
-                    viberUserId: d.viber_user_id,
-                    userId: d.user_id,
-                    phone: d.phone,
-                  })) as unknown as typeof candidates
+                    id: d.id as string,
+                    name: d.name as string,
+                    email: d.email as string | null,
+                    telegramId: d.telegram_id as string | null,
+                    viberUserId: d.viber_user_id as string | null,
+                    userId: d.user_id as string | null,
+                    phone: d.phone as string | null,
+                  })) as unknown as ClientCandidate[]
                 }
               }
             } catch {}
-            return [] as unknown as typeof candidates
+            return [] as unknown as ClientCandidate[]
           },
-        )
+        )) as ClientCandidate[]
         const claimCandidate =
-          candidates.find(
-            (c: unknown) => (phone && c.phone === phone) || (email && c.email === email),
-          ) ?? null
+          candidates.find((c) => (phone && c.phone === phone) || (email && c.email === email)) ??
+          null
 
         if (claimCandidate && claimCandidate.userId === null) {
           await tryDrizzle(
-            () =>
+            (() =>
               db
                 .update(clients)
                 .set({ userId: authUser.id, name: name || claimCandidate.name })
-                .where(eq(clients.id, claimCandidate.id)),
+                .where(eq(clients.id, claimCandidate.id))) as unknown as () => Promise<unknown>,
             async (): Promise<unknown> => {
               await supabaseFallback
                 .from('clients')
                 .update({ user_id: authUser.id, name: name || claimCandidate.name })
                 .eq('id', claimCandidate.id)
+              return null
             },
           )
           clientId = claimCandidate.id
@@ -584,7 +653,7 @@ export async function POST(req: NextRequest) {
           hasViber = !!claimCandidate.viberUserId
         } else if (claimCandidate && claimCandidate.userId !== null) {
           try {
-            const [newClient] = await tryDrizzle(
+            const [newClient] = (await tryDrizzle(
               () =>
                 db
                   .insert(clients)
@@ -596,7 +665,7 @@ export async function POST(req: NextRequest) {
                     userId: authUser.id,
                   })
                   .returning({ id: clients.id }),
-              async (): Promise<unknown> => {
+              async (): Promise<Array<{ id: string }>> => {
                 const { data } = await supabaseFallback
                   .from('clients')
                   .insert({
@@ -608,15 +677,15 @@ export async function POST(req: NextRequest) {
                   })
                   .select('id')
                   .single()
-                return [{ id: (data as unknown as { id: string }).id }] as unknown as Array<{
+                return [{ id: (data as unknown as { id: string }).id }] as Array<{
                   id: string
                 }>
               },
-            )
-            clientId = newClient.id
+            )) as Array<{ id: string }>
+            clientId = newClient!.id
           } catch (_e) {
             // console.error('[api/book] client claim insert error:', (e as Error).message)
-            const fallback: unknown = await tryDrizzle(
+            const fallback = (await tryDrizzle(
               () =>
                 db.query.clients.findFirst({
                   where: and(eq(clients.businessId, businessId), eq(clients.userId, authUser.id)),
@@ -629,7 +698,7 @@ export async function POST(req: NextRequest) {
                   .eq('user_id', authUser.id)
                   .limit(1)
                   .maybeSingle()
-                if (!data) return null as unknown as typeof fallback
+                if (!data) return null as unknown as ClientRow | null
                 const d = data as unknown as {
                   id: string
                   telegram_id: string | null
@@ -637,22 +706,26 @@ export async function POST(req: NextRequest) {
                 }
                 return {
                   id: d.id,
+                  name: '',
+                  phone: null,
+                  email: null,
                   telegramId: d.telegram_id,
                   viberUserId: d.viber_user_id,
-                } as unknown as typeof fallback
+                  userId: authUser.id,
+                } as unknown as ClientRow | null
               },
-            )
+            )) as ClientRow | null
             if (fallback) {
-              clientId = fallback.id
-              hasTelegram = !!fallback.telegramId
-              hasViber = !!fallback.viberUserId
+              clientId = (fallback as ClientRow).id
+              hasTelegram = !!(fallback as ClientRow).telegramId
+              hasViber = !!(fallback as ClientRow).viberUserId
             } else {
               return NextResponse.json({ error: 'client_creation_failed' }, { status: 500 })
             }
           }
         } else {
           try {
-            const [newClient] = await tryDrizzle(
+            const [newClient] = (await tryDrizzle(
               () =>
                 db
                   .insert(clients)
@@ -664,7 +737,7 @@ export async function POST(req: NextRequest) {
                     userId: authUser.id,
                   })
                   .returning({ id: clients.id }),
-              async (): Promise<unknown> => {
+              async (): Promise<Array<{ id: string }>> => {
                 const { data } = await supabaseFallback
                   .from('clients')
                   .insert({
@@ -676,12 +749,12 @@ export async function POST(req: NextRequest) {
                   })
                   .select('id')
                   .single()
-                return [{ id: (data as unknown as { id: string }).id }] as unknown as Array<{
+                return [{ id: (data as unknown as { id: string }).id }] as Array<{
                   id: string
                 }>
               },
-            )
-            clientId = newClient.id
+            )) as Array<{ id: string }>
+            clientId = newClient!.id
           } catch (_e) {
             // console.error('[api/book] client insert error:', (e as Error).message)
             return NextResponse.json({ error: 'client_creation_failed' }, { status: 500 })
@@ -689,7 +762,7 @@ export async function POST(req: NextRequest) {
         }
       }
     } else {
-      const candidates = await tryDrizzle(
+      const candidates = (await tryDrizzle(
         () =>
           db.query.clients.findMany({
             where: eq(clients.businessId, businessId),
@@ -719,23 +792,23 @@ export async function POST(req: NextRequest) {
                 const r = await lim
                 if (r && 'data' in r && Array.isArray(r.data)) {
                   return (r.data as Array<Record<string, unknown>>).map((d) => ({
-                    id: d.id,
-                    name: d.name,
-                    email: d.email,
-                    telegramId: d.telegram_id,
-                    viberUserId: d.viber_user_id,
-                    phone: d.phone,
-                  })) as unknown as typeof candidates
+                    id: d.id as string,
+                    name: d.name as string,
+                    email: d.email as string | null,
+                    telegramId: d.telegram_id as string | null,
+                    viberUserId: d.viber_user_id as string | null,
+                    phone: d.phone as string | null,
+                    userId: null,
+                  })) as unknown as ClientCandidate[]
                 }
               }
             }
           } catch {}
-          return [] as unknown as typeof candidates
+          return [] as unknown as ClientCandidate[]
         },
-      )
+      )) as ClientCandidate[]
       const existing =
-        candidates.find((c: unknown) => (phone && c.phone === phone) || (email && c.email === email)) ??
-        null
+        candidates.find((c) => (phone && c.phone === phone) || (email && c.email === email)) ?? null
       if (existing) {
         clientId = existing.id
         hasTelegram = !!existing.telegramId
@@ -745,22 +818,23 @@ export async function POST(req: NextRequest) {
         if (email && email !== existing.email) (updates as Record<string, string>).email = email
         if (Object.keys(updates).length > 0) {
           await tryDrizzle(
-            () =>
+            (() =>
               db
                 .update(clients)
-                .set(updates as unknown)
-                .where(eq(clients.id, existing.id)),
+                .set(updates as unknown as never)
+                .where(eq(clients.id, existing.id))) as unknown as () => Promise<unknown>,
             async (): Promise<unknown> => {
               await supabaseFallback
                 .from('clients')
-                .update(updates as unknown)
+                .update(updates as unknown as never)
                 .eq('id', existing.id)
+              return null
             },
           )
         }
       } else {
         try {
-          const [newClient] = await tryDrizzle(
+          const [newClient] = (await tryDrizzle(
             () =>
               db
                 .insert(clients)
@@ -771,7 +845,7 @@ export async function POST(req: NextRequest) {
                   email: email || null,
                 })
                 .returning({ id: clients.id }),
-            async (): Promise<unknown> => {
+            async (): Promise<Array<{ id: string }>> => {
               const { data } = await supabaseFallback
                 .from('clients')
                 .insert({
@@ -782,12 +856,12 @@ export async function POST(req: NextRequest) {
                 })
                 .select('id')
                 .single()
-              return [{ id: (data as unknown as { id: string }).id }] as unknown as Array<{
+              return [{ id: (data as unknown as { id: string }).id }] as Array<{
                 id: string
               }>
             },
-          )
-          clientId = newClient.id
+          )) as Array<{ id: string }>
+          clientId = newClient!.id
         } catch (_e) {
           // console.error('[api/book] client insert error:', (e as Error).message)
           return NextResponse.json({ error: 'client_creation_failed' }, { status: 500 })
@@ -801,7 +875,7 @@ export async function POST(req: NextRequest) {
   if (clientId && membership_id) {
     try {
       const { isEligible } = await import('@/lib/memberships')
-      const cm: unknown = await tryDrizzle(
+      const cm = (await tryDrizzle(
         () =>
           db.query.clientMemberships.findFirst({
             where: and(
@@ -818,15 +892,13 @@ export async function POST(req: NextRequest) {
             .eq('client_id', clientId)
             .eq('business_id', businessId)
             .maybeSingle()
-          return data as unknown as typeof cm
+          return data as unknown as { remaining: number; expires_at: string; status: string } | null
         },
-      )
+      )) as { remaining: number; expires_at: string; status: string } | null
       if (!cm) return NextResponse.json({ error: 'membership_not_found' }, { status: 404 })
-      if (!isEligible(cm as unknown as { remaining: number; expires_at: string; status: string })) {
+      if (!isEligible(cm as { remaining: number; expires_at: string; status: string })) {
         const r =
-          (cm as unknown as { remaining: number }).remaining <= 0
-            ? 'no_uses_left'
-            : 'membership_expired'
+          (cm as { remaining: number }).remaining <= 0 ? 'no_uses_left' : 'membership_expired'
         return NextResponse.json(
           { error: r, message: r === 'no_uses_left' ? 'Membresía sin usos' : 'Membresía expirada' },
           { status: 409 },
@@ -840,7 +912,7 @@ export async function POST(req: NextRequest) {
   if (promo_code && clientId) {
     try {
       const { evaluatePromotion } = await import('@/lib/promotions')
-      const promo: unknown = await tryDrizzle(
+      const promo = (await tryDrizzle(
         () =>
           db.query.promotions.findFirst({
             where: and(
@@ -857,11 +929,11 @@ export async function POST(req: NextRequest) {
             .eq('business_id', businessId)
             .eq('promo_code', promo_code.toUpperCase())
             .maybeSingle()
-          return data as unknown as typeof promo
+          return data as unknown as Parameters<typeof evaluatePromotion>[0] | null
         },
-      )
+      )) as Parameters<typeof evaluatePromotion>[0] | null
       if (!promo) return NextResponse.json({ error: 'promo_not_found' }, { status: 404 })
-      const c: unknown = await tryDrizzle(
+      const c = (await tryDrizzle(
         () => db.query.clients.findFirst({ where: eq(clients.id, clientId) }),
         async (): Promise<unknown> => {
           const { data } = await supabaseFallback
@@ -869,20 +941,17 @@ export async function POST(req: NextRequest) {
             .select('birthday, tags, last_visit_at, total_visits')
             .eq('id', clientId)
             .maybeSingle()
-          return data as unknown as typeof c
+          return data as unknown as Parameters<typeof evaluatePromotion>[1]['client'] | null
         },
-      )
-      const evalRes = evaluatePromotion(
-        promo as unknown as Parameters<typeof evaluatePromotion>[0],
-        {
-          date,
-          serviceIds: [serviceId],
-          client: c as unknown as Parameters<typeof evaluatePromotion>[1]['client'],
-          amount: Number(service.price),
-          now: new Date(),
-          promoCode: promo_code,
-        },
-      )
+      )) as Parameters<typeof evaluatePromotion>[1]['client'] | null
+      const evalRes = evaluatePromotion(promo as Parameters<typeof evaluatePromotion>[0], {
+        date,
+        serviceIds: [serviceId],
+        client: c ?? null,
+        amount: Number((service as ServiceRow)!.price),
+        now: new Date(),
+        promoCode: promo_code,
+      })
       if (!evalRes.eligible)
         return NextResponse.json(
           { error: 'promo_not_eligible', reason: evalRes.reason },
@@ -912,7 +981,7 @@ export async function POST(req: NextRequest) {
   }
 
   const startsAt = parseDateTimeInTz(date, time, timezone)
-  const endsAt = new Date(startsAt.getTime() + service.durationMin * 60_000)
+  const endsAt = new Date(startsAt.getTime() + (service as ServiceRow)!.durationMin * 60_000)
 
   const now = new Date()
   if (isPastInTz(startsAt, now)) {
@@ -934,7 +1003,7 @@ export async function POST(req: NextRequest) {
   // Create appointment via Drizzle — still triggers DB constraints (slot_already_booked, no_staff_available, etc.) with Supabase fallback for tests
   let apptId: string | null = null
   try {
-    const [appt] = await tryDrizzle(
+    const apptRes = (await tryDrizzle(
       () =>
         db
           .insert(appointments)
@@ -946,7 +1015,7 @@ export async function POST(req: NextRequest) {
             serviceId,
             startsAt: startsAt.toISOString() as unknown as string,
             endsAt: endsAt.toISOString() as unknown as string,
-            price: service.price as unknown as string,
+            price: (service as ServiceRow)!.price as unknown as string,
             status: 'confirmed',
             source: campaign_id ? 'campaign' : ((source as string) ?? 'online'),
             campaignId: campaign_id ?? null,
@@ -963,7 +1032,7 @@ export async function POST(req: NextRequest) {
             service_id: serviceId,
             starts_at: startsAt.toISOString(),
             ends_at: endsAt.toISOString(),
-            price: service.price,
+            price: (service as ServiceRow)!.price,
             status: 'confirmed',
             source: campaign_id ? 'campaign' : ((source as string) ?? 'online'),
             campaign_id: campaign_id ?? null,
@@ -973,8 +1042,9 @@ export async function POST(req: NextRequest) {
         if (error) throw new Error(error.message)
         return [{ id: (data as unknown as { id: string }).id }] as unknown as Array<{ id: string }>
       },
-    )
-    apptId = appt.id
+    )) as Array<{ id: string }>
+    const appt = apptRes[0]
+    apptId = appt!.id
   } catch (e) {
     const msg = (e as Error).message ?? ''
     if (msg.includes('no_staff_available')) {
@@ -1069,9 +1139,13 @@ export async function POST(req: NextRequest) {
     } catch (e) {
       const err = e as Error & { code?: string }
       await tryDrizzle(
-        () => db.delete(appointments).where(eq(appointments.id, apptId)),
+        (() =>
+          db
+            .delete(appointments)
+            .where(eq(appointments.id, apptId!))) as unknown as () => Promise<unknown>,
         async (): Promise<unknown> => {
-          await supabaseFallback.from('appointments').delete().eq('id', apptId)
+          await supabaseFallback.from('appointments').delete().eq('id', apptId!)
+          return null
         },
       )
       if (err.code === 'no_uses_left')
@@ -1116,11 +1190,12 @@ export async function POST(req: NextRequest) {
   })
     .then(async (res) => {
       if (!res.ok) {
-        const _text = await res.text().catch(() => '')
+        const text = await res.text().catch(() => '')
+        void text
         // console.error('[api/book] email/confirm failed:', res.status, text)
       }
     })
-    .catch((_err) => {
+    .catch(() => {
       // console.error('[api/book] email/confirm fetch error:', err)
     })
 

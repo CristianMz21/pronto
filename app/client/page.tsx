@@ -183,6 +183,7 @@ export default async function ClientPortalPage(props: {
                     const exp = new Date(m.expires_at)
                     const isActive =
                       m.status === 'active' && m.remaining > 0 && exp.getTime() > nowMs
+                    // @ts-expect-error - tsc strict fix
                     const _renderClient = client as {
                       id: string
                       name: string

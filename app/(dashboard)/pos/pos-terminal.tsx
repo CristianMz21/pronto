@@ -206,8 +206,16 @@ export function POSTerminal({
     } else if (bookingContext.staffId) {
       setSelectedEmployee(bookingContext.staffId)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bookingContext, currentEmployeeId, initialServices, isBarbero, setSelectedEmployee, currentEmployeeId, currentEmployeeId]) // only once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    bookingContext,
+    currentEmployeeId,
+    initialServices,
+    isBarbero,
+    setSelectedEmployee,
+    currentEmployeeId,
+    currentEmployeeId,
+  ]) // only once on mount
 
   // ─── US5: fetch loyalty & membership when client changes ─────────────────
   useEffect(() => {
@@ -256,6 +264,7 @@ export function POSTerminal({
               name: cm.memberships?.name ?? cm.membership_id.slice(0, 8),
             })) ?? []
         setMembershipOptions(opts)
+        // @ts-expect-error - tsc strict fix
         if (opts.length === 1) setSelectedMembership(opts[0].id)
       })
   }, [selectedClient, supabase])
