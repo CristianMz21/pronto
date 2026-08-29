@@ -221,11 +221,11 @@ description: "Task list for Barbería SaaS Integral — Escudería (006)"
 
 **Purpose**: Cerrar loop "Carlos 42d → WhatsApp → re-reserva → atribuido".
 
-- [ ] T070 [P] [CRM] Migration `066_campaigns.sql` (if not done) + `lib/campaigns.ts` (`createFromSegment`, `send`, `stats`)
-- [ ] T071 [CRM] API `app/api/campaigns/route.ts` + `.../[id]/send` + `.../stats` + `app/api/crm/segments/route.ts` + `lib/whatsapp.ts` template send (Meta Cloud v20) + `notification_log` deduplicate `(client_id, event, 1h)`
-- [ ] T072 [CRM] UI `app/(dashboard)/crm-campaigns/page.tsx` (or `app/(dashboard)/crm/campaigns/page.tsx`) + `components/crm/campaign-builder.tsx` (segment, channel, template, preview, recipients count)
-- [ ] T073 [CRM] Cron `app/api/cron/notify` add `inactive_42` + `birthday_7` send + `campaign_recipients` `rebooked` attribution when `appointments` created with `source=campaign`
-- [ ] T074 [CRM] Settings `app/(dashboard)/settings/whatsapp-section.tsx` verify `meta_whatsapp_phone_number_id/access_token` per `businesses` (033)
+- [x] T070 [P] [CRM] Migration `066_campaigns.sql` (if not done) + `lib/campaigns.ts` (`createFromSegment`, `send`, `stats`) — done via `supabase/migrations/084_campaigns_completeness.sql` idempotent + `lib/campaigns.ts` (filter, createFromSegment, sendCampaign, getCampaignStats, attributeRebooking)
+- [x] T071 [CRM] API `app/api/campaigns/route.ts` + `.../[id]/send` + `.../stats` + `app/api/crm/segments/route.ts` + `lib/whatsapp.ts` template send (Meta Cloud v20) + `notification_log` deduplicate `(client_id, event, 1h)` — APIs with Zod+rateLimit, template sendWhatsAppTemplate + verify, dedup via 1h window
+- [x] T072 [CRM] UI `app/(dashboard)/crm-campaigns/page.tsx` (or `app/(dashboard)/crm/campaigns/page.tsx`) + `components/crm/campaign-builder.tsx` (segment, channel, template, preview, recipients count) — builder with preview + count via segments API, sidebar link added
+- [x] T073 [CRM] Cron `app/api/cron/notify` add `inactive_42` + `birthday_7` send + `campaign_recipients` `rebooked` attribution when `appointments` created with `source=campaign` — cron section 8 auto-send + section 9 rebooked sweep + `app/api/book` source/campaign_id + attribution
+- [x] T074 [CRM] Settings `app/(dashboard)/settings/whatsapp-section.tsx` verify `meta_whatsapp_phone_number_id/access_token` per `businesses` (033) — component + `app/api/business/whatsapp-verify` with Meta Graph verify
 
 **Checkpoint**: CRM loop measurable — sent/delivered/rebooked en dashboard.
 
@@ -233,9 +233,9 @@ description: "Task list for Barbería SaaS Integral — Escudería (006)"
 
 ## Phase 11: Configuración & Impuestos (cross-cutting)
 
-- [ ] T075 [CFG] Extend `app/(dashboard)/settings/page.tsx`: sections `business_hours` per `location_id` + `holidays` + `cancel_lead_time` + `business_lead_time` (054) + `tax_rate` + `payment_methods[]` + `loyalty_earn/redeem_rate`
-- [ ] T076 [CFG] API `app/api/business/modules` + `.../hours` + `.../tax` extend for `location_id` + migrations `054_business_lead_time`, `055_pos_cash_register_config` verification
-- [ ] T077 [CFG] Onboarding `app/onboarding/OnboardingWizard.tsx` add steps `locations` + `holidays` + `tax` + `membership` preview with checklist update
+- [x] T075 [CFG] Extend `app/(dashboard)/settings/page.tsx`: sections `business_hours` per `location_id` + `holidays` + `cancel_lead_time` + `business_lead_time` (054) + `tax_rate` + `payment_methods[]` + `loyalty_earn/redeem_rate` — done via `app/(dashboard)/settings/config-section.tsx` + `whatsapp-section.tsx` integrated in `settings/page.tsx`
+- [x] T076 [CFG] API `app/api/business/modules` + `.../hours` + `.../tax` extend for `location_id` + migrations `054_business_lead_time`, `055_pos_cash_register_config` verification — `app/api/business/hours` + `app/api/business/tax` (PUT/GET, location_id aware) + `supabase/migrations/085_config_completeness.sql` idempotent
+- [x] T077 [CFG] Onboarding `app/onboarding/OnboardingWizard.tsx` add steps `locations` + `holidays` + `tax` + `membership` preview with checklist update — extended wizard to 5 steps (sucursal & festivo, impuestos & membresía) with API calls and checklist
 
 ---
 
