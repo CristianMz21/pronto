@@ -1,7 +1,6 @@
-import { createClient } from '@/lib/supabase/server'
 import { db } from '@/lib/db'
-import { businesses, employees } from '@/drizzle/schema'
-import { eq, and, or, ilike, desc, sql } from 'drizzle-orm'
+import { businesses, employees, clients, locations, transactions } from '@/drizzle/schema'
+import { eq, and, or, ilike, desc, sql, inArray } from 'drizzle-orm'
 import { Header } from '@/components/layout/header'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -17,20 +16,16 @@ function inDaysFromNow(dateStr: string, days: number): boolean {
   const d = new Date(dateStr + 'T00:00:00')
   if (isNaN(d.getTime())) return false
   const now = new Date()
-  // Birthday handling: compare month/day ignore year, within next 7 days
   const thisYear = now.getFullYear()
   const bThisYear = new Date(thisYear, d.getMonth(), d.getDate())
   const diff = Math.ceil((bThisYear.getTime() - now.getTime()) / 86400000)
   return diff >= 0 && diff <= days
 }
 
-export default async function CRMPage(
-  props: {
-    searchParams: Promise<{ q?: string; tag?: string; segment?: string; location?: string }>
-  }
-) {
-  const searchParams = await props.searchParams;
-  const supabase = await createClient()
+export default async function CRMPage(props: {
+  searchParams: Promise<{ q?: string; tag?: string; segment?: string; location?: string }>
+}) {
+  const searchParams = await props.searchParams
   const t = await getTranslations('crm')
   const user = await getAuthUser()
 
@@ -42,63 +37,99 @@ export default async function CRMPage(
     where: eq(businesses.ownerId, user!.id),
     columns: { id: true, currency: true, timezone: true },
   })
-  if (ownedBiz) { businessId = ownedBiz.id; businessCurrency = ownedBiz.currency ?? 'COP'; businessTz = ownedBiz.timezone ?? 'America/Bogota' }
-  else {
-    const emp = await db.query.employees.findFirst({
+  if (ownedBiz) {
+    businessId = ownedBiz.id
+    businessCurrency = ownedBiz.currency ?? 'COP'
+    businessTz = ownedBiz.timezone ?? 'America/Bogota'
+  } else {
+    const emp = (await db.query.employees.findFirst({
       where: and(eq(employees.userId, user!.id), eq(employees.isActive, true)),
-      with: { businesses: { columns: { currency: true, timezone: true } } },
-    }) as unknown as { businessId: string; businesses: { currency: string; timezone: string } } | undefined
-    if (emp) { businessId = emp.businessId; businessCurrency = emp.businesses?.currency ?? 'COP'; businessTz = emp.businesses?.timezone ?? 'America/Bogota' }
+      with: { business: { columns: { currency: true, timezone: true } } },
+    })) as unknown as { businessId: string; business: { currency: string; timezone: string } } | undefined
+    if (emp) {
+      businessId = emp.businessId
+      businessCurrency = emp.business?.currency ?? 'COP'
+      businessTz = emp.business?.timezone ?? 'America/Bogota'
+    }
   }
   if (!businessId) return null
   const business = { id: businessId, currency: businessCurrency, timezone: businessTz }
 
   const selectedLocation = searchParams.location ?? null
-  let query = supabase.from('clients')
-    .select('id, name, phone, email, tags, created_at, birthday, last_visit_at, preferences, preferred_barber_id, location_id')
-    .eq('business_id', business.id)
-    .order('name')
-    .limit(80)
 
+  // Build Drizzle where clause for clients (business_id tenant, plus search/location/tag)
+  const clientConditions: ReturnType<typeof eq>[] = [eq(clients.businessId, business.id)]
   if (selectedLocation) {
-    query = (query as unknown as { eq: (c:string,v:string)=> typeof query }).eq('location_id', selectedLocation) as typeof query
+    clientConditions.push(eq(clients.locationId, selectedLocation))
   }
-
   if (searchParams.q) {
-    query = query.or(`name.ilike.%${searchParams.q}%,phone.ilike.%${searchParams.q}%,email.ilike.%${searchParams.q}%`)
+    const q = `%${searchParams.q}%`
+    clientConditions.push(
+      or(ilike(clients.name, q), ilike(clients.phone, q), ilike(clients.email, q)) as unknown as ReturnType<typeof eq>,
+    )
   }
+
+  // Drizzle query for clients — 3FN portable, RLS via business_id filter
+  let clientsRaw = await db.query.clients.findMany({
+    where: and(...clientConditions),
+    orderBy: (c, { asc }) => [asc(c.name)],
+    limit: 80,
+  })
+
+  // Tag filter: clients.tags text[] contains tag (keep for compat, also 3FN client_tags via join in future)
+  // Drizzle array contains via sql: tags && ARRAY[tag]
   if (searchParams.tag) {
-    query = query.contains('tags', [searchParams.tag])
+    const tag = searchParams.tag
+    // Filter in-memory for portability (MySQL/SQLite would use join via client_tags); for Postgres we could use sql
+    clientsRaw = clientsRaw.filter((c) => (c.tags ?? []).includes(tag))
+    // Alternative Postgres-only: where sql`${clients.tags} @> ARRAY[${tag}]` — kept in-memory for multi-DB
   }
 
-  const { data: clientsRaw } = await query
-  let clients = clientsRaw ?? []
-  const { data: locations } = await supabase.from('locations').select('id, name').eq('business_id', business.id).order('name')
+  let clients = clientsRaw as unknown as Array<{
+    id: string
+    name: string
+    phone: string | null
+    email: string | null
+    tags: string[]
+    createdAt: string
+    birthday: string | null
+    lastVisitAt: string | null
+    locationId: string | null
+  }>
 
-  // Compute visits, spent, last visit, and last service name live from transactions
-  const clientIds = (clients ?? []).map((c) => c.id)
+  const locs = await db.query.locations.findMany({
+    where: eq(locations.businessId, business.id),
+    orderBy: (l, { asc }) => [asc(l.name)],
+    columns: { id: true, name: true },
+  })
+
+  // Compute visits, spent, last visit, and last service name live from transactions (Drizzle)
+  const clientIds = clients.map((c) => c.id)
   const statsMap: Record<string, { total_visits: number; total_spent: number; last_visit_at: string | null; lastService: string | null }> = {}
   if (clientIds.length > 0) {
-    const { data: txs } = await supabase
-      .from('transactions')
-      .select('client_id, amount, created_at, items')
-      .eq('business_id', business.id)
-      .eq('status', 'completed')
-      .in('client_id', clientIds)
-      .order('created_at', { ascending: false })
-      .limit(800)
-    for (const tx of txs ?? []) {
-      if (!tx.client_id) continue
-      if (!statsMap[tx.client_id]) {
-        statsMap[tx.client_id] = { total_visits: 0, total_spent: 0, last_visit_at: null, lastService: null }
+    const txs = await db.query.transactions.findMany({
+      where: and(
+        eq(transactions.businessId, business.id),
+        eq(transactions.status, 'completed'),
+        inArray(transactions.clientId, clientIds),
+      ),
+      orderBy: (t, { desc }) => [desc(t.createdAt)],
+      limit: 800,
+      columns: { clientId: true, amount: true, createdAt: true, items: true },
+    })
+    for (const tx of txs) {
+      if (!tx.clientId) continue
+      if (!statsMap[tx.clientId]) {
+        statsMap[tx.clientId] = { total_visits: 0, total_spent: 0, last_visit_at: null, lastService: null }
       }
-      statsMap[tx.client_id].total_visits++
-      statsMap[tx.client_id].total_spent += tx.amount
-      if (!statsMap[tx.client_id].last_visit_at) statsMap[tx.client_id].last_visit_at = tx.created_at
-      if (!statsMap[tx.client_id].lastService) {
-        const items = Array.isArray(tx.items) ? tx.items : []
-        const name = (items[0] as any)?.name
-        if (name) statsMap[tx.client_id].lastService = name
+      statsMap[tx.clientId].total_visits++
+      // amount is numeric string from drizzle
+      statsMap[tx.clientId].total_spent += Number(tx.amount ?? 0)
+      if (!statsMap[tx.clientId].last_visit_at) statsMap[tx.clientId].last_visit_at = tx.createdAt as unknown as string
+      if (!statsMap[tx.clientId].lastService) {
+        const items = Array.isArray(tx.items) ? (tx.items as unknown[]) : []
+        const name = (items[0] as { name?: string } | undefined)?.name
+        if (name) statsMap[tx.clientId].lastService = name
       }
     }
   }
@@ -109,7 +140,7 @@ export default async function CRMPage(
     const now = Date.now()
     clients = clients.filter((c) => {
       const stats = statsMap[c.id]
-      const last = stats?.last_visit_at ?? (c as unknown as { last_visit_at?: string | null }).last_visit_at ?? null
+      const last = stats?.last_visit_at ?? (c as unknown as { lastVisitAt?: string | null }).lastVisitAt ?? null
       const visits = stats?.total_visits ?? 0
       const tags = (c.tags ?? []) as string[]
       const bd = (c as unknown as { birthday?: string | null }).birthday
@@ -132,17 +163,27 @@ export default async function CRMPage(
           <div className="flex gap-2">
             <CrmImportButton />
             <Link href="/crm/new">
-              <Button size="sm"><Plus className="w-4 h-4 mr-1" /> {t('addClient')}</Button>
+              <Button size="sm">
+                <Plus className="w-4 h-4 mr-1" /> {t('addClient')}
+              </Button>
             </Link>
           </div>
         }
       />
       <main className="p-6">
-        {(locations?.length ?? 0) > 1 && (
+        {(locs?.length ?? 0) > 1 && (
           <div className="mb-3 flex gap-2 text-xs">
-            <Link href="/crm" className={`px-3 py-1 rounded-full border ${!selectedLocation ? 'bg-gray-900 text-white' : 'bg-white'}`}>Todas</Link>
-            {locations!.map((l) => (
-              <Link key={l.id} href={`/crm?location=${l.id}`} className={`px-3 py-1 rounded-full border ${selectedLocation === l.id ? 'bg-gray-900 text-white' : 'bg-white'}`}>{l.name}</Link>
+            <Link href="/crm" className={`px-3 py-1 rounded-full border ${!selectedLocation ? 'bg-gray-900 text-white' : 'bg-white'}`}>
+              Todas
+            </Link>
+            {locs!.map((l) => (
+              <Link
+                key={l.id}
+                href={`/crm?location=${l.id}`}
+                className={`px-3 py-1 rounded-full border ${selectedLocation === l.id ? 'bg-gray-900 text-white' : 'bg-white'}`}
+              >
+                {l.name}
+              </Link>
             ))}
           </div>
         )}
@@ -150,9 +191,13 @@ export default async function CRMPage(
           <div className="relative">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <form>
-              <input name="q" defaultValue={searchParams.q} type="search"
+              <input
+                name="q"
+                defaultValue={searchParams.q}
+                type="search"
                 placeholder={t('searchPlaceholder')}
-                className="w-full max-w-sm pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white" />
+                className="w-full max-w-sm pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              />
             </form>
           </div>
           <div className="flex flex-wrap gap-1.5">
@@ -165,7 +210,13 @@ export default async function CRMPage(
               { key: 'vip', label: 'VIP' },
               { key: 'new', label: 'Nuevos' },
             ].map((s) => (
-              <Link key={s.key} href={`/crm${s.key ? `?segment=${s.key}` : ''}`} className={`text-xs px-3 py-1.5 rounded-full border ${searchParams.segment === s.key || (!searchParams.segment && s.key === '') ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>{s.label}</Link>
+              <Link
+                key={s.key}
+                href={`/crm${s.key ? `?segment=${s.key}` : ''}`}
+                className={`text-xs px-3 py-1.5 rounded-full border ${searchParams.segment === s.key || (!searchParams.segment && s.key === '') ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+              >
+                {s.label}
+              </Link>
             ))}
           </div>
           {searchParams.segment && (
@@ -173,7 +224,9 @@ export default async function CRMPage(
               Crear campaña →
             </Link>
           )}
-          <Link href="/crm-campaigns" className="text-xs text-gray-500 hover:text-gray-700 ml-2">Ver campañas</Link>
+          <Link href="/crm-campaigns" className="text-xs text-gray-500 hover:text-gray-700 ml-2">
+            Ver campañas
+          </Link>
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -182,7 +235,9 @@ export default async function CRMPage(
               <div className="text-4xl mb-3">{t('empty.icon')}</div>
               <div className="font-medium">{t('empty.heading')}</div>
               <div className="text-sm mt-1">
-                <Link href="/crm/new" className="text-blue-600 hover:underline">{t('empty.action')}</Link>
+                <Link href="/crm/new" className="text-blue-600 hover:underline">
+                  {t('empty.action')}
+                </Link>
               </div>
             </div>
           ) : (
@@ -202,17 +257,31 @@ export default async function CRMPage(
                 {clients?.map((c) => (
                   <tr key={c.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors last:border-0">
                     <td className="px-4 py-3">
-                      <Link href={`/crm/${c.id}`} className="font-medium text-gray-900 hover:text-blue-600">{c.name}</Link>
+                      <Link href={`/crm/${c.id}`} className="font-medium text-gray-900 hover:text-blue-600">
+                        {c.name}
+                      </Link>
                     </td>
                     <td className="px-4 py-3 text-gray-500">
                       <div className="flex flex-col gap-0.5">
-                        {c.phone && <span className="flex items-center gap-1"><Phone className="w-3 h-3" /> {c.phone}</span>}
-                        {c.email && <span className="flex items-center gap-1 text-xs"><Mail className="w-3 h-3" /> {c.email}</span>}
+                        {c.phone && (
+                          <span className="flex items-center gap-1">
+                            <Phone className="w-3 h-3" /> {c.phone}
+                          </span>
+                        )}
+                        {c.email && (
+                          <span className="flex items-center gap-1 text-xs">
+                            <Mail className="w-3 h-3" /> {c.email}
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="px-4 py-3 hidden md:table-cell">
                       <div className="flex flex-wrap gap-1">
-                        {c.tags.map((tag) => <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>)}
+                        {c.tags.map((tag) => (
+                          <Badge key={tag} variant="secondary" className="text-xs">
+                            {tag}
+                          </Badge>
+                        ))}
                       </div>
                     </td>
                     <td className="px-4 py-3 hidden xl:table-cell text-gray-600 text-sm">
