@@ -44,12 +44,6 @@ export default async function DashboardPage(props: { searchParams: Promise<{ loc
   const sevenDaysAgo = new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10)
   const selectedLocation = searchParams.location ?? null
 
-  // Build location-aware filters
-  const locFilter = (q: unknown) => {
-    const qq = q as { eq: (col: string, val: string) => unknown }
-    return selectedLocation ? (qq.eq('location_id', selectedLocation) as unknown) : q
-  }
-
   const [
     { count: clientCount },
     { data: apptToday },
@@ -128,9 +122,9 @@ export default async function DashboardPage(props: { searchParams: Promise<{ loc
         <OnboardingChecklist businessId={business.id} enabledModules={business.enabled_modules ?? ['bookings', 'pos', 'crm', 'inventory', 'notifications']} />
         {(locations?.length ?? 0) > 1 && (
           <div className="flex gap-2 text-xs">
-            <a href="/dashboard" className={`px-3 py-1 rounded-full border ${!selectedLocation ? 'bg-gray-900 text-white' : 'bg-white'}`}>Todas sucursales</a>
+            <Link href="/dashboard" className={`px-3 py-1 rounded-full border ${!selectedLocation ? 'bg-gray-900 text-white' : 'bg-white'}`}>Todas sucursales</Link>
             {locations!.map((l) => (
-              <a key={l.id} href={`/dashboard?location=${l.id}`} className={`px-3 py-1 rounded-full border ${selectedLocation === l.id ? 'bg-gray-900 text-white' : 'bg-white'}`}>{l.name}</a>
+              <Link key={l.id} href={`/dashboard?location=${l.id}`} className={`px-3 py-1 rounded-full border ${selectedLocation === l.id ? 'bg-gray-900 text-white' : 'bg-white'}`}>{l.name}</Link>
             ))}
           </div>
         )}

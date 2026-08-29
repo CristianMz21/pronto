@@ -101,7 +101,7 @@ export async function proxy(request: NextRequest) {
 
   // Protected routes — admin panel (single Escudería now, multi-sede ready via locations)
   // Public: /, /escuderia, /book/[slug], /login, /register, /privacy, /terms, /offline, /client/login, /client/register
-  const protectedPaths = ['/dashboard', '/pos', '/caja', '/crm', '/inventory', '/booking', '/settings']
+  const protectedPaths = ['/dashboard', '/pos', '/caja', '/crm', '/inventory', '/booking', '/settings', '/barberos', '/servicios', '/reportes', '/sucursales', '/membresias', '/promociones']
   const isProtected = protectedPaths.some((p) => pathname.startsWith(p))
 
   if (isProtected && !user) {
@@ -111,9 +111,8 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl)
   }
 
-  // RBAC early guard: barbero blocked from /caja,/inventory,/settings,/crm (prefix match) → 302 /dashboard
-  // Fail-closed: unknown role not redirected here, but barbero denied paths use canAccessRoute
-  if (user && resolvedRole === 'barbero' && isProtected && !canAccessRoute(resolvedRole, pathname)) {
+  // RBAC early guard: any role denied via canAccessRoute → 302 /dashboard (barbero blocked from caja/inventory/settings/crm/barberos/etc, staff blocked from reportes/settings)
+  if (user && resolvedRole && isProtected && !canAccessRoute(resolvedRole as unknown as string, pathname)) {
     const dashboardUrl = request.nextUrl.clone()
     dashboardUrl.pathname = '/dashboard'
     return NextResponse.redirect(dashboardUrl)
