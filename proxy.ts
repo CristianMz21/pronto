@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { canAccessRoute, getUserRole } from '@/lib/auth/roles'
 
 function getSupabaseUrlForProxy(): string {
   let url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
@@ -78,6 +79,15 @@ export async function proxy(request: NextRequest) {
   // while preserving any cookies getUser() already set (e.g. a token refresh).
   requestHeaders.set('x-user-id', user?.id ?? '')
   requestHeaders.set('x-user-email', user?.email ?? '')
+  let resolvedRole: string | null = null
+  if (user) {
+    try {
+      resolvedRole = await getUserRole(supabase as unknown as { from: (t: string) => unknown }, user.id)
+    } catch {
+      resolvedRole = null
+    }
+  }
+  requestHeaders.set('x-user-role', resolvedRole ?? '')
   const cookiesSoFar = supabaseResponse.cookies.getAll()
   supabaseResponse = NextResponse.next({ request: { headers: requestHeaders } })
   cookiesSoFar.forEach((c) => supabaseResponse.cookies.set(c))
@@ -99,6 +109,14 @@ export async function proxy(request: NextRequest) {
     loginUrl.pathname = '/login'
     loginUrl.searchParams.set('redirectTo', pathname)
     return NextResponse.redirect(loginUrl)
+  }
+
+  // RBAC early guard: barbero blocked from /caja,/inventory,/settings,/crm (prefix match) → 302 /dashboard
+  // Fail-closed: unknown role not redirected here, but barbero denied paths use canAccessRoute
+  if (user && resolvedRole === 'barbero' && isProtected && !canAccessRoute(resolvedRole, pathname)) {
+    const dashboardUrl = request.nextUrl.clone()
+    dashboardUrl.pathname = '/dashboard'
+    return NextResponse.redirect(dashboardUrl)
   }
 
   // Client portal protected
