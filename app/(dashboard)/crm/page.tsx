@@ -26,7 +26,7 @@ function inDaysFromNow(dateStr: string, days: number): boolean {
 
 export default async function CRMPage(
   props: {
-    searchParams: Promise<{ q?: string; tag?: string; segment?: string }>
+    searchParams: Promise<{ q?: string; tag?: string; segment?: string; location?: string }>
   }
 ) {
   const searchParams = await props.searchParams;
@@ -53,11 +53,16 @@ export default async function CRMPage(
   if (!businessId) return null
   const business = { id: businessId, currency: businessCurrency, timezone: businessTz }
 
+  const selectedLocation = searchParams.location ?? null
   let query = supabase.from('clients')
     .select('id, name, phone, email, tags, created_at, birthday, last_visit_at, preferences, preferred_barber_id, location_id')
     .eq('business_id', business.id)
     .order('name')
     .limit(80)
+
+  if (selectedLocation) {
+    query = (query as unknown as { eq: (c:string,v:string)=> typeof query }).eq('location_id', selectedLocation) as typeof query
+  }
 
   if (searchParams.q) {
     query = query.or(`name.ilike.%${searchParams.q}%,phone.ilike.%${searchParams.q}%,email.ilike.%${searchParams.q}%`)
@@ -68,6 +73,7 @@ export default async function CRMPage(
 
   const { data: clientsRaw } = await query
   let clients = clientsRaw ?? []
+  const { data: locations } = await supabase.from('locations').select('id, name').eq('business_id', business.id).order('name')
 
   // Compute visits, spent, last visit, and last service name live from transactions
   const clientIds = (clients ?? []).map((c) => c.id)
@@ -132,6 +138,14 @@ export default async function CRMPage(
         }
       />
       <main className="p-6">
+        {(locations?.length ?? 0) > 1 && (
+          <div className="mb-3 flex gap-2 text-xs">
+            <Link href="/crm" className={`px-3 py-1 rounded-full border ${!selectedLocation ? 'bg-gray-900 text-white' : 'bg-white'}`}>Todas</Link>
+            {locations!.map((l) => (
+              <Link key={l.id} href={`/crm?location=${l.id}`} className={`px-3 py-1 rounded-full border ${selectedLocation === l.id ? 'bg-gray-900 text-white' : 'bg-white'}`}>{l.name}</Link>
+            ))}
+          </div>
+        )}
         <div className="mb-4 flex flex-wrap gap-2 items-center">
           <div className="relative">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />

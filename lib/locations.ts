@@ -48,3 +48,42 @@ export function assertLocationAccess(
   if (userLocationIds.includes(locationId)) return { ok: true }
   return { ok: false, reason: 'forbidden' }
 }
+
+/**
+ * Parses a `?location=` query param into a validated location id.
+ * Returns null if missing/empty, otherwise the trimmed string.
+ * Caller should verify existence via getLocationOrDefault or DB check.
+ */
+export function parseLocationParam(param: string | null | undefined): string | null {
+  if (!param) return null
+  const trimmed = String(param).trim()
+  if (!trimmed) return null
+  return trimmed
+}
+
+/**
+ * Filters a list of rows that have `location_id` nullable by a selected location.
+ * Single-sede: when selectedLocation is null, returns all (no filter) — this keeps
+ * existing installs with location_id=null rows visible.
+ * Multi-sede: when selected, filters to matching location_id.
+ * Use this for client-side filtering; server queries should use eq(location_id) similarly.
+ */
+export function filterByLocation<T extends { location_id?: string | null }>(
+  rows: T[],
+  selectedLocation: string | null | undefined
+): T[] {
+  if (!selectedLocation) return rows
+  return rows.filter((r) => r.location_id === selectedLocation)
+}
+
+/**
+ * Returns true if a row's location matches the filter or if filter is null (show all).
+ * Useful for inline server query guards where we build Supabase queries conditionally.
+ */
+export function shouldIncludeLocation(
+  rowLocationId: string | null | undefined,
+  selectedLocation: string | null | undefined
+): boolean {
+  if (!selectedLocation) return true
+  return rowLocationId === selectedLocation
+}

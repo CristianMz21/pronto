@@ -56,9 +56,10 @@ interface POSTerminalProps {
   requireCashRegister?: boolean
   isBarbero?: boolean
   currentEmployeeId?: string | null
+  locationId?: string | null
 }
 
-export function POSTerminal({ businessId, currency, services: initialServices, employees: initialEmployees, clients: initialClients, bookingContext, initialHasOpenRegister = false, requireCashRegister = true, isBarbero = false, currentEmployeeId = null }: POSTerminalProps) {
+export function POSTerminal({ businessId, currency, services: initialServices, employees: initialEmployees, clients: initialClients, bookingContext, initialHasOpenRegister = false, requireCashRegister = true, isBarbero = false, currentEmployeeId = null, locationId = null }: POSTerminalProps) {
   const supabase = createClient()
   const router = useRouter()
   const t = useTranslations('pos')
@@ -373,6 +374,7 @@ export function POSTerminal({ businessId, currency, services: initialServices, e
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             business_id: businessId,
+            location_id: locationId ?? null,
             client_id: selectedClient || null,
             employee_id: effectiveEmployeeId,
             amount: subtotal,
@@ -382,6 +384,7 @@ export function POSTerminal({ businessId, currency, services: initialServices, e
             promo_code: promoCode.trim() || null,
             loyalty_points_redeem: loyaltyRedeem > 0 ? loyaltyRedeem : 0,
             membership_id: selectedMembership || null,
+            appointment_id: activeBookingId || null,
           }),
         })
         const json = await res.json().catch(() => ({}))

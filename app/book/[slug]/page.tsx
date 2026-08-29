@@ -50,18 +50,19 @@ export default async function PublicBookingPage(props: { params: Promise<{ slug:
     { data: services },
     { data: employees },
     { data: businessHours },
+    { data: locations },
     telegramInfo,
     viberInfo,
   ] = await Promise.all([
     supabase
       .from('services')
-      .select('id, name, description, price, duration_min, category, capacity')
+      .select('id, name, description, price, duration_min, category, capacity, location_id')
       .eq('business_id', business.id)
       .eq('is_active', true)
       .order('name'),
     supabase
       .from('employees')
-      .select('id, name')
+      .select('id, name, location_id')
       .eq('business_id', business.id)
       .eq('is_active', true)
       .order('name'),
@@ -70,6 +71,12 @@ export default async function PublicBookingPage(props: { params: Promise<{ slug:
       .select('day_of_week, is_open, open_time, close_time, break_start, break_end')
       .eq('business_id', business.id)
       .order('day_of_week'),
+    supabase
+      .from('locations')
+      .select('id, name, slug')
+      .eq('business_id', business.id)
+      .eq('is_active', true)
+      .order('name'),
     bizTokens?.telegram_bot_token
       ? getTelegramBotInfo(bizTokens.telegram_bot_token)
       : Promise.resolve({ ok: false as const }),
@@ -119,6 +126,7 @@ export default async function PublicBookingPage(props: { params: Promise<{ slug:
               services={services ?? []}
               employees={employees ?? []}
               workingHours={businessHours ?? []}
+              locations={(locations ?? []) as { id: string; name: string; slug: string }[]}
               telegramBotUsername={telegramBotUsername}
               viberBotUri={viberBotUri}
               initialServiceId={searchParams?.service ?? null}
@@ -168,6 +176,7 @@ export default async function PublicBookingPage(props: { params: Promise<{ slug:
             services={services ?? []}
             employees={employees ?? []}
             workingHours={businessHours ?? []}
+            locations={(locations ?? []) as { id: string; name: string; slug: string }[]}
             telegramBotUsername={telegramBotUsername}
             viberBotUri={viberBotUri}
             initialServiceId={searchParams?.service ?? null}

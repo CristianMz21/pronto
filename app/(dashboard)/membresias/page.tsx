@@ -3,8 +3,11 @@ import { Header } from '@/components/layout/header'
 import { MembresiasClient } from '@/components/membresias/membresias-client'
 import { getAuthUser } from '@/lib/auth-user'
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 
-export default async function MembresiasPage() {
+export default async function MembresiasPage(props: { searchParams: Promise<{ location?: string }> }) {
+  const searchParams = await props.searchParams
+  const selectedLocation = searchParams.location ?? null
   const supabase = await createClient()
   const user = await getAuthUser()
   if (!user) redirect('/login')
@@ -18,16 +21,28 @@ export default async function MembresiasPage() {
   }
   if (!businessId) redirect('/onboarding')
 
+  let memQuery = supabase.from('memberships').select('id, name, price, duration_days, benefits, is_active, location_id, created_at').eq('business_id', businessId).order('created_at', { ascending: false })
+  if (selectedLocation) memQuery = (memQuery as unknown as { eq: (c:string,v:string)=> typeof memQuery }).eq('location_id', selectedLocation) as typeof memQuery
+  let clientMemQuery = supabase.from('client_memberships').select('id, client_id, membership_id, starts_at, expires_at, remaining, status, clients(name)').eq('business_id', businessId).order('created_at', { ascending: false }).limit(100)
+  // client_memberships location filter via join would need RPC; for now filter client-side if location selected via membership location_id match (nullable = all)
   const [{ data: memberships }, { data: locations }, { data: clientMemberships }, { data: clients }] = await Promise.all([
-    supabase.from('memberships').select('id, name, price, duration_days, benefits, is_active, location_id, created_at').eq('business_id', businessId).order('created_at', { ascending: false }),
+    memQuery as Promise<{ data: unknown }>,
     supabase.from('locations').select('id, name').eq('business_id', businessId).order('name'),
-    supabase.from('client_memberships').select('id, client_id, membership_id, starts_at, expires_at, remaining, status, clients(name)').eq('business_id', businessId).order('created_at', { ascending: false }).limit(100),
+    clientMemQuery as Promise<{ data: unknown }>,
     supabase.from('clients').select('id, name').eq('business_id', businessId).order('name').limit(200),
   ])
 
   return (
     <>
       <Header title="Membresías" />
+      {(locations?.length ?? 0) > 1 && (
+        <div className="px-6 pt-3 flex gap-2 text-xs">
+          <Link href="/membresias" className={`px-3 py-1 rounded-full border ${!selectedLocation ? 'bg-gray-900 text-white' : 'bg-white'}`}>Todas</Link>
+          {locations!.map((l) => (
+            <Link key={l.id} href={`/membresias?location=${l.id}`} className={`px-3 py-1 rounded-full border ${selectedLocation === l.id ? 'bg-gray-900 text-white' : 'bg-white'}`}>{l.name}</Link>
+          ))}
+        </div>
+      )}
       <main className="p-4 md:p-6">
         <MembresiasClient
           memberships={(memberships as unknown as { id: string; name: string; price: number; duration_days: number; benefits: Record<string, unknown>; is_active: boolean; location_id: string | null; created_at: string }[] | null) ?? []}

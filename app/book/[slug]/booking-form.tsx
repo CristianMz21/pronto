@@ -16,8 +16,9 @@ import {
   DEFAULT_LEAD_MINUTES,
 } from '@/lib/booking-availability'
 
-interface Service { id: string; name: string; description: string | null; price: number; duration_min: number; category: string | null; capacity: number }
-interface Employee { id: string; name: string }
+interface Service { id: string; name: string; description: string | null; price: number; duration_min: number; category: string | null; capacity: number; location_id?: string | null }
+interface Employee { id: string; name: string; location_id?: string | null }
+interface Location { id: string; name: string; slug: string }
 interface Business {
   id: string
   name: string
@@ -35,6 +36,7 @@ interface Props {
   services: Service[]
   employees: Employee[]
   workingHours: DayHours[]
+  locations?: Location[]
   telegramBotUsername: string | null
   viberBotUri: string | null
   initialServiceId?: string | null
@@ -123,23 +125,25 @@ function CtaButton({ label, onClick, disabled, theme }: { label: string; onClick
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function PublicBookingForm({ business, services, employees, workingHours, telegramBotUsername, viberBotUri, initialServiceId, initialEmployeeId, theme = 'default' }: Props) {
+export function PublicBookingForm({ business, services, employees, workingHours, locations = [], telegramBotUsername, viberBotUri, initialServiceId, initialEmployeeId, theme = 'default' }: Props) {
   const supabase = createClient()
   const t = useTranslations('publicBooking')
   const [authUser, setAuthUser] = useState<{ id: string; email?: string | null } | null>(null)
   const [authChecked, setAuthChecked] = useState(false)
 
-  const hasEmployeeStep = employees.length > 1
   const isEsc = theme === 'escuderia'
   const baseCard = getBaseCard(theme)
 
   const initialSvc = initialServiceId ? services.find(s => s.id === initialServiceId) ?? null : null
-  const [step, setStep] = useState<Step>(initialSvc ? (hasEmployeeStep ? 'employee' : 'datetime') : 'service')
+  // hasEmployeeStep evaluated after visibleEmployees (location-aware)
+  const [step, setStep] = useState<Step>(initialSvc ? (employees.length > 1 ? 'employee' : 'datetime') : 'service')
   const [selectedService, setSelectedService] = useState<Service | null>(initialSvc)
   const [selectedEmployee, setSelectedEmployee] = useState(initialEmployeeId ?? '')
   const [date, setDate] = useState('')
   const [time, setTime] = useState('')
   const [contact, setContact] = useState({ name: '', phone: '', email: '' })
+  // Multi-sede: location selector (V1 nullable — when missing show all, single-sede hides)
+  const [selectedLocation, setSelectedLocation] = useState<string | null>(null)
   // US5 loyalty fields
   const [promoCode, setPromoCode] = useState('')
   const [loyaltyPoints, setLoyaltyPoints] = useState('')
@@ -158,6 +162,16 @@ export function PublicBookingForm({ business, services, employees, workingHours,
   const [dayClosed, setDayClosed] = useState(false)
 
   const effectiveHours: DayHours[] = computeEffectiveHours(workingHours)
+
+  // Multi-sede filtered catalogs (nullable location_id = visible for any location)
+  const visibleServices = selectedLocation
+    ? services.filter((s) => !s.location_id || s.location_id === selectedLocation)
+    : services
+  const visibleEmployees = selectedLocation
+    ? employees.filter((e) => !e.location_id || e.location_id === selectedLocation)
+    : employees
+  const hasMultipleLocations = locations.length > 1
+  const hasEmployeeStep = visibleEmployees.length > 1
 
   const closedWeekdays = effectiveHours.filter((h) => !h.is_open).map((h) => h.day_of_week)
   // Configurable lead time (054) — defaults keep previous behavior when DB column missing
@@ -360,6 +374,7 @@ export function PublicBookingForm({ business, services, employees, workingHours,
           businessId:  business.id,
           serviceId:   selectedService.id,
           employeeId:  selectedEmployee || null,
+          location_id: selectedLocation || null,
           date,
           time,
           name:  contact.name,
@@ -600,12 +615,38 @@ export function PublicBookingForm({ business, services, employees, workingHours,
       {/* ── Step 1: Service ───────────────────────────────────────────────── */}
       {step === 'service' && (
         <div>
+          {hasMultipleLocations && (
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: cardMuted, letterSpacing: '0.05em', display: 'block', marginBottom: 6 }}>SUCURSAL</label>
+              <select
+                value={selectedLocation ?? ''}
+                onChange={(e) => {
+                  const val = e.target.value || null
+                  setSelectedLocation(val)
+                  // Clear service/employee if not compatible with new location
+                  if (selectedService && val && selectedService.location_id && selectedService.location_id !== val) {
+                    setSelectedService(null)
+                  }
+                  if (selectedEmployee && val) {
+                    const emp = employees.find((emp) => emp.id === selectedEmployee)
+                    if (emp?.location_id && emp.location_id !== val) setSelectedEmployee('')
+                  }
+                }}
+                style={{ border: inputBorder, borderRadius: inputRadius, padding: '10px 12px', fontSize: 13, width: '100%', background: inputBg, color: cardText }}
+              >
+                <option value="">Todas las sedes</option>
+                {locations.map((loc) => (
+                  <option key={loc.id} value={loc.id}>{loc.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
           <StepBadge label="Seleccionar servicio" theme={theme} />
           <SectionTitle text={t('selectService.heading')} theme={theme} />
-          {services.length === 0 ? (
+          {visibleServices.length === 0 ? (
             <p style={{ fontSize: 14, color: cardMuted }}>{t('selectService.empty')}</p>
           ) : (
-            services.map((s) => (
+            visibleServices.map((s) => (
               <button key={s.id} onClick={() => handleSelectService(s)} style={baseCard}>
                 <div>
                   <div style={{ fontSize: 14, fontWeight: 500, color: cardText }}>{s.name}</div>
@@ -638,7 +679,7 @@ export function PublicBookingForm({ business, services, employees, workingHours,
             </div>
           </button>
 
-          {employees.map((e) => (
+          {visibleEmployees.map((e) => (
             <button key={e.id} onClick={() => handleSelectEmployee(e.id)} style={baseCard}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{ width: 36, height: 36, borderRadius: '50%', background: isEsc ? 'rgba(197,160,89,0.15)' : 'var(--brand-light)', color: isEsc ? '#C5A059' : 'var(--brand)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: 14, flexShrink: 0 }}>

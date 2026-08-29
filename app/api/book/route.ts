@@ -64,6 +64,7 @@ export async function POST(req: NextRequest) {
   }
 
   const { businessId, serviceId, employeeId, date, time, phone, email, membership_id, promo_code, loyalty_redeem_points } = parsed.data
+  const location_id = (parsed.data as { location_id?: string | null }).location_id ?? null
   const name = sanitize(parsed.data.name)
 
   // US5 stack guard: only one promo/membership/loyalty discount at a time
@@ -117,6 +118,40 @@ export async function POST(req: NextRequest) {
   }
   if (!allowGuest && !authUser) {
     return NextResponse.json({ error: 'guest_not_allowed', message: 'Debes registrarte para reservar en este negocio' }, { status: 401 })
+  }
+
+  // Multi-sede: validate location_id belongs to business if provided (nullable default for single-sede)
+  if (location_id) {
+    const { data: loc } = await supabase
+      .from('locations')
+      .select('id')
+      .eq('id', location_id)
+      .eq('business_id', businessId)
+      .maybeSingle()
+    if (!loc) {
+      return NextResponse.json({ error: 'location_not_found', message: 'Sucursal no encontrada en este negocio' }, { status: 404 })
+    }
+    // Optionally validate service/employee location compatibility (if service has location_id, must match)
+    const { data: svcLoc } = await supabase
+      .from('services')
+      .select('location_id')
+      .eq('id', serviceId)
+      .eq('business_id', businessId)
+      .maybeSingle()
+    if ((svcLoc as { location_id: string | null } | null)?.location_id && (svcLoc as { location_id: string | null }).location_id !== location_id) {
+      return NextResponse.json({ error: 'service_location_mismatch', message: 'Servicio no disponible en esta sucursal' }, { status: 409 })
+    }
+    if (employeeId) {
+      const { data: empLoc } = await supabase
+        .from('employees')
+        .select('location_id')
+        .eq('id', employeeId)
+        .eq('business_id', businessId)
+        .maybeSingle()
+      if ((empLoc as { location_id: string | null } | null)?.location_id && (empLoc as { location_id: string | null }).location_id !== location_id) {
+        return NextResponse.json({ error: 'employee_location_mismatch', message: 'Barbero no disponible en esta sucursal' }, { status: 409 })
+      }
+    }
   }
 
   // Server-side availability check — the client (booking-form.tsx) already
@@ -369,6 +404,7 @@ export async function POST(req: NextRequest) {
     .from('appointments')
     .insert({
       business_id: businessId,
+      location_id: location_id ?? null,
       client_id:   clientId,
       employee_id: employeeId ?? null,
       service_id:  serviceId,
@@ -377,7 +413,7 @@ export async function POST(req: NextRequest) {
       price:       service.price,
       status:      'confirmed',
       source:      'online',
-    })
+    } as unknown as never)
     .select('id')
     .single()
 
