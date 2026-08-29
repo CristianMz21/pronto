@@ -14,10 +14,10 @@ interface Props {
   services: { id: string; name: string; duration_min: number; price: number }[]
   employees: { id: string; name: string }[]
   locations?: { id: string; name: string }[]
-  initialDate?: string
-  initialTime?: string
-  initialServiceId?: string
-  initialEmployeeId?: string
+  initialDate?: string | undefined
+  initialTime?: string | undefined
+  initialServiceId?: string | undefined
+  initialEmployeeId?: string | undefined
   onCreated?: (result: { id: string; created: number; skipped: unknown[] }) => void
 }
 
@@ -98,8 +98,8 @@ export function RecurringModal({
   const rrulePreview = buildRRule({
     freq,
     interval,
-    count: until ? undefined : count,
-    until: until || undefined,
+    ...(until ? {} : { count }),
+    ...(until ? { until } : {}),
     byday,
   })
 

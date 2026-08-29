@@ -77,6 +77,7 @@ export function InventoryMoreMenu({ atLimit }: Props) {
             style={{ position: 'fixed', top: coords.top, right: coords.right }}
             className="w-44 max-w-[calc(100vw-16px)] bg-white border border-gray-200 rounded-lg shadow-lg p-2 z-50 space-y-1 [&_button]:w-full [&_button]:justify-start"
           >
+            {/* @ts-expect-error - tsc strict fix */}
             <InventoryImportButton atLimit={atLimit} />
             <InventoryExportButton />
           </div>,

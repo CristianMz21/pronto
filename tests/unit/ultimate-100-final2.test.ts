@@ -69,7 +69,6 @@ describe('ultimate final2 100', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('sw matcher', async () => {
-    // @ts-ignore
     global.self = { __SW_MANIFEST: [] } as any
     await import('@/app/sw')
     expect(true).toBe(true)

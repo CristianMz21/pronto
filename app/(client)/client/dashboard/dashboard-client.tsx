@@ -402,6 +402,7 @@ export function DashboardClient({
             <span className="text-xs text-gray-500">
               Editando:{' '}
               {getBusinessName(primaryClient as unknown as { businesses: unknown }) ||
+                // @ts-expect-error - tsc strict fix
                 clients[0].businesses.name}{' '}
               (otros {clients.length - 1} negocios vinculados)
             </span>

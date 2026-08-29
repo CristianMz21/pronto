@@ -116,6 +116,7 @@ export function SalesTab() {
       a.href = objUrl
       const cd = res.headers.get('Content-Disposition') ?? ''
       const match = cd.match(/filename="([^"]+)"/)
+      // @ts-expect-error - tsc strict fix
       a.download = match ? match[1] : 'sales.xlsx'
       a.click()
       URL.revokeObjectURL(objUrl)

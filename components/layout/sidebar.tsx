@@ -48,15 +48,31 @@ export function Sidebar({ businessName, role }: SidebarProps) {
     { href: '/dashboard', label: t('dashboard'), icon: LayoutDashboard },
     { href: '/booking', label: t('booking'), icon: CalendarDays },
     { href: '/crm', label: t('clients'), icon: Users },
-    { href: '/barberos', label: (t as unknown)('barbers') ?? 'Barberos', icon: UserCircle },
-    { href: '/servicios', label: (t as unknown)('services') ?? 'Servicios', icon: Scissors },
+    {
+      href: '/barberos',
+      label: (t as unknown as (k: string) => string)('barbers') ?? 'Barberos',
+      icon: UserCircle,
+    },
+    {
+      href: '/servicios',
+      label: (t as unknown as (k: string) => string)('services') ?? 'Servicios',
+      icon: Scissors,
+    },
     { href: '/pos', label: t('pos'), icon: ShoppingCart },
-    { href: '/caja', label: (t as unknown)('cash') ?? 'Caja', icon: Wallet },
+    {
+      href: '/caja',
+      label: (t as unknown as (k: string) => string)('cash') ?? 'Caja',
+      icon: Wallet,
+    },
     { href: '/inventory', label: t('inventory'), icon: Package },
     { href: '/membresias', label: 'Membresías', icon: Crown },
     { href: '/promociones', label: 'Promociones', icon: Tag },
     { href: '/crm-campaigns', label: 'CRM Campañas', icon: Megaphone },
-    { href: '/reportes', label: (t as unknown)('reports') ?? 'Reportes', icon: BarChart3 },
+    {
+      href: '/reportes',
+      label: (t as unknown as (k: string) => string)('reports') ?? 'Reportes',
+      icon: BarChart3,
+    },
     { href: '/sucursales', label: 'Sucursales', icon: Building2 },
   ]
 

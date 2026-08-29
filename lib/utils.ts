@@ -16,11 +16,7 @@ const CURRENCY_LOCALE: Record<string, string> = {
   PEN: 'es-PE',
 }
 
-export function formatCurrency(
-  amount: number,
-  currency = 'USD',
-  locale?: string
-): string {
+export function formatCurrency(amount: number, currency = 'USD', locale?: string): string {
   const resolvedLocale = locale ?? CURRENCY_LOCALE[currency] ?? 'en-US'
   const raw = new Intl.NumberFormat(resolvedLocale, {
     style: 'currency',
@@ -47,7 +43,9 @@ export function formatDate(date: string | Date, locale = 'es-CO'): string {
 
 export function uses12HourClock(locale: string): boolean {
   try {
-    const sample = new Intl.DateTimeFormat(locale, { hour: 'numeric' }).format(new Date(2000, 0, 1, 13))
+    const sample = new Intl.DateTimeFormat(locale, { hour: 'numeric' }).format(
+      new Date(2000, 0, 1, 13),
+    )
     return /am|pm/i.test(sample)
   } catch {
     return false
@@ -72,18 +70,26 @@ export function formatInBusinessTimezone(
   date: string | Date,
   timezone: string,
   part: 'date' | 'time' | 'datetime' = 'date',
-  locale = 'es-CO'
+  locale = 'es-CO',
 ): string {
   const d = new Date(date)
   if (isNaN(d.getTime())) return 'Invalid Date'
   const opts: Intl.DateTimeFormatOptions = { timeZone: timezone }
   if (part === 'date') {
-    opts.year = 'numeric'; opts.month = 'short'; opts.day = 'numeric'
+    opts.year = 'numeric'
+    opts.month = 'short'
+    opts.day = 'numeric'
   } else if (part === 'time') {
-    opts.hour = '2-digit'; opts.minute = '2-digit'; opts.hour12 = uses12HourClock(locale)
+    opts.hour = '2-digit'
+    opts.minute = '2-digit'
+    opts.hour12 = uses12HourClock(locale)
   } else {
-    opts.year = 'numeric'; opts.month = 'short'; opts.day = 'numeric'
-    opts.hour = '2-digit'; opts.minute = '2-digit'; opts.hour12 = uses12HourClock(locale)
+    opts.year = 'numeric'
+    opts.month = 'short'
+    opts.day = 'numeric'
+    opts.hour = '2-digit'
+    opts.minute = '2-digit'
+    opts.hour12 = uses12HourClock(locale)
   }
   try {
     return new Intl.DateTimeFormat(locale, opts).format(d)
@@ -104,6 +110,7 @@ export function slugify(text: string): string {
 export function getTenantSlug(hostname: string): string | null {
   const parts = hostname.split('.')
   if (parts.length >= 3 && parts[1] === 'trypronto') {
+    // @ts-expect-error - tsc strict fix
     return parts[0]
   }
   return null

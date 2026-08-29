@@ -13,7 +13,10 @@ const BASE = 'https://graph.facebook.com/v20.0'
 // WhatsApp требует E.164 без '+': "79001234567", "12025551234" и т.д.
 
 function normalizePhone(phone: string): string {
-  return phone.trim().replace(/^\+/, '').replace(/[\s\-().]/g, '')
+  return phone
+    .trim()
+    .replace(/^\+/, '')
+    .replace(/[\s\-().]/g, '')
 }
 
 export function __testNormalizePhone(phone: string): string {
@@ -25,7 +28,7 @@ export function __testNormalizePhone(phone: string): string {
 export async function sendWhatsAppMessage(
   to: string,
   message: string,
-  credentials?: { phoneNumberId: string; accessToken: string }
+  credentials?: { phoneNumberId: string; accessToken: string },
 ): Promise<boolean> {
   const phoneNumberId = credentials?.phoneNumberId ?? process.env.META_WHATSAPP_PHONE_NUMBER_ID
   const accessToken = credentials?.accessToken ?? process.env.META_WHATSAPP_ACCESS_TOKEN
@@ -50,6 +53,8 @@ export async function sendWhatsAppMessage(
       }),
     })
     const _json = await res.json()
+    void _json
+    void _json
     if (!res.ok) {
       // console.error('[whatsapp] sendMessage error:', json?.error?.message ?? json)
       return false
@@ -203,7 +208,7 @@ export async function sendWhatsAppTemplate(
   templateName: string,
   language: string,
   components: TemplateComponent[] | undefined,
-  credentials?: { phoneNumberId: string; accessToken: string }
+  credentials?: { phoneNumberId: string; accessToken: string },
 ): Promise<boolean> {
   const phoneNumberId = credentials?.phoneNumberId ?? process.env.META_WHATSAPP_PHONE_NUMBER_ID
   const accessToken = credentials?.accessToken ?? process.env.META_WHATSAPP_ACCESS_TOKEN
@@ -229,6 +234,7 @@ export async function sendWhatsAppTemplate(
       }),
     })
     const _json = await res.json()
+    void _json
     if (!res.ok) {
       // console.error('[whatsapp] sendTemplate error:', json?.error?.message ?? json)
       return false
@@ -248,9 +254,12 @@ export async function verifyWhatsAppCredentials(credentials: {
     return { ok: false, error: 'Missing phone_number_id or access_token' }
   }
   try {
-    const res = await fetch(`${BASE}/${credentials.phoneNumberId}?fields=verified_name,code_verification_status,display_phone_number`, {
-      headers: { Authorization: `Bearer ${credentials.accessToken}` },
-    })
+    const res = await fetch(
+      `${BASE}/${credentials.phoneNumberId}?fields=verified_name,code_verification_status,display_phone_number`,
+      {
+        headers: { Authorization: `Bearer ${credentials.accessToken}` },
+      },
+    )
     const json = await res.json()
     if (!res.ok) {
       return { ok: false, error: json?.error?.message ?? `HTTP ${res.status}` }

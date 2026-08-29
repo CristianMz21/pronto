@@ -129,7 +129,7 @@ const STATUS_STRIPE: Record<string, string> = {
 }
 
 function getStatusStripe(status: string): string {
-  return STATUS_STRIPE[status.toLowerCase()] ?? STATUS_STRIPE.pending
+  return (STATUS_STRIPE[status.toLowerCase()] ?? STATUS_STRIPE.pending) as string
 }
 
 const SOURCE_BADGE: Record<string, { label: string; pill: string }> = {
@@ -270,10 +270,11 @@ export function BookingCalendar({
   locations = [],
   selectedLocation = null,
   minAdvanceMinutes,
-  _bookingLeadTimeEnabled,
+  bookingLeadTimeEnabled,
   isBarbero = false,
   currentEmployeeId = null,
 }: Props) {
+  void bookingLeadTimeEnabled
   const supabase = createClient()
   const router = useRouter()
   const t = useTranslations('booking')
@@ -305,11 +306,11 @@ export function BookingCalendar({
     const openDays = businessHours.filter((h) => h.is_open && h.open_time && h.close_time)
     let minHour =
       openDays.length > 0
-        ? Math.min(...openDays.map((h) => parseInt(h.open_time.split(':')[0])))
+        ? Math.min(...openDays.map((h) => parseInt(h.open_time.split(':')[0]!)))
         : 8
     let maxHour =
       openDays.length > 0
-        ? Math.max(...openDays.map((h) => parseInt(h.close_time.split(':')[0])))
+        ? Math.max(...openDays.map((h) => parseInt(h.close_time.split(':')[0]!)))
         : 20
     // Expand to cover any appointment that falls outside the business-hours window
     for (const appt of appointments) {
@@ -411,6 +412,7 @@ export function BookingCalendar({
     const map: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }
     return map[wd] ?? date.getDay()
   }
+  void _getDowInBusinessTz
   function isHoliday(date: Date): boolean {
     if (!holidays || holidays.length === 0) return false
     const yyyy = date.getFullYear()
@@ -438,15 +440,15 @@ export function BookingCalendar({
   function isOutsideWorkingHours(date: string, time: string): boolean {
     if (!date || !time || businessHours.length === 0) return false
     // date is wall-clock in business timezone (YYYY-MM-DD from DatePicker), so derive dow independent of browser TZ
-    const [y, m, d] = date.split('-').map(Number)
-    const dow = new Date(Date.UTC(y, m - 1, d)).getUTCDay()
+    const [y, m, d] = date.split('-').map(Number) as [number, number, number]
+    const dow = new Date(Date.UTC(y, m! - 1, d)).getUTCDay()
     const rule = businessHours.find((h) => h.day_of_week === dow)
     if (!rule || !rule.is_open || !rule.open_time || !rule.close_time) return false
-    const [hh, mm] = time.split(':').map(Number)
-    const [oh, om] = rule.open_time.split(':').map(Number)
-    const [ch, cm] = rule.close_time.split(':').map(Number)
-    const timeMin = hh * 60 + mm
-    return timeMin < oh * 60 + om || timeMin >= ch * 60 + cm
+    const [hh, mm] = time.split(':').map(Number) as [number, number]
+    const [oh, om] = rule.open_time.split(':').map(Number) as [number, number]
+    const [ch, cm] = rule.close_time.split(':').map(Number) as [number, number]
+    const timeMin = hh! * 60 + mm!
+    return timeMin < oh! * 60 + om! || timeMin >= ch! * 60 + cm!
   }
 
   // Require 5px movement before treating pointer-down as a drag (preserves click)
@@ -463,9 +465,12 @@ export function BookingCalendar({
     if (!over) return
 
     const apptId = active.id as string
-    const [dayIndexStr, hourStr] = (over.id as string).split('-')
-    const dayIndex = parseInt(dayIndexStr)
-    const hour = parseInt(hourStr)
+    const [dayIndexStr, hourStr] = (over.id as string).split('-') as [string, string] as [
+      string,
+      string,
+    ]
+    const dayIndex = parseInt(dayIndexStr!)
+    const hour = parseInt(hourStr!)
 
     const appt = appointments.find((a) => a.id === apptId)
     if (!appt) return
@@ -475,17 +480,17 @@ export function BookingCalendar({
     const sameDay = weekDates[dayIndex]
     if (
       p.hour === hour &&
-      p.year === sameDay.getFullYear() &&
-      p.month === sameDay.getMonth() + 1 &&
-      p.day === sameDay.getDate()
+      p.year === sameDay!.getFullYear() &&
+      p.month === sameDay!.getMonth() + 1 &&
+      p.day === sameDay!.getDate()
     )
       return
 
     // Build the new UTC timestamp from the business-timezone wall-clock time
     const newStartsAt = wallclockToUtc(
-      sameDay.getFullYear(),
-      sameDay.getMonth() + 1,
-      sameDay.getDate(),
+      sameDay!.getFullYear(),
+      sameDay!.getMonth() + 1,
+      sameDay!.getDate(),
       hour,
       0,
       timezone,
@@ -576,13 +581,13 @@ export function BookingCalendar({
   }
 
   function getApptForCell(dayIndex: number, hour: number) {
-    const day = weekDates[dayIndex]
+    const day = weekDates[dayIndex]!
     return appointments.filter((a) => {
       const p = apptTzParts(a.starts_at, timezone)
       return (
-        p.year === day.getFullYear() &&
-        p.month === day.getMonth() + 1 &&
-        p.day === day.getDate() &&
+        p.year === day!.getFullYear() &&
+        p.month === day!.getMonth() + 1 &&
+        p.day! === day.getDate() &&
         p.hour === hour
       )
     })
@@ -592,7 +597,7 @@ export function BookingCalendar({
     if (!form.service_id || !form.date || !formTime) return
     const [fYear, fMonth, fDay] = form.date.split('-').map(Number)
     const [fHour, fMin] = formTime.split(':').map(Number)
-    const startsAt = wallclockToUtc(fYear, fMonth, fDay, fHour, fMin, timezone)
+    const startsAt = wallclockToUtc(fYear!, fMonth!, fDay!, fHour!, fMin!, timezone)
     // Past check — synchronized with /api/book and DB trigger (UTC comparison)
     // Dashboard intentionally checks ONLY past, not lead time, to allow 0-min walk-ins.
     // Online lead time (businesses.min_advance_minutes) is enforced only at /api/book and booking-form.
@@ -757,7 +762,7 @@ export function BookingCalendar({
           </button>
           <span className="text-sm font-medium text-gray-700 w-40 text-center">
             {weekDates.length
-              ? `${weekDates[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${weekDates[6].toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+              ? `${weekDates[0]!.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${weekDates[6]!.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
               : '—'}
           </span>
           <button onClick={() => navigate(1)} className="p-1.5 rounded-lg hover:bg-gray-100">
@@ -807,7 +812,7 @@ export function BookingCalendar({
                         <div key={emp.id} className="flex items-center gap-2">
                           <span
                             className="w-3 h-3 rounded-full shrink-0"
-                            style={{ backgroundColor: c.bg, border: '1px solid rgba(0,0,0,0.1)' }}
+                            style={{ backgroundColor: c!.bg, border: '1px solid rgba(0,0,0,0.1)' }}
                           />
                           <span className="text-xs text-gray-700 truncate">{emp.name}</span>
                         </div>
@@ -932,9 +937,9 @@ export function BookingCalendar({
                         onClick={() => {
                           if (cellAppts.length === 0) {
                             const d = weekDates[di]
-                            const yyyy = d.getFullYear()
-                            const mm = String(d.getMonth() + 1).padStart(2, '0')
-                            const dd = String(d.getDate()).padStart(2, '0')
+                            const yyyy = d!.getFullYear()
+                            const mm = String(d!.getMonth() + 1).padStart(2, '0')
+                            const dd = String(d!.getDate()).padStart(2, '0')
                             const hh = String(hour).padStart(2, '0')
                             void openForm({
                               date: `${yyyy}-${mm}-${dd}`,
@@ -957,8 +962,8 @@ export function BookingCalendar({
                                 }}
                                 className="rounded px-1 py-0.5 mb-0.5 cursor-grab active:cursor-grabbing text-xs"
                                 style={{
-                                  backgroundColor: empColor.bg,
-                                  color: empColor.text,
+                                  backgroundColor: empColor!.bg,
+                                  color: empColor!.text,
                                   borderLeft: `5px solid ${stripe}`,
                                   borderTop: '1px solid rgba(0,0,0,0.08)',
                                   borderRight: '1px solid rgba(0,0,0,0.08)',
@@ -980,9 +985,9 @@ export function BookingCalendar({
                                 )}
                                 {a.source && SOURCE_BADGE[a.source] && (
                                   <span
-                                    className={`inline-block mt-0.5 text-[9px] leading-tight px-1 rounded font-medium ${SOURCE_BADGE[a.source].pill}`}
+                                    className={`inline-block mt-0.5 text-[9px] leading-tight px-1 rounded font-medium ${SOURCE_BADGE[a.source]!.pill}`}
                                   >
-                                    {SOURCE_BADGE[a.source].label}
+                                    {SOURCE_BADGE[a.source]!.label}
                                   </span>
                                 )}
                               </div>
@@ -1008,8 +1013,8 @@ export function BookingCalendar({
                 <div
                   className="rounded px-2 py-1 text-xs shadow-lg w-28"
                   style={{
-                    backgroundColor: empColor.bg,
-                    color: empColor.text,
+                    backgroundColor: empColor!.bg,
+                    color: empColor!.text,
                     borderLeft: `5px solid ${stripe}`,
                     borderTop: '1px solid rgba(0,0,0,0.08)',
                     borderRight: '1px solid rgba(0,0,0,0.08)',
@@ -1139,8 +1144,8 @@ export function BookingCalendar({
               <div>
                 <label className="text-xs text-gray-500 font-medium">{t('form.clientLabel')}</label>
                 <select
-                  value={form.client_id}
-                  onChange={(e) => setForm((f) => ({ ...f, client_id: e.target.value }))}
+                  value={form.client_id!}
+                  onChange={(e) => setForm((f) => ({ ...f, client_id: e.target.value! }))}
                   className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">{t('walkIn')}</option>
@@ -1158,7 +1163,7 @@ export function BookingCalendar({
                     {t('form.employeeLabel')}
                   </label>
                   <select
-                    value={form.employee_id}
+                    value={form.employee_id!}
                     onChange={(e) => setForm((f) => ({ ...f, employee_id: e.target.value }))}
                     className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
@@ -1217,11 +1222,11 @@ export function BookingCalendar({
               {formatInBusinessTimezone(selectedAppt.ends_at, timezone, 'time')}
             </p>
             <div className="flex items-center gap-2 mb-3 flex-wrap">
-              {selectedAppt.source && SOURCE_BADGE[selectedAppt.source] && (
+              {selectedAppt.source && SOURCE_BADGE[selectedAppt.source!] && (
                 <span
-                  className={`text-xs px-2 py-0.5 rounded-full font-medium ${SOURCE_BADGE[selectedAppt.source].pill}`}
+                  className={`text-xs px-2 py-0.5 rounded-full font-medium ${SOURCE_BADGE[selectedAppt.source!]!.pill}`}
                 >
-                  {SOURCE_BADGE[selectedAppt.source].label}
+                  {SOURCE_BADGE[selectedAppt.source!]!.label}
                 </span>
               )}
             </div>
@@ -1231,8 +1236,8 @@ export function BookingCalendar({
                   {t('detail.employeeLabel')}
                 </label>
                 <select
-                  value={selectedAppt.employees?.id ?? ''}
-                  onChange={(e) => assignEmployee(selectedAppt.id, e.target.value)}
+                  value={selectedAppt!.employees?.id ?? ''}
+                  onChange={(e) => assignEmployee(selectedAppt!.id, e.target.value)}
                   className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Unassigned</option>

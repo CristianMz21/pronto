@@ -94,7 +94,15 @@ export default async function CajaPage(props: { searchParams: Promise<{ location
         .eq('register_id', openRegister.id)
         .order('created_at', { ascending: false })
         .limit(20)
-    : { data: [] as unknown[] }
+    : {
+        data: [] as unknown as {
+          id: string
+          type: string
+          amount: number
+          reason: string | null
+          created_at: string
+        }[],
+      }
 
   return (
     <>
@@ -122,8 +130,27 @@ export default async function CajaPage(props: { searchParams: Promise<{ location
         businessId={business.id}
         currency={business.currency ?? 'COP'}
         openRegister={openRegister ? { ...openRegister, expected, txSum, inSum, outSum } : null}
-        history={history ?? []}
-        movements={movements ?? []}
+        history={
+          (history as unknown as {
+            id: string
+            opening_cash: number
+            expected_cash: number | null
+            actual_cash: number | null
+            difference: number | null
+            status: string
+            opened_at: string
+            closed_at: string | null
+          }[]) ?? []
+        }
+        movements={
+          (movements as unknown as {
+            id: string
+            type: string
+            amount: number
+            reason: string | null
+            created_at: string
+          }[]) ?? []
+        }
       />
     </>
   )

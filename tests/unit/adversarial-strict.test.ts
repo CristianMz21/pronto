@@ -62,7 +62,6 @@ describe('adversarial 100% - agente interno que intenta romper código', () => {
       }
     })
     it('XSS en amount no injection (solo número)', () => {
-      // @ts-ignore
       expect(calcCommission('<script>', '<script>', '<script>').amount).toBe(0)
     })
     it('propiedad fuzz: amount siempre >=0', () => {
@@ -135,11 +134,8 @@ describe('adversarial 100% - agente interno que intenta romper código', () => {
       }
     })
     it('dayHours inyectado', () => {
-      // @ts-ignore
       expect(checkSlotWithinHours(null, '10:00', 30)).toEqual({ ok: false, reason: 'closed' })
-      // @ts-ignore
       expect(checkSlotWithinHours({} as any, '10:00', 30).ok).toBe(false)
-      // @ts-ignore
       expect(
         checkSlotWithinHours(
           { day_of_week: 1, is_open: true, open_time: '<script>', close_time: '20:00' },
@@ -201,10 +197,8 @@ describe('adversarial 100% - agente interno que intenta romper código', () => {
       }
     })
     it('moneda maliciosa lanza RangeError esperado', () => {
-      // @ts-ignore
       expect(() => formatCurrency(100, '<script>')).toThrow()
       // locale inválido no crashea? formatCurrency con locale inválido usa en-US fallback? Actually Intl throws for invalid locale? We test que al menos no crashee app si se pasa locale raro - pero en realidad lanza, lo verificamos
-      // @ts-ignore
       expect(() => formatCurrency(100, 'USD', 'invalid-xxx-!')).toThrow()
     })
   })

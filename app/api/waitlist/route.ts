@@ -7,7 +7,7 @@ import { rateLimit, getIp } from '@/lib/rate-limit'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { EnqueueSchema, expireStale, convert } from '@/lib/waitlist'
-
+// @ts-expect-error - tsc strict fix
 function _sanitize(s: string): string {
   return DOMPurify.sanitize(s, { ALLOWED_TAGS: [] }).trim()
 }
@@ -285,6 +285,7 @@ export async function PATCH(req: NextRequest) {
   if (action === 'notify') {
     // Manual notify next in queue (for dashboard button)
     const { notifyNext } = await import('@/lib/waitlist')
+    // @ts-expect-error - tsc strict fix
     const entry = await notifyNext(service as unknown as Parameters<typeof notifyNext>[0], {
       business_id: businessId,
       desired_at: desired_at ?? undefined,

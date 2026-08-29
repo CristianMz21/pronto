@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 
 interface Props {
+  _businessId?: string
   businessId: string
   initial: {
     tax_rate?: number | string
@@ -20,7 +21,8 @@ interface Props {
   locations?: { id: string; name: string }[]
 }
 
-export function ConfigSection({ _businessId, initial, locations = [] }: Props) {
+export function ConfigSection({ businessId, initial, locations = [] }: Props) {
+  void businessId
   const [taxRate, setTaxRate] = useState(String(initial.tax_rate ?? 0))
   const [paymentMethods, setPaymentMethods] = useState<string[]>(
     initial.payment_methods ?? ['cash', 'card', 'transfer'],

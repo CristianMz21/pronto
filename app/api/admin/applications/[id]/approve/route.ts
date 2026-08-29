@@ -7,7 +7,7 @@ import { isSuperAdmin } from '@/lib/auth/roles'
 import { getSupabaseUrl } from '@/lib/supabase/getUrl'
 import { createClient } from '@/lib/supabase/server'
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const supabase = await createClient()
   const {

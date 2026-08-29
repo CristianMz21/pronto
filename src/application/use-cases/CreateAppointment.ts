@@ -11,7 +11,9 @@ export class CreateAppointmentUseCase {
   constructor(
     private readonly appointmentRepo: AppointmentRepository,
     private readonly clientRepo: ClientRepository,
-  ) {}
+  ) {
+    void this.clientRepo
+  }
 
   async execute(
     props: CreateAppointmentProps & { businessTimezone: string; minAdvanceMinutes: number },

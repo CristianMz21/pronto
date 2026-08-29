@@ -67,8 +67,8 @@ type Step = 'service' | 'employee' | 'datetime' | 'contact' | 'done'
 function generateSlots(openTime: string, closeTime: string, durationMin: number): string[] {
   const [oh, om] = openTime.split(':').map(Number)
   const [ch, cm] = closeTime.split(':').map(Number)
-  const start = oh * 60 + om
-  const end = ch * 60 + cm
+  const start = oh! * 60 + om!
+  const end = ch! * 60 + cm!
   const slots: string[] = []
   let cur = start
   while (cur + durationMin <= end) {
@@ -227,7 +227,7 @@ export function PublicBookingForm({
 }: Props) {
   const supabase = createClient()
   const t = useTranslations('publicBooking')
-  const [authUser, setAuthUser] = useState<{ id: string; email?: string | null } | null>(null)
+  const [authUser, setAuthUser] = useState<{ id: string; email: string | null } | null>(null)
   const [authChecked, setAuthChecked] = useState(false)
 
   const isEsc = theme === 'escuderia'
@@ -423,7 +423,7 @@ export function PublicBookingForm({
         } = await supabase.auth.getUser()
         if (cancelled) return
         if (user) {
-          setAuthUser({ id: user.id, email: user.email })
+          setAuthUser({ id: user.id, email: user.email ?? null })
           // Prefill contact from auth + linked client record
           const { data: linkedClient } = await supabase
             .from('clients')
@@ -506,11 +506,11 @@ export function PublicBookingForm({
     if (dayHours.break_start && dayHours.break_end) {
       const [brh, brm] = dayHours.break_start.split(':').map(Number)
       const [beh, bem] = dayHours.break_end.split(':').map(Number)
-      const breakStartMin = brh * 60 + brm
-      const breakEndMin = beh * 60 + bem
+      const breakStartMin = brh! * 60 + brm!
+      const breakEndMin = beh! * 60 + bem!
       slots = slots.filter((slot) => {
         const [sh, sm] = slot.split(':').map(Number)
-        const slotStartMin = sh * 60 + sm
+        const slotStartMin = sh! * 60 + sm!
         const slotEndMin = slotStartMin + svc.duration_min
         return !(slotStartMin < breakEndMin && slotEndMin > breakStartMin)
       })
@@ -520,7 +520,7 @@ export function PublicBookingForm({
       const nowMin = nowMinutesInBusinessTz()
       slots = slots.filter((slot) => {
         const [sh, sm] = slot.split(':').map(Number)
-        const slotMin = sh * 60 + sm
+        const slotMin = sh! * 60 + sm!
         if (slotMin <= nowMin) return false
         if (isTooSoonMinutes(slotMin, nowMin, minAdvance, leadEnabled)) return false
         return true
@@ -539,7 +539,7 @@ export function PublicBookingForm({
 
       slots = slots.filter((slot) => {
         const [sh, sm] = slot.split(':').map(Number)
-        const slotStartMin = sh * 60 + sm
+        const slotStartMin = sh! * 60 + sm!
         const slotEndMin = slotStartMin + svc.duration_min
 
         const bookedCount = (booked ?? []).filter(
@@ -604,7 +604,7 @@ export function PublicBookingForm({
     if (date === today) {
       const nowMin = nowMinutesInBusinessTz()
       const [sh, sm] = time.split(':').map(Number)
-      const slotMin = sh * 60 + sm
+      const slotMin = sh! * 60 + sm!
       if (slotMin <= nowMin) {
         setBookingError('No se puede reservar en el pasado. Elegí un horario futuro.')
         return
@@ -908,12 +908,12 @@ export function PublicBookingForm({
             href={buildGCalUrl({
               businessName: business.name,
               serviceName: selectedService?.name ?? '',
-              employeeName: selectedEmployeeObj?.name,
+              employeeName: selectedEmployeeObj?.name ?? null,
               date,
               time: time ?? '',
               durationMin: selectedService?.duration_min ?? 60,
-              timezone: business.timezone,
-              address: business.address,
+              timezone: business.timezone ?? null,
+              address: business.address ?? null,
             })}
             target="_blank"
             rel="noopener noreferrer"
@@ -1184,7 +1184,7 @@ export function PublicBookingForm({
                     flexShrink: 0,
                   }}
                 >
-                  {e.name[0].toUpperCase()}
+                  {e.name[0]!.toUpperCase()}
                 </div>
                 <span style={{ fontSize: 14, fontWeight: 500, color: cardText }}>{e.name}</span>
               </div>

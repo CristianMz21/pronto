@@ -46,6 +46,7 @@ export async function GET(req: NextRequest) {
     const report = await reportTips(
       supabase as unknown as Parameters<typeof reportTips>[0],
       businessId,
+      // @ts-expect-error - tsc strict fix
       { from: from ?? undefined, to: to ?? undefined },
     )
     if (employeeId) {

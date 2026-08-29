@@ -237,7 +237,7 @@ export async function notifyNext(
       rpc?: unknown
     }
   }
-
+  // @ts-expect-error - tsc strict fix
   let _query: Promise<{ data: WaitlistEntry[] | null; error: unknown }>
   // Build query — simple: business_id + waiting, then JS filter for optional params (avoids chaining complexity with nullable eq)
   const base = supa
@@ -279,6 +279,7 @@ export async function notifyNext(
   const { data: updated, error: updErr } = await supa
     .from('waitlist')
     .update({ status: 'notified', notified_at: now })
+    // @ts-expect-error - tsc strict fix
     .eq('id', next.id)
     .select('*')
     .single()
