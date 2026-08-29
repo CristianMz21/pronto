@@ -36,6 +36,39 @@ Each file is self-contained and idempotent (`IF NOT EXISTS` / `IF EXISTS` guards
 
 The table above covers the foundational migrations (`001`–`018`) in detail. Migrations `019`–`035` add further features and fixes (retail/barcode mode, security hardening, WhatsApp columns, booking-availability fixes, business hours break time, and more) — see the individual files in `supabase/migrations/` for what each one does. All of them run automatically and require no manual steps.
 
+Migrations `036`–`059` cover the barber shop specialization:
+
+| File | What it creates |
+|---|---|
+| `036_employee_services.sql` | `employee_services` junction (barber → services) with RLS |
+| `037_employee_unavailability.sql` | `employee_unavailability` (vacations/breaks) with range index + RLS |
+| `038_barber_extra.sql` | `employees.color`, `specialties`, `commission_rate` + `services.cost` |
+| `039_appointment_fsm.sql` + `040_check_barber_availability.sql` | FSM `scheduled→checked_in→in_service→completed` + trigger `check_barber_availability()` (business_hours + unavailability + qualification) |
+| `041_cash_registers.sql` / `042_commissions.sql` / `043_commission_trigger.sql` | Cash registers + commissions with `generate_commission()` trigger |
+| `044_locations.sql` | `locations` + `location_id` nullable FK on employees/services/appointments/inventory |
+| `045_security_hardening_escuderia.sql` .. `048_security_rls_view.sql` | pgsodium `phone_encrypted`, RLS audit view `businesses_public`, bcrypt/CSP hardening |
+| `049_escuderia_branding.sql` .. `057_business_guest_booking.sql` | Escudería branding, PII boundary, holidays, POS cash config, guest booking |
+| `058_holidays.sql` | `holidays` + `business_hours` holiday blocking |
+| `059_rbac_barbero.sql` | **RBAC barbero reducido** — backfills `employee→staff`, `barber→barbero`, `CHECK role IN ('admin','staff','barbero')`, helpers `current_user_role()` / `current_employee_id()` (`SECURITY DEFINER STABLE`), RLS: `appointments/transactions/commissions` filtered to `employee_id=self` for barbero, `cash_registers/cash_movements/inventory_*` 0 rows for barbero, `employee_services` filtered. Idempotent `DO $$` / `DROP POLICY IF EXISTS`. |
+
+### 059_rbac_barbero.sql — rollback
+
+```sql
+-- Rollback RBAC barbero (idempotent, no data loss):
+drop policy if exists "tenant_access_appointments" on public.appointments;
+drop policy if exists "tenant_access_transactions" on public.transactions;
+drop policy if exists "tenant_access_commissions" on public.commissions;
+drop policy if exists "tenant_access_cash_registers" on public.cash_registers;
+drop policy if exists "tenant_access_cash_movements" on public.cash_movements;
+drop policy if exists "tenant_access_inventory_items" on public.inventory_items;
+drop policy if exists "tenant_access_inventory_movements" on public.inventory_movements;
+drop policy if exists "tenant_access_employee_services" on public.employee_services;
+drop function if exists public.current_user_role();
+drop function if exists public.current_employee_id();
+alter table public.employees drop constraint if exists employees_role_check;
+-- Re-create permissive tenant policies without role filter (see 001..044 baseline)
+```
+
 ---
 
 ## How to run

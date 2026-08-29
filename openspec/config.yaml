@@ -1,0 +1,32 @@
+schema: spec-driven
+context: |
+  Stack: Next.js 16 + React 19 + Tailwind + shadcn/ui + Supabase (Postgres+Auth+Storage) + Serwist PWA + next-intl
+  Architecture: proxy.ts auth guard + (dashboard)/layout RBAC + lib/auth roles + Supabase RLS (my_business_ids)
+  Testing: vitest (unit) + playwright (e2e), eslint
+  Style: TypeScript strict, PWA mobile-first, Zod validation, COP/es-CO
+rules:
+  proposal:
+    - Include rollback plan
+    - Keep under 450 words
+  specs:
+    - Use Given/When/Then
+    - Use RFC 2119 MUST/SHOULD
+  design:
+    - Document RBAC matrix and RLS policies
+  tasks:
+    - Group by role slice, keep testable per story
+  apply:
+    tdd: false
+    test_command: "npm run test:unit"
+  verify:
+    test_command: "npm run test:unit"
+    build_command: "npm run build"
+    coverage_threshold: 0
+  archive:
+    - Warn before merging destructive RLS deltas
+testing:
+  strict_tdd: false
+  test_command: "npm run test:unit"
+  unit: true
+  integration: true
+  e2e: true
