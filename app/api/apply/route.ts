@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { createClient } from '@/lib/supabase/server'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { rateLimit, getIp } from '@/lib/rate-limit'
+import { getSupabaseUrl } from '@/lib/supabase/getUrl'
 
 const ApplySchema = z.object({
   business_name: z.string().min(2).max(100),
@@ -60,8 +61,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'turnstile_failed', message: 'Verificación CAPTCHA fallida' }, { status: 400 })
   }
 
-  // Check duplicate pending
-  const supabase = await createClient()
+  // Use service_role to bypass RLS (public form must work for anon)
+  const supabase = createAdminClient(getSupabaseUrl(), process.env.SUPABASE_SERVICE_ROLE_KEY!)
   const { data: existing } = await supabase.from('barbershop_applications').select('id, status').eq('email', data.email).maybeSingle()
   if (existing && (existing as { status: string }).status === 'pending') {
     return NextResponse.json({ error: 'already_pending', message: 'Ya tienes una solicitud pendiente' }, { status: 409 })

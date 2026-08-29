@@ -1,10 +1,25 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 export function ApplyForm() {
-  const [form, setForm] = useState({ business_name: '', owner_name: '', email: '', phone: '', nit: '', city: '', requested_plan: 'starter' })
+  const [form, setForm] = useState({ business_name: '', owner_name: '', email: '', phone: '', nit: '', city: '', requested_plan: 'starter', turnstile_token: '' })
   const [status, setStatus] = useState<'idle'|'loading'|'success'|'error'>('idle')
   const [msg, setMsg] = useState('')
+
+  useEffect(() => {
+    const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
+    if (!siteKey) return
+    // Load Turnstile script if not present
+    if (document.querySelector('script[src*="challenges.cloudflare.com/turnstile"]')) return
+    const s = document.createElement('script')
+    s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js'
+    s.async = true
+    document.head.appendChild(s)
+    // Global callback for Turnstile
+    ;(window as unknown as Record<string, unknown>)['onTurnstile'] = (token: string) => {
+      setForm((f) => ({ ...f, turnstile_token: token }))
+    }
+  }, [])
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -43,7 +58,13 @@ export function ApplyForm() {
         <option value="pro">Pro</option>
         <option value="agency">Agency</option>
       </select>
-      {/* Turnstile widget would go here: <div className="cf-turnstile" data-sitekey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY}></div> */}
+      {process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ? (
+        <div className="cf-turnstile" data-sitekey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY} data-callback="onTurnstile" />
+      ) : (
+        <input type="hidden" value="" />
+      )}
+      {/* hidden token field for non-JS fallback */}
+      <input type="hidden" value={form.turnstile_token} onChange={() => {}} />
       {status === 'error' && <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2 text-sm">{msg}</div>}
       <button type="submit" disabled={status === 'loading'} className="w-full bg-blue-600 text-white rounded-lg py-2.5 text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
         {status === 'loading' ? 'Enviando...' : 'Solicitar alta'}

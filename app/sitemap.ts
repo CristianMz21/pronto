@@ -5,7 +5,7 @@ import path from 'path'
 const BASE_URL = 'https://trypronto.app'
 
 // Filesystem path segments that disqualify a page (route groups with these names)
-const EXCLUDED_FS_SEGMENTS = ['(dashboard)', 'api']
+const EXCLUDED_FS_SEGMENTS = ['(dashboard)', '(admin)', 'api']
 
 // URL route prefixes to exclude
 const EXCLUDED_ROUTE_PREFIXES = [
