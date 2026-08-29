@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation'
 import { Header } from '@/components/layout/header'
 import { getTranslations } from 'next-intl/server'
 import { SettingsTabs } from './settings-tabs'
+import { WhatsAppSection } from './whatsapp-section'
+import { ConfigSection } from './config-section'
 import { getAuthUser } from '@/lib/auth-user'
 
 export default async function SettingsPage() {
@@ -23,6 +25,7 @@ export default async function SettingsPage() {
     { data: services },
     { data: employees },
     { data: businessHours },
+    { data: locations },
   ] = await Promise.all([
     supabase
       .from('services')
@@ -39,6 +42,7 @@ export default async function SettingsPage() {
       .select('day_of_week, is_open, open_time, close_time, break_start, break_end')
       .eq('business_id', business.id)
       .order('day_of_week'),
+    supabase.from('locations').select('id, name').eq('business_id', business.id).order('name'),
   ])
 
   return (
@@ -52,6 +56,27 @@ export default async function SettingsPage() {
         userEmail={user.email ?? ''}
         userId={user.id}
       />
+      <div className="px-6 pb-6 max-w-5xl mx-auto space-y-6">
+        <WhatsAppSection
+          businessId={business.id}
+          initialPhoneNumberId={business.meta_whatsapp_phone_number_id}
+          initialAccessToken={business.meta_whatsapp_access_token}
+        />
+        <ConfigSection
+          businessId={business.id}
+          initial={{
+            tax_rate: (business as unknown as { tax_rate?: number }).tax_rate,
+            payment_methods: (business as unknown as { payment_methods?: string[] }).payment_methods,
+            cancel_lead_time: (business as unknown as { cancel_lead_time?: number }).cancel_lead_time,
+            min_advance_minutes: business.min_advance_minutes,
+            booking_lead_time_enabled: business.booking_lead_time_enabled ?? true,
+            loyalty_earn_rate: (business as unknown as { loyalty_earn_rate?: number }).loyalty_earn_rate,
+            loyalty_redeem_rate: (business as unknown as { loyalty_redeem_rate?: number }).loyalty_redeem_rate,
+            loyalty_redeem_value: (business as unknown as { loyalty_redeem_value?: number }).loyalty_redeem_value,
+          }}
+          locations={locations ?? []}
+        />
+      </div>
     </>
   )
 }
