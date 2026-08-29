@@ -1,4 +1,6 @@
-# Contributing to Pronto
+# Contributing to Pronto — Escudero Fork
+
+> **Fork notice:** This project is a fork of [SGrappelli/pronto](https://github.com/SGrappelli/pronto) (MIT, base `SGrappelli/pronto@1a50f5f`). Pronto contributions are appreciated upstream; Escudero-specific contributions (barbería FSM, comisiones, caja, multi-sede) go here. See `README.md#origin--attribution`.
 
 Thank you for your interest in contributing! This document covers everything you need to get started.
 

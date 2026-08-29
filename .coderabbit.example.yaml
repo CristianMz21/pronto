@@ -1,0 +1,69 @@
+# CoderRabbit example config for Escudero (Next.js 16 + Supabase)
+# Copy to .coderabbit.yaml to activate (requires consent — do NOT auto-activate
+# while parallel CLI touches app/**, tests/**, drizzle/**).
+# Docs: https://docs.coderabbit.ai/configuration
+#       https://app.coderabbit.ai/explore
+
+language: en
+# Tone: concise, no poems; respectful, actionable comments.
+tone_instructions: "Be concise, technical, actionable. No poems or fluff. Explain WHY briefly."
+
+# Opt into early-access features (learns codebase, AST, better Next.js support)
+early_access: true
+
+reviews:
+  # Profile controls strictness: chill | balanced | assertive
+  profile: chill
+  # High-level summary at top of each review
+  high_level_summary: true
+  # Generate PR description if missing
+  high_level_summary_placeholder: true
+  # Allow request-changes workflow (set false to keep as comments only initially)
+  request_changes_workflow: false
+  # Collapse walkthrough/comments for noise control
+  collapse_walkthrough: true
+  # Review commit messages / PR title
+  review_commit_messages: false
+  # Fail PR if issues? Keep false — advisory only until ESLint strict is green
+  fail_commit_status: false
+
+# Knowledge base — let CoderRabbit learn from PRs and store decisions
+knowledge_base:
+  learnings:
+    # Persist learnings across PRs (team conventions, false positives)
+    enabled: true
+
+# Ignore generated / vendor / migration noise
+path_instructions:
+  - path: ".next/**"
+    instructions: "Do not review; generated Next.js build output"
+  - path: "public/**"
+    instructions: "Do not review; generated PWA assets (public/sw.js)"
+  - path: "supabase/migrations/**"
+    instructions: "Do not review for style; only flag SQL injection or RLS security issues"
+  - path: "drizzle/**"
+    instructions: "Do not review for style; generated Drizzle artifacts"
+  - path: "lib/supabase/database.types.ts"
+    instructions: "Do not review; generated Supabase types"
+  - path: "package-lock.json"
+    instructions: "Do not review"
+  - path: "coverage/**"
+    instructions: "Do not review"
+
+# Language-specific overrides (Next.js 16 App Router awareness)
+# Next.js + React 19 + Supabase: flag server/client boundary leaks,
+# unsafe direct supabase queries without RLS checks, XSS via dangerouslySetInnerHTML
+tools:
+  # Keep CoderRabbit complementary to ESLint; do not duplicate eslint-config-next
+  related_issues: true
+
+# Optional: auto-label / PR description template
+# Uncomment when workflow stabilized:
+# pr_template:
+#   enabled: true
+
+# Assistant persona notes (stored as repo learning after first activation):
+# - Escudero is MIT fork of SGrappelli/pronto — attribution already handled.
+# - Stack: Next 16.3.2, React 19, TypeScript strict, Supabase (RLS), Drizzle, Tailwind, shadcn/ui, next-intl (en/es/pt/it), Serwist PWA.
+# - Prefer Server Components; client components only when needed (use client directive).
+# - Favor `tsx --noEmit` correctness over `ignoreBuildErrors` workaround.

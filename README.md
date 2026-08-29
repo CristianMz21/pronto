@@ -2,6 +2,8 @@
 
 # Pronto
 
+> **Escudero** is a maintained fork of [Pronto by SGrappelli](https://github.com/SGrappelli/pronto) (MIT). Fork base: `SGrappelli/pronto@1a50f5f` (2026-08-27). Original platform handles POS/CRM/Booking/Inventory/Notifications; Escudero evolves it for barberías contemporáneas.
+
 Open-source business management for service businesses and retail shops.  
 Self-hosted via Docker or cloud at [trypronto.app](https://trypronto.app)
 
@@ -9,7 +11,7 @@ Self-hosted via Docker or cloud at [trypronto.app](https://trypronto.app)
 [![Next.js](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org)
 [![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-green)](https://supabase.com)
 [![Docker](https://img.shields.io/badge/Docker-ready-blue.svg)](docker-compose.yml)
-[![CI](https://github.com/SGrappelli/pronto/actions/workflows/ci.yml/badge.svg)](https://github.com/SGrappelli/pronto/actions/workflows/ci.yml)
+[![CI](https://github.com/CristianMz21/pronto/actions/workflows/ci.yml/badge.svg)](https://github.com/CristianMz21/pronto/actions/workflows/ci.yml) [![CI upstream](https://github.com/SGrappelli/pronto/actions/workflows/ci.yml/badge.svg)](https://github.com/SGrappelli/pronto/actions/workflows/ci.yml)
 
 ---
 
@@ -21,6 +23,33 @@ Your clients book directly with you — no marketplace commission, no vendor loc
 **Supported business types:**  
 Salons · Barbershops · Spas · Dental clinics · Fitness studios ·  
 Auto repair shops · Cafes · Tattoo studios · Retail shops & kiosks
+
+---
+
+## Origin & Attribution
+
+> **Credit:** Created by [SGrappelli](https://github.com/SGrappelli) as [Pronto](https://github.com/SGrappelli/pronto) under the [MIT License](LICENSE). This fork is maintained separately.
+
+**Why a fork?** Pronto is a solid general-purpose platform for service businesses and retail. **Escudero** specializes it for contemporary barbershops — scheduling, commissions and cash discipline where Pronto was intentionally generic. Base migrations `001`–`035` are preserved; evolution continues beyond them.
+
+| Inherited from Pronto | Added by Escudero |
+|---|---|
+| POS + CRM + Booking + Inventory + Notifications | Barber-specific FSM: `scheduled → checked_in → in_service → completed` (plus `cancelled`/`no_show`) |
+| Supabase/Postgres + RLS, Docker, PWA offline POS | `employee_services` & `employee_unavailability` guards |
+| Next.js 16 + Tailwind + shadcn/ui | Commissions & tips per barber/service |
+| Telegram/WhatsApp/Viber/Email | Cash registers (open/close, expected vs actual) |
+| Modular presets (Salon/Shop/Cafe) | Multi-location (`locations`, `location_id` propagation) |
+| i18n EN/ES/PT/IT | Loyalty, memberships, promotions & campaign CRM |
+
+### What's new in Escudero
+
+- **Commissions & tips** — per barber/service `commission_rate` with auditable payouts.
+- **Cash registers** — open/close with `expected/actual/difference` and movement history.
+- **FSM agenda** — `scheduled/checked_in/in_service/completed` with server-side guards.
+- **`employee_services` / `unavailability`** — prevents assigning unqualified barbers or booking vacations/breaks.
+- **Multi-location** — `locations` table + `location_id` on appointments/services/inventory/cash.
+- **PWA offline improvements** — Serwist `additionalPrecacheEntries ['/offline']` verified, IndexedDB `pending_transactions` queue with `syncQueue()`.
+- **Tests** — Vitest + Playwright baseline (currency `COP/es-CO`, availability) aiming for ≥80% on critical paths.
 
 ---
 
@@ -88,8 +117,13 @@ Toggle modules in **Settings → Modules** — unused tabs disappear from the si
 
 ```bash
 # 1. Clone the repo
-git clone https://github.com/SGrappelli/pronto.git
-cd pronto
+# Upstream:
+# git clone https://github.com/SGrappelli/pronto.git
+# cd pronto
+# Fork (Escudero):
+git clone https://github.com/CristianMz21/pronto.git escudero
+cd escudero
+git remote add upstream https://github.com/SGrappelli/pronto.git  # to track upstream
 
 # 2. Copy environment file and fill in your values
 cp .env.example .env
@@ -246,8 +280,13 @@ Clients link via `/link +12345678900` in the bot.
 ### VPS / Server
 
 ```bash
-git clone https://github.com/SGrappelli/pronto.git
-cd pronto
+# Upstream:
+# git clone https://github.com/SGrappelli/pronto.git
+# cd pronto
+# Fork (Escudero):
+git clone https://github.com/CristianMz21/pronto.git escudero
+cd escudero
+git remote add upstream https://github.com/SGrappelli/pronto.git  # to track upstream
 cp .env.example .env
 # Edit .env
 docker-compose up -d
@@ -274,7 +313,7 @@ server {
 ## Project Structure
 
 ```
-pronto/
+escudero/  # fork of pronto
 ├── app/
 │   ├── (auth)/          # Login, Register, Check email
 │   ├── (dashboard)/     # POS, CRM, Inventory, Booking, Settings, Dashboard
@@ -364,7 +403,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## License
 
-[MIT](LICENSE) — free for personal and commercial use.
+[MIT](LICENSE) — free for personal and commercial use. MIT — Based on Pronto (SGrappelli) — Escudero improvements © Escudero contributors.
 
 ---
 

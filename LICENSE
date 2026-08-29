@@ -1,6 +1,7 @@
-MIT License
+MIT License — Pronto (SGrappelli) + Escudero Contributors
 
-Copyright (c) 2026 Pronto Contributors
+Copyright (c) 2026 Pronto Contributors (original work by SGrappelli — https://github.com/SGrappelli/pronto, base 1a50f5f)
+Copyright (c) 2026 Escudero Contributors (fork modifications)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -19,3 +20,5 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+Original work: SGrappelli/pronto (MIT). Escudero modifications © Escudero contributors. Preserve this notice in all copies.

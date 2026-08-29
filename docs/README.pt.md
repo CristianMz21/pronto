@@ -2,6 +2,8 @@
 
 # Pronto — Sistema de Gestão para Negócios de Serviços
 
+> **Escudero** é um fork mantido de [Pronto por SGrappelli](https://github.com/SGrappelli/pronto) (MIT). Base do fork: `SGrappelli/pronto@1a50f5f` (2026-08-27). A plataforma original resolve PDV/CRM/Agendamento/Estoque/Notificações; o Escudero a evolui para barbearias contemporâneas.
+
 > PDV · CRM · Estoque · Agendamento · Notificações multicanal. Tudo no seu servidor.  
 > Seus dados, seu servidor. Sem comissões. Instalação com um único comando.
 
@@ -9,6 +11,7 @@
 [![Next.js](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org)
 [![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-green)](https://supabase.com)
 [![Docker](https://img.shields.io/badge/Docker-ready-blue)](../docker-compose.yml)
+[![CI](https://github.com/CristianMz21/pronto/actions/workflows/ci.yml/badge.svg)](https://github.com/CristianMz21/pronto/actions/workflows/ci.yml) [![CI upstream](https://github.com/SGrappelli/pronto/actions/workflows/ci.yml/badge.svg)](https://github.com/SGrappelli/pronto/actions/workflows/ci.yml)
 
 ---
 
@@ -17,6 +20,33 @@
 O Pronto é um sistema de gestão empresarial gratuito e de código aberto, desenvolvido para negócios de serviços: salões de beleza, oficinas mecânicas, cafés, clínicas odontológicas, academias e muito mais.
 
 Sem mensalidades. Sem comissões sobre suas vendas. Seus dados ficam no seu próprio servidor.
+
+---
+
+## Origem e Atribuição
+
+> **Crédito:** Criado por [SGrappelli](https://github.com/SGrappelli) como [Pronto](https://github.com/SGrappelli/pronto) sob [Licença MIT](../LICENSE). Este fork é mantido de forma independente.
+
+**Por que um fork?** Pronto é uma plataforma generalista sólida para negócios de serviços e varejo. **Escudero** a especializa para barbearias contemporâneas — agenda, comissões e disciplina de caixa onde Pronto foi intencionalmente genérico. As migrações base `001`–`035` são preservadas; a evolução continua além.
+
+| Herdado do Pronto | Adicionado pelo Escudero |
+|---|---|
+| PDV + CRM + Agendamento + Estoque + Notificações | FSM barbeiro: `scheduled → checked_in → in_service → completed` (mais `cancelled`/`no_show`) |
+| Supabase/Postgres + RLS, Docker, PWA offline POS | `employee_services` e guards `employee_unavailability` |
+| Next.js 16 + Tailwind + shadcn/ui | Comissões e gorjetas por barbeiro/serviço |
+| Telegram/WhatsApp/Viber/Email | Caixas (abertura/fechamento, conferência) |
+| Presets modulares (Salão/Loja/Café) | Multi-unidade (`locations`, `location_id`) |
+| i18n EN/ES/PT/IT | Fidelidade, membresias, promoções e campanhas CRM |
+
+### O que muda no Escudero vs Pronto base
+
+- **Comissões e gorjetas** — `commission_rate` por barbeiro/serviço com rastreabilidade.
+- **Caixas** — abertura/fechamento com `expected/actual/difference` e histórico.
+- **FSM agenda** — `scheduled/checked_in/in_service/completed` com guards server-side.
+- **`employee_services` / `unavailability`** — evita atribuir barbeiros não qualificados ou em férias/pausa.
+- **Multi-unidade** — tabela `locations` + `location_id` em agendamentos/serviços/estoque/caixa.
+- **PWA offline** — Serwist `additionalPrecacheEntries ['/offline']` verificado, fila IndexedDB `pending_transactions` com `syncQueue()`.
+- **Tests** — Vitest + Playwright baseline (currency `COP/es-CO`, disponibilidade) alvo ≥80% em críticos.
 
 ---
 
@@ -67,8 +97,13 @@ Sem mensalidades. Sem comissões sobre suas vendas. Seus dados ficam no seu pró
 
 ```bash
 # 1. Clonar o repositório
-git clone https://github.com/SGrappelli/pronto.git
-cd pronto
+# Upstream:
+# git clone https://github.com/SGrappelli/pronto.git
+# cd pronto
+# Fork (Escudero):
+git clone https://github.com/CristianMz21/pronto.git escudero
+cd escudero
+git remote add upstream https://github.com/SGrappelli/pronto.git  # para seguir upstream
 
 # 2. Copiar o arquivo de ambiente e preencher os valores
 cp .env.example .env
@@ -88,8 +123,13 @@ docker-compose up -d
 ### Opção 2 — Desenvolvimento local
 
 ```bash
-git clone https://github.com/SGrappelli/pronto.git
-cd pronto
+# Upstream:
+# git clone https://github.com/SGrappelli/pronto.git
+# cd pronto
+# Fork (Escudero):
+git clone https://github.com/CristianMz21/pronto.git escudero
+cd escudero
+git remote add upstream https://github.com/SGrappelli/pronto.git
 npm install
 cp .env.example .env
 # Editar .env com suas credenciais do Supabase
@@ -318,8 +358,13 @@ SELECT * FROM cron.job WHERE jobname = 'pronto-notify';
 
 ```bash
 # No seu servidor
-git clone https://github.com/SGrappelli/pronto.git
-cd pronto
+# Upstream:
+# git clone https://github.com/SGrappelli/pronto.git
+# cd pronto
+# Fork (Escudero):
+git clone https://github.com/CristianMz21/pronto.git escudero
+cd escudero
+git remote add upstream https://github.com/SGrappelli/pronto.git  # para seguir upstream
 cp .env.example .env
 # Editar .env
 docker-compose up -d
@@ -346,7 +391,7 @@ server {
 ## Estrutura do Projeto
 
 ```
-pronto/
+escudero/  # fork de pronto
 ├── app/
 │   ├── (auth)/          # Login, Cadastro, Verificar e-mail
 │   ├── (dashboard)/     # PDV, CRM, Estoque, Agendamentos, Configurações, Dashboard
@@ -406,7 +451,7 @@ Pull requests são bem-vindos! Por favor, abra uma issue primeiro para discutir 
 
 ## Licença
 
-[MIT](../LICENSE) — livre para usar, modificar e hospedar no seu próprio servidor.
+[MIT](../LICENSE) — livre para usar, modificar e hospedar no seu próprio servidor. MIT — Baseado em Pronto (SGrappelli) — melhorias de Escudero © contribuidores Escudero.
 
 ---
 
