@@ -108,6 +108,15 @@ export const businesses = pgTable("businesses", {
 	bookingLeadTimeEnabled: boolean("booking_lead_time_enabled").default(true).notNull(),
 	requireCashRegisterForCash: boolean("require_cash_register_for_cash").default(true).notNull(),
 	allowGuestBookings: boolean("allow_guest_bookings").default(true).notNull(),
+	cancelLeadTime: integer("cancel_lead_time").default(60).notNull(),
+	taxRate: numeric("tax_rate", { precision: 5, scale: 2 }).default('0').notNull(),
+	paymentMethods: text("payment_methods").array().default(["cash","card","transfer"]).notNull(),
+	loyaltyEarnRate: integer("loyalty_earn_rate").default(1000).notNull(),
+	loyaltyRedeemRate: integer("loyalty_redeem_rate").default(100).notNull(),
+	loyaltyRedeemValue: integer("loyalty_redeem_value").default(10000).notNull(),
+	licenseKey: uuid("license_key"),
+	licenseStatus: text("license_status").default('pending').notNull(),
+	licenseExpiresAt: timestamp("license_expires_at", { withTimezone: true, mode: 'string' }),
 }, (table) => [
 	index("idx_businesses_owner").using("btree", table.ownerId.asc().nullsLast().op("uuid_ops")),
 	index("idx_businesses_slug").using("btree", table.slug.asc().nullsLast().op("text_ops")),
@@ -163,9 +172,12 @@ export const businessSettings = pgTable("business_settings", {
 	brandColor: text("brand_color").default('#2D2926'),
 	notificationLanguage: text("notification_language").default('en'),
 	enabledModules: text("enabled_modules").array().default(["bookings","pos","crm","inventory","notifications"]).notNull(),
-	paymentMethods: text("payment_methods").array().default(["RAY['cash'::text", "'card'::text", "'transfer'::tex"]).notNull(),
-	taxRate: numeric("tax_rate", { precision: 5, scale:  2 }).default('0').notNull(),
+	paymentMethods: text("payment_methods").array().default(["cash","card","transfer"]).notNull(),
+	taxRate: numeric("tax_rate", { precision: 5, scale: 2 }).default('0').notNull(),
 	cancelLeadTime: integer("cancel_lead_time").default(60).notNull(),
+	loyaltyEarnRate: integer("loyalty_earn_rate").default(1000).notNull(),
+	loyaltyRedeemRate: integer("loyalty_redeem_rate").default(100).notNull(),
+	loyaltyRedeemValue: integer("loyalty_redeem_value").default(10000).notNull(),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 }, (table) => [
@@ -221,6 +233,7 @@ export const clients = pgTable("clients", {
 	// TODO: failed to parse database type 'bytea'
 	whatsappEncrypted: text("whatsapp_encrypted"),
 	userId: uuid("user_id"),
+	locationId: uuid("location_id"),
 }, (table) => [
 	index("idx_clients_business").using("btree", table.businessId.asc().nullsLast().op("uuid_ops")),
 	index("idx_clients_last_visit").using("btree", table.businessId.asc().nullsLast().op("timestamptz_ops"), table.lastVisitAt.asc().nullsLast().op("timestamptz_ops")).where(sql`(last_visit_at IS NOT NULL)`),
@@ -238,6 +251,12 @@ export const clients = pgTable("clients", {
 			foreignColumns: [users.id],
 			name: "clients_user_id_fkey"
 		}).onDelete("set null"),
+	foreignKey({
+			columns: [table.locationId],
+			foreignColumns: [locations.id],
+			name: "clients_location_id_fkey"
+		}).onDelete("set null"),
+	index("idx_clients_location").using("btree", table.businessId.asc().nullsLast().op("uuid_ops"), table.locationId.asc().nullsLast().op("uuid_ops")),
 	unique("clients_business_phone_unique").on(table.businessId, table.phone),
 	pgPolicy("client_self_update", { as: "permissive", for: "update", to: ["public"], using: sql`(user_id = auth.uid())`, withCheck: sql`(user_id = auth.uid())`  }),
 	pgPolicy("client_self_select", { as: "permissive", for: "select", to: ["public"] }),
@@ -322,7 +341,7 @@ export const inventoryMovements = pgTable("inventory_movements", {
 			name: "inventory_movements_to_location_id_fkey"
 		}).onDelete("set null"),
 	pgPolicy("tenant_access_inventory_movements", { as: "permissive", for: "all", to: ["public"], using: sql`((business_id IN ( SELECT my_business_ids() AS my_business_ids)) AND (current_user_role() = ANY (ARRAY['owner'::text, 'admin'::text, 'staff'::text])))` }),
-	check("inventory_movements_type_check", sql`type = ANY (ARRAY['in'::text, 'out'::text, 'adjustment'::text])`),
+	check("inventory_movements_type_check", sql`type = ANY (ARRAY['in'::text, 'out'::text, 'adjustment'::text, 'transfer'::text])`),
 ]);
 
 export const schemaMigrations = pgTable("schema_migrations", {
@@ -447,16 +466,23 @@ export const services = pgTable("services", {
 export const transactions = pgTable("transactions", {
 	id: uuid().default(sql`uuid_generate_v4()`).primaryKey().notNull(),
 	businessId: uuid("business_id").notNull(),
+	locationId: uuid("location_id"),
 	appointmentId: uuid("appointment_id"),
 	clientId: uuid("client_id"),
 	employeeId: uuid("employee_id"),
-	amount: numeric({ precision: 10, scale:  2 }).notNull(),
+	amount: numeric({ precision: 10, scale: 2 }).notNull(),
 	paymentMethod: text("payment_method").default('cash').notNull(),
 	status: text().default('completed').notNull(),
 	items: jsonb().default([]).notNull(),
 	receiptNumber: text("receipt_number"),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	tipAmount: integer("tip_amount").default(0).notNull(),
+	discountAmount: integer("discount_amount").default(0).notNull(),
+	discountReason: text("discount_reason"),
+	promoCode: text("promo_code"),
+	membershipId: uuid("membership_id"),
+	loyaltyPointsEarned: integer("loyalty_points_earned").default(0).notNull(),
+	loyaltyPointsRedeemed: integer("loyalty_points_redeemed").default(0).notNull(),
 }, (table) => [
 	index("idx_transactions_business").using("btree", table.businessId.asc().nullsLast().op("uuid_ops")),
 	index("idx_transactions_business_status_created").using("btree", table.businessId.asc().nullsLast().op("text_ops"), table.status.asc().nullsLast().op("text_ops"), table.createdAt.desc().nullsFirst().op("uuid_ops")),
@@ -480,6 +506,16 @@ export const transactions = pgTable("transactions", {
 			columns: [table.employeeId],
 			foreignColumns: [employees.id],
 			name: "transactions_employee_id_fkey"
+		}).onDelete("set null"),
+	foreignKey({
+			columns: [table.locationId],
+			foreignColumns: [locations.id],
+			name: "transactions_location_id_fkey"
+		}).onDelete("set null"),
+	foreignKey({
+			columns: [table.membershipId],
+			foreignColumns: [clientMemberships.id],
+			name: "transactions_membership_id_fkey"
 		}).onDelete("set null"),
 	unique("transactions_receipt_number_key").on(table.receiptNumber),
 	pgPolicy("tenant_access_transactions", { as: "permissive", for: "all", to: ["public"], using: sql`((business_id IN ( SELECT my_business_ids() AS my_business_ids)) AND ((current_user_role() IS NULL) OR (current_user_role() = ANY (ARRAY['owner'::text, 'admin'::text, 'staff'::text])) OR (employee_id = current_employee_id())))` }),
@@ -734,6 +770,7 @@ export const loyaltyMovements = pgTable("loyalty_movements", {
 export const businessHours = pgTable("business_hours", {
 	id: uuid().default(sql`uuid_generate_v4()`).primaryKey().notNull(),
 	businessId: uuid("business_id").notNull(),
+	locationId: uuid("location_id"),
 	dayOfWeek: smallint("day_of_week").notNull(),
 	isOpen: boolean("is_open").default(true).notNull(),
 	openTime: text("open_time").default('09:00').notNull(),
@@ -742,12 +779,19 @@ export const businessHours = pgTable("business_hours", {
 	breakEnd: text("break_end"),
 }, (table) => [
 	index("idx_business_hours_business").using("btree", table.businessId.asc().nullsLast().op("uuid_ops")),
+	index("idx_business_hours_location").using("btree", table.businessId.asc().nullsLast().op("uuid_ops"), table.locationId.asc().nullsLast().op("uuid_ops")),
 	foreignKey({
 			columns: [table.businessId],
 			foreignColumns: [businesses.id],
 			name: "business_hours_business_id_fkey"
 		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.locationId],
+			foreignColumns: [locations.id],
+			name: "business_hours_location_id_fkey"
+		}).onDelete("cascade"),
 	unique("business_hours_business_id_day_of_week_key").on(table.businessId, table.dayOfWeek),
+	unique("business_hours_business_location_day_key").on(table.businessId, table.locationId, table.dayOfWeek),
 	pgPolicy("public_read_business_hours", { as: "permissive", for: "select", to: ["public"], using: sql`true` }),
 	pgPolicy("tenant_access_business_hours", { as: "permissive", for: "all", to: ["public"] }),
 	check("business_hours_day_of_week_check", sql`(day_of_week >= 0) AND (day_of_week <= 6)`),
@@ -904,13 +948,14 @@ export const appointments = pgTable("appointments", {
 	startsAt: timestamp("starts_at", { withTimezone: true, mode: 'string' }).notNull(),
 	endsAt: timestamp("ends_at", { withTimezone: true, mode: 'string' }).notNull(),
 	status: text().default('pending').notNull(),
-	price: numeric({ precision: 10, scale:  2 }),
+	price: numeric({ precision: 10, scale: 2 }),
 	notes: text(),
 	source: text().default('manual').notNull(),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	locationId: uuid("location_id"),
 	recurringId: uuid("recurring_id"),
+	campaignId: uuid("campaign_id"),
 }, (table) => [
 	index("idx_appointments_business").using("btree", table.businessId.asc().nullsLast().op("uuid_ops")),
 	index("idx_appointments_business_status_starts").using("btree", table.businessId.asc().nullsLast().op("text_ops"), table.status.asc().nullsLast().op("timestamptz_ops"), table.startsAt.asc().nullsLast().op("text_ops")),
@@ -941,6 +986,11 @@ export const appointments = pgTable("appointments", {
 			columns: [table.recurringId],
 			foreignColumns: [recurringAppointments.id],
 			name: "appointments_recurring_id_fkey"
+		}).onDelete("set null"),
+	foreignKey({
+			columns: [table.campaignId],
+			foreignColumns: [campaigns.id],
+			name: "appointments_campaign_id_fkey"
 		}).onDelete("set null"),
 	foreignKey({
 			columns: [table.serviceId],
@@ -1062,6 +1112,52 @@ export const clientTags = pgTable("client_tags", {
    FROM clients
   WHERE ((clients.id = client_tags.client_id) AND (clients.business_id IN ( SELECT my_business_ids() AS my_business_ids)))))` }),
 ]);
+export const serviceCombos = pgTable("service_combos", {
+	id: uuid().default(sql`uuid_generate_v4()`).primaryKey().notNull(),
+	businessId: uuid("business_id").notNull(),
+	locationId: uuid("location_id"),
+	name: text().notNull(),
+	serviceIds: uuid("service_ids").array().notNull(),
+	price: integer().notNull(),
+	durationMin: integer("duration_min").notNull(),
+	isActive: boolean("is_active").default(true).notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("idx_service_combos_business").using("btree", table.businessId.asc().nullsLast().op("uuid_ops")).where(sql`is_active`),
+	index("idx_service_combos_location").using("btree", table.locationId.asc().nullsLast().op("uuid_ops")).where(sql`(location_id IS NOT NULL)`),
+	foreignKey({
+			columns: [table.businessId],
+			foreignColumns: [businesses.id],
+			name: "service_combos_business_id_fkey"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.locationId],
+			foreignColumns: [locations.id],
+			name: "service_combos_location_id_fkey"
+		}).onDelete("set null"),
+	pgPolicy("tenant_access_service_combos", { as: "permissive", for: "all", to: ["public"], using: sql`(business_id IN ( SELECT my_business_ids() AS my_business_ids))` }),
+	check("service_combos_price_check", sql`price >= 0`),
+	check("service_combos_duration_check", sql`duration_min > 0`),
+]);
+
+export const barbershopApplications = pgTable("barbershop_applications", {
+	id: uuid().default(sql`uuid_generate_v4()`).primaryKey().notNull(),
+	businessName: text("business_name").notNull(),
+	ownerName: text("owner_name").notNull(),
+	email: text().notNull(),
+	phone: text(),
+	nit: text(),
+	city: text(),
+	requestedPlan: text("requested_plan"),
+	status: text().default('pending').notNull(),
+	licenseKey: uuid("license_key"),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	unique("barbershop_applications_license_key_key").on(table.licenseKey),
+	pgPolicy("super_admin_all_applications", { as: "permissive", for: "all", to: ["public"], using: sql`(EXISTS (SELECT 1 FROM auth.users WHERE auth.users.id = auth.uid() AND auth.users.raw_user_meta_data->>'role' = 'super_admin') OR auth.email() IN (SELECT unnest(string_to_array(current_setting('app.super_admins', true), ','))))` }),
+	check("barbershop_applications_status_check", sql`status = ANY (ARRAY['pending'::text, 'approved'::text, 'rejected'::text])`),
+]);
+
 export const businessesPublic = pgView("businesses_public", {	id: uuid(),
 	name: text(),
 	slug: text(),
