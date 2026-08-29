@@ -71,6 +71,15 @@ export function isPrivileged(role: CanonicalRole | string | null | undefined): b
   return role === 'owner' || role === 'admin'
 }
 
+export function isSuperAdmin(user: { email?: string | null; user_metadata?: Record<string, unknown> | null } | null | undefined): boolean {
+  if (!user) return false
+  const metaRole = (user.user_metadata as Record<string, unknown> | undefined)?.['role'] as string | undefined
+  if (metaRole && metaRole.toLowerCase() === 'super_admin') return true
+  const superAdmins = (process.env.SUPER_ADMINS ?? '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean)
+  if (user.email && superAdmins.includes(user.email.toLowerCase())) return true
+  return false
+}
+
 /**
  * Fail-closed: unknown role or unknown route for barbero → DENY.
  * Prefix matching: /caja matches /caja, /caja/reports, /caja/123.

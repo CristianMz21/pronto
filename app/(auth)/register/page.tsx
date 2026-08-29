@@ -8,6 +8,10 @@ export default async function RegisterPage(
     searchParams: Promise<{ error?: string }>
   }
 ) {
+  if (process.env.ALLOW_PUBLIC_REGISTER === 'false') {
+    const { redirect } = await import('next/navigation')
+    redirect('/apply')
+  }
   const searchParams = await props.searchParams;
   const t = await getTranslations('auth.register')
 

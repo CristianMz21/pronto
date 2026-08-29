@@ -347,8 +347,7 @@ export default async function EscuderiaLandingPremium() {
           <div className="font-[var(--font-playfair)] text-xl font-bold text-[#C5A059]">{bizName.toUpperCase()}</div>
           <div className="flex gap-8 font-[var(--font-montserrat)] text-[12px] tracking-[0.2em] font-semibold text-[#d0c5b9]">
             <Link href="/book/escuderia" className="hover:text-[#C5A059]">RESERVAR</Link>
-            <Link href="/login" className="hover:text-[#C5A059]">STAFF</Link>
-            <Link href="/client/login" className="hover:text-[#C5A059]">CLIENTES</Link>
+            <Link href="/client/login" className="hover:text-[#C5A059]">MI CUENTA</Link>
             <a href={`https://wa.me/${bizPhone.replace(/\D/g,'')}`} target="_blank" className="hover:text-[#C5A059]">WHATSAPP</a>
           </div>
           <div className="font-[var(--font-montserrat)] text-[11px] tracking-[0.15em] text-[#8E795E]">© 2026 {bizName.toUpperCase()} • {bizAddress.toUpperCase()} • {currency}</div>

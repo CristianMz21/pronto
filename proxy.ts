@@ -1,6 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
-import { canAccessRoute, getUserRole } from '@/lib/auth/roles'
+import { canAccessRoute, getUserRole, isSuperAdmin } from '@/lib/auth/roles'
 
 function getSupabaseUrlForProxy(): string {
   let url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
@@ -72,6 +72,26 @@ export async function proxy(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
+  // Admin invisibility: /admin/* is 404 unless super_admin (no redirect to reveal existence)
+  if (pathname.startsWith('/admin')) {
+    // Allow the login page itself without super_admin check, but still hide its existence via noindex
+    const isAdminLogin = pathname === '/admin/login'
+    if (!isAdminLogin) {
+      if (!user || !isSuperAdmin(user as unknown as { email?: string | null; user_metadata?: Record<string, unknown> | null })) {
+        return new Response('Not Found', { status: 404 })
+      }
+    }
+    // Add noindex for all admin
+    supabaseResponse.headers.set('X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet')
+  }
+
+  // Public register closed -> redirect to /apply when ALLOW_PUBLIC_REGISTER=false
+  if (pathname === '/register' && process.env.ALLOW_PUBLIC_REGISTER === 'false') {
+    const applyUrl = request.nextUrl.clone()
+    applyUrl.pathname = '/apply'
+    return NextResponse.redirect(applyUrl)
+  }
+
   // Forward the already-validated user to Server Components, same mechanism
   // as x-pathname, so dashboard pages don't each repeat this auth round-trip
   // (see lib/auth-user.ts). Must recreate supabaseResponse to pick up the
@@ -131,6 +151,11 @@ export async function proxy(request: NextRequest) {
     const dashboardUrl = request.nextUrl.clone()
     dashboardUrl.pathname = '/dashboard'
     return NextResponse.redirect(dashboardUrl)
+  }
+
+  // Admin noindex
+  if (pathname.startsWith('/admin')) {
+    supabaseResponse.headers.set('X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet')
   }
 
   // Auto-detect locale from Accept-Language on first visit (no cookie yet)
