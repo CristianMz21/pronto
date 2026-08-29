@@ -6,7 +6,7 @@ import { CheckCircle2, ChevronRight, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useTranslations } from 'next-intl'
 
-type Tab = 0 | 1 | 2
+type Tab = 0 | 1 | 2 | 3 | 4
 type SlugStatus = 'idle' | 'checking' | 'available' | 'taken' | 'invalid'
 
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$/
@@ -49,6 +49,16 @@ export function OnboardingWizard({ initialSlug, initialName, isSaas, rootDomain 
   const [error, setError] = useState('')
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // Config steps (T077): locations, holidays, tax, membership preview
+  const [locationName, setLocationName] = useState('')
+  const [holidayDate, setHolidayDate] = useState('')
+  const [holidayReason, setHolidayReason] = useState('')
+  const [taxRate, setTaxRate] = useState('0')
+  const [paymentMethods, setPaymentMethods] = useState<string[]>(['cash', 'card'])
+  const [membershipPreview, setMembershipPreview] = useState({ name: '4 cortes/mes', price: '99000', duration: '30' })
+  const [configSaving, setConfigSaving] = useState(false)
+  const [configMsg, setConfigMsg] = useState('')
+
   // Business types where duration doesn't apply (retail/product-based)
   const noDuration = ['cafe']
   const showDuration = !noDuration.includes(bizType)
@@ -68,6 +78,8 @@ export function OnboardingWizard({ initialSlug, initialName, isSaas, rootDomain 
     t('steps.businessType'),
     t('steps.firstService'),
     t('steps.notifications'),
+    'Sucursal & Festivos',
+    'Impuestos & Membresía',
   ]
 
   // Debounced slug availability check
@@ -125,7 +137,55 @@ export function OnboardingWizard({ initialSlug, initialName, isSaas, rootDomain 
     setSlug(normalizeSlug(e.target.value))
   }
 
+  async function saveConfigStep() {
+    setConfigSaving(true)
+    setConfigMsg('')
+    try {
+      // Create optional location
+      if (locationName.trim()) {
+        await fetch('/api/locations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: locationName.trim(), address: '' }),
+        })
+      }
+      // Create holiday if provided
+      if (holidayDate) {
+        await fetch('/api/holidays', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ date: holidayDate, reason: holidayReason || 'Festivo', is_open: false }),
+        })
+      }
+      // Save tax/payment config
+      const tax = Number(taxRate)
+      if (!isNaN(tax) && tax >= 0 && tax <= 100) {
+        await fetch('/api/business/tax', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tax_rate: tax, payment_methods: paymentMethods }),
+        })
+      }
+      // Membership preview: create if name+price set
+      if (membershipPreview.name && Number(membershipPreview.price) > 0) {
+        await fetch('/api/memberships', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: membershipPreview.name, price: Number(membershipPreview.price), duration_days: Number(membershipPreview.duration) || 30, benefits: { cuts: 4 }, is_active: true }),
+        }).catch(() => {})
+      }
+      setConfigMsg('Configuración guardada ✓')
+      setTimeout(() => setConfigMsg(''), 2000)
+    } catch {
+      setConfigMsg('Algunos campos no se guardaron — podés configurarlos luego en Settings')
+    } finally {
+      setConfigSaving(false)
+    }
+  }
+
   async function finish() {
+    // Save config opportunistic before complete
+    if (step === 4) await saveConfigStep()
     setSaving(true)
     setError('')
     try {
@@ -330,7 +390,97 @@ export function OnboardingWizard({ initialSlug, initialName, isSaas, rootDomain 
                 <div className="mt-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">{error}</div>
               )}
               <div className="flex gap-3 mt-6">
-                <Button variant="outline" onClick={() => setStep(1)} disabled={saving}>{t('step2.back')}</Button>
+                <Button variant="outline" onClick={() => setStep(1)} disabled={saving}>{t('step1.back')}</Button>
+                <Button className="flex-1" onClick={() => setStep(3)} disabled={saving}>Continuar → sucursales</Button>
+              </div>
+              <div className="mt-3 text-center">
+                <button onClick={finish} className="text-xs text-gray-400 hover:text-gray-600">Omitir y finalizar</button>
+              </div>
+            </div>
+          )}
+
+          {/* ── Step 3: Sucursal + Festivo (T077) ───────────────────────────── */}
+          {step === 3 && (
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 mb-1">Sucursales &amp; Festivos</h2>
+              <p className="text-sm text-gray-500 mb-6">Configurá tu sede extra y festivos. Todo es opcional — podés hacerlo luego en Settings.</p>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs font-medium text-gray-500">Nueva sucursal (opcional)</label>
+                  <input type="text" value={locationName} onChange={(e) => setLocationName(e.target.value)} placeholder="Ej: Escudería Norte" maxLength={80} className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  <p className="text-xs text-gray-400 mt-1">Se crea con slug automático. Sin sede extra, operás solo Centro.</p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-medium text-gray-500">Festivo (opcional)</label>
+                    <input type="date" value={holidayDate} onChange={(e) => setHolidayDate(e.target.value)} className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2.5 text-sm" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-500">Motivo</label>
+                    <input type="text" value={holidayReason} onChange={(e) => setHolidayReason(e.target.value)} placeholder="Navidad" maxLength={100} className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2.5 text-sm" />
+                  </div>
+                </div>
+                {configMsg && <div className="text-xs text-green-600 bg-green-50 border border-green-200 rounded-lg px-3 py-2">{configMsg}</div>}
+              </div>
+              <div className="flex gap-3 mt-6">
+                <Button variant="outline" onClick={() => setStep(2)}>Atrás</Button>
+                <Button variant="ghost" onClick={() => setStep(4)}>Omitir</Button>
+                <Button className="flex-1" onClick={async () => { await saveConfigStep(); setStep(4); }} disabled={configSaving}>
+                  {configSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null} Guardar y continuar
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* ── Step 4: Impuestos & membresía preview + checklist (T077) ────── */}
+          {step === 4 && (
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 mb-1">Impuestos &amp; Membresía</h2>
+              <p className="text-sm text-gray-500 mb-6">Define impuestos y una membresía de prueba. Checklist final antes de arrancar.</p>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-medium text-gray-500">Tax %</label>
+                    <input type="number" min={0} max={100} step={0.5} value={taxRate} onChange={(e) => setTaxRate(e.target.value)} className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2.5 text-sm" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-500">Métodos pago</label>
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      {(['cash','card','transfer','digital'] as const).map((m) => (
+                        <label key={m} className="flex items-center gap-1 text-xs">
+                          <input type="checkbox" checked={paymentMethods.includes(m)} onChange={(e) => setPaymentMethods((prev) => e.target.checked ? [...prev, m] : prev.filter((x) => x !== m))} />
+                          {m}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div className="border border-gray-200 rounded-xl p-4 bg-gray-50">
+                  <div className="text-xs font-medium text-gray-500 mb-2">Membresía preview (opcional)</div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <input type="text" value={membershipPreview.name} onChange={(e) => setMembershipPreview((p) => ({ ...p, name: e.target.value }))} placeholder="Nombre" className="border border-gray-200 rounded-lg px-2 py-2 text-sm" />
+                    <input type="number" min={0} value={membershipPreview.price} onChange={(e) => setMembershipPreview((p) => ({ ...p, price: e.target.value }))} placeholder="Precio" className="border border-gray-200 rounded-lg px-2 py-2 text-sm" />
+                    <input type="number" min={1} value={membershipPreview.duration} onChange={(e) => setMembershipPreview((p) => ({ ...p, duration: e.target.value }))} placeholder="Días" className="border border-gray-200 rounded-lg px-2 py-2 text-sm" />
+                  </div>
+                  <p className="text-xs text-gray-400 mt-2">Se creará como membresía activa &quot;{membershipPreview.name}&quot; por ${membershipPreview.price} / {membershipPreview.duration}d con 4 cortes.</p>
+                </div>
+
+                <div className="bg-white border border-gray-200 rounded-xl p-4">
+                  <div className="text-xs font-semibold text-gray-700 mb-2">Checklist</div>
+                  <ul className="text-xs text-gray-600 space-y-1">
+                    <li className="flex gap-2"><CheckCircle2 className={`w-4 h-4 ${bizName ? 'text-green-500' : 'text-gray-300'}`} /> Negocio: {bizName || '—'}</li>
+                    <li className="flex gap-2"><CheckCircle2 className={`w-4 h-4 ${service.name ? 'text-green-500' : 'text-gray-300'}`} /> Servicio: {service.name || '—'}</li>
+                    <li className="flex gap-2"><CheckCircle2 className={`w-4 h-4 ${locationName ? 'text-green-500' : 'text-gray-300'}`} /> Sucursal: {locationName || 'Centro (default)'}</li>
+                    <li className="flex gap-2"><CheckCircle2 className={`w-4 h-4 ${holidayDate ? 'text-green-500' : 'text-gray-300'}`} /> Festivo: {holidayDate || '— (luego en Settings)'}</li>
+                    <li className="flex gap-2"><CheckCircle2 className={`w-4 h-4 ${Number(taxRate) > 0 ? 'text-green-500' : 'text-gray-300'}`} /> Tax: {taxRate}% — {paymentMethods.join(', ')}</li>
+                    <li className="flex gap-2"><CheckCircle2 className={`w-4 h-4 ${membershipPreview.name ? 'text-green-500' : 'text-gray-300'}`} /> Membresía: {membershipPreview.name}</li>
+                  </ul>
+                </div>
+                {configMsg && <div className="text-xs text-green-600 bg-green-50 border border-green-200 rounded-lg px-3 py-2">{configMsg}</div>}
+                {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">{error}</div>}
+              </div>
+              <div className="flex gap-3 mt-6">
+                <Button variant="outline" onClick={() => setStep(3)} disabled={saving}>Atrás</Button>
                 <Button className="flex-1" onClick={finish} disabled={saving}>
                   {saving ? <span className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />{t('step2.settingUp')}</span> : t('step2.submit')}
                 </Button>
