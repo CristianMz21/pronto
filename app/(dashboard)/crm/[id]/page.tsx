@@ -20,12 +20,17 @@ export default async function ClientDetailPage(props: { params: Promise<{ id: st
 
   const { data: client } = await supabase
     .from('clients')
-    .select('id, name, phone, email, birthday, notes, tags, total_visits, total_spent, last_visit_at, created_at, telegram_id, viber_user_id, whatsapp_number')
+    .select('id, name, phone, email, birthday, notes, tags, total_visits, total_spent, last_visit_at, created_at, telegram_id, viber_user_id, whatsapp_number, preferences, preferred_barber_id, location_id')
     .eq('id', params.id)
     .eq('business_id', business.id)
     .maybeSingle()
 
   if (!client) notFound()
+
+  const [{ data: preferredBarber }, { data: location }] = await Promise.all([
+    (client as unknown as { preferred_barber_id?: string | null }).preferred_barber_id ? supabase.from('employees').select('id, name').eq('id', (client as unknown as { preferred_barber_id: string }).preferred_barber_id).maybeSingle() : Promise.resolve({ data: null } as { data: unknown }),
+    (client as unknown as { location_id?: string | null }).location_id ? supabase.from('locations').select('id, name').eq('id', (client as unknown as { location_id: string }).location_id).maybeSingle() : Promise.resolve({ data: null } as { data: unknown }),
+  ])
 
   const telegramInfo = business.telegram_bot_token
     ? await getTelegramBotInfo(business.telegram_bot_token)
@@ -53,12 +58,14 @@ export default async function ClientDetailPage(props: { params: Promise<{ id: st
         }
       />
       <ClientDetailView
-        client={client}
+        client={client as unknown as { id: string; name: string; phone: string | null; email: string | null; birthday: string | null; notes: string | null; tags: string[]; total_visits: number; total_spent: number; last_visit_at: string | null; created_at: string; telegram_id: string | null; viber_user_id: string | null; whatsapp_number: string | null; preferences?: unknown; preferred_barber_id?: string | null; location_id?: string | null }}
         appointments={appointments ?? []}
         currency={business.currency}
         timezone={business.timezone}
         businessId={business.id}
         telegramBotUsername={telegramBotUsername}
+        preferredBarber={preferredBarber as unknown as { id: string; name: string } | null}
+        location={location as unknown as { id: string; name: string } | null}
       />
     </>
   )
