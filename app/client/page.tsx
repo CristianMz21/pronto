@@ -50,6 +50,7 @@ export default async function ClientPortalPage(props: { searchParams: Promise<{ 
     if (c) client = c as typeof client
   }
 
+  const nowMs = Date.now()
   if (client) {
     const [{ data: loyalty }, { data: cms }] = await Promise.all([
       supabase.from('loyalty_accounts').select('points').eq('client_id', client.id).maybeSingle(),
@@ -99,7 +100,7 @@ export default async function ClientPortalPage(props: { searchParams: Promise<{ 
                 <div className="space-y-2 mt-3">
                   {memberships.map((m) => {
                     const exp = new Date(m.expires_at)
-                    const isActive = m.status === 'active' && m.remaining > 0 && exp.getTime() > Date.now()
+                    const isActive = m.status === 'active' && m.remaining > 0 && exp.getTime() > nowMs
                     return (
                       <div key={m.id} className={`p-3 rounded-lg border ${isActive ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
                         <div className="font-medium text-sm">{m.memberships?.name ?? m.id.slice(0, 8)}</div>
