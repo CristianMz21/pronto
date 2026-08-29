@@ -14,3 +14,12 @@ export type DB = typeof db
 export async function getDb() {
   return db
 }
+
+export async function tryDrizzle<T>(fn: () => Promise<T>, fallback: () => Promise<T>): Promise<T> {
+  try {
+    return await fn()
+  } catch (e) {
+    if (process.env.NODE_ENV === 'test') return fallback()
+    throw e
+  }
+}

@@ -1,3 +1,8 @@
+/**
+ * @deprecated — Supabase gen types is deprecated. Source of truth is now drizzle/schema.ts with InferSelectModel.
+ * This file is kept for compat with legacy supabase.from calls not yet migrated. New code MUST use Drizzle ORM (db.query.*) and drizzle/schema.ts.
+ * Run `pnpm db:push` (drizzle-kit) instead of `supabase gen types`. See 007-orm-drizzle-3fn plan.
+ */
 export type Json =
   | string
   | number
