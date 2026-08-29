@@ -56,6 +56,19 @@ curl -s http://localhost:3000/api/health | jq
   ```
 - Producción `scripts/migrate.js` (`MIGRATE_SSL` + `DATABASE_URL`) aplica solo pendientes vía `schema_migrations`
 
+## 6. Tablas nuevas 006 (incluir en pg_dump --data-only si es parcial)
+
+Para backups parciales `--data-only --table=` incluir además:
+
+```bash
+--table=public.locations --table=public.holidays --table=public.waitlist --table=public.recurring_appointments \
+--table=public.tips --table=public.memberships --table=public.client_memberships --table=public.promotions \
+--table=public.loyalty_accounts --table=public.loyalty_movements --table=public.campaigns --table=public.campaign_recipients \
+--table=public.service_combos --table=public.client_tags --table=public.tags --table=public.transaction_items --table=public.business_settings
+```
+
+ Índices nuevos (`086 idx_appointments_employee_starts` etc.) se recrean al aplicar migraciones; no requieren dump separado.
+
 ## 5. Frecuencia recomendada — RPO 24h / RTO 1h
 
 - **Nightly** `pg_dump` cron en VPS (`crontab -e`: `0 3 * * * PGPASSWORD=... pg_dump "postgresql://..." | gzip > /backups/backup-$(date +\%F).sql.gz`) — RPO 24h

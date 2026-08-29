@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 
 interface ClientRow {
@@ -165,7 +166,7 @@ export function DashboardClient({ userEmail, clients, primaryClient, upcoming, h
             </div>
           </div>
         ) : (
-          <p className="text-sm text-gray-500">No tenés próximas citas. <a href="/book/escuderia" className="text-blue-600 hover:underline font-medium">Reservá ahora</a></p>
+          <p className="text-sm text-gray-500">No tenés próximas citas. <Link href="/book/escuderia" className="text-blue-600 hover:underline font-medium">Reservá ahora</Link></p>
         )}
       </div>
 
@@ -195,7 +196,7 @@ export function DashboardClient({ userEmail, clients, primaryClient, upcoming, h
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium">{h.price ? `$${h.price}` : '—'}</span>
-                    <a href={rebookHref} className="text-xs px-2 py-1 rounded-md bg-gray-900 text-white hover:bg-black">Rebook</a>
+                    <Link href={rebookHref} className="text-xs px-2 py-1 rounded-md bg-gray-900 text-white hover:bg-black">Rebook</Link>
                     {(h.status === 'pending' || h.status === 'confirmed' || h.status === 'scheduled') && new Date(h.starts_at) > new Date() && (
                       <button onClick={() => handleCancel(h.id)} className="text-xs text-red-600 hover:underline">Cancelar</button>
                     )}

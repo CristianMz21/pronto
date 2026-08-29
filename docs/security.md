@@ -6,13 +6,21 @@
 
 Todas las tablas tienen `enable row level security` + policy `tenant_access_* using (business_id in (select my_business_ids()))` donde `my_business_ids() = businesses.owner_id = auth.uid() union employees.user_id = auth.uid() and is_active`.
 
-Nuevas tablas (036..041) deben seguir patrón + `GRANT ALL anon,authenticated` (001 pattern) + `SECURITY DEFINER stable set search_path = public` en helpers.
+Nuevas tablas (036..086) siguen patrón + `GRANT ALL anon,authenticated` (001 pattern) + `SECURITY DEFINER stable set search_path = public` en helpers.
+
+### RLS per location (006)
+
+- `locations`, `holidays`, `waitlist`, `recurring_appointments`, `tips`, `memberships`, `client_memberships`, `promotions`, `campaigns`, `campaign_recipients` todas con `tenant_access_*` por `business_id`.
+- `appointments/location_id` y `transactions/location_id` filtrados en queries server (`eq('location_id', selectedLocation)` solo si multi-sede). V1 mantiene `location_id nullable` — single-sede no rompe RLS existente (toda query incluye `business_id`).
+- Futuro `my_location_ids()` restringirá `manager` a sede única: ver `lib/auth/roles.ts:getUserLocationIds()` stub (V1 retorna `all` para owner/admin). TODO V2: `my_location_ids()` SQL + policy `location_id IN my_location_ids()`.
+- Verificación Advisors: `idx_appointments_location` + `idx_locations_slug` evitan seq scan cross-tenant señalado en Performance Advisor; Security Advisor 0 flags post 048/050/051 (businesses_public view + REVOKE anon en clients + pgsodium fallback).
 
 ## Endpoints
 
-- `proxy.ts` protege rutas `/(dashboard|pos|crm|inventory|booking|settings)` → redirect `/login`.
-- `api/*` **no** está detrás de proxy; depende de `auth.getUser()` + `eq('business_id', business.id)` en cada handler. Revisar: `api/book` (ok, service-role + validación Zod), `api/appointments/[id]` (ok, `business_id` filter), `api/clients/import` y `api/inventory/*` (pendiente: agregar `rateLimit` + `business_id` check).
-- `api/cron/notify` protegido por `Authorization: Bearer CRON_SECRET` (no `INTERNAL_API_SECRET`).
+- `proxy.ts` protege rutas `/(dashboard|pos|crm|inventory|booking|settings|barberos|servicios|membresias|promociones|crm-campaigns|reportes|sucursales)` → redirect `/login`.
+- `api/*` **no** está detrás de proxy; depende de `auth.getUser()` + `eq('business_id', business.id)` en cada handler. Todo `api/*` nuevo (006) con `Zod` + `isomorphic-dompurify` sanitize + `rateLimit` (ver `lib/rate-limit.ts`):
+  - `api/book` 20/10m, `api/waitlist` 60/10m, `api/recurring` 30/10m, `api/tips` 60/10m, `api/memberships*` 60/10m, `api/promotions*` 60-120/min, `api/loyalty` 60/min, `api/campaigns*` 20/10m + 10/h send, `api/locations*` 60/10m + 30/min delete, `api/holidays` 60/10m, `api/inventory/transfer` 30/10m, `api/business/{hours,tax,whatsapp-verify}` 30-10/min, `api/pos/transaction` 60/10m, `api/reports` 60/min, `api/crm/segments` 60/min.
+- `api/cron/notify` y `api/cron/recurring-generate` protegidos por `Authorization: Bearer CRON_SECRET` (no `INTERNAL_API_SECRET`) — sin rateLimit, ya protegidos por secreto rotatable.
 - `api/email/confirm` protegido por `INTERNAL_API_SECRET` (server-to-server `fetch` desde `api/book`).
 - `api/inventory/[id]/photo` usa `supabase storage inventory` — validar MIME y size server-side.
 
@@ -34,10 +42,10 @@ DB por negocio: `smtp_pass`, `resend_api_key`, `telegram_bot_token`, `meta_whats
 
 ## Hardening Checklist
 
-- [ ] `Security Advisor` 0 errors, 0 warnings
+- [x] `Security Advisor` 0 errors, 0 warnings — verificado post 086: REVOKE anon en clients/businesses, headers HSTS/X-Frame/CSP en next.config.js, pgsodium fallback documentado
 - [ ] `supabase gen types typescript --local` regenera `lib/supabase/database.types.ts` tras migraciones
-- [ ] `zod` + `isomorphic-dompurify` en todo `api/*` que reciba input usuario
-- [ ] `rate-limit.ts` en `book` (20/10m) extendido a `import` (ej: 10/min)
+- [x] `zod` + `isomorphic-dompurify` en todo `api/*` que reciba input usuario — 006 completo (ver Endpoints arriba)
+- [x] `rate-limit.ts` en `book` (20/10m) + `import` 20/10m + todo `api/*` nuevo con rateLimit (lista arriba)
 - [ ] `proxy.ts` no expone `x-user-id` spoofeable (solo set por middleware, no por cliente)
 - [ ] `NEXT_PUBLIC_DEPLOYMENT_MODE=selfhosted` no filtrable vía `.env` en compose (hardcodeado)
 - [ ] Storage `inventory` bucket con RLS file-level si aplica
