@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-const fs = require('fs')
+const fs = require('node:fs')
 
 const { Client } = require('pg')
 const XLSX = require('xlsx')
@@ -165,7 +165,7 @@ async function main() {
     Number(b.comision),
     Number(b.cancel),
     Number(b.noshow),
-    b.revenue > 0 ? ((Number(b.comision) / Number(b.revenue)) * 100).toFixed(1) + '%' : '0%',
+    b.revenue > 0 ? `${((Number(b.comision) / Number(b.revenue)) * 100).toFixed(1)}%` : '0%',
   ])
   XLSX.utils.book_append_sheet(
     wb,

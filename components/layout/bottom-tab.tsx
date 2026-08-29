@@ -1,10 +1,10 @@
 'use client'
 
-import { LayoutDashboard, CalendarDays, ShoppingCart, Users, Package, Settings } from 'lucide-react'
+import { CalendarDays, LayoutDashboard, Package, Settings, ShoppingCart, Users } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
-import { canAccessRoute, type CanonicalRole } from '@/lib/auth/roles'
+import { type CanonicalRole, canAccessRoute } from '@/lib/auth/roles'
 import { cn } from '@/lib/utils'
 
 const ITEMS = [
@@ -27,7 +27,7 @@ export function BottomTab({ role }: { role?: CanonicalRole | null }) {
     >
       <div className="flex items-center justify-around px-1 py-1">
         {visible.map(({ href, label, icon: Icon }) => {
-          const active = pathname === href || pathname.startsWith(href + '/')
+          const active = pathname === href || pathname.startsWith(`${href}/`)
           return (
             <Link
               key={href}

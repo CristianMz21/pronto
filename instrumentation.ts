@@ -12,7 +12,9 @@ export async function register() {
     const translate = (url: string): string => {
       if (!url) return url
       if (url.includes('127.0.0.1') || url.includes('localhost')) {
-        return url.replace(/127\.0\.0\.1/g, 'host.docker.internal').replace(/localhost/g, 'host.docker.internal')
+        return url
+          .replace(/127\.0\.0\.1/g, 'host.docker.internal')
+          .replace(/localhost/g, 'host.docker.internal')
       }
       return url
     }

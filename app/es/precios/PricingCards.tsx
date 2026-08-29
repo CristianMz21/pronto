@@ -19,7 +19,7 @@ const paidPlans = [
     name: 'Pro',
     monthlyPrice: 39,
     annualTotal: 390,
-    annualMonthly: 32.50,
+    annualMonthly: 32.5,
     annualSave: 78,
     description: 'Para equipos en crecimiento con necesidades avanzadas.',
     highlight: true,
@@ -52,6 +52,7 @@ export function PricingCards() {
           Mensual
         </span>
         <button
+          type="button"
           onClick={() => setAnnual(!annual)}
           className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 ${
             annual ? 'bg-blue-600' : 'bg-gray-200'
@@ -136,7 +137,9 @@ export function PricingCards() {
                   </>
                 ) : (
                   <>
-                    <span className="text-4xl font-extrabold text-gray-900">${plan.monthlyPrice}</span>
+                    <span className="text-4xl font-extrabold text-gray-900">
+                      ${plan.monthlyPrice}
+                    </span>
                     <span className="text-sm text-gray-500 ml-1">/mes</span>
                   </>
                 )}

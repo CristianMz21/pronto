@@ -1,6 +1,6 @@
 'use client'
 
-import { Trash2, CalendarOff, Plus } from 'lucide-react'
+import { CalendarOff, Plus, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -66,7 +66,7 @@ export function HolidaysSection({ businessId, locations: initialLocations = [] }
 
   useEffect(() => {
     void load()
-  }, [businessId, load])
+  }, [load])
 
   async function add() {
     if (!form.date) return
@@ -238,6 +238,7 @@ export function HolidaysSection({ businessId, locations: initialLocations = [] }
                   </td>
                   <td className="px-4 py-3 text-right">
                     <button
+                      type="button"
                       onClick={() => remove(h.id)}
                       className="p-1.5 hover:bg-red-50 rounded text-red-400 hover:text-red-600"
                     >

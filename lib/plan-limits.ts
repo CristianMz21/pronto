@@ -7,19 +7,35 @@ export type PlanCheck = {
   plan: string
 }
 
-export async function checkClientLimit(_supabase: unknown, _businessId: string, _plan: string): Promise<PlanCheck> {
+export async function checkClientLimit(
+  _supabase: unknown,
+  _businessId: string,
+  _plan: string,
+): Promise<PlanCheck> {
   return { allowed: true, limit: Infinity, current: 0, plan: 'self-hosted' }
 }
 
-export async function checkEmployeeLimit(_supabase: unknown, _businessId: string, _plan: string): Promise<PlanCheck> {
+export async function checkEmployeeLimit(
+  _supabase: unknown,
+  _businessId: string,
+  _plan: string,
+): Promise<PlanCheck> {
   return { allowed: true, limit: Infinity, current: 0, plan: 'self-hosted' }
 }
 
-export async function checkBookingLimit(_supabase: unknown, _businessId: string, _plan: string): Promise<PlanCheck> {
+export async function checkBookingLimit(
+  _supabase: unknown,
+  _businessId: string,
+  _plan: string,
+): Promise<PlanCheck> {
   return { allowed: true, limit: Infinity, current: 0, plan: 'self-hosted' }
 }
 
-export async function checkProductLimit(_supabase: unknown, _businessId: string, _plan: string): Promise<PlanCheck> {
+export async function checkProductLimit(
+  _supabase: unknown,
+  _businessId: string,
+  _plan: string,
+): Promise<PlanCheck> {
   return { allowed: true, limit: Infinity, current: 0, plan: 'self-hosted' }
 }
 

@@ -1,12 +1,14 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) } as any) as any
+
 import {
-  sendWhatsAppMessage,
   __testNormalizePhone,
+  sendWhatsAppMessage,
   tplBookingConfirmation,
   tplReminder,
 } from '@/lib/whatsapp'
+
 describe('whatsapp exhaustive', () => {
   it('normalize', () => {
     expect(__testNormalizePhone('  +34 600 123-456 ')).toBe('34600123456')

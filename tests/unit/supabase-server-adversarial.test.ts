@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('@supabase/ssr', () => ({ createServerClient: vi.fn(() => ({ auth: {} })) }))
 vi.mock('next/headers', () => ({ cookies: vi.fn() }))
@@ -44,13 +44,17 @@ describe('supabase server adversarial - getCookieName and cookieDomain branches'
     const { createServerClient } = await import('@supabase/ssr')
     const call = vi.mocked(createServerClient).mock.calls.at(-1) as any
     // Trigger setAll to cover domain branch
-    const domainOpts = call[2].cookies.setAll([{ name: 'x', value: '1', options: {} }])
+    const _domainOpts = call[2].cookies.setAll([{ name: 'x', value: '1', options: {} }])
     // The setAll should have been called with domain
     // We can't directly check, but ensure no throw and that cookies.set was called with domain
     // Actually setAll is the function we just invoked? Wait we invoked the mock's setAll? The real setAll is inside server's createClient options, which calls cookieStore.set with domain
     // We need to invoke the server's setAll manually: call[2].cookies.setAll(...)
     call[2].cookies.setAll([{ name: 'test', value: 'val', options: {} }])
-    expect(mockSet).toHaveBeenCalledWith('test', 'val', expect.objectContaining({ domain: '.trypronto.app' }))
+    expect(mockSet).toHaveBeenCalledWith(
+      'test',
+      'val',
+      expect.objectContaining({ domain: '.trypronto.app' }),
+    )
     delete process.env.NEXT_PUBLIC_DEPLOYMENT_MODE
     delete process.env.NEXT_PUBLIC_ROOT_DOMAIN
   })
@@ -60,7 +64,12 @@ describe('supabase server adversarial - getCookieName and cookieDomain branches'
     delete process.env.NEXT_PUBLIC_DEPLOYMENT_MODE
     vi.resetModules()
     const { cookies } = await import('next/headers')
-    vi.mocked(cookies).mockResolvedValue({ getAll: () => [], set: () => { throw new Error('Server Component') } } as any)
+    vi.mocked(cookies).mockResolvedValue({
+      getAll: () => [],
+      set: () => {
+        throw new Error('Server Component')
+      },
+    } as any)
     const { createClient } = await import('@/lib/supabase/server')
     await createClient()
     const { createServerClient } = await import('@supabase/ssr')

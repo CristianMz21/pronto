@@ -79,6 +79,7 @@ export function HistoryFilters({ from, to, method, client, methods }: Props) {
         </select>
       </div>
       <button
+        type="button"
         onClick={apply}
         className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
       >
@@ -86,6 +87,7 @@ export function HistoryFilters({ from, to, method, client, methods }: Props) {
       </button>
       {hasFilters && (
         <button
+          type="button"
           onClick={clear}
           className="px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50"
         >

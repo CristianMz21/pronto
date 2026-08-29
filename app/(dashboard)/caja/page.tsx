@@ -115,7 +115,7 @@ export default async function CajaPage(props: { searchParams: Promise<{ location
           >
             Todas
           </Link>
-          {locations!.map((l) => (
+          {locations?.map((l) => (
             <Link
               key={l.id}
               href={`/caja?location=${l.id}`}

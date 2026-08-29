@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Mocks
 vi.mock('next/navigation', () => ({
@@ -45,7 +45,6 @@ vi.mock('@/lib/gcal', () => ({ buildGCalUrlFromISO: vi.fn(() => 'https://cal.com
 vi.mock('serwist', () => ({
   Serwist: class {
     addEventListeners = vi.fn()
-    constructor(_opts: any) {}
   },
   NetworkFirst: vi.fn(),
   ExpirationPlugin: vi.fn(),
@@ -56,7 +55,7 @@ describe('final 100 robust', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('sw.ts loads', async () => {
-    // @ts-ignore global self for service worker
+    // @ts-expect-error global self for service worker
     global.self = { __SW_MANIFEST: [] } as any
     await expect(import('@/app/sw')).resolves.toBeDefined()
   })
@@ -74,12 +73,10 @@ describe('final 100 robust', () => {
     process.env.NEXT_PUBLIC_DEPLOYMENT_MODE = 'selfhosted'
     vi.mocked(createClient).mockResolvedValue({
       auth: {
-        signUp: vi
-          .fn()
-          .mockResolvedValue({
-            data: { user: { id: 'u1', email: 'a@b.com', user_metadata: {} }, session: null },
-            error: null,
-          }),
+        signUp: vi.fn().mockResolvedValue({
+          data: { user: { id: 'u1', email: 'a@b.com', user_metadata: {} }, session: null },
+          error: null,
+        }),
         signInWithPassword: vi
           .fn()
           .mockResolvedValue({ data: { session: { access_token: 'tok' } }, error: null }),
@@ -112,15 +109,13 @@ describe('final 100 robust', () => {
     delete process.env.NEXT_PUBLIC_DEPLOYMENT_MODE
     vi.mocked(createClient).mockResolvedValue({
       auth: {
-        signUp: vi
-          .fn()
-          .mockResolvedValue({
-            data: {
-              user: { id: 'u1', email: 'a@b.com', user_metadata: {} },
-              session: { access_token: 'tok' },
-            },
-            error: null,
-          }),
+        signUp: vi.fn().mockResolvedValue({
+          data: {
+            user: { id: 'u1', email: 'a@b.com', user_metadata: {} },
+            session: { access_token: 'tok' },
+          },
+          error: null,
+        }),
       },
     } as any)
     vi.mocked(createAdmin).mockReturnValue({
@@ -149,12 +144,10 @@ describe('final 100 robust', () => {
     delete process.env.NEXT_PUBLIC_DEPLOYMENT_MODE
     vi.mocked(createClient).mockResolvedValue({
       auth: {
-        signUp: vi
-          .fn()
-          .mockResolvedValue({
-            data: { user: { id: 'u1', email: 'a@b.com', user_metadata: {} }, session: null },
-            error: null,
-          }),
+        signUp: vi.fn().mockResolvedValue({
+          data: { user: { id: 'u1', email: 'a@b.com', user_metadata: {} }, session: null },
+          error: null,
+        }),
         signInWithPassword: vi.fn().mockResolvedValue({ data: { session: null }, error: null }),
       },
     } as any)
@@ -237,12 +230,10 @@ describe('final 100 robust', () => {
     const { createClient } = await import('@/lib/supabase/server')
     vi.mocked(createClient).mockResolvedValue({
       auth: {
-        exchangeCodeForSession: vi
-          .fn()
-          .mockResolvedValue({
-            data: { user: { id: 'u1', email: 'a@b.com', user_metadata: {} } },
-            error: null,
-          }),
+        exchangeCodeForSession: vi.fn().mockResolvedValue({
+          data: { user: { id: 'u1', email: 'a@b.com', user_metadata: {} } },
+          error: null,
+        }),
       },
     } as any)
     const { GET } = await import('@/app/auth/callback/route')
@@ -258,12 +249,10 @@ describe('final 100 robust', () => {
     const { createClient: createAdmin } = await import('@supabase/supabase-js')
     vi.mocked(createClient).mockResolvedValue({
       auth: {
-        exchangeCodeForSession: vi
-          .fn()
-          .mockResolvedValue({
-            data: { user: { id: 'u1', email: 'a@b.com', user_metadata: {} } },
-            error: null,
-          }),
+        exchangeCodeForSession: vi.fn().mockResolvedValue({
+          data: { user: { id: 'u1', email: 'a@b.com', user_metadata: {} } },
+          error: null,
+        }),
       },
     } as any)
     vi.mocked(createAdmin).mockReturnValue({

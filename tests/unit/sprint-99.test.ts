@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@supabase/supabase-js', () => ({ createClient: vi.fn() }))
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }))
@@ -168,7 +168,7 @@ describe('sprint 99 - final gaps', () => {
     vi.mocked(createClient).mockResolvedValue({
       auth: { signInWithOAuth: vi.fn(async () => ({ data: {}, error: { message: 'fail' } })) },
     } as any)
-    let fd = new FormData()
+    const fd = new FormData()
     fd.set('redirectTo', '/dashboard')
     await expect(loginWithGoogle(fd)).rejects.toThrow('NEXT_REDIRECT:/login?error=Google')
 
@@ -203,7 +203,7 @@ describe('sprint 99 - final gaps', () => {
         })),
       },
     } as any)
-    let fd = new FormData()
+    const fd = new FormData()
     fd.set('email', 'a@b.com')
     fd.set('password', 'pass123')
     fd.set('name', 'John')
@@ -362,7 +362,7 @@ describe('sprint 99 - final gaps', () => {
       }),
     } as any)
     const { POST } = await import('@/app/api/book/route')
-    let req = new NextRequest('http://localhost/api/book', {
+    const req = new NextRequest('http://localhost/api/book', {
       method: 'POST',
       body: JSON.stringify({
         businessId: '11111111-1111-1111-1111-111111111111',
@@ -373,7 +373,7 @@ describe('sprint 99 - final gaps', () => {
         phone: '+123',
       }),
     } as any)
-    let res = await POST(req as any)
+    const res = await POST(req as any)
     expect(res.status).toBe(500)
   })
 
@@ -385,7 +385,7 @@ describe('sprint 99 - final gaps', () => {
     vi.mocked(createClient).mockResolvedValue({
       auth: { getUser: vi.fn(async () => ({ data: { user: null }, error: null })) },
     } as any)
-    let { POST: tgPost } = await import('@/app/api/telegram/set-webhook/route')
+    const { POST: tgPost } = await import('@/app/api/telegram/set-webhook/route')
     let req = new NextRequest('http://localhost/api/telegram/set-webhook', {
       method: 'POST',
       body: JSON.stringify({}),
@@ -393,7 +393,7 @@ describe('sprint 99 - final gaps', () => {
     let res = await tgPost(req as any)
     expect(res.status).toBe(401)
 
-    let { POST: vbPost } = await import('@/app/api/viber/set-webhook/route')
+    const { POST: vbPost } = await import('@/app/api/viber/set-webhook/route')
     req = new NextRequest('http://localhost/api/viber/set-webhook', {
       method: 'POST',
       body: JSON.stringify({}),

@@ -1,13 +1,13 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 
 import 'fake-indexeddb/auto'
 import {
-  queueTransaction,
-  getPendingTransactions,
-  markTransactionSynced,
-  getPendingCount,
   cacheData,
   getCachedData,
+  getPendingCount,
+  getPendingTransactions,
+  markTransactionSynced,
+  queueTransaction,
 } from '@/lib/offline-db'
 
 describe('offline-db strict 100%', () => {

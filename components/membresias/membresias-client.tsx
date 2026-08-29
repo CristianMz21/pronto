@@ -1,6 +1,6 @@
 'use client'
 
-import { Plus, Pencil, Trash2, Users, Calendar, Coins } from 'lucide-react'
+import { Calendar, Coins, Pencil, Plus, Trash2, Users } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 

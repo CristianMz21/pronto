@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('next/navigation', () => ({
   redirect: vi.fn((url: string) => {
@@ -124,15 +124,13 @@ describe('remaining robust', () => {
       const { createClient: createAdmin } = await import('@supabase/supabase-js')
       vi.mocked(createClient).mockResolvedValue({
         auth: {
-          signUp: vi
-            .fn()
-            .mockResolvedValue({
-              data: {
-                user: { id: 'u1', email: 'a@b.com', user_metadata: {} },
-                session: { access_token: 'tok' },
-              },
-              error: null,
-            }),
+          signUp: vi.fn().mockResolvedValue({
+            data: {
+              user: { id: 'u1', email: 'a@b.com', user_metadata: {} },
+              session: { access_token: 'tok' },
+            },
+            error: null,
+          }),
           signInWithPassword: vi.fn().mockResolvedValue({ data: { session: null }, error: null }),
         },
       } as any)
@@ -505,14 +503,12 @@ describe('remaining robust', () => {
       const { createClient: createAdmin } = await import('@supabase/supabase-js')
       vi.mocked(createClient).mockResolvedValue({
         auth: {
-          exchangeCodeForSession: vi
-            .fn()
-            .mockResolvedValue({
-              data: {
-                user: { id: 'u1', email: 'a@b.com', user_metadata: { business_name: 'Test Biz' } },
-              },
-              error: null,
-            }),
+          exchangeCodeForSession: vi.fn().mockResolvedValue({
+            data: {
+              user: { id: 'u1', email: 'a@b.com', user_metadata: { business_name: 'Test Biz' } },
+            },
+            error: null,
+          }),
         },
       } as any)
       vi.mocked(createAdmin).mockReturnValue({

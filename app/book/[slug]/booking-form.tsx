@@ -2,16 +2,16 @@
 
 import { CalendarPlus, Loader2 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
-import { useState, useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 import { DatePicker } from '@/components/ui/date-picker'
 import {
   computeEffectiveHours,
   type DayHours,
-  todayInBusinessTz as todayInBusinessTzLib,
-  nowMinutesInBusinessTz as nowMinutesInBusinessTzLib,
-  isTooSoonMinutes,
   DEFAULT_LEAD_MINUTES,
+  isTooSoonMinutes,
+  nowMinutesInBusinessTz as nowMinutesInBusinessTzLib,
+  todayInBusinessTz as todayInBusinessTzLib,
 } from '@/lib/booking-availability'
 import { buildGCalUrl } from '@/lib/gcal'
 import { createClient } from '@/lib/supabase/client'
@@ -157,6 +157,7 @@ function BackLink({
 }) {
   return (
     <button
+      type="button"
       onClick={onClick}
       style={{
         fontSize: 13,
@@ -190,6 +191,7 @@ function CtaButton({
   const isEsc = theme === 'escuderia'
   return (
     <button
+      type="button"
       onClick={onClick}
       disabled={disabled}
       style={{
@@ -492,10 +494,10 @@ export function PublicBookingForm({
       return
     }
 
-    const dow = new Date(selectedDate + 'T00:00:00').getDay()
+    const dow = new Date(`${selectedDate}T00:00:00`).getDay()
     const dayHours = effectiveHours.find((h) => h.day_of_week === dow)
 
-    if (!dayHours || !dayHours.is_open) {
+    if (!dayHours?.is_open) {
       setDayClosed(true)
       setLoadingSlots(false)
       return
@@ -552,8 +554,8 @@ export function PublicBookingForm({
                 minute: '2-digit',
                 hour12: false,
               }).formatToParts(new Date(iso))
-              const h = parseInt(parts.find((p) => p.type === 'hour')?.value ?? '0')
-              const m = parseInt(parts.find((p) => p.type === 'minute')?.value ?? '0')
+              const h = parseInt(parts.find((p) => p.type === 'hour')?.value ?? '0', 10)
+              const m = parseInt(parts.find((p) => p.type === 'minute')?.value ?? '0', 10)
               return (h % 24) * 60 + m
             }
             const bStartMin = toBusinessMin(starts_at)
@@ -588,7 +590,7 @@ export function PublicBookingForm({
       )
       return
     }
-    if (contact.phone && !/^[\d\s\+\-\(\)\.]{7,}$/.test(contact.phone)) {
+    if (contact.phone && !/^[\d\s+\-().]{7,}$/.test(contact.phone)) {
       setBookingError('Please enter a valid phone number (digits only, e.g. +1 234 567 8900).')
       return
     }
@@ -797,6 +799,7 @@ export function PublicBookingForm({
           fill="none"
           style={{ margin: '0 auto 16px', display: 'block' }}
         >
+          <title>Success checkmark</title>
           <circle
             cx="28"
             cy="28"
@@ -869,6 +872,7 @@ export function PublicBookingForm({
                   }}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <title>Telegram</title>
                     <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L8.32 13.617l-2.96-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.828.942z" />
                   </svg>
                   {t('success.telegramButton')}
@@ -894,6 +898,7 @@ export function PublicBookingForm({
                   }}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <title>Viber</title>
                     <path d="M11.983.02C8.764.02 3.14 1.016.824 7.236c-.9 2.38-.9 4.944-.9 6.764v.02c0 2.62.44 5.04 1.72 6.72C2.9 22.22 4.74 23 7.4 23h.12c.6 0 1.2-.08 1.68-.28.08-.04.12-.12.12-.2v-2.16c0-.12-.08-.2-.2-.2-.04 0-.12 0-.16.04-.64.28-1.28.36-1.96.36-1.88 0-3.04-.6-3.72-1.84-.6-1.12-.76-2.6-.76-4.36v-.02c0-1.6.04-3.88.72-5.84 1.84-5.08 6.56-5.76 8.76-5.76h.04c2.2 0 6.92.68 8.76 5.76.68 1.96.72 4.24.72 5.84v.02c0 1.76-.16 3.24-.76 4.36-.68 1.24-1.84 1.84-3.72 1.84-.68 0-1.32-.08-1.96-.36-.04-.04-.12-.04-.16-.04-.12 0-.2.08-.2.2v2.16c0 .08.04.16.12.2.48.2 1.08.28 1.68.28h.12c2.66 0 4.5-.78 5.76-2.26 1.28-1.68 1.72-4.1 1.72-6.72v-.02c0-1.82 0-4.38-.9-6.76C20.86 1.016 15.224.02 12.004.02h-.02z" />
                   </svg>
                   {t('success.viberButton')}
@@ -936,6 +941,7 @@ export function PublicBookingForm({
             Add to Google Calendar
           </a>
           <button
+            type="button"
             onClick={resetAll}
             style={{
               background: 'white',
@@ -1094,7 +1100,12 @@ export function PublicBookingForm({
             <p style={{ fontSize: 14, color: cardMuted }}>{t('selectService.empty')}</p>
           ) : (
             visibleServices.map((s) => (
-              <button key={s.id} onClick={() => handleSelectService(s)} style={baseCard}>
+              <button
+                type="button"
+                key={s.id}
+                onClick={() => handleSelectService(s)}
+                style={baseCard}
+              >
                 <div>
                   <div style={{ fontSize: 14, fontWeight: 500, color: cardText }}>{s.name}</div>
                   {s.description && (
@@ -1138,6 +1149,7 @@ export function PublicBookingForm({
           </p>
 
           <button
+            type="button"
             onClick={() => handleSelectEmployee('')}
             style={{
               ...baseCard,
@@ -1167,7 +1179,12 @@ export function PublicBookingForm({
           </button>
 
           {visibleEmployees.map((e) => (
-            <button key={e.id} onClick={() => handleSelectEmployee(e.id)} style={baseCard}>
+            <button
+              type="button"
+              key={e.id}
+              onClick={() => handleSelectEmployee(e.id)}
+              style={baseCard}
+            >
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div
                   style={{
@@ -1184,7 +1201,7 @@ export function PublicBookingForm({
                     flexShrink: 0,
                   }}
                 >
-                  {e.name[0]!.toUpperCase()}
+                  {e.name[0]?.toUpperCase()}
                 </div>
                 <span style={{ fontSize: 14, fontWeight: 500, color: cardText }}>{e.name}</span>
               </div>
@@ -1322,6 +1339,7 @@ export function PublicBookingForm({
                     const isSelected = time === ts
                     return (
                       <button
+                        type="button"
                         key={ts}
                         onClick={() => {
                           setTime(ts)
@@ -1394,6 +1412,7 @@ export function PublicBookingForm({
                 para confirmar).
               </div>
               <button
+                type="button"
                 onClick={() => setStep('contact')}
                 style={{
                   background: isEsc ? '#C5A059' : 'var(--brand)',
@@ -1434,6 +1453,7 @@ export function PublicBookingForm({
                 bookingError.toLowerCase().includes('slot')) && (
                 <div style={{ marginTop: 8 }}>
                   <button
+                    type="button"
                     onClick={() => setStep('contact')}
                     style={{
                       background: 'white',
@@ -1612,6 +1632,7 @@ export function PublicBookingForm({
           )}
 
           <button
+            type="button"
             onClick={submit}
             disabled={!contact.name || saving}
             style={{
@@ -1646,6 +1667,7 @@ export function PublicBookingForm({
             <span style={{ fontSize: 11, color: cardMuted }}>o</span>
           </div>
           <button
+            type="button"
             onClick={joinWaitlist}
             disabled={!contact.name || waitlistJoinLoading || waitlistJoined}
             style={{

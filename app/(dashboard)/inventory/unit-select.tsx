@@ -23,7 +23,9 @@ export function UnitSelect({ value, onChange, className = '' }: Props) {
         className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
       >
         {PRESET_UNITS.map((u) => (
-          <option key={u} value={u}>{u}</option>
+          <option key={u} value={u}>
+            {u}
+          </option>
         ))}
         <option value="other">other…</option>
       </select>
@@ -33,7 +35,6 @@ export function UnitSelect({ value, onChange, className = '' }: Props) {
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder="Enter unit name"
-          autoFocus
           className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       )}

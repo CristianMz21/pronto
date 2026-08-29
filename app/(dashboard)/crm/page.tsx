@@ -1,5 +1,5 @@
-import { eq, and, or, ilike, inArray } from 'drizzle-orm'
-import { Plus, Search, Phone, Mail } from 'lucide-react'
+import { and, eq, ilike, inArray, or } from 'drizzle-orm'
+import { Mail, Phone, Plus, Search } from 'lucide-react'
 import Link from 'next/link'
 import { getTranslations } from 'next-intl/server'
 
@@ -9,8 +9,8 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   businesses,
-  employees,
   clients as clientsTable,
+  employees,
   locations,
   transactions,
 } from '@/drizzle/schema'
@@ -20,8 +20,8 @@ import { formatCurrency, formatInBusinessTimezone } from '@/lib/utils'
 
 function inDaysFromNow(dateStr: string, days: number): boolean {
   if (!dateStr) return false
-  const d = new Date(dateStr + 'T00:00:00')
-  if (isNaN(d.getTime())) return false
+  const d = new Date(`${dateStr}T00:00:00`)
+  if (Number.isNaN(d.getTime())) return false
   const now = new Date()
   const thisYear = now.getFullYear()
   const bThisYear = new Date(thisYear, d.getMonth(), d.getDate())
@@ -41,7 +41,7 @@ export default async function CRMPage(props: {
   let businessCurrency = 'COP'
   let businessTz = 'America/Bogota'
   const ownedBiz = await db.query.businesses.findFirst({
-    where: eq(businesses.ownerId, user!.id),
+    where: eq(businesses.ownerId, user?.id),
     columns: { id: true, currency: true, timezone: true },
   })
   if (ownedBiz) {
@@ -50,7 +50,7 @@ export default async function CRMPage(props: {
     businessTz = ownedBiz.timezone ?? 'America/Bogota'
   } else {
     const emp = (await db.query.employees.findFirst({
-      where: and(eq(employees.userId, user!.id), eq(employees.isActive, true)),
+      where: and(eq(employees.userId, user?.id), eq(employees.isActive, true)),
       with: { business: { columns: { currency: true, timezone: true } } },
     })) as unknown as
       | { businessId: string; business: { currency: string; timezone: string } }
@@ -218,7 +218,7 @@ export default async function CRMPage(props: {
             >
               Todas
             </Link>
-            {locs!.map((l) => (
+            {locs?.map((l) => (
               <Link
                 key={l.id}
                 href={`/crm?location=${l.id}`}
@@ -357,7 +357,7 @@ export default async function CRMPage(props: {
                     <td className="px-4 py-3 text-right hidden md:table-cell text-gray-500">
                       {statsMap[c.id]?.last_visit_at
                         ? formatInBusinessTimezone(
-                            statsMap[c.id]!.last_visit_at!,
+                            statsMap[c.id]?.last_visit_at ?? '',
                             business.timezone,
                           )
                         : '—'}

@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 
-import { rateLimit, getIp } from '@/lib/rate-limit'
+import { getIp, rateLimit } from '@/lib/rate-limit'
 import { RecurringCreateSchema, validateRRule } from '@/lib/recurring'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
 
   const url = new URL(req.url)
   const businessIdParam = url.searchParams.get('business_id')
-  let businessId = businessIdParam ?? (await resolveBusinessId(supabase, user.id))
+  const businessId = businessIdParam ?? (await resolveBusinessId(supabase, user.id))
   if (!businessId) return NextResponse.json({ error: 'not_found' }, { status: 404 })
 
   // Verify access
@@ -198,7 +198,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'invalid_dtstart' }, { status: 400 })
     }
   }
-  if (!dtstart || isNaN(dtstart.getTime())) {
+  if (!dtstart || Number.isNaN(dtstart.getTime())) {
     return NextResponse.json(
       { error: 'dtstart_required', message: 'Se requiere dtstart o date+time para la recurrencia' },
       { status: 400 },

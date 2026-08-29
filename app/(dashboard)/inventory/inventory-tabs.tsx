@@ -38,6 +38,7 @@ export function InventoryTabs({ items, currency, initialFilter, initialTab }: Pr
       <div className="flex gap-0 border-b border-gray-200 mb-5">
         {(['items', 'sales'] as Tab[]).map((tab) => (
           <button
+            type="button"
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${

@@ -1,9 +1,9 @@
 import { createClient } from '@supabase/supabase-js'
-import { NextRequest, NextResponse } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 
 import { sendLowStockAlert } from '@/lib/email'
-import { rateLimit, getIp } from '@/lib/rate-limit'
+import { getIp, rateLimit } from '@/lib/rate-limit'
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { sendTelegramMessage, tplLowStock } from '@/lib/telegram'
 import { sendViberMessage, tplLowStock as viberTplLowStock } from '@/lib/viber'
@@ -134,7 +134,7 @@ export async function POST(req: NextRequest) {
 
     await sendLowStockAlert({
       to: recipientEmail,
-      businessName: biz!.name,
+      businessName: biz?.name,
       items: [
         {
           name: item.name,

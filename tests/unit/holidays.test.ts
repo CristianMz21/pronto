@@ -1,7 +1,7 @@
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
 import { checkSlotWithHolidays, checkSlotWithinLocation } from '@/lib/booking-availability'
-import { isHoliday, isHolidayForLocation, getHolidaysForDate } from '@/lib/holidays'
+import { getHolidaysForDate, isHoliday, isHolidayForLocation } from '@/lib/holidays'
 
 describe('holidays', () => {
   const holidays = [

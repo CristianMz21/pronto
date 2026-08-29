@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@supabase/supabase-js', () => ({ createClient: vi.fn() }))
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }))
@@ -621,7 +621,7 @@ describe('ultimate final2 100', () => {
         return { select: vi.fn(() => ({})) } as any
       }),
     } as any)
-    let { POST } = await import('@/app/api/telegram/webhook/route')
+    const { POST } = await import('@/app/api/telegram/webhook/route')
     let body = { message: { chat: { id: '1' }, text: '/link 999', from: { first_name: 'John' } } }
     let req = new NextRequest('http://localhost/api/telegram/webhook?bid=b1', {
       method: 'POST',

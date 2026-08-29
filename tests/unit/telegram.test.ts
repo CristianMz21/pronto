@@ -1,19 +1,21 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 global.fetch = vi
   .fn()
   .mockResolvedValue({ json: async () => ({ ok: true, status: 0 }) } as any) as any
+
 import {
+  getTelegramBotInfo,
   sendTelegramMessage,
   setTelegramWebhook,
-  getTelegramBotInfo,
-  tplNewBooking,
-  tplLowStock,
-  tplThankYou,
-  tplReminder,
-  tplReactivation,
   tplBirthday,
+  tplLowStock,
+  tplNewBooking,
+  tplReactivation,
+  tplReminder,
+  tplThankYou,
 } from '@/lib/telegram'
+
 describe('telegram exhaustive', () => {
   beforeEach(() => vi.clearAllMocks())
   it('send success', async () => {

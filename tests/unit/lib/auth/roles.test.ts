@@ -1,12 +1,12 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import {
+  type CanonicalRole,
   canAccessRoute,
+  getUserRole,
   isBarbero,
   isPrivileged,
-  getUserRole,
   ROLE_PERMISSIONS,
-  type CanonicalRole,
 } from '@/lib/auth/roles'
 
 describe('roles — barbero reducido', () => {
@@ -82,11 +82,9 @@ describe('roles — barbero reducido', () => {
               select: vi.fn().mockReturnThis(),
               eq: vi.fn().mockReturnThis(),
               limit: vi.fn().mockReturnThis(),
-              maybeSingle: vi
-                .fn()
-                .mockResolvedValue({
-                  data: overrides.businessesOwnerAny ?? overrides.businessesOwner,
-                }),
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: overrides.businessesOwnerAny ?? overrides.businessesOwner,
+              }),
             }
             // For businessId-scoped query, we need eq().eq().maybeSingle chain
             // Simplify: if businessId provided, businessesOwner is used

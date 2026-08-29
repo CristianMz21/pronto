@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
-import { NextRequest, NextResponse } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 
 export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
-  const params = await props.params;
+  const params = await props.params
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -27,25 +27,20 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
 
   // Upload to Supabase Storage bucket 'inventory'
   // Create a public bucket named 'inventory' in Supabase Dashboard → Storage
-  const { error: uploadError } = await supabase.storage
-    .from('inventory')
-    .upload(path, buffer, {
-      contentType: file.type,
-      upsert: true,
-    })
+  const { error: uploadError } = await supabase.storage.from('inventory').upload(path, buffer, {
+    contentType: file.type,
+    upsert: true,
+  })
 
   if (uploadError) {
     return NextResponse.json({ error: uploadError.message }, { status: 500 })
   }
 
-  const { data: { publicUrl } } = supabase.storage
-    .from('inventory')
-    .getPublicUrl(path)
+  const {
+    data: { publicUrl },
+  } = supabase.storage.from('inventory').getPublicUrl(path)
 
-  await supabase
-    .from('inventory_items')
-    .update({ photo_url: publicUrl })
-    .eq('id', params.id)
+  await supabase.from('inventory_items').update({ photo_url: publicUrl }).eq('id', params.id)
 
   return NextResponse.json({ url: publicUrl })
 }

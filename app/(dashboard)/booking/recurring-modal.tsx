@@ -270,7 +270,7 @@ export function RecurringModal({
                       min={1}
                       max={12}
                       value={interval}
-                      onChange={(e) => setInterval(Math.max(1, parseInt(e.target.value) || 1))}
+                      onChange={(e) => setInterval(Math.max(1, parseInt(e.target.value, 10) || 1))}
                       className="w-full border border-gray-200 rounded-lg px-2 py-2 text-sm"
                     />
                     <span className="text-xs text-gray-500">
@@ -286,7 +286,7 @@ export function RecurringModal({
                     max={52}
                     value={count}
                     onChange={(e) =>
-                      setCount(Math.min(52, Math.max(1, parseInt(e.target.value) || 1)))
+                      setCount(Math.min(52, Math.max(1, parseInt(e.target.value, 10) || 1)))
                     }
                     disabled={!!until}
                     className="w-full mt-1 border border-gray-200 rounded-lg px-2 py-2 text-sm disabled:opacity-50"
@@ -409,6 +409,7 @@ function CalendarRepeat(props: React.SVGProps<SVGSVGElement>) {
       strokeLinecap="round"
       strokeLinejoin="round"
     >
+      <title>Calendar repeat icon</title>
       <rect x="3" y="4" width="18" height="18" rx="2" />
       <path d="M16 2v4M8 2v4M3 10h18" />
       <path d="M12 14v4M14 16l-4 2 4 2v-4z" />

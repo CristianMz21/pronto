@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 
 import { BottomTab } from '@/components/layout/bottom-tab'
 import { Sidebar } from '@/components/layout/sidebar'
-import { canAccessRoute, getUserRole, type CanonicalRole } from '@/lib/auth/roles'
+import { type CanonicalRole, canAccessRoute, getUserRole } from '@/lib/auth/roles'
 import { getAuthUser } from '@/lib/auth-user'
 import { createClient } from '@/lib/supabase/server'
 

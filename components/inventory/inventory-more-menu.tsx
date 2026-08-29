@@ -61,6 +61,7 @@ export function InventoryMoreMenu({ atLimit }: Props) {
   return (
     <div className="sm:hidden shrink-0">
       <button
+        type="button"
         ref={btnRef}
         onClick={toggle}
         className="p-2 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors"

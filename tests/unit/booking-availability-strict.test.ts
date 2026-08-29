@@ -1,11 +1,11 @@
 import fc from 'fast-check'
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
 import {
-  computeEffectiveHours,
   checkSlotWithinHours,
-  dayOfWeekFromDateString,
+  computeEffectiveHours,
   DEFAULT_HOURS,
+  dayOfWeekFromDateString,
 } from '@/lib/booking-availability'
 
 describe('booking-availability strict 100%', () => {
@@ -229,11 +229,11 @@ describe('booking-availability strict 100%', () => {
     })
     it('invalid date -> NaN via getUTCDay? Actually new Date(NaN).getUTCDay() => NaN', () => {
       const v = dayOfWeekFromDateString('invalid')
-      expect(isNaN(v)).toBe(true)
+      expect(Number.isNaN(v)).toBe(true)
     })
     it('empty', () => {
       const v = dayOfWeekFromDateString('')
-      expect(isNaN(v)).toBe(true)
+      expect(Number.isNaN(v)).toBe(true)
     })
   })
 })

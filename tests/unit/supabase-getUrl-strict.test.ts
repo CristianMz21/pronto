@@ -1,8 +1,8 @@
-import fs from 'fs'
+import fs from 'node:fs'
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { getSupabaseUrl, getDatabaseUrl } from '@/lib/supabase/getUrl'
+import { getDatabaseUrl, getSupabaseUrl } from '@/lib/supabase/getUrl'
 
 describe('supabase getUrl strict 100%', () => {
   const origEnv = { ...process.env }

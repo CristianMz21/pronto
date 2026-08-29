@@ -1,30 +1,24 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import 'fake-indexeddb/auto'
-import { computeEffectiveHours, checkSlotWithinHours } from '@/lib/booking-availability'
+import { checkSlotWithinHours, computeEffectiveHours } from '@/lib/booking-availability'
 import { calcCommission } from '@/lib/commission'
 import { buildGCalUrl, buildGCalUrlFromISO } from '@/lib/gcal'
-import { sanitizeBusinessName, getFromAddress } from '@/lib/mailer'
+import { getFromAddress, sanitizeBusinessName } from '@/lib/mailer'
 import { isModuleEnabled } from '@/lib/modules'
-import {
-  queueTransaction,
-  getPendingTransactions,
-  cacheData,
-  getCachedData,
-  getPendingCount,
-} from '@/lib/offline-db'
+import { cacheData, getCachedData, getPendingCount, queueTransaction } from '@/lib/offline-db'
 import { checkClientLimit } from '@/lib/plan-limits'
-import { rateLimit, getIp } from '@/lib/rate-limit'
-import { getSupabaseUrl, getDatabaseUrl } from '@/lib/supabase/getUrl'
+import { getIp, rateLimit } from '@/lib/rate-limit'
+import { getDatabaseUrl, getSupabaseUrl } from '@/lib/supabase/getUrl'
 import * as telegram from '@/lib/telegram'
 import {
   cn,
   formatDate,
-  formatTime,
-  uses12HourClock,
   formatInBusinessTimezone,
-  slugify,
+  formatTime,
   getTenantSlug,
+  slugify,
+  uses12HourClock,
 } from '@/lib/utils'
 import * as viber from '@/lib/viber'
 import * as whatsapp from '@/lib/whatsapp'

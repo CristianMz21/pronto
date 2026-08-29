@@ -1,17 +1,17 @@
-import { eq, and, gte, lt, or, isNull, inArray } from 'drizzle-orm'
+import { and, eq, gte, inArray, isNull, lt, or } from 'drizzle-orm'
 import Link from 'next/link'
 
 import { Header } from '@/components/layout/header'
 import {
-  businesses,
-  employees,
-  services,
-  clients,
-  businessHours,
-  locations,
-  holidays,
   appointments,
+  businesses,
+  businessHours,
+  clients,
   employeeServices,
+  employees,
+  holidays,
+  locations,
+  services,
 } from '@/drizzle/schema'
 import { getUserRole } from '@/lib/auth/roles'
 import { getAuthUser } from '@/lib/auth-user'
@@ -36,7 +36,7 @@ export default async function BookingPage(props: { searchParams: Promise<{ locat
   } | null = null
 
   const owned = await db.query.businesses.findFirst({
-    where: eq(businesses.ownerId, user!.id),
+    where: eq(businesses.ownerId, user?.id),
     columns: {
       id: true,
       slug: true,
@@ -57,7 +57,7 @@ export default async function BookingPage(props: { searchParams: Promise<{ locat
     }
   } else {
     const emp = (await db.query.employees.findFirst({
-      where: and(eq(employees.userId, user!.id), eq(employees.isActive, true)),
+      where: and(eq(employees.userId, user?.id), eq(employees.isActive, true)),
       with: {
         business: {
           columns: {
@@ -97,7 +97,7 @@ export default async function BookingPage(props: { searchParams: Promise<{ locat
   try {
     role = await getUserRole(
       supabase as unknown as { from: (t: string) => unknown },
-      user!.id,
+      user?.id,
       business.id,
     )
   } catch {
@@ -109,7 +109,7 @@ export default async function BookingPage(props: { searchParams: Promise<{ locat
   if (isBarbero) {
     const emp = await db.query.employees.findFirst({
       where: and(
-        eq(employees.userId, user!.id),
+        eq(employees.userId, user?.id),
         eq(employees.businessId, business.id),
         eq(employees.isActive, true),
       ),
@@ -340,7 +340,7 @@ export default async function BookingPage(props: { searchParams: Promise<{ locat
           >
             Todas
           </Link>
-          {locationsData!.map((l) => (
+          {locationsData?.map((l) => (
             <Link
               key={l.id}
               href={`/booking?location=${l.id}`}

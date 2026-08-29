@@ -2,7 +2,7 @@ import DOMPurify from 'isomorphic-dompurify'
 import { NextResponse } from 'next/server'
 
 import { PromotionSchema } from '@/lib/promotions'
-import { rateLimit, getIp } from '@/lib/rate-limit'
+import { getIp, rateLimit } from '@/lib/rate-limit'
 import { createClient } from '@/lib/supabase/server'
 
 function sanitize(s: string): string {
@@ -84,7 +84,11 @@ export async function POST(req: Request) {
   if (b.valid_from && b.valid_to) {
     const from = new Date(b.valid_from as string)
     const to = new Date(b.valid_to as string)
-    if (!isNaN(from.getTime()) && !isNaN(to.getTime()) && from.getTime() >= to.getTime()) {
+    if (
+      !Number.isNaN(from.getTime()) &&
+      !Number.isNaN(to.getTime()) &&
+      from.getTime() >= to.getTime()
+    ) {
       return NextResponse.json(
         { error: 'validation_failed', details: { valid_to: ['must be after valid_from'] } },
         { status: 422 },

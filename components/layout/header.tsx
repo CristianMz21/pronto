@@ -27,7 +27,7 @@ export function Header({ title, actions }: HeaderProps) {
     measure()
     window.addEventListener('resize', measure)
     return () => window.removeEventListener('resize', measure)
-  }, [actions])
+  }, [])
 
   return (
     <header className="h-14 border-b border-gray-200 bg-white flex items-center px-6 gap-4 sticky top-0 z-10">
@@ -45,7 +45,10 @@ export function Header({ title, actions }: HeaderProps) {
           )}
         </div>
       )}
-      <button className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors shrink-0">
+      <button
+        type="button"
+        className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors shrink-0"
+      >
         <Bell className="w-4 h-4" />
       </button>
     </header>

@@ -33,7 +33,11 @@ export function calculateEarnPoints(amount: number, earnRate: number = DEFAULT_E
   return Math.floor(amount / earnRate)
 }
 
-export function calculateRedeemValue(points: number, redeemRate: number = DEFAULT_REDEEM_RATE, redeemValue: number = DEFAULT_REDEEM_VALUE): number {
+export function calculateRedeemValue(
+  points: number,
+  redeemRate: number = DEFAULT_REDEEM_RATE,
+  redeemValue: number = DEFAULT_REDEEM_VALUE,
+): number {
   if (points <= 0) return 0
   // 100 pts = 10000 => 100 per point
   const perPoint = redeemValue / redeemRate
@@ -49,25 +53,35 @@ type SupabaseLike = {
   rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>
 }
 
-export async function getBalance(
-  supabase: SupabaseLike,
-  clientId: string
-): Promise<number> {
+export async function getBalance(supabase: SupabaseLike, clientId: string): Promise<number> {
   const parsed = z.string().uuid().safeParse(clientId)
   if (!parsed.success) throw new Error('invalid_client_id')
-  const { data, error } = await (supabase.from('loyalty_accounts') as unknown as {
-    select: (c:string)=>{ eq:(a:string,b:unknown)=>{ maybeSingle:()=>Promise<{data:LoyaltyAccount|null;error:unknown}> } }
-  }).select('points').eq('client_id', clientId).maybeSingle()
+  const { data, error } = await (
+    supabase.from('loyalty_accounts') as unknown as {
+      select: (c: string) => {
+        eq: (
+          a: string,
+          b: unknown,
+        ) => { maybeSingle: () => Promise<{ data: LoyaltyAccount | null; error: unknown }> }
+      }
+    }
+  )
+    .select('points')
+    .eq('client_id', clientId)
+    .maybeSingle()
   if (error) throw error
   return (data as LoyaltyAccount | null)?.points ?? 0
 }
 
 export async function earnPoints(
   supabase: SupabaseLike,
-  params: z.infer<typeof EarnSchema>
+  params: z.infer<typeof EarnSchema>,
 ): Promise<{ earned: number; balance: number }> {
   const parsed = EarnSchema.safeParse(params)
-  if (!parsed.success) throw Object.assign(new Error('validation_failed'), { details: parsed.error.flatten().fieldErrors })
+  if (!parsed.success)
+    throw Object.assign(new Error('validation_failed'), {
+      details: parsed.error.flatten().fieldErrors,
+    })
   const { business_id, client_id, amount, transaction_id, earn_rate } = parsed.data
   const earned = calculateEarnPoints(amount, earn_rate)
   if (earned <= 0) return { earned: 0, balance: await getBalance(supabase, client_id) }
@@ -88,36 +102,70 @@ export async function earnPoints(
 
   // Fallback: manual upsert (race-prone but acceptable for low concurrency fallback)
   const supa = supabase as unknown as {
-    from: (t:string)=>{
-      select:(c:string)=>{ eq:(a:string,b:unknown)=>{ maybeSingle:()=>Promise<{data:LoyaltyAccount|null;error:unknown}> } }
-      insert:(d:unknown)=>Promise<{error:unknown}>
-      update:(d:unknown)=>{ eq:(a:string,b:unknown)=>Promise<{error:unknown}> }
+    from: (t: string) => {
+      select: (c: string) => {
+        eq: (
+          a: string,
+          b: unknown,
+        ) => { maybeSingle: () => Promise<{ data: LoyaltyAccount | null; error: unknown }> }
+      }
+      insert: (d: unknown) => Promise<{ error: unknown }>
+      update: (d: unknown) => { eq: (a: string, b: unknown) => Promise<{ error: unknown }> }
     }
   }
-  const { data: acct } = await supa.from('loyalty_accounts').select('points').eq('client_id', client_id).maybeSingle()
+  const { data: acct } = await supa
+    .from('loyalty_accounts')
+    .select('points')
+    .eq('client_id', client_id)
+    .maybeSingle()
   if (acct) {
-    await supa.from('loyalty_accounts').update({ points: (acct as LoyaltyAccount).points + earned } as unknown as never).eq('client_id', client_id)
+    await supa
+      .from('loyalty_accounts')
+      .update({ points: (acct as LoyaltyAccount).points + earned } as unknown as never)
+      .eq('client_id', client_id)
     // movement
-    await (supabase.from('loyalty_movements') as unknown as { insert:(d:unknown)=>Promise<unknown> }).insert({ business_id, client_id, type: 'earn', points: earned, reference: transaction_id ?? null })
+    await (
+      supabase.from('loyalty_movements') as unknown as { insert: (d: unknown) => Promise<unknown> }
+    ).insert({
+      business_id,
+      client_id,
+      type: 'earn',
+      points: earned,
+      reference: transaction_id ?? null,
+    })
     return { earned, balance: (acct as LoyaltyAccount).points + earned }
   } else {
-    await (supabase.from('loyalty_accounts') as unknown as { insert:(d:unknown)=>Promise<unknown> }).insert({ client_id, business_id, points: earned })
-    await (supabase.from('loyalty_movements') as unknown as { insert:(d:unknown)=>Promise<unknown> }).insert({ business_id, client_id, type: 'earn', points: earned, reference: transaction_id ?? null })
+    await (
+      supabase.from('loyalty_accounts') as unknown as { insert: (d: unknown) => Promise<unknown> }
+    ).insert({ client_id, business_id, points: earned })
+    await (
+      supabase.from('loyalty_movements') as unknown as { insert: (d: unknown) => Promise<unknown> }
+    ).insert({
+      business_id,
+      client_id,
+      type: 'earn',
+      points: earned,
+      reference: transaction_id ?? null,
+    })
     return { earned, balance: earned }
   }
 }
 
 export async function redeemPoints(
   supabase: SupabaseLike,
-  params: z.infer<typeof RedeemSchema> & { reference?: string | null }
+  params: z.infer<typeof RedeemSchema> & { reference?: string | null },
 ): Promise<{ redeemed: number; discount: number; balance: number }> {
   const parsed = RedeemSchema.safeParse(params)
-  if (!parsed.success) throw Object.assign(new Error('validation_failed'), { details: parsed.error.flatten().fieldErrors })
+  if (!parsed.success)
+    throw Object.assign(new Error('validation_failed'), {
+      details: parsed.error.flatten().fieldErrors,
+    })
   const { business_id, client_id, points, redeem_rate, redeem_value } = parsed.data
 
   // Balance check
   const balance = await getBalance(supabase, client_id)
-  if (!canRedeem(balance, points)) throw Object.assign(new Error('insufficient_points'), { code: 'insufficient_points', balance })
+  if (!canRedeem(balance, points))
+    throw Object.assign(new Error('insufficient_points'), { code: 'insufficient_points', balance })
 
   // Try RPC
   try {
@@ -129,10 +177,18 @@ export async function redeemPoints(
     })
     if (!error && data) {
       const bal = (data as LoyaltyAccount).points
-      return { redeemed: points, discount: calculateRedeemValue(points, redeem_rate, redeem_value), balance: bal }
+      return {
+        redeemed: points,
+        discount: calculateRedeemValue(points, redeem_rate, redeem_value),
+        balance: bal,
+      }
     }
     const msg = String((error as { message?: string })?.message ?? '')
-    if (msg.includes('insufficient_points')) throw Object.assign(new Error('insufficient_points'), { code: 'insufficient_points', balance })
+    if (msg.includes('insufficient_points'))
+      throw Object.assign(new Error('insufficient_points'), {
+        code: 'insufficient_points',
+        balance,
+      })
   } catch (e) {
     const msg = String((e as Error)?.message ?? '')
     if (msg.includes('insufficient_points')) throw e
@@ -140,21 +196,52 @@ export async function redeemPoints(
 
   // Fallback manual
   const supa = supabase as unknown as {
-    from: (t:string)=>{
-      select:(c:string)=>{ eq:(a:string,b:unknown)=>{ maybeSingle:()=>Promise<{data:LoyaltyAccount|null;error:unknown}> } }
-      update:(d:unknown)=>{ eq:(a:string,b:unknown)=>Promise<{error:unknown}> }
-      insert:(d:unknown)=>Promise<unknown>
+    from: (t: string) => {
+      select: (c: string) => {
+        eq: (
+          a: string,
+          b: unknown,
+        ) => { maybeSingle: () => Promise<{ data: LoyaltyAccount | null; error: unknown }> }
+      }
+      update: (d: unknown) => { eq: (a: string, b: unknown) => Promise<{ error: unknown }> }
+      insert: (d: unknown) => Promise<unknown>
     }
   }
-  const { data: acct } = await supa.from('loyalty_accounts').select('points').eq('client_id', client_id).maybeSingle()
+  const { data: acct } = await supa
+    .from('loyalty_accounts')
+    .select('points')
+    .eq('client_id', client_id)
+    .maybeSingle()
   const bal = (acct as LoyaltyAccount | null)?.points ?? 0
-  if (bal < points) throw Object.assign(new Error('insufficient_points'), { code: 'insufficient_points', balance: bal })
-  await supa.from('loyalty_accounts').update({ points: bal - points } as unknown as never).eq('client_id', client_id)
-  await (supabase.from('loyalty_movements') as unknown as { insert:(d:unknown)=>Promise<unknown> }).insert({ business_id, client_id, type: 'redeem', points: -points, reference: (params as { reference?: string | null }).reference ?? null })
-  return { redeemed: points, discount: calculateRedeemValue(points, redeem_rate, redeem_value), balance: bal - points }
+  if (bal < points)
+    throw Object.assign(new Error('insufficient_points'), {
+      code: 'insufficient_points',
+      balance: bal,
+    })
+  await supa
+    .from('loyalty_accounts')
+    .update({ points: bal - points } as unknown as never)
+    .eq('client_id', client_id)
+  await (
+    supabase.from('loyalty_movements') as unknown as { insert: (d: unknown) => Promise<unknown> }
+  ).insert({
+    business_id,
+    client_id,
+    type: 'redeem',
+    points: -points,
+    reference: (params as { reference?: string | null }).reference ?? null,
+  })
+  return {
+    redeemed: points,
+    discount: calculateRedeemValue(points, redeem_rate, redeem_value),
+    balance: bal - points,
+  }
 }
 
-export function insufficientCheck(balance: number, requested: number): { ok: boolean; reason?: string } {
+export function insufficientCheck(
+  balance: number,
+  requested: number,
+): { ok: boolean; reason?: string } {
   if (!Number.isInteger(requested) || requested <= 0) return { ok: false, reason: 'invalid_points' }
   if (balance < requested) return { ok: false, reason: 'insufficient_points' }
   return { ok: true }

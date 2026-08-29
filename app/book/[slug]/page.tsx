@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic'
 
-import { Playfair_Display, Montserrat } from 'next/font/google'
+import { Montserrat, Playfair_Display } from 'next/font/google'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 

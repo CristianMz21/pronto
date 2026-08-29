@@ -18,7 +18,7 @@ export default async function InventoryItemPage(props: { params: Promise<{ id: s
   const { data: business } = await supabase
     .from('businesses')
     .select('id, currency, timezone')
-    .eq('owner_id', user!.id)
+    .eq('owner_id', user?.id)
     .maybeSingle()
   if (!business) return null
 

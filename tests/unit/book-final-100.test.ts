@@ -1,6 +1,6 @@
 import * as fc from 'fast-check'
 import { NextRequest } from 'next/server'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@supabase/supabase-js', () => ({ createClient: vi.fn() }))
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }))
@@ -33,11 +33,11 @@ describe('book final 100 strict', () => {
       time: '10:00',
       name: 'John',
     }
-    let req = new NextRequest('http://localhost/api/book', {
+    const req = new NextRequest('http://localhost/api/book', {
       method: 'POST',
       body: JSON.stringify(base),
     } as any)
-    let res = await POST(req as any)
+    const res = await POST(req as any)
     expect(res.status).toBe(400)
     expect((await res.json()).error).toBe('contact_required')
     // XSS sanitization

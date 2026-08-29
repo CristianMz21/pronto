@@ -1,4 +1,4 @@
-import fs from 'fs'
+import fs from 'node:fs'
 
 /**
  * Translate Supabase URLs for Docker bridge without host network.
@@ -9,7 +9,7 @@ import fs from 'fs'
  */
 
 export function getSupabaseUrl(): string {
-  let url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
   if (!url) return url
   try {
     const isDocker =
@@ -22,7 +22,9 @@ export function getSupabaseUrl(): string {
         }
       })()
     if (isDocker && (url.includes('127.0.0.1') || url.includes('localhost'))) {
-      return url.replace(/127\.0\.0\.1/g, 'host.docker.internal').replace(/localhost/g, 'host.docker.internal')
+      return url
+        .replace(/127\.0\.0\.1/g, 'host.docker.internal')
+        .replace(/localhost/g, 'host.docker.internal')
     }
   } catch {
     // ignore
@@ -31,14 +33,14 @@ export function getSupabaseUrl(): string {
 }
 
 export function getDatabaseUrl(): string {
-  let url = process.env.DATABASE_URL ?? ''
+  const url = process.env.DATABASE_URL ?? ''
   if (!url) return url
   try {
-    const isDocker =
-      process.env.IS_DOCKER === 'true' ||
-      process.env.MIGRATE_SSL === 'false' // local dev always needs translation when MIGRATE_SSL=false
+    const isDocker = process.env.IS_DOCKER === 'true' || process.env.MIGRATE_SSL === 'false' // local dev always needs translation when MIGRATE_SSL=false
     if (isDocker && (url.includes('127.0.0.1') || url.includes('localhost'))) {
-      return url.replace(/127\.0\.0\.1/g, 'host.docker.internal').replace(/localhost/g, 'host.docker.internal')
+      return url
+        .replace(/127\.0\.0\.1/g, 'host.docker.internal')
+        .replace(/localhost/g, 'host.docker.internal')
     }
   } catch {}
   return url

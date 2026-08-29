@@ -1,12 +1,11 @@
 import fc from 'fast-check'
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
 import { checkSlotWithinHours } from '@/lib/booking-availability'
 import { calcCommission } from '@/lib/commission'
 import { sanitizeBusinessName } from '@/lib/mailer'
-import { escapeTelegramHtml } from '@/lib/telegram'
 import * as telegram from '@/lib/telegram'
-import { slugify, formatCurrency, getTenantSlug } from '@/lib/utils'
+import { formatCurrency, getTenantSlug, slugify } from '@/lib/utils'
 import * as viber from '@/lib/viber'
 
 describe('adversarial 100% - agente interno que intenta romper código', () => {
@@ -28,6 +27,7 @@ describe('adversarial 100% - agente interno que intenta romper código', () => {
         '"><img src=x onerror=alert(1)>',
         "'; DROP TABLE businesses; --",
         '../../etc/passwd',
+        // biome-ignore lint/suspicious/noTemplateCurlyInString: test payload contains template-like string
         '${jndi:ldap://evil}',
       ]
       for (const a of attacks) {
@@ -56,7 +56,7 @@ describe('adversarial 100% - agente interno que intenta romper código', () => {
         for (const rate of vals) {
           for (const fixed of vals) {
             const r = calcCommission(amt as any, rate as any, fixed as any)
-            expect(isNaN(r.amount)).toBe(false)
+            expect(Number.isNaN(r.amount)).toBe(false)
           }
         }
       }
@@ -73,7 +73,7 @@ describe('adversarial 100% - agente interno que intenta romper código', () => {
           (a, r, f) => {
             const res = calcCommission(a, r, f)
             expect(res.amount).toBeGreaterThanOrEqual(0)
-            expect(isNaN(res.amount)).toBe(false)
+            expect(Number.isNaN(res.amount)).toBe(false)
           },
         ),
       )

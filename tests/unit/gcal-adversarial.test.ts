@@ -1,10 +1,10 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import { buildGCalUrl } from '@/lib/gcal'
 
 describe('gcal adversarial - cubrir líneas 30-31', () => {
   it('fuerza Date.UTC NaN para cubrir fallback isNaN', () => {
-    const origUTC = Date.UTC
+    const _origUTC = Date.UTC
     vi.spyOn(Date, 'UTC').mockReturnValue(NaN)
     const url = buildGCalUrl({
       businessName: 'B',

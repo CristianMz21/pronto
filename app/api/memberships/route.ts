@@ -2,7 +2,7 @@ import DOMPurify from 'isomorphic-dompurify'
 import { NextResponse } from 'next/server'
 
 import { MembershipSchema } from '@/lib/memberships'
-import { rateLimit, getIp } from '@/lib/rate-limit'
+import { getIp, rateLimit } from '@/lib/rate-limit'
 import { createClient } from '@/lib/supabase/server'
 
 function sanitize(s: string): string {

@@ -2,9 +2,9 @@
 
 import {
   DndContext,
-  DragEndEvent,
+  type DragEndEvent,
   DragOverlay,
-  DragStartEvent,
+  type DragStartEvent,
   PointerSensor,
   useDraggable,
   useDroppable,
@@ -14,22 +14,22 @@ import {
 import {
   ChevronLeft,
   ChevronRight,
-  ExternalLink,
-  CreditCard,
-  Palette,
   Clock,
+  CreditCard,
+  ExternalLink,
+  Palette,
   Repeat,
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { useState, useMemo, useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
 import {
+  DEFAULT_LEAD_MINUTES,
   isDayClosed as isDayClosedLib,
   isPastInTz,
-  DEFAULT_LEAD_MINUTES,
 } from '@/lib/booking-availability'
 import { createClient } from '@/lib/supabase/client'
 import { formatInBusinessTimezone, uses12HourClock } from '@/lib/utils'
@@ -62,7 +62,7 @@ function apptTzParts(
     hour: 'numeric',
     hour12: false,
   }).formatToParts(new Date(iso))
-  const get = (type: string) => parseInt(parts.find((p) => p.type === type)?.value ?? '0')
+  const get = (type: string) => parseInt(parts.find((p) => p.type === type)?.value ?? '0', 10)
   return { year: get('year'), month: get('month'), day: get('day'), hour: get('hour') % 24 }
 }
 
@@ -86,7 +86,7 @@ function wallclockToUtc(
     second: 'numeric',
     hour12: false,
   }).formatToParts(noonUtc)
-  const get = (t: string) => parseInt(parts.find((p) => p.type === t)?.value ?? '0')
+  const get = (t: string) => parseInt(parts.find((p) => p.type === t)?.value ?? '0', 10)
   const localNoonMs = Date.UTC(
     get('year'),
     get('month') - 1,
@@ -306,11 +306,11 @@ export function BookingCalendar({
     const openDays = businessHours.filter((h) => h.is_open && h.open_time && h.close_time)
     let minHour =
       openDays.length > 0
-        ? Math.min(...openDays.map((h) => parseInt(h.open_time.split(':')[0]!)))
+        ? Math.min(...openDays.map((h) => parseInt(h.open_time.split(':')[0]!, 10)))
         : 8
     let maxHour =
       openDays.length > 0
-        ? Math.max(...openDays.map((h) => parseInt(h.close_time.split(':')[0]!)))
+        ? Math.max(...openDays.map((h) => parseInt(h.close_time.split(':')[0]!, 10)))
         : 20
     // Expand to cover any appointment that falls outside the business-hours window
     for (const appt of appointments) {
@@ -363,13 +363,13 @@ export function BookingCalendar({
   const formTime = form.hour ? `${form.hour}:${form.minute}` : ''
 
   function to12hDisplay(h24: string): string {
-    const n = parseInt(h24)
+    const n = parseInt(h24, 10)
     if (n === 0 || n === 12) return '12'
     return String(n > 12 ? n - 12 : n).padStart(2, '0')
   }
 
   function to24h(h12: string, period: 'AM' | 'PM'): string {
-    const n = parseInt(h12)
+    const n = parseInt(h12, 10)
     if (period === 'AM') return n === 12 ? '00' : String(n).padStart(2, '0')
     return n === 12 ? '12' : String(n + 12).padStart(2, '0')
   }
@@ -443,7 +443,7 @@ export function BookingCalendar({
     const [y, m, d] = date.split('-').map(Number) as [number, number, number]
     const dow = new Date(Date.UTC(y, m! - 1, d)).getUTCDay()
     const rule = businessHours.find((h) => h.day_of_week === dow)
-    if (!rule || !rule.is_open || !rule.open_time || !rule.close_time) return false
+    if (!rule?.is_open || !rule.open_time || !rule.close_time) return false
     const [hh, mm] = time.split(':').map(Number) as [number, number]
     const [oh, om] = rule.open_time.split(':').map(Number) as [number, number]
     const [ch, cm] = rule.close_time.split(':').map(Number) as [number, number]
@@ -469,8 +469,8 @@ export function BookingCalendar({
       string,
       string,
     ]
-    const dayIndex = parseInt(dayIndexStr!)
-    const hour = parseInt(hourStr!)
+    const dayIndex = parseInt(dayIndexStr!, 10)
+    const hour = parseInt(hourStr!, 10)
 
     const appt = appointments.find((a) => a.id === apptId)
     if (!appt) return
@@ -480,17 +480,17 @@ export function BookingCalendar({
     const sameDay = weekDates[dayIndex]
     if (
       p.hour === hour &&
-      p.year === sameDay!.getFullYear() &&
-      p.month === sameDay!.getMonth() + 1 &&
-      p.day === sameDay!.getDate()
+      p.year === sameDay?.getFullYear() &&
+      p.month === sameDay?.getMonth() + 1 &&
+      p.day === sameDay?.getDate()
     )
       return
 
     // Build the new UTC timestamp from the business-timezone wall-clock time
     const newStartsAt = wallclockToUtc(
-      sameDay!.getFullYear(),
-      sameDay!.getMonth() + 1,
-      sameDay!.getDate(),
+      sameDay?.getFullYear(),
+      sameDay?.getMonth() + 1,
+      sameDay?.getDate(),
       hour,
       0,
       timezone,
@@ -585,8 +585,8 @@ export function BookingCalendar({
     return appointments.filter((a) => {
       const p = apptTzParts(a.starts_at, timezone)
       return (
-        p.year === day!.getFullYear() &&
-        p.month === day!.getMonth() + 1 &&
+        p.year === day?.getFullYear() &&
+        p.month === day?.getMonth() + 1 &&
         p.day! === day.getDate() &&
         p.hour === hour
       )
@@ -757,18 +757,27 @@ export function BookingCalendar({
       {/* Toolbar */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
-          <button onClick={() => navigate(-1)} className="p-1.5 rounded-lg hover:bg-gray-100">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="p-1.5 rounded-lg hover:bg-gray-100"
+          >
             <ChevronLeft className="w-4 h-4" />
           </button>
           <span className="text-sm font-medium text-gray-700 w-40 text-center">
             {weekDates.length
-              ? `${weekDates[0]!.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${weekDates[6]!.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+              ? `${weekDates[0]?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${weekDates[6]?.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
               : '—'}
           </span>
-          <button onClick={() => navigate(1)} className="p-1.5 rounded-lg hover:bg-gray-100">
+          <button
+            type="button"
+            onClick={() => navigate(1)}
+            className="p-1.5 rounded-lg hover:bg-gray-100"
+          >
             <ChevronRight className="w-4 h-4" />
           </button>
           <button
+            type="button"
             onClick={() => {
               const m = getMonday(new Date())
               setWeekStart(m)
@@ -791,6 +800,7 @@ export function BookingCalendar({
           {/* Legend button */}
           <div className="relative" ref={legendRef}>
             <button
+              type="button"
               onClick={() => setShowLegend((v) => !v)}
               className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500"
               title="Color legend"
@@ -812,7 +822,7 @@ export function BookingCalendar({
                         <div key={emp.id} className="flex items-center gap-2">
                           <span
                             className="w-3 h-3 rounded-full shrink-0"
-                            style={{ backgroundColor: c!.bg, border: '1px solid rgba(0,0,0,0.1)' }}
+                            style={{ backgroundColor: c?.bg, border: '1px solid rgba(0,0,0,0.1)' }}
                           />
                           <span className="text-xs text-gray-700 truncate">{emp.name}</span>
                         </div>
@@ -937,15 +947,15 @@ export function BookingCalendar({
                         onClick={() => {
                           if (cellAppts.length === 0) {
                             const d = weekDates[di]
-                            const yyyy = d!.getFullYear()
-                            const mm = String(d!.getMonth() + 1).padStart(2, '0')
-                            const dd = String(d!.getDate()).padStart(2, '0')
+                            const yyyy = d?.getFullYear()
+                            const mm = String(d?.getMonth() + 1).padStart(2, '0')
+                            const dd = String(d?.getDate()).padStart(2, '0')
                             const hh = String(hour).padStart(2, '0')
                             void openForm({
                               date: `${yyyy}-${mm}-${dd}`,
                               hour: hh,
                               minute: '00',
-                              period: parseInt(hh) < 12 ? 'AM' : 'PM',
+                              period: parseInt(hh, 10) < 12 ? 'AM' : 'PM',
                             })
                           }
                         }}
@@ -962,8 +972,8 @@ export function BookingCalendar({
                                 }}
                                 className="rounded px-1 py-0.5 mb-0.5 cursor-grab active:cursor-grabbing text-xs"
                                 style={{
-                                  backgroundColor: empColor!.bg,
-                                  color: empColor!.text,
+                                  backgroundColor: empColor?.bg,
+                                  color: empColor?.text,
                                   borderLeft: `5px solid ${stripe}`,
                                   borderTop: '1px solid rgba(0,0,0,0.08)',
                                   borderRight: '1px solid rgba(0,0,0,0.08)',
@@ -985,9 +995,9 @@ export function BookingCalendar({
                                 )}
                                 {a.source && SOURCE_BADGE[a.source] && (
                                   <span
-                                    className={`inline-block mt-0.5 text-[9px] leading-tight px-1 rounded font-medium ${SOURCE_BADGE[a.source]!.pill}`}
+                                    className={`inline-block mt-0.5 text-[9px] leading-tight px-1 rounded font-medium ${SOURCE_BADGE[a.source]?.pill}`}
                                   >
-                                    {SOURCE_BADGE[a.source]!.label}
+                                    {SOURCE_BADGE[a.source]?.label}
                                   </span>
                                 )}
                               </div>
@@ -1013,8 +1023,8 @@ export function BookingCalendar({
                 <div
                   className="rounded px-2 py-1 text-xs shadow-lg w-28"
                   style={{
-                    backgroundColor: empColor!.bg,
-                    color: empColor!.text,
+                    backgroundColor: empColor?.bg,
+                    color: empColor?.text,
                     borderLeft: `5px solid ${stripe}`,
                     borderTop: '1px solid rgba(0,0,0,0.08)',
                     borderRight: '1px solid rgba(0,0,0,0.08)',
@@ -1224,9 +1234,9 @@ export function BookingCalendar({
             <div className="flex items-center gap-2 mb-3 flex-wrap">
               {selectedAppt.source && SOURCE_BADGE[selectedAppt.source!] && (
                 <span
-                  className={`text-xs px-2 py-0.5 rounded-full font-medium ${SOURCE_BADGE[selectedAppt.source!]!.pill}`}
+                  className={`text-xs px-2 py-0.5 rounded-full font-medium ${SOURCE_BADGE[selectedAppt.source!]?.pill}`}
                 >
-                  {SOURCE_BADGE[selectedAppt.source!]!.label}
+                  {SOURCE_BADGE[selectedAppt.source!]?.label}
                 </span>
               )}
             </div>
@@ -1236,8 +1246,8 @@ export function BookingCalendar({
                   {t('detail.employeeLabel')}
                 </label>
                 <select
-                  value={selectedAppt!.employees?.id ?? ''}
-                  onChange={(e) => assignEmployee(selectedAppt!.id, e.target.value)}
+                  value={selectedAppt?.employees?.id ?? ''}
+                  onChange={(e) => assignEmployee(selectedAppt?.id, e.target.value)}
                   className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Unassigned</option>
@@ -1276,6 +1286,7 @@ export function BookingCalendar({
                   ['pending', 'confirmed', 'completed', 'paid', 'cancelled', 'no_show'] as const
                 ).map((s) => (
                   <button
+                    type="button"
                     key={s}
                     onClick={() => updateStatus(selectedAppt.id, s)}
                     className={`text-xs px-3 py-1 rounded-full border transition-colors capitalize ${

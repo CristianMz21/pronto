@@ -1,6 +1,6 @@
 'use client'
 
-import { Plus, Pencil, Trash2, MapPin, Phone } from 'lucide-react'
+import { MapPin, Pencil, Phone, Plus, Trash2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
@@ -120,6 +120,7 @@ export function SucursalesClient({ locations }: { locations: Location[] }) {
                 </div>
                 <div className="mt-3 flex items-center justify-between">
                   <button
+                    type="button"
                     onClick={() => handleToggleActive(loc)}
                     className="text-xs text-blue-600 hover:underline"
                   >

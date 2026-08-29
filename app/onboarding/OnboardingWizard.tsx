@@ -2,7 +2,7 @@
 
 import { CheckCircle2, ChevronRight, Loader2 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
-import { useState, useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 
@@ -168,7 +168,7 @@ export function OnboardingWizard({ initialSlug, initialName, isSaas, rootDomain 
       }
       // Save tax/payment config
       const tax = Number(taxRate)
-      if (!isNaN(tax) && tax >= 0 && tax <= 100) {
+      if (!Number.isNaN(tax) && tax >= 0 && tax <= 100) {
         await fetch('/api/business/tax', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -307,6 +307,7 @@ export function OnboardingWizard({ initialSlug, initialName, isSaas, rootDomain 
               <div className="grid grid-cols-2 gap-3">
                 {businessTypes.map((bt) => (
                   <button
+                    type="button"
                     key={bt.value}
                     onClick={() => setBizType(bt.value)}
                     className={`p-4 rounded-xl border text-sm text-left transition-colors ${
@@ -481,7 +482,11 @@ export function OnboardingWizard({ initialSlug, initialName, isSaas, rootDomain 
                 </Button>
               </div>
               <div className="mt-3 text-center">
-                <button onClick={finish} className="text-xs text-gray-400 hover:text-gray-600">
+                <button
+                  type="button"
+                  onClick={finish}
+                  className="text-xs text-gray-400 hover:text-gray-600"
+                >
                   Omitir y finalizar
                 </button>
               </div>

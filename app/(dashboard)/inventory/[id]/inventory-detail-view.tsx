@@ -191,6 +191,7 @@ export function InventoryDetailView({
               <div className="flex items-center gap-1">
                 {!editing && (
                   <button
+                    type="button"
                     onClick={() => setEditing(true)}
                     className="p-1.5 hover:bg-gray-100 rounded-lg"
                   >
@@ -201,12 +202,14 @@ export function InventoryDetailView({
                   <div className="flex items-center gap-1.5">
                     <span className="text-xs text-gray-500">{t('deleteConfirm')}</span>
                     <button
+                      type="button"
                       onClick={deleteItem}
                       className="text-xs px-2 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700"
                     >
                       {t('deleteButton')}
                     </button>
                     <button
+                      type="button"
                       onClick={() => setConfirmDelete(false)}
                       className="text-xs px-2 py-1 border border-gray-200 rounded-lg hover:bg-gray-50"
                     >
@@ -215,6 +218,7 @@ export function InventoryDetailView({
                   </div>
                 ) : (
                   <button
+                    type="button"
                     onClick={() => setConfirmDelete(true)}
                     className="p-1.5 hover:bg-red-50 rounded-lg"
                   >
@@ -360,6 +364,7 @@ export function InventoryDetailView({
                 <div className="grid grid-cols-3 gap-2 mt-1">
                   {(['in', 'out', 'adjustment'] as const).map((tp) => (
                     <button
+                      type="button"
                       key={tp}
                       onClick={() => setMovForm((f) => ({ ...f, type: tp }))}
                       className={`py-2 rounded-lg text-xs font-medium border transition-colors ${

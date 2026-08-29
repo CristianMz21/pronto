@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 
 // E2E placeholder — flujo crítico cliente→reserva→recepción→servicio→checkout→pago→cita completada→historial
 // Requiere app levantada (docker compose up) y Supabase configurado.

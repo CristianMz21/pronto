@@ -1,8 +1,8 @@
 'use client'
 
-import { ShoppingBag, Download } from 'lucide-react'
+import { Download, ShoppingBag } from 'lucide-react'
 import { useTranslations } from 'next-intl'
-import { useState, useEffect, useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 import { DatePicker } from '@/components/ui/date-picker'
 
@@ -41,7 +41,7 @@ function fmt(n: number, currency: string) {
 
 function fmtDate(iso: string) {
   const d = new Date(iso)
-  if (isNaN(d.getTime())) return 'Invalid Date'
+  if (Number.isNaN(d.getTime())) return 'Invalid Date'
   // Hydration-safe: explicit America/Bogota timezone ensures server (UTC) and client (America/Bogota)
   // render the same string. Without timeZone, toLocaleDateString uses the runtime's local zone,
   // causing UTC vs America/Bogota mismatch (React #418).
@@ -135,6 +135,7 @@ export function SalesTab() {
         <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
           {PERIODS.map((p) => (
             <button
+              type="button"
               key={p}
               onClick={() => {
                 clearCustomRange()
@@ -168,6 +169,7 @@ export function SalesTab() {
             className={`w-32 ${activeRange ? '[&_input]:border-blue-400 [&_input]:bg-blue-50' : ''}`}
           />
           <button
+            type="button"
             onClick={applyCustomRange}
             disabled={!customFrom || !customTo}
             className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
@@ -176,6 +178,7 @@ export function SalesTab() {
           </button>
           {activeRange && (
             <button
+              type="button"
               onClick={clearCustomRange}
               className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50"
             >
@@ -186,6 +189,7 @@ export function SalesTab() {
 
         {/* Export to Excel */}
         <button
+          type="button"
           onClick={handleExportSales}
           disabled={exportLoading}
           className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ml-auto"
@@ -258,7 +262,7 @@ export function SalesTab() {
                 </tr>
               </thead>
               <tbody>
-                {data!.topItems.map((item, i) => (
+                {data?.topItems.map((item, i) => (
                   <tr key={i} className="border-b border-gray-50 last:border-0">
                     <td className="py-2 text-gray-900">{item.name}</td>
                     <td className="py-2 text-right text-gray-600">{item.qty}</td>
@@ -297,7 +301,7 @@ export function SalesTab() {
                   </tr>
                 </thead>
                 <tbody>
-                  {data!.recentSales.map((sale, i) => (
+                  {data?.recentSales.map((sale, i) => (
                     <tr key={i} className="border-b border-gray-50 last:border-0">
                       <td className="py-2 text-gray-500 whitespace-nowrap pr-3">
                         {fmtDate(sale.date)}

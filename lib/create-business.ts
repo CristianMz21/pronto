@@ -1,4 +1,4 @@
-import { SupabaseClient } from '@supabase/supabase-js'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 /** Best-effort display name for a newly registered owner, from whatever account data exists at signup time. */
 function deriveOwnerName(user: {

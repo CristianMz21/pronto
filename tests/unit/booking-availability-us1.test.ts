@@ -1,19 +1,19 @@
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
 import {
-  checkSlotWithinHours,
   checkSlotWithHolidays,
+  checkSlotWithinHours,
   checkSlotWithinLocation,
   computeEffectiveHours,
+  type DayHours,
   isPastInTz,
   isTooSoonInTz,
   isTooSoonMinutes,
   parseDateTimeInTz,
   todayInBusinessTz,
-  type DayHours,
 } from '@/lib/booking-availability'
-import { isHoliday, isHolidayForLocation, getHolidaysForDate } from '@/lib/holidays'
-import { getLocationOrDefault, assertLocationAccess, formatLocationSlug } from '@/lib/locations'
+import { getHolidaysForDate, isHoliday, isHolidayForLocation } from '@/lib/holidays'
+import { assertLocationAccess, formatLocationSlug, getLocationOrDefault } from '@/lib/locations'
 
 describe('US1 — booking-availability holidays, break, past_booking, lead_time, location_id', () => {
   const dayOpen: DayHours = {

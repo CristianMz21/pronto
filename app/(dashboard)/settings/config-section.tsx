@@ -1,7 +1,7 @@
 'use client'
 
-import { Loader2, Save, CheckCircle2, AlertCircle } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { AlertCircle, CheckCircle2, Loader2, Save } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 
@@ -52,7 +52,7 @@ export function ConfigSection({ businessId, initial, locations = [] }: Props) {
   const [hoursLoading, setHoursLoading] = useState(false)
   const [hoursMsg, setHoursMsg] = useState<string | null>(null)
 
-  async function loadHours(loc: string) {
+  const loadHours = useCallback(async (loc: string) => {
     setHoursLoading(true)
     try {
       const url = loc ? `/api/business/hours?location_id=${loc}` : '/api/business/hours'
@@ -75,11 +75,11 @@ export function ConfigSection({ businessId, initial, locations = [] }: Props) {
     } finally {
       setHoursLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
     void loadHours(selectedLoc)
-  }, [selectedLoc])
+  }, [selectedLoc, loadHours])
 
   async function saveHours() {
     if (!hours) return
@@ -304,7 +304,7 @@ export function ConfigSection({ businessId, initial, locations = [] }: Props) {
                     checked={h.is_open}
                     onChange={(e) =>
                       setHours((prev) =>
-                        prev!.map((x, i) => (i === idx ? { ...x, is_open: e.target.checked } : x)),
+                        prev?.map((x, i) => (i === idx ? { ...x, is_open: e.target.checked } : x)),
                       )
                     }
                   />{' '}
@@ -315,7 +315,7 @@ export function ConfigSection({ businessId, initial, locations = [] }: Props) {
                   value={h.open_time}
                   onChange={(e) =>
                     setHours((prev) =>
-                      prev!.map((x, i) => (i === idx ? { ...x, open_time: e.target.value } : x)),
+                      prev?.map((x, i) => (i === idx ? { ...x, open_time: e.target.value } : x)),
                     )
                   }
                   disabled={!h.is_open}
@@ -327,7 +327,7 @@ export function ConfigSection({ businessId, initial, locations = [] }: Props) {
                   value={h.close_time}
                   onChange={(e) =>
                     setHours((prev) =>
-                      prev!.map((x, i) => (i === idx ? { ...x, close_time: e.target.value } : x)),
+                      prev?.map((x, i) => (i === idx ? { ...x, close_time: e.target.value } : x)),
                     )
                   }
                   disabled={!h.is_open}
@@ -339,7 +339,7 @@ export function ConfigSection({ businessId, initial, locations = [] }: Props) {
                   value={h.break_start ?? ''}
                   onChange={(e) =>
                     setHours((prev) =>
-                      prev!.map((x, i) =>
+                      prev?.map((x, i) =>
                         i === idx ? { ...x, break_start: e.target.value || null } : x,
                       ),
                     )
@@ -354,7 +354,7 @@ export function ConfigSection({ businessId, initial, locations = [] }: Props) {
                   value={h.break_end ?? ''}
                   onChange={(e) =>
                     setHours((prev) =>
-                      prev!.map((x, i) =>
+                      prev?.map((x, i) =>
                         i === idx ? { ...x, break_end: e.target.value || null } : x,
                       ),
                     )

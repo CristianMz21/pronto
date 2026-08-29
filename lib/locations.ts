@@ -22,7 +22,7 @@ export function formatLocationSlug(name: string): string {
 export function getLocationOrDefault(
   locations: LocationRow[],
   slugOrId: string | null | undefined,
-  fallbackId?: string | null
+  fallbackId?: string | null,
 ): LocationRow | null {
   if (!locations || locations.length === 0) return null
   if (!slugOrId) {
@@ -41,7 +41,7 @@ export function getLocationOrDefault(
 
 export function assertLocationAccess(
   userLocationIds: string[] | null | undefined,
-  locationId: string | null | undefined
+  locationId: string | null | undefined,
 ): { ok: true } | { ok: false; reason: 'forbidden' } {
   if (!locationId) return { ok: true }
   if (!userLocationIds || userLocationIds.length === 0) return { ok: true }
@@ -70,7 +70,7 @@ export function parseLocationParam(param: string | null | undefined): string | n
  */
 export function filterByLocation<T extends { location_id?: string | null }>(
   rows: T[],
-  selectedLocation: string | null | undefined
+  selectedLocation: string | null | undefined,
 ): T[] {
   if (!selectedLocation) return rows
   return rows.filter((r) => r.location_id === selectedLocation)
@@ -82,7 +82,7 @@ export function filterByLocation<T extends { location_id?: string | null }>(
  */
 export function shouldIncludeLocation(
   rowLocationId: string | null | undefined,
-  selectedLocation: string | null | undefined
+  selectedLocation: string | null | undefined,
 ): boolean {
   if (!selectedLocation) return true
   return rowLocationId === selectedLocation

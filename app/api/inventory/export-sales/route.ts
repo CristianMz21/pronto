@@ -1,11 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 // SECURITY: xlsx@0.18.5 has GHSA-4r6h-8v6p-xvw6 + GHSA-5pgg-2g8v-p4x9 — no upstream fix.
 // Server-only json_to_sheet/write, no trusted XLSX.read — mitigated. TODO: migrate to exceljs.
 import * as XLSX from 'xlsx'
 import { z } from 'zod'
 
-import { rateLimit, getIp } from '@/lib/rate-limit'
+import { getIp, rateLimit } from '@/lib/rate-limit'
 import { createClient } from '@/lib/supabase/server'
+
 type Period = 'today' | '7d' | '30d'
 
 function getPeriodStart(period: Period): Date {
@@ -71,8 +72,8 @@ export async function GET(req: NextRequest) {
   let fileTo: string
 
   if (fromParam && toParam) {
-    startIso = new Date(fromParam + 'T00:00:00').toISOString()
-    const toEnd = new Date(toParam + 'T00:00:00')
+    startIso = new Date(`${fromParam}T00:00:00`).toISOString()
+    const toEnd = new Date(`${toParam}T00:00:00`)
     toEnd.setDate(toEnd.getDate() + 1)
     endIso = toEnd.toISOString()
     fileFrom = fromParam
@@ -155,7 +156,7 @@ export async function GET(req: NextRequest) {
       Receipt: '',
       Client: '',
       Product: 'TOTAL',
-      Qty: exportRows.reduce((s, r) => s + r['Qty'], 0),
+      Qty: exportRows.reduce((s, r) => s + r.Qty, 0),
       'Unit price': 0,
       'Line total': exportRows.reduce((s, r) => s + r['Line total'], 0),
       'Payment method': '',

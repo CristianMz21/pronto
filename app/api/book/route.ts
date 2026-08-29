@@ -4,33 +4,33 @@
  * Migrated to Drizzle ORM (portable Postgres/MySQL/SQLite) — Supabase kept only for auth.
  */
 
-import { eq, and } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import DOMPurify from 'isomorphic-dompurify'
-import { NextRequest, NextResponse } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 
 import {
-  businesses,
-  services,
-  locations,
-  employees,
-  businessHours,
-  holidays,
-  clients,
   appointments,
+  businesses,
+  businessHours,
   clientMemberships,
+  clients,
+  employees,
+  holidays,
+  locations,
   promotions,
+  services,
 } from '@/drizzle/schema'
 import {
   computeEffectiveHours,
+  DEFAULT_LEAD_MINUTES,
   dayOfWeekFromDateString,
-  parseDateTimeInTz,
   isPastInTz,
   isTooSoonInTz,
-  DEFAULT_LEAD_MINUTES,
+  parseDateTimeInTz,
 } from '@/lib/booking-availability'
 import { db, tryDrizzle } from '@/lib/db'
-import { rateLimit, getIp } from '@/lib/rate-limit'
+import { getIp, rateLimit } from '@/lib/rate-limit'
 import { createClient as createAuthClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 
@@ -290,7 +290,7 @@ export async function POST(req: NextRequest) {
     }
     if (
       (service as ServiceRow)?.locationId &&
-      (service as ServiceRow)!.locationId !== location_id
+      (service as ServiceRow)?.locationId !== location_id
     ) {
       return NextResponse.json(
         { error: 'service_location_mismatch', message: 'Servicio no disponible en esta sucursal' },
@@ -318,7 +318,7 @@ export async function POST(req: NextRequest) {
       )) as { locationId: string | null } | null
       if (
         (empLoc as { locationId: string | null } | null)?.locationId &&
-        (empLoc as { locationId: string | null } | null)!.locationId !== location_id
+        (empLoc as { locationId: string | null } | null)?.locationId !== location_id
       ) {
         return NextResponse.json(
           {
@@ -457,7 +457,7 @@ export async function POST(req: NextRequest) {
   const slotCheck = checkSlotWithHolidays(
     dayHours,
     time,
-    (service as ServiceRow)!.durationMin,
+    (service as ServiceRow)?.durationMin,
     date,
     holidaysMapped as unknown as import('@/lib/booking-availability').HolidayCheck[],
   )
@@ -682,7 +682,7 @@ export async function POST(req: NextRequest) {
                 }>
               },
             )) as Array<{ id: string }>
-            clientId = newClient!.id
+            clientId = newClient?.id
           } catch (_e) {
             // console.error('[api/book] client claim insert error:', (e as Error).message)
             const fallback = (await tryDrizzle(
@@ -754,7 +754,7 @@ export async function POST(req: NextRequest) {
                 }>
               },
             )) as Array<{ id: string }>
-            clientId = newClient!.id
+            clientId = newClient?.id
           } catch (_e) {
             // console.error('[api/book] client insert error:', (e as Error).message)
             return NextResponse.json({ error: 'client_creation_failed' }, { status: 500 })
@@ -861,7 +861,7 @@ export async function POST(req: NextRequest) {
               }>
             },
           )) as Array<{ id: string }>
-          clientId = newClient!.id
+          clientId = newClient?.id
         } catch (_e) {
           // console.error('[api/book] client insert error:', (e as Error).message)
           return NextResponse.json({ error: 'client_creation_failed' }, { status: 500 })
@@ -948,7 +948,7 @@ export async function POST(req: NextRequest) {
         date,
         serviceIds: [serviceId],
         client: c ?? null,
-        amount: Number((service as ServiceRow)!.price),
+        amount: Number((service as ServiceRow)?.price),
         now: new Date(),
         promoCode: promo_code,
       })
@@ -981,7 +981,7 @@ export async function POST(req: NextRequest) {
   }
 
   const startsAt = parseDateTimeInTz(date, time, timezone)
-  const endsAt = new Date(startsAt.getTime() + (service as ServiceRow)!.durationMin * 60_000)
+  const endsAt = new Date(startsAt.getTime() + (service as ServiceRow)?.durationMin * 60_000)
 
   const now = new Date()
   if (isPastInTz(startsAt, now)) {
@@ -1015,7 +1015,7 @@ export async function POST(req: NextRequest) {
             serviceId,
             startsAt: startsAt.toISOString() as unknown as string,
             endsAt: endsAt.toISOString() as unknown as string,
-            price: (service as ServiceRow)!.price as unknown as string,
+            price: (service as ServiceRow)?.price as unknown as string,
             status: 'confirmed',
             source: campaign_id ? 'campaign' : ((source as string) ?? 'online'),
             campaignId: campaign_id ?? null,
@@ -1032,7 +1032,7 @@ export async function POST(req: NextRequest) {
             service_id: serviceId,
             starts_at: startsAt.toISOString(),
             ends_at: endsAt.toISOString(),
-            price: (service as ServiceRow)!.price,
+            price: (service as ServiceRow)?.price,
             status: 'confirmed',
             source: campaign_id ? 'campaign' : ((source as string) ?? 'online'),
             campaign_id: campaign_id ?? null,
@@ -1044,7 +1044,7 @@ export async function POST(req: NextRequest) {
       },
     )) as Array<{ id: string }>
     const appt = apptRes[0]
-    apptId = appt!.id
+    apptId = appt?.id
   } catch (e) {
     const msg = (e as Error).message ?? ''
     if (msg.includes('no_staff_available')) {

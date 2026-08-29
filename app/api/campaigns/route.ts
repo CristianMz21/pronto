@@ -1,8 +1,8 @@
 import DOMPurify from 'isomorphic-dompurify'
-import { NextRequest, NextResponse } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 
 import { CampaignCreateSchema, createFromSegment } from '@/lib/campaigns'
-import { rateLimit, getIp } from '@/lib/rate-limit'
+import { getIp, rateLimit } from '@/lib/rate-limit'
 import { createClient } from '@/lib/supabase/server'
 
 function sanitize(s: string): string {

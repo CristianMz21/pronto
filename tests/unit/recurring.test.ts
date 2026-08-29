@@ -1,10 +1,10 @@
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
 import {
+  buildOccurrencesWithEnd,
+  generateOccurrences,
   parseRRule,
   validateRRule,
-  generateOccurrences,
-  buildOccurrencesWithEnd,
 } from '@/lib/recurring'
 
 describe('recurring RRule', () => {

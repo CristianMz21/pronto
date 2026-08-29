@@ -1,6 +1,6 @@
 import fc from 'fast-check'
 import { NextRequest } from 'next/server'
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }))
 vi.mock('@/lib/supabase/service', () => ({ createServiceClient: vi.fn() }))
@@ -18,8 +18,9 @@ vi.mock('xlsx', () => ({
   write: vi.fn(() => Buffer.from('xlsx-mock')),
 }))
 
+import { createClient as createJsClient } from '@supabase/supabase-js'
+import DOMPurify from 'isomorphic-dompurify'
 import * as XLSX from 'xlsx'
-
 import { POST as CashClosePOST } from '@/app/api/cash/close/route'
 import { GET as CashCurrentGET } from '@/app/api/cash/current/route'
 import { POST as CashMovPOST } from '@/app/api/cash/movements/route'
@@ -33,16 +34,10 @@ import { GET as LookupGET } from '@/app/api/inventory/lookup/route'
 import { POST as InventoryPOST } from '@/app/api/inventory/route'
 import { GET as SalesGET } from '@/app/api/inventory/sales/route'
 import { POST as PosPOST } from '@/app/api/pos/transaction/route'
-import { rateLimit, getIp } from '@/lib/rate-limit'
+import { getIp, rateLimit } from '@/lib/rate-limit'
 import { createClient } from '@/lib/supabase/server'
 
-import { createClient as createJsClient } from '@supabase/supabase-js'
-
-import { createServiceClient } from '@/lib/supabase/service'
-
-import DOMPurify from 'isomorphic-dompurify'
-
-import { formatCurrency, formatDate, cn, slugify, getTenantSlug } from '@/lib/utils'
+import { cn, formatCurrency, formatDate, getTenantSlug, slugify } from '@/lib/utils'
 
 // ---------------------------------------------------------------------------
 // helpers
@@ -94,7 +89,7 @@ function jsonReq(url: string, body: any, method = 'POST'): NextRequest {
     body: body === undefined ? undefined : JSON.stringify(body),
   })
 }
-function jsonReqRaw(url: string, rawBody: string): any {
+function _jsonReqRaw(_url: string, rawBody: string): any {
   return { headers: { get: () => '1.1.1.1' }, json: async () => JSON.parse(rawBody) } as any
 }
 function badJsonReq(): any {
@@ -245,7 +240,7 @@ function setupCashCurrent(
   const counts: Record<string, number> = {}
   const from = vi.fn((table: string) => {
     counts[table] = counts[table] ?? 0
-    const idx = counts[table]++
+    const _idx = counts[table]++
     if (table === 'businesses') return businessChain
     if (table === 'cash_registers') {
       // only one call for register
@@ -292,7 +287,7 @@ function setupCashMov(
   const counts: Record<string, number> = {}
   const from = vi.fn((table: string) => {
     counts[table] = counts[table] ?? 0
-    const idx = counts[table]++
+    const _idx = counts[table]++
     if (table === 'businesses') return businessChain
     if (table === 'cash_registers') return registerChain
     if (table === 'cash_movements') return insertChain
@@ -326,7 +321,7 @@ function setupPos(
   const counts: Record<string, number> = {}
   const from = vi.fn((table: string) => {
     counts[table] = counts[table] ?? 0
-    const idx = counts[table]++
+    const _idx = counts[table]++
     if (table === 'businesses') return bizChain
     if (table === 'cash_registers') return openChain
     if (table === 'transactions') return txChain
@@ -476,7 +471,7 @@ function setupExportSales(
   const counts: Record<string, number> = {}
   const from = vi.fn((table: string) => {
     counts[table] = counts[table] ?? 0
-    const idx = counts[table]++
+    const _idx = counts[table]++
     if (table === 'businesses') return businessChain
     if (table === 'transactions') return txChain
     if (table === 'clients') return clientsChain
@@ -1207,7 +1202,7 @@ describe('api-cash-pos-inventory-strict', () => {
     it('fast-check fuzz amount 0.01..1M valid, else 422', async () => {
       await fc.assert(
         fc.asyncProperty(fc.double({ min: -1000, max: 2_000_000, noNaN: true }), async (amt) => {
-          if (!isFinite(amt)) return
+          if (!Number.isFinite(amt)) return
           // round to 2 decimals to avoid floating weirdness
           const val = Math.round(amt * 100) / 100
           setupCashMov()
@@ -1673,7 +1668,7 @@ describe('api-cash-pos-inventory-strict', () => {
   describe('inventory/[id] PATCH', () => {
     it('unauthorized 401', async () => {
       setupInventoryPatch({ user: null })
-      const req = new NextRequest('http://localhost/api/inventory/' + ITEM_ID, {
+      const req = new NextRequest(`http://localhost/api/inventory/${ITEM_ID}`, {
         method: 'PATCH',
         body: JSON.stringify({ name: 'x' }) as any,
       })
@@ -1684,7 +1679,7 @@ describe('api-cash-pos-inventory-strict', () => {
       setupInventoryPatch({
         update: { data: null, error: { code: '23505', message: 'dup' } } as any,
       })
-      const req = new NextRequest('http://localhost/api/inventory/' + ITEM_ID, {
+      const req = new NextRequest(`http://localhost/api/inventory/${ITEM_ID}`, {
         method: 'PATCH',
         body: JSON.stringify({ name: 'Test', sku: 'dup' }) as any,
       })
@@ -1696,7 +1691,7 @@ describe('api-cash-pos-inventory-strict', () => {
       setupInventoryPatch({
         update: { data: null, error: { code: '9999', message: 'fail' } } as any,
       })
-      const req = new NextRequest('http://localhost/api/inventory/' + ITEM_ID, {
+      const req = new NextRequest(`http://localhost/api/inventory/${ITEM_ID}`, {
         method: 'PATCH',
         body: JSON.stringify({ name: 'Test' }) as any,
       })
@@ -1707,7 +1702,7 @@ describe('api-cash-pos-inventory-strict', () => {
     it('success 200 returns data', async () => {
       const data = { id: ITEM_ID, name: 'Updated', sku: 'SKU1' }
       setupInventoryPatch({ update: { data, error: null } })
-      const req = new NextRequest('http://localhost/api/inventory/' + ITEM_ID, {
+      const req = new NextRequest(`http://localhost/api/inventory/${ITEM_ID}`, {
         method: 'PATCH',
         body: JSON.stringify({
           name: 'Updated',
@@ -1726,7 +1721,7 @@ describe('api-cash-pos-inventory-strict', () => {
     })
     it('handles sku empty string -> null and category null', async () => {
       const { chains } = setupInventoryPatch({ update: { data: { id: ITEM_ID }, error: null } })
-      const req = new NextRequest('http://localhost/api/inventory/' + ITEM_ID, {
+      const req = new NextRequest(`http://localhost/api/inventory/${ITEM_ID}`, {
         method: 'PATCH',
         body: JSON.stringify({ name: 'Test', sku: '', category: '', unit: 'pcs' }) as any,
       })
@@ -1737,7 +1732,7 @@ describe('api-cash-pos-inventory-strict', () => {
     })
     it('low_stock_threshold defaults to 5 when invalid', async () => {
       const { chains } = setupInventoryPatch()
-      const req = new NextRequest('http://localhost/api/inventory/' + ITEM_ID, {
+      const req = new NextRequest(`http://localhost/api/inventory/${ITEM_ID}`, {
         method: 'PATCH',
         body: JSON.stringify({ name: 'Test', low_stock_threshold: 'invalid' }) as any,
       })
@@ -1747,7 +1742,7 @@ describe('api-cash-pos-inventory-strict', () => {
     })
     it('cost_price sell_price handling', async () => {
       const { chains } = setupInventoryPatch()
-      const req = new NextRequest('http://localhost/api/inventory/' + ITEM_ID, {
+      const req = new NextRequest(`http://localhost/api/inventory/${ITEM_ID}`, {
         method: 'PATCH',
         body: JSON.stringify({ name: 'Test', cost_price: '10', sell_price: '' }) as any,
       })
@@ -1840,7 +1835,7 @@ describe('api-cash-pos-inventory-strict', () => {
     })
     it('success returns url and calls storage with correct bucket/path/buffer', async () => {
       const { mocks } = setupPhotoMocks({
-        publicUrl: 'https://cdn.example.com/products/' + ITEM_ID + '/123.jpg',
+        publicUrl: `https://cdn.example.com/products/${ITEM_ID}/123.jpg`,
       })
       vi.useFakeTimers()
       const now = new Date('2026-03-15T10:00:00Z').getTime()
@@ -1865,7 +1860,7 @@ describe('api-cash-pos-inventory-strict', () => {
       )
       // update called with photo_url
       expect(mocks.updateChain.update).toHaveBeenCalledWith({
-        photo_url: 'https://cdn.example.com/products/' + ITEM_ID + '/123.jpg',
+        photo_url: `https://cdn.example.com/products/${ITEM_ID}/123.jpg`,
       })
       expect(mocks.updateChain.eq).toHaveBeenCalledWith('id', ITEM_ID)
       vi.useRealTimers()
@@ -2281,7 +2276,7 @@ describe('api-cash-pos-inventory-strict', () => {
         existing: [],
         insert: { data: [{ id: ITEM_ID }], error: null },
       })
-      const rows = [
+      const _rows = [
         { name: 'A', quantity: '   ' },
         { name: 'B', quantity: ',' },
       ] as any // "," -> "." -> ""? actually "," -> "." -> "." trimmed => "." -> Number(".") is NaN? Let's use "   " for empty
@@ -2422,9 +2417,9 @@ describe('api-cash-pos-inventory-strict', () => {
       const req = new NextRequest('http://localhost/api/inventory/export')
       await ExportGET(req)
       const rows = (XLSX.utils.json_to_sheet as any).mock.calls[0][0]
-      expect(rows[0]['Name']).toBe('A')
-      expect(rows[0]['SKU']).toBe('SKU')
-      expect(rows[1]['SKU']).toBe('')
+      expect(rows[0].Name).toBe('A')
+      expect(rows[0].SKU).toBe('SKU')
+      expect(rows[1].SKU).toBe('')
       expect(rows[0]['Cost price']).toBe(10)
       expect(rows[1]['Cost price']).toBe('')
     })
@@ -2433,7 +2428,7 @@ describe('api-cash-pos-inventory-strict', () => {
       const req = new NextRequest('http://localhost/api/inventory/export')
       await ExportGET(req)
       // ws is object returned by json_to_sheet mock; route sets ws['!cols']
-      const ws = (XLSX.utils.json_to_sheet as any).mock.results[0].value
+      const _ws = (XLSX.utils.json_to_sheet as any).mock.results[0].value
       // In mock, we returned {} and route sets property, we can check assignment via mock call? Instead check that book_append_sheet called
       expect(XLSX.utils.book_append_sheet).toHaveBeenCalled()
       // To verify cols, capture the ws object after call; since mock returns same object, check property
@@ -2566,12 +2561,12 @@ describe('api-cash-pos-inventory-strict', () => {
       ][0]
       // Should have 1 product row + TOTAL
       expect(rows.length).toBe(2)
-      expect(rows[0]['Product']).toBe('Prod')
-      expect(rows[0]['Qty']).toBe(2)
+      expect(rows[0].Product).toBe('Prod')
+      expect(rows[0].Qty).toBe(2)
       expect(rows[0]['Line total']).toBe(20)
-      expect(rows[0]['Client']).toBe('John')
-      expect(rows[1]['Product']).toBe('TOTAL')
-      expect(rows[1]['Qty']).toBe(2)
+      expect(rows[0].Client).toBe('John')
+      expect(rows[1].Product).toBe('TOTAL')
+      expect(rows[1].Qty).toBe(2)
       expect(rows[1]['Line total']).toBe(20)
     })
     it('Walk-in client when no client_id', async () => {
@@ -2593,7 +2588,7 @@ describe('api-cash-pos-inventory-strict', () => {
       const rows = (XLSX.utils.json_to_sheet as any).mock.calls[
         (XLSX.utils.json_to_sheet as any).mock.calls.length - 1
       ][0]
-      expect(rows[0]['Client']).toBe('Walk-in')
+      expect(rows[0].Client).toBe('Walk-in')
     })
     it('client fallback Walk-in when clientMap missing', async () => {
       const txRows = [
@@ -2614,7 +2609,7 @@ describe('api-cash-pos-inventory-strict', () => {
       const rows = (XLSX.utils.json_to_sheet as any).mock.calls[
         (XLSX.utils.json_to_sheet as any).mock.calls.length - 1
       ][0]
-      expect(rows[0]['Client']).toBe('Walk-in')
+      expect(rows[0].Client).toBe('Walk-in')
     })
     it('receipt fallback to id slice', async () => {
       const txRows = [
@@ -2635,7 +2630,7 @@ describe('api-cash-pos-inventory-strict', () => {
       const rows = (XLSX.utils.json_to_sheet as any).mock.calls[
         (XLSX.utils.json_to_sheet as any).mock.calls.length - 1
       ][0]
-      expect(rows[0]['Receipt']).toBe('ABCDEFGH')
+      expect(rows[0].Receipt).toBe('ABCDEFGH')
     })
     it('empty exportRows no TOTAL row', async () => {
       setupExportSales({ txRows: [], clients: [] })
@@ -2751,7 +2746,7 @@ describe('api-cash-pos-inventory-strict', () => {
       const rows = (XLSX.utils.json_to_sheet as any).mock.calls[
         (XLSX.utils.json_to_sheet as any).mock.calls.length - 1
       ][0]
-      expect(rows[0]['Client']).toBe('Walk-in') // fallback because clientMap empty due to null clients
+      expect(rows[0].Client).toBe('Walk-in') // fallback because clientMap empty due to null clients
     })
   })
 

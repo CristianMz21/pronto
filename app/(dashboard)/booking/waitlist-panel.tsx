@@ -1,6 +1,6 @@
 'use client'
 
-import { Bell, Check, X, Clock, RefreshCw } from 'lucide-react'
+import { Bell, Check, Clock, RefreshCw, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -64,7 +64,7 @@ export function WaitlistPanel({ businessId, locationId }: Props) {
 
   useEffect(() => {
     void load()
-  }, [businessId, locationId, status, load])
+  }, [load])
 
   async function notifyNext() {
     setActionId('notify')
@@ -272,6 +272,7 @@ export function WaitlistPanel({ businessId, locationId }: Props) {
                     <div className="flex justify-end gap-1">
                       {(e.status === 'waiting' || e.status === 'notified') && (
                         <button
+                          type="button"
                           onClick={() => convert(e.id)}
                           disabled={!!actionId}
                           className="inline-flex items-center gap-1 rounded-lg bg-green-600 text-white px-2 py-1 text-xs font-medium hover:bg-green-700 disabled:opacity-50"
@@ -283,6 +284,7 @@ export function WaitlistPanel({ businessId, locationId }: Props) {
                         e.status !== 'cancelled' &&
                         e.status !== 'expired' && (
                           <button
+                            type="button"
                             onClick={() => cancel(e.id)}
                             disabled={!!actionId}
                             className="p-1.5 hover:bg-red-50 rounded text-red-400 hover:text-red-600"

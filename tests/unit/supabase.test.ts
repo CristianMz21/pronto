@@ -1,2 +1,13 @@
-import { describe, it, expect, vi } from 'vitest'
-describe('supabase',()=>{it('client',async()=>{process.env.NEXT_PUBLIC_SUPABASE_URL='https://test.supabase.co';process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY='anon';const m=vi.fn().mockReturnValue({});vi.doMock('@supabase/ssr',()=>({createBrowserClient:m}));const {createClient}=await import('@/lib/supabase/client');createClient();expect(m).toHaveBeenCalled()})})
+import { describe, expect, it, vi } from 'vitest'
+
+describe('supabase', () => {
+  it('client', async () => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co'
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon'
+    const m = vi.fn().mockReturnValue({})
+    vi.doMock('@supabase/ssr', () => ({ createBrowserClient: m }))
+    const { createClient } = await import('@/lib/supabase/client')
+    createClient()
+    expect(m).toHaveBeenCalled()
+  })
+})

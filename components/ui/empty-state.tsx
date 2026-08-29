@@ -1,4 +1,4 @@
-import { Crown, Tag, Building2, Megaphone, CalendarDays, SearchX } from 'lucide-react'
+import { Building2, CalendarDays, Crown, Megaphone, SearchX, Tag } from 'lucide-react'
 import Link from 'next/link'
 
 import { Button } from '@/components/ui/button'

@@ -1,31 +1,30 @@
 'use client'
 
 import {
-  LayoutDashboard,
-  ShoppingCart,
-  Users,
-  Package,
-  CalendarDays,
-  Settings,
-  LogOut,
-  Menu,
-  X,
-  Wallet,
-  Scissors,
-  UserCircle,
   BarChart3,
-  Crown,
-  Tag,
   Building2,
+  CalendarDays,
+  Crown,
+  LayoutDashboard,
+  LogOut,
   Megaphone,
+  Menu,
+  Package,
+  Scissors,
+  Settings,
+  ShoppingCart,
+  Tag,
+  UserCircle,
+  Users,
+  Wallet,
+  X,
 } from 'lucide-react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { useState } from 'react'
 
-import { canAccessRoute, type CanonicalRole } from '@/lib/auth/roles'
+import { type CanonicalRole, canAccessRoute } from '@/lib/auth/roles'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 
@@ -108,21 +107,21 @@ export function Sidebar({ businessName, role }: SidebarProps) {
               onClick={() => setOpen(false)}
               className={cn(
                 'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                pathname === href || pathname.startsWith(href + '/')
+                pathname === href || pathname.startsWith(`${href}/`)
                   ? 'text-[#4ade80]'
                   : 'text-white/[0.55] hover:text-white/80',
               )}
               style={
-                pathname === href || pathname.startsWith(href + '/')
+                pathname === href || pathname.startsWith(`${href}/`)
                   ? { backgroundColor: 'rgba(22,163,74,0.15)' }
                   : undefined
               }
               onMouseEnter={(e) => {
-                if (!(pathname === href || pathname.startsWith(href + '/')))
+                if (!(pathname === href || pathname.startsWith(`${href}/`)))
                   (e.currentTarget as HTMLElement).style.backgroundColor = 'rgba(255,255,255,0.08)'
               }}
               onMouseLeave={(e) => {
-                if (!(pathname === href || pathname.startsWith(href + '/')))
+                if (!(pathname === href || pathname.startsWith(`${href}/`)))
                   (e.currentTarget as HTMLElement).style.backgroundColor = ''
               }}
             >
@@ -163,6 +162,7 @@ export function Sidebar({ businessName, role }: SidebarProps) {
           </Link>
         )}
         <button
+          type="button"
           onClick={handleLogout}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-white/[0.55] hover:text-white/80 transition-colors"
           onMouseEnter={(e) => {
@@ -184,6 +184,7 @@ export function Sidebar({ businessName, role }: SidebarProps) {
       {/* Mobile top bar */}
       <div className="md:hidden fixed top-0 inset-x-0 z-30 h-14 bg-white border-b border-gray-200 flex items-center px-4 gap-3">
         <button
+          type="button"
           onClick={() => setOpen(true)}
           className="p-1.5 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
           aria-label="Open menu"
@@ -232,6 +233,7 @@ export function Sidebar({ businessName, role }: SidebarProps) {
             <div className="text-xs text-white/40 truncate mt-0.5">{businessName}</div>
           </div>
           <button
+            type="button"
             onClick={() => setOpen(false)}
             className="p-1.5 rounded-lg text-white/40 hover:text-white/70 transition-colors"
             onMouseEnter={(e) => {

@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
-import { evaluatePromotion, calculateDiscount } from '@/lib/promotions'
-import { rateLimit, getIp } from '@/lib/rate-limit'
+import { calculateDiscount, evaluatePromotion } from '@/lib/promotions'
+import { getIp, rateLimit } from '@/lib/rate-limit'
 import { createClient } from '@/lib/supabase/server'
 
 const BodySchema = z.object({

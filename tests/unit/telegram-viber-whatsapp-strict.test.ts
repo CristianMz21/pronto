@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import * as telegram from '@/lib/telegram'
 import * as viber from '@/lib/viber'
@@ -19,12 +19,10 @@ describe('messaging strict 100%', () => {
       )
     })
     it('send returns false when json.ok false', async () => {
-      global.fetch = vi
-        .fn()
-        .mockResolvedValue({
-          ok: true,
-          json: async () => ({ ok: false, description: 'err' }),
-        } as any) as any
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ ok: false, description: 'err' }),
+      } as any) as any
       expect(await telegram.sendTelegramMessage('tok', 'chat', 'hi')).toBe(false)
     })
     it('send returns false on fetch exception', async () => {
@@ -46,11 +44,9 @@ describe('messaging strict 100%', () => {
       expect((await telegram.setTelegramWebhook('tok', 'https://x')).ok).toBe(false)
     })
     it('getBotInfo success', async () => {
-      global.fetch = vi
-        .fn()
-        .mockResolvedValue({
-          json: async () => ({ ok: true, result: { username: 'bot', first_name: 'Bot' } }),
-        } as any) as any
+      global.fetch = vi.fn().mockResolvedValue({
+        json: async () => ({ ok: true, result: { username: 'bot', first_name: 'Bot' } }),
+      } as any) as any
       const r = await telegram.getTelegramBotInfo('tok')
       expect(r.ok).toBe(true)
       expect(r.result?.username).toBe('bot')
@@ -163,11 +159,9 @@ describe('messaging strict 100%', () => {
       expect(await viber.sendViberMessage('tok', 'user', 'hi')).toBe(true)
     })
     it('send fail status !=0', async () => {
-      global.fetch = vi
-        .fn()
-        .mockResolvedValue({
-          json: async () => ({ status: 1, status_message: 'fail' }),
-        } as any) as any
+      global.fetch = vi.fn().mockResolvedValue({
+        json: async () => ({ status: 1, status_message: 'fail' }),
+      } as any) as any
       expect(await viber.sendViberMessage('tok', 'user', 'hi')).toBe(false)
     })
     it('send exception', async () => {
@@ -179,11 +173,9 @@ describe('messaging strict 100%', () => {
       expect((await viber.setViberWebhook('tok', 'https://x')).ok).toBe(true)
     })
     it('setWebhook fail status', async () => {
-      global.fetch = vi
-        .fn()
-        .mockResolvedValue({
-          json: async () => ({ status: 1, status_message: 'err' }),
-        } as any) as any
+      global.fetch = vi.fn().mockResolvedValue({
+        json: async () => ({ status: 1, status_message: 'err' }),
+      } as any) as any
       expect((await viber.setViberWebhook('tok', 'https://x')).ok).toBe(false)
     })
     it('setWebhook exception', async () => {
@@ -191,11 +183,9 @@ describe('messaging strict 100%', () => {
       expect((await viber.setViberWebhook('tok', 'https://x')).ok).toBe(false)
     })
     it('getBotInfo success', async () => {
-      global.fetch = vi
-        .fn()
-        .mockResolvedValue({
-          json: async () => ({ status: 0, name: 'Bot', uri: 'uri' }),
-        } as any) as any
+      global.fetch = vi.fn().mockResolvedValue({
+        json: async () => ({ status: 0, name: 'Bot', uri: 'uri' }),
+      } as any) as any
       const r = await viber.getViberBotInfo('tok')
       expect(r.ok).toBe(true)
       expect(r.name).toBe('Bot')
@@ -313,12 +303,10 @@ describe('messaging strict 100%', () => {
       delete process.env.META_WHATSAPP_ACCESS_TOKEN
     })
     it('send returns false when res.ok false', async () => {
-      global.fetch = vi
-        .fn()
-        .mockResolvedValue({
-          ok: false,
-          json: async () => ({ error: { message: 'err' } }),
-        } as any) as any
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        json: async () => ({ error: { message: 'err' } }),
+      } as any) as any
       expect(
         await whatsapp.sendWhatsAppMessage('123', 'hi', {
           phoneNumberId: 'id',

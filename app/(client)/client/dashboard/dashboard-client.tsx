@@ -230,12 +230,14 @@ export function DashboardClient({
             </div>
             <div className="flex flex-wrap gap-2 mt-4">
               <button
+                type="button"
                 onClick={() => handleReschedule(upcoming.id)}
                 className="flex-1 sm:flex-none text-sm px-4 py-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 font-medium"
               >
                 Reprogramar
               </button>
               <button
+                type="button"
                 onClick={() => handleCancel(upcoming.id)}
                 className="flex-1 sm:flex-none text-sm px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 font-medium"
               >
@@ -309,6 +311,7 @@ export function DashboardClient({
                       h.status === 'scheduled') &&
                       new Date(h.starts_at) > new Date() && (
                         <button
+                          type="button"
                           onClick={() => handleCancel(h.id)}
                           className="text-xs text-red-600 hover:underline"
                         >
@@ -392,6 +395,7 @@ export function DashboardClient({
         {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
         <div className="flex items-center gap-3 mt-4">
           <button
+            type="button"
             onClick={saveProfile}
             disabled={saving}
             className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50"

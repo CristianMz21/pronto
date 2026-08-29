@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@supabase/supabase-js', () => ({ createClient: vi.fn() }))
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }))
@@ -228,7 +228,7 @@ describe('coverage 99 strict', () => {
               })),
             })),
             insert: vi.fn(async () => ({
-              error: { code: '23506', message: 'insert fail', code: '23506' },
+              error: { message: 'insert fail', code: '23506' },
             })),
           } as any
         return { select: vi.fn(() => ({})) } as any
@@ -307,7 +307,7 @@ describe('coverage 99 strict', () => {
     // proxy 49
     const { proxy } = await import('@/proxy')
     const { createServerClient } = await import('@supabase/ssr')
-    let setAllCalled = false
+    let _setAllCalled = false
     vi.mocked(createServerClient).mockImplementation((_u: any, _k: any, opts: any) => {
       return {
         auth: {
@@ -319,7 +319,7 @@ describe('coverage 99 strict', () => {
         // trigger setAll
         getAll: opts.cookies.getAll,
         setAll: (cookies: any[]) => {
-          setAllCalled = true
+          _setAllCalled = true
           opts.cookies.setAll(cookies)
         },
       } as any

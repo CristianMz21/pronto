@@ -437,15 +437,7 @@
     "calendar": {
       "today": "Hoy",
       "publicPage": "Página pública de reservas",
-      "days": [
-        "Lun",
-        "Mar",
-        "Mié",
-        "Jue",
-        "Vie",
-        "Sáb",
-        "Dom"
-      ],
+      "days": ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"],
       "colorLegend": "Leyenda de colores",
       "teamColors": "Colores del equipo",
       "noTeamMembers": "Aún no hay miembros del equipo",
@@ -535,15 +527,7 @@
     },
     "workingHours": {
       "heading": "Horario laboral",
-      "dayNames": [
-        "Dom",
-        "Lun",
-        "Mar",
-        "Mié",
-        "Jue",
-        "Vie",
-        "Sáb"
-      ],
+      "dayNames": ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"],
       "from": "Desde",
       "to": "Hasta",
       "closed": "Cerrado",
@@ -938,15 +922,7 @@
       "Noviembre",
       "Diciembre"
     ],
-    "days": [
-      "Lu",
-      "Ma",
-      "Mi",
-      "Ju",
-      "Vi",
-      "Sá",
-      "Do"
-    ]
+    "days": ["Lu", "Ma", "Mi", "Ju", "Vi", "Sá", "Do"]
   },
   "feedback": {
     "heading": "Comparte tu opinión",
@@ -1126,11 +1102,7 @@
       "starter": {
         "name": "Starter",
         "price": "$19/mes",
-        "features": [
-          "5 empleados",
-          "Clientes ilimitados",
-          "Reservas ilimitadas"
-        ]
+        "features": ["5 empleados", "Clientes ilimitados", "Reservas ilimitadas"]
       },
       "pro": {
         "name": "Pro",
@@ -1146,12 +1118,7 @@
       "agency": {
         "name": "Agency",
         "price": "$79/mes",
-        "features": [
-          "Empleados ilimitados",
-          "Múltiples sucursales",
-          "Marca blanca",
-          "Acceso a API"
-        ]
+        "features": ["Empleados ilimitados", "Múltiples sucursales", "Marca blanca", "Acceso a API"]
       }
     }
   },

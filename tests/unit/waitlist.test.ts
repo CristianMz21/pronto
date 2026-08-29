@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
-import { canEnqueue, isExpired, isWaiting, WAITLIST_EXPIRE_MIN } from '@/lib/waitlist'
+import { canEnqueue, isExpired, isWaiting } from '@/lib/waitlist'
 
 describe('waitlist helpers', () => {
   it('canEnqueue future passes', () => {

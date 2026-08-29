@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
 // Unit test for proxy auth logic (proxy.ts)
 // Verifies protected paths list matches spec and redirect behavior

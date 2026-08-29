@@ -1,10 +1,10 @@
 import { createServerClient } from '@supabase/ssr'
-import { NextResponse, type NextRequest } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 
-import { canAccessRoute, getUserRole, getUserLocationIds, isSuperAdmin } from '@/lib/auth/roles'
+import { canAccessRoute, getUserLocationIds, getUserRole, isSuperAdmin } from '@/lib/auth/roles'
 
 function getSupabaseUrlForProxy(): string {
-  let url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
   if (
     process.env.IS_DOCKER === 'true' &&
     (url.includes('127.0.0.1') || url.includes('localhost'))

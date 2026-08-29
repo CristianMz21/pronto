@@ -1,19 +1,21 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('@/lib/mailer', () => ({
   sendMail: vi.fn().mockResolvedValue({ id: '1' }),
   getFromAddress: () => 'a@test.com',
 }))
+
 import {
-  sendBookingConfirmation,
-  sendReminder,
-  sendThankYou,
-  sendReactivation,
-  sendBirthday,
-  sendLowStockAlert,
   formatEmailDate,
   formatEmailTime,
+  sendBirthday,
+  sendBookingConfirmation,
+  sendLowStockAlert,
+  sendReactivation,
+  sendReminder,
+  sendThankYou,
 } from '@/lib/email'
+
 describe('email exhaustive', () => {
   it('booking', async () => {
     expect(

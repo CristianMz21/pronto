@@ -97,7 +97,7 @@ export function isSuperAdmin(
     | undefined,
 ): boolean {
   if (!user) return false
-  const metaRole = (user.user_metadata as Record<string, unknown> | undefined)?.['role'] as
+  const metaRole = (user.user_metadata as Record<string, unknown> | undefined)?.role as
     | string
     | undefined
   if (metaRole && metaRole.toLowerCase() === 'super_admin') return true
@@ -127,7 +127,7 @@ export function canAccessRoute(
 
   if (role === 'barbero') {
     // Only explicitly allowed prefixes for barbero
-    return BARBERO_ALLOWED_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + '/'))
+    return BARBERO_ALLOWED_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))
   }
 
   if (role === 'staff') {

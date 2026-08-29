@@ -7,13 +7,13 @@
  * - Run: node scripts/simulate-year.js
  */
 
-const crypto = require('crypto')
+const _crypto = require('node:crypto')
 
 const { Client } = require('pg')
 
 const BUSINESS_ID = '17c1a2b5-5d3b-4d84-bbb1-d361077d4c95'
 const DB_URL = process.env.DATABASE_URL || 'postgresql://postgres:postgres@127.0.0.1:54322/postgres'
-const SSL = process.env.MIGRATE_SSL === 'false' ? false : true
+const SSL = process.env.MIGRATE_SSL !== 'false'
 
 const FIRST_NAMES = [
   'Carlos',
@@ -199,7 +199,7 @@ async function main() {
   const startDate = new Date('2025-08-28T00:00:00Z')
   const endDate = new Date('2026-08-27T00:00:00Z')
   const allAppointments = []
-  let totalAppts = 0
+  const _totalAppts = 0
   let totalTransactions = 0
 
   // Business hours: Mon-Sat 09:00-20:00, Sun closed
@@ -321,7 +321,7 @@ async function main() {
           totalTransactions++
         }
       } catch (e) {
-        if (e.message && e.message.includes('slot_already_booked')) {
+        if (e.message?.includes('slot_already_booked')) {
           skippedDouble++
         } else if (
           e.message &&
@@ -488,7 +488,7 @@ function wallclockToUtc(date, time, tz) {
     second: 'numeric',
     hour12: false,
   }).formatToParts(noonUtc)
-  const get = (t) => parseInt(parts.find((p) => p.type === t)?.value ?? '0')
+  const get = (t) => parseInt(parts.find((p) => p.type === t)?.value ?? '0', 10)
   const localNoonMs = Date.UTC(
     get('year'),
     get('month') - 1,

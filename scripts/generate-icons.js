@@ -9,8 +9,8 @@
  *   public/icons/apple-touch-icon.png  (180x180)
  */
 
-const fs = require('fs')
-const path = require('path')
+const fs = require('node:fs')
+const path = require('node:path')
 
 const sharp = require('sharp')
 

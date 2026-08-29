@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
-import { rateLimit, getIp } from '@/lib/rate-limit'
+import { getIp, rateLimit } from '@/lib/rate-limit'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 
@@ -276,7 +276,7 @@ export async function PATCH(request: Request, props: { params: Promise<{ id: str
   return NextResponse.json(data)
 }
 // @ts-expect-error - tsc strict fix
-export async function GET(request: Request, props: { params: Promise<{ id: string }> }) {
+export async function GET(_request: Request, props: { params: Promise<{ id: string }> }) {
   const params = await props.params
   const supabase = await createClient()
   const {

@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@supabase/supabase-js', () => ({ createClient: vi.fn() }))
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }))
@@ -72,10 +72,10 @@ describe('final 98 push', () => {
             } as any
           if (t === 'businesses') {
             // ownership check vs biz fetch
-            let call = 0
+            let _call = 0
             return {
               select: vi.fn(() => {
-                call++
+                _call++
                 return {
                   eq: vi.fn(() => {
                     return {
@@ -117,7 +117,7 @@ describe('final 98 push', () => {
     vi.mocked(srv.createClient).mockResolvedValue({
       auth: { getUser: vi.fn(async () => ({ data: { user: null }, error: null })) },
     } as any)
-    let { POST } = await import('@/app/api/email/low-stock/route')
+    const { POST } = await import('@/app/api/email/low-stock/route')
     let req = new NextRequest('http://localhost/api/email/low-stock', {
       method: 'POST',
       body: JSON.stringify({ itemId: 'i1' }),

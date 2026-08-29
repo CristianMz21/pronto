@@ -52,11 +52,7 @@ export const viewport: Viewport = {
   minimumScale: 1,
 }
 
-export default async function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const locale = await getLocale()
   const messages = await getMessages()
 
@@ -70,9 +66,7 @@ export default async function RootLayout({
     // (useState+useEffect with deterministic fallback or explicit 'en-US'/'es-CO' locale).
     <html lang={locale} suppressHydrationWarning>
       <body className={inter.className} suppressHydrationWarning>
-        <NextIntlClientProvider messages={messages}>
-          {children}
-        </NextIntlClientProvider>
+        <NextIntlClientProvider messages={messages}>{children}</NextIntlClientProvider>
       </body>
     </html>
   )

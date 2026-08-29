@@ -22,8 +22,8 @@ function validatePhone(phone: string): string | null {
 
 function validateBirthday(birthday: string): string | null {
   if (!birthday) return null
-  const d = new Date(birthday + 'T00:00:00')
-  if (isNaN(d.getTime()) || d.getFullYear() < 1900 || d > new Date())
+  const d = new Date(`${birthday}T00:00:00`)
+  if (Number.isNaN(d.getTime()) || d.getFullYear() < 1900 || d > new Date())
     return 'Please enter a valid date'
   return null
 }

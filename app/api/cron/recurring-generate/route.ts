@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
-import { NextRequest, NextResponse } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 
-import { rateLimit, getIp } from '@/lib/rate-limit'
+import { getIp, rateLimit } from '@/lib/rate-limit'
 export async function GET(req: NextRequest) {
   const _ipGET = getIp(req as unknown as Request)
   if (!rateLimit(`recurring-generate-route:get:${_ipGET}`, { limit: 60, windowMs: 10 * 60 * 1000 }))

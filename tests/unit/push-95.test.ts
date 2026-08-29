@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@supabase/supabase-js', () => ({ createClient: vi.fn() }))
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }))
@@ -237,13 +237,13 @@ describe('push 95', () => {
         })),
       })),
     } as any)
-    let { POST } = await import('@/app/api/telegram/webhook/route')
-    let body = { message: { chat: { id: '1' }, text: 'hello', from: { first_name: 'John' } } }
-    let req = new NextRequest('http://localhost/api/telegram/webhook?bid=b1', {
+    const { POST } = await import('@/app/api/telegram/webhook/route')
+    const body = { message: { chat: { id: '1' }, text: 'hello', from: { first_name: 'John' } } }
+    const req = new NextRequest('http://localhost/api/telegram/webhook?bid=b1', {
       method: 'POST',
       body: JSON.stringify(body),
     } as any)
-    let res = await POST(req as any)
+    const res = await POST(req as any)
     expect(res.status).toBe(200)
 
     // Test with token and various messages
@@ -306,15 +306,13 @@ describe('push 95', () => {
     const { createClient: createAdmin } = await import('@supabase/supabase-js')
     vi.mocked(createClient).mockResolvedValue({
       auth: {
-        signUp: vi
-          .fn()
-          .mockResolvedValue({
-            data: {
-              user: { id: 'u1', email: 'a@b.com', user_metadata: { full_name: 'John' } },
-              session: { access_token: 'tok' },
-            },
-            error: null,
-          }),
+        signUp: vi.fn().mockResolvedValue({
+          data: {
+            user: { id: 'u1', email: 'a@b.com', user_metadata: { full_name: 'John' } },
+            session: { access_token: 'tok' },
+          },
+          error: null,
+        }),
       },
     } as any)
     let slugAttempt = 0
