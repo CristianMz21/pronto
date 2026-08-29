@@ -1,11 +1,5 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
-import { formatCurrency } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import {
   ShoppingCart,
   Plus,
@@ -17,7 +11,12 @@ import {
   CloudOff,
   CalendarDays,
 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
+import { useState, useEffect, useCallback } from 'react'
+
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
 import {
   cacheData,
   getCachedData,
@@ -29,6 +28,8 @@ import {
   type CachedEmployee,
   type CachedClient,
 } from '@/lib/offline-db'
+import { createClient } from '@/lib/supabase/client'
+import { formatCurrency } from '@/lib/utils'
 
 interface Service {
   id: string

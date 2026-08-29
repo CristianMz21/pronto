@@ -1,13 +1,25 @@
-import { createClient } from '@/lib/supabase/server'
-import { Header } from '@/components/layout/header'
-import { BookingCalendar } from './booking-calendar'
-import { getAuthUser } from '@/lib/auth-user'
-import { DEFAULT_LEAD_MINUTES } from '@/lib/booking-availability'
-import { getUserRole } from '@/lib/auth/roles'
-import { db } from '@/lib/db'
-import { businesses, employees, services, clients, businessHours, locations, holidays, appointments, employeeServices } from '@/drizzle/schema'
 import { eq, and, gte, lt, asc, or, isNull, inArray } from 'drizzle-orm'
 import Link from 'next/link'
+
+import { Header } from '@/components/layout/header'
+import {
+  businesses,
+  employees,
+  services,
+  clients,
+  businessHours,
+  locations,
+  holidays,
+  appointments,
+  employeeServices,
+} from '@/drizzle/schema'
+import { getUserRole } from '@/lib/auth/roles'
+import { getAuthUser } from '@/lib/auth-user'
+import { DEFAULT_LEAD_MINUTES } from '@/lib/booking-availability'
+import { db } from '@/lib/db'
+import { createClient } from '@/lib/supabase/server'
+
+import { BookingCalendar } from './booking-calendar'
 
 export default async function BookingPage(props: { searchParams: Promise<{ location?: string }> }) {
   const searchParams = await props.searchParams
@@ -15,25 +27,59 @@ export default async function BookingPage(props: { searchParams: Promise<{ locat
   const user = await getAuthUser()
 
   // Drizzle: resolve business (owner first, then employee fallback) — portable
-  let business: { id: string; slug: string; timezone: string; min_advance_minutes?: number | null; booking_lead_time_enabled?: boolean | null } | null = null
+  let business: {
+    id: string
+    slug: string
+    timezone: string
+    min_advance_minutes?: number | null
+    booking_lead_time_enabled?: boolean | null
+  } | null = null
 
   const owned = await db.query.businesses.findFirst({
     where: eq(businesses.ownerId, user!.id),
-    columns: { id: true, slug: true, timezone: true, minAdvanceMinutes: true, bookingLeadTimeEnabled: true },
+    columns: {
+      id: true,
+      slug: true,
+      timezone: true,
+      minAdvanceMinutes: true,
+      bookingLeadTimeEnabled: true,
+    },
   })
   if (owned) {
     business = {
       id: owned.id,
       slug: owned.slug,
       timezone: owned.timezone,
-      min_advance_minutes: (owned as unknown as { minAdvanceMinutes: number | null }).minAdvanceMinutes,
-      booking_lead_time_enabled: (owned as unknown as { bookingLeadTimeEnabled: boolean | null }).bookingLeadTimeEnabled,
+      min_advance_minutes: (owned as unknown as { minAdvanceMinutes: number | null })
+        .minAdvanceMinutes,
+      booking_lead_time_enabled: (owned as unknown as { bookingLeadTimeEnabled: boolean | null })
+        .bookingLeadTimeEnabled,
     }
   } else {
-    const emp = await db.query.employees.findFirst({
+    const emp = (await db.query.employees.findFirst({
       where: and(eq(employees.userId, user!.id), eq(employees.isActive, true)),
-      with: { business: { columns: { id: true, slug: true, timezone: true, minAdvanceMinutes: true, bookingLeadTimeEnabled: true } } },
-    }) as unknown as { business: { id: string; slug: string; timezone: string; minAdvanceMinutes: number | null; bookingLeadTimeEnabled: boolean | null } } | undefined
+      with: {
+        business: {
+          columns: {
+            id: true,
+            slug: true,
+            timezone: true,
+            minAdvanceMinutes: true,
+            bookingLeadTimeEnabled: true,
+          },
+        },
+      },
+    })) as unknown as
+      | {
+          business: {
+            id: string
+            slug: string
+            timezone: string
+            minAdvanceMinutes: number | null
+            bookingLeadTimeEnabled: boolean | null
+          }
+        }
+      | undefined
     if (emp?.business) {
       business = {
         id: emp.business.id,
@@ -49,7 +95,11 @@ export default async function BookingPage(props: { searchParams: Promise<{ locat
 
   let role: string | null = null
   try {
-    role = await getUserRole(supabase as unknown as { from: (t: string) => unknown }, user!.id, business.id)
+    role = await getUserRole(
+      supabase as unknown as { from: (t: string) => unknown },
+      user!.id,
+      business.id,
+    )
   } catch {
     role = null
   }
@@ -58,7 +108,11 @@ export default async function BookingPage(props: { searchParams: Promise<{ locat
   let barberEmployeeId: string | null = null
   if (isBarbero) {
     const emp = await db.query.employees.findFirst({
-      where: and(eq(employees.userId, user!.id), eq(employees.businessId, business.id), eq(employees.isActive, true)),
+      where: and(
+        eq(employees.userId, user!.id),
+        eq(employees.businessId, business.id),
+        eq(employees.isActive, true),
+      ),
       columns: { id: true },
     })
     barberEmployeeId = emp?.id ?? null
@@ -74,7 +128,9 @@ export default async function BookingPage(props: { searchParams: Promise<{ locat
 
   // Drizzle fetches — all RLS via business_id tenant filter, portable to Postgres/MySQL/SQLite
   const todayStr = today.toISOString().slice(0, 10)
-  const nextMonthStr = new Date(today.getFullYear(), today.getMonth() + 2, 0).toISOString().slice(0, 10)
+  const nextMonthStr = new Date(today.getFullYear(), today.getMonth() + 2, 0)
+    .toISOString()
+    .slice(0, 10)
 
   // Pre-fetch employeeServices for barbero scope
   let employeeServiceIds: string[] | null = null
@@ -86,7 +142,15 @@ export default async function BookingPage(props: { searchParams: Promise<{ locat
     employeeServiceIds = empServices.map((r) => r.serviceId)
   }
 
-  const [appointmentsData, employeesData, servicesData, clientsData, businessHoursData, locationsData, holidaysData] = await Promise.all([
+  const [
+    appointmentsData,
+    employeesData,
+    servicesData,
+    clientsData,
+    businessHoursData,
+    locationsData,
+    holidaysData,
+  ] = await Promise.all([
     // Appointments in week window with relations
     db.query.appointments.findMany({
       where: and(
@@ -122,7 +186,14 @@ export default async function BookingPage(props: { searchParams: Promise<{ locat
             eq(services.businessId, business.id),
             eq(services.isActive, true),
             inArray(services.id, employeeServiceIds),
-            ...(selectedLocation ? [or(eq(services.locationId, selectedLocation), isNull(services.locationId)) as unknown as ReturnType<typeof eq>] : []),
+            ...(selectedLocation
+              ? [
+                  or(
+                    eq(services.locationId, selectedLocation),
+                    isNull(services.locationId),
+                  ) as unknown as ReturnType<typeof eq>,
+                ]
+              : []),
           ),
           columns: { id: true, name: true, durationMin: true, price: true, locationId: true },
         })
@@ -132,7 +203,14 @@ export default async function BookingPage(props: { searchParams: Promise<{ locat
         where: and(
           eq(services.businessId, business.id),
           eq(services.isActive, true),
-          ...(selectedLocation ? [or(eq(services.locationId, selectedLocation), isNull(services.locationId)) as unknown as ReturnType<typeof eq>] : []),
+          ...(selectedLocation
+            ? [
+                or(
+                  eq(services.locationId, selectedLocation),
+                  isNull(services.locationId),
+                ) as unknown as ReturnType<typeof eq>,
+              ]
+            : []),
         ),
         columns: { id: true, name: true, durationMin: true, price: true, locationId: true },
       })
@@ -145,7 +223,14 @@ export default async function BookingPage(props: { searchParams: Promise<{ locat
     }),
     db.query.businessHours.findMany({
       where: eq(businessHours.businessId, business.id),
-      columns: { dayOfWeek: true, isOpen: true, openTime: true, closeTime: true, breakStart: true, breakEnd: true },
+      columns: {
+        dayOfWeek: true,
+        isOpen: true,
+        openTime: true,
+        closeTime: true,
+        breakStart: true,
+        breakEnd: true,
+      },
     }),
     db.query.locations.findMany({
       where: eq(locations.businessId, business.id),
@@ -153,13 +238,30 @@ export default async function BookingPage(props: { searchParams: Promise<{ locat
       columns: { id: true, name: true },
     }),
     db.query.holidays.findMany({
-      where: and(eq(holidays.businessId, business.id), gte(holidays.date, todayStr as unknown as string), lt(holidays.date, nextMonthStr as unknown as string)),
+      where: and(
+        eq(holidays.businessId, business.id),
+        gte(holidays.date, todayStr as unknown as string),
+        lt(holidays.date, nextMonthStr as unknown as string),
+      ),
       orderBy: (h, { asc }) => [asc(h.date)],
     }),
   ])
 
   // Map Drizzle camelCase to snake_case expected by BookingCalendar (keep compat)
-  const appointmentsForCalendar = appointmentsData.map((a) => ({
+  const appointmentsForCalendar = (
+    appointmentsData as unknown as Array<{
+      id: string
+      startsAt: string
+      endsAt: string
+      status: string
+      source: string | null
+      notes: string | null
+      locationId: string | null
+      client: { id: string; name: string } | null
+      employee: { id: string; name: string } | null
+      service: { id: string; name: string; price: unknown } | null
+    }>
+  ).map((a) => ({
     id: a.id,
     starts_at: a.startsAt as unknown as string,
     ends_at: a.endsAt as unknown as string,
@@ -171,16 +273,37 @@ export default async function BookingPage(props: { searchParams: Promise<{ locat
     employees: a.employee ? { id: a.employee.id, name: a.employee.name } : null,
     services: a.service ? { id: a.service.id, name: a.service.name, price: a.service.price } : null,
   }))
-  const employeesForCalendar = employeesData.map((e) => ({ id: e.id, name: e.name, location_id: e.locationId }))
-  const servicesForCalendar = servicesData.map((s) => ({
+  const employeesForCalendar = (
+    employeesData as unknown as Array<{ id: string; name: string; locationId: string | null }>
+  ).map((e) => ({ id: e.id, name: e.name, location_id: e.locationId }))
+  const servicesForCalendar = (
+    servicesData as unknown as Array<{
+      id: string
+      name: string
+      durationMin: number
+      price: unknown
+      locationId: string | null
+    }>
+  ).map((s) => ({
     id: s.id,
     name: s.name,
     duration_min: s.durationMin,
     price: Number(s.price),
     location_id: s.locationId,
   }))
-  const clientsForCalendar = clientsData.map((c) => ({ id: c.id, name: c.name, phone: c.phone }))
-  const businessHoursForCalendar = businessHoursData.map((h) => ({
+  const clientsForCalendar = (
+    clientsData as unknown as Array<{ id: string; name: string; phone: string | null }>
+  ).map((c) => ({ id: c.id, name: c.name, phone: c.phone }))
+  const businessHoursForCalendar = (
+    businessHoursData as unknown as Array<{
+      dayOfWeek: number
+      isOpen: boolean
+      openTime: string
+      closeTime: string
+      breakStart: string | null
+      breakEnd: string | null
+    }>
+  ).map((h) => ({
     day_of_week: h.dayOfWeek,
     is_open: h.isOpen,
     open_time: h.openTime,
@@ -188,7 +311,16 @@ export default async function BookingPage(props: { searchParams: Promise<{ locat
     break_start: h.breakStart,
     break_end: h.breakEnd,
   }))
-  const holidaysForCalendar = holidaysData.map((h) => ({
+  const holidaysForCalendar = (
+    holidaysData as unknown as Array<{
+      id: string
+      businessId: string
+      locationId: string | null
+      date: unknown
+      reason: string | null
+      isOpen: boolean
+    }>
+  ).map((h) => ({
     id: h.id,
     business_id: h.businessId,
     location_id: h.locationId,
@@ -202,11 +334,18 @@ export default async function BookingPage(props: { searchParams: Promise<{ locat
       <Header title="Booking" />
       {(locationsData?.length ?? 0) > 1 && !isBarbero && (
         <div className="px-6 pt-3 flex gap-2 text-xs">
-          <Link href="/booking" className={`px-3 py-1 rounded-full border ${!selectedLocation ? 'bg-gray-900 text-white' : 'bg-white'}`}>
+          <Link
+            href="/booking"
+            className={`px-3 py-1 rounded-full border ${!selectedLocation ? 'bg-gray-900 text-white' : 'bg-white'}`}
+          >
             Todas
           </Link>
           {locationsData!.map((l) => (
-            <Link key={l.id} href={`/booking?location=${l.id}`} className={`px-3 py-1 rounded-full border ${selectedLocation === l.id ? 'bg-gray-900 text-white' : 'bg-white'}`}>
+            <Link
+              key={l.id}
+              href={`/booking?location=${l.id}`}
+              className={`px-3 py-1 rounded-full border ${selectedLocation === l.id ? 'bg-gray-900 text-white' : 'bg-white'}`}
+            >
               {l.name}
             </Link>
           ))}
@@ -224,8 +363,14 @@ export default async function BookingPage(props: { searchParams: Promise<{ locat
         holidays={holidaysForCalendar as unknown as []}
         locations={locationsData as unknown as []}
         selectedLocation={selectedLocation}
-        minAdvanceMinutes={(business as { min_advance_minutes?: number | null })?.min_advance_minutes ?? DEFAULT_LEAD_MINUTES}
-        bookingLeadTimeEnabled={(business as { booking_lead_time_enabled?: boolean | null })?.booking_lead_time_enabled ?? true}
+        minAdvanceMinutes={
+          (business as { min_advance_minutes?: number | null })?.min_advance_minutes ??
+          DEFAULT_LEAD_MINUTES
+        }
+        bookingLeadTimeEnabled={
+          (business as { booking_lead_time_enabled?: boolean | null })?.booking_lead_time_enabled ??
+          true
+        }
         isBarbero={isBarbero}
         currentEmployeeId={barberEmployeeId}
       />

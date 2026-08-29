@@ -1,27 +1,44 @@
-import { createClient } from '@/lib/supabase/server'
-import { getAuthUser } from '@/lib/auth-user'
+import { Megaphone } from 'lucide-react'
+import Link from 'next/link'
+
+import { CampaignBuilder } from '@/components/crm/campaign-builder'
 import { Header } from '@/components/layout/header'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import Link from 'next/link'
-import { CampaignBuilder } from '@/components/crm/campaign-builder'
+import { getAuthUser } from '@/lib/auth-user'
+import { createClient } from '@/lib/supabase/server'
 import { formatInBusinessTimezone } from '@/lib/utils'
-import { Megaphone } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
 async function resolveBusiness(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
-  const { data: owned } = await supabase.from('businesses').select('id, name, currency, timezone').eq('owner_id', userId).maybeSingle()
+  const { data: owned } = await supabase
+    .from('businesses')
+    .select('id, name, currency, timezone')
+    .eq('owner_id', userId)
+    .maybeSingle()
   if (owned) return owned as { id: string; name: string; currency: string; timezone: string }
-  const { data: emp } = await supabase.from('employees').select('business_id').eq('user_id', userId).eq('is_active', true).limit(1).maybeSingle()
+  const { data: emp } = await supabase
+    .from('employees')
+    .select('business_id')
+    .eq('user_id', userId)
+    .eq('is_active', true)
+    .limit(1)
+    .maybeSingle()
   if (emp) {
-    const { data: biz } = await supabase.from('businesses').select('id, name, currency, timezone').eq('id', (emp as { business_id: string }).business_id).maybeSingle()
+    const { data: biz } = await supabase
+      .from('businesses')
+      .select('id, name, currency, timezone')
+      .eq('id', (emp as { business_id: string }).business_id)
+      .maybeSingle()
     if (biz) return biz as { id: string; name: string; currency: string; timezone: string }
   }
   return null
 }
 
-export default async function CrmCampaignsPage(props: { searchParams: Promise<{ location?: string }> }) {
+export default async function CrmCampaignsPage(props: {
+  searchParams: Promise<{ location?: string }>
+}) {
   const searchParams = await props.searchParams
   const supabase = await createClient()
   const user = await getAuthUser()
@@ -40,10 +57,17 @@ export default async function CrmCampaignsPage(props: { searchParams: Promise<{ 
   if (selectedLocation) q = q.eq('location_id', selectedLocation) as typeof q
   const { data: campaigns } = await q
 
-  const { data: locations } = await supabase.from('locations').select('id, name').eq('business_id', business.id).order('name')
+  const { data: locations } = await supabase
+    .from('locations')
+    .select('id, name')
+    .eq('business_id', business.id)
+    .order('name')
 
   // Aggregate stats for header
-  const totalSent = (campaigns ?? []).reduce((acc, c) => acc + (Number((c.stats as unknown as { sent?: number })?.sent ?? 0)), 0)
+  const totalSent = (campaigns ?? []).reduce(
+    (acc, c) => acc + Number((c.stats as unknown as { sent?: number })?.sent ?? 0),
+    0,
+  )
 
   return (
     <>
@@ -51,16 +75,29 @@ export default async function CrmCampaignsPage(props: { searchParams: Promise<{ 
         title="CRM & Campañas"
         actions={
           <Link href="/crm">
-            <Button variant="outline" size="sm">Ver clientes</Button>
+            <Button variant="outline" size="sm">
+              Ver clientes
+            </Button>
           </Link>
         }
       />
       <main className="p-6 space-y-6">
         {(locations?.length ?? 0) > 1 && (
           <div className="flex gap-2 text-xs">
-            <Link href="/crm-campaigns" className={`px-3 py-1 rounded-full border ${!selectedLocation ? 'bg-gray-900 text-white' : 'bg-white'}`}>Todas</Link>
+            <Link
+              href="/crm-campaigns"
+              className={`px-3 py-1 rounded-full border ${!selectedLocation ? 'bg-gray-900 text-white' : 'bg-white'}`}
+            >
+              Todas
+            </Link>
             {locations!.map((l) => (
-              <Link key={l.id} href={`/crm-campaigns?location=${l.id}`} className={`px-3 py-1 rounded-full border ${selectedLocation === l.id ? 'bg-gray-900 text-white' : 'bg-white'}`}>{l.name}</Link>
+              <Link
+                key={l.id}
+                href={`/crm-campaigns?location=${l.id}`}
+                className={`px-3 py-1 rounded-full border ${selectedLocation === l.id ? 'bg-gray-900 text-white' : 'bg-white'}`}
+              >
+                {l.name}
+              </Link>
             ))}
           </div>
         )}
@@ -72,7 +109,8 @@ export default async function CrmCampaignsPage(props: { searchParams: Promise<{ 
 
           <div className="space-y-4">
             <div className="flex items-center gap-2 text-sm text-gray-600">
-              <Megaphone className="w-4 h-4" /> {campaigns?.length ?? 0} campañas — {totalSent} envíos acumulados
+              <Megaphone className="w-4 h-4" /> {campaigns?.length ?? 0} campañas — {totalSent}{' '}
+              envíos acumulados
             </div>
 
             <div className="bg-white rounded-xl border border-gray-200 divide-y">
@@ -87,18 +125,44 @@ export default async function CrmCampaignsPage(props: { searchParams: Promise<{ 
                     <div className="min-w-0 flex-1">
                       <div className="font-medium text-gray-900 truncate">{c.name}</div>
                       <div className="flex flex-wrap gap-2 mt-1">
-                        <Badge variant="secondary" className="text-xs">{c.segment}</Badge>
-                        <Badge variant="outline" className="text-xs">{c.channel}</Badge>
-                        <Badge className={`text-xs ${c.status === 'sent' ? 'bg-green-100 text-green-700' : c.status === 'draft' ? 'bg-gray-100 text-gray-600' : 'bg-yellow-100 text-yellow-700'}`}>{c.status}</Badge>
-                        {c.location_id && <Badge variant="outline" className="text-xs">{locations?.find((l) => l.id === c.location_id)?.name ?? c.location_id.slice(0, 6)}</Badge>}
+                        <Badge variant="secondary" className="text-xs">
+                          {c.segment}
+                        </Badge>
+                        <Badge variant="outline" className="text-xs">
+                          {c.channel}
+                        </Badge>
+                        <Badge
+                          className={`text-xs ${c.status === 'sent' ? 'bg-green-100 text-green-700' : c.status === 'draft' ? 'bg-gray-100 text-gray-600' : 'bg-yellow-100 text-yellow-700'}`}
+                        >
+                          {c.status}
+                        </Badge>
+                        {c.location_id && (
+                          <Badge variant="outline" className="text-xs">
+                            {locations?.find((l) => l.id === c.location_id)?.name ??
+                              c.location_id.slice(0, 6)}
+                          </Badge>
+                        )}
                       </div>
                       <div className="text-xs text-gray-400 mt-1">
-                        {formatInBusinessTimezone(c.created_at, business.timezone)} — stats: {JSON.stringify(c.stats)}
+                        {formatInBusinessTimezone(c.created_at, business.timezone)} — stats:{' '}
+                        {JSON.stringify(c.stats)}
                       </div>
                     </div>
                     <div className="flex flex-col gap-1 shrink-0">
-                      <Link href={`/api/campaigns/${c.id}`} target="_blank" className="text-xs text-blue-600 hover:underline">detalle</Link>
-                      <Link href={`/api/campaigns/${c.id}/stats`} target="_blank" className="text-xs text-blue-600 hover:underline">stats</Link>
+                      <Link
+                        href={`/api/campaigns/${c.id}`}
+                        target="_blank"
+                        className="text-xs text-blue-600 hover:underline"
+                      >
+                        detalle
+                      </Link>
+                      <Link
+                        href={`/api/campaigns/${c.id}/stats`}
+                        target="_blank"
+                        className="text-xs text-blue-600 hover:underline"
+                      >
+                        stats
+                      </Link>
                       {c.status === 'draft' && (
                         <form
                           action={async () => {
@@ -116,7 +180,11 @@ export default async function CrmCampaignsPage(props: { searchParams: Promise<{ 
             </div>
 
             <div className="text-xs text-gray-500 bg-gray-50 rounded-lg p-3 border">
-              <strong>Tip Carlos 42d:</strong> usá segmento <code className="bg-white px-1 rounded">inactive_42</code> + canal WhatsApp + plantilla &quot;Hola {'{{name}}'} te extrañamos...&quot; — el cron diario 09:00 también dispara <code>inactive_42</code> + <code>birthday_7</code> automático si lo habilitás en Settings.
+              <strong>Tip Carlos 42d:</strong> usá segmento{' '}
+              <code className="bg-white px-1 rounded">inactive_42</code> + canal WhatsApp +
+              plantilla &quot;Hola {'{{name}}'} te extrañamos...&quot; — el cron diario 09:00
+              también dispara <code>inactive_42</code> + <code>birthday_7</code> automático si lo
+              habilitás en Settings.
             </div>
           </div>
         </div>

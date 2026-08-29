@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
-import { Button } from '@/components/ui/button'
 import { Loader2, CheckCircle2, AlertCircle } from 'lucide-react'
+import { useState } from 'react'
+
+import { Button } from '@/components/ui/button'
 
 interface Props {
   businessId: string
@@ -26,7 +27,11 @@ export function WhatsAppSection({ businessId, initialPhoneNumberId, initialAcces
       const res = await fetch('/api/business/whatsapp-verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ business_id: businessId, phone_number_id: phoneNumberId.trim(), access_token: accessToken.trim() }),
+        body: JSON.stringify({
+          business_id: businessId,
+          phone_number_id: phoneNumberId.trim(),
+          access_token: accessToken.trim(),
+        }),
       })
       const j = await res.json()
       if (!res.ok) {
@@ -41,7 +46,12 @@ export function WhatsAppSection({ businessId, initialPhoneNumberId, initialAcces
         const verifyRes = await fetch('/api/business/whatsapp-verify', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ business_id: businessId, phone_number_id: phoneNumberId.trim(), access_token: accessToken.trim(), verify: true }),
+          body: JSON.stringify({
+            business_id: businessId,
+            phone_number_id: phoneNumberId.trim(),
+            access_token: accessToken.trim(),
+            verify: true,
+          }),
         })
         const v = await verifyRes.json()
         if (v.ok) {
@@ -70,8 +80,9 @@ export function WhatsAppSection({ businessId, initialPhoneNumberId, initialAcces
       <div>
         <h3 className="font-semibold text-gray-900">WhatsApp Cloud API (Meta v20)</h3>
         <p className="text-xs text-gray-500 mt-1">
-          Configura <code className="bg-gray-100 px-1 rounded">meta_whatsapp_phone_number_id</code> y <code className="bg-gray-100 px-1 rounded">access_token</code> por business.
-          Si no configurás, las campañas funcionan en <strong>modo stub</strong> (loguean sin enviar).
+          Configura <code className="bg-gray-100 px-1 rounded">meta_whatsapp_phone_number_id</code>{' '}
+          y <code className="bg-gray-100 px-1 rounded">access_token</code> por business. Si no
+          configurás, las campañas funcionan en <strong>modo stub</strong> (loguean sin enviar).
         </p>
       </div>
 
@@ -99,16 +110,29 @@ export function WhatsAppSection({ businessId, initialPhoneNumberId, initialAcces
 
       <div className="flex items-center gap-3">
         <Button onClick={save} disabled={saving || status === 'loading'} size="sm">
-          {saving || status === 'loading' ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+          {saving || status === 'loading' ? (
+            <Loader2 className="w-4 h-4 animate-spin mr-2" />
+          ) : null}
           Guardar & verificar
         </Button>
         {saved && <span className="text-xs text-green-600">Guardado ✓</span>}
-        {status === 'ok' && <span className="flex items-center gap-1 text-xs text-green-600"><CheckCircle2 className="w-4 h-4" /> {msg}</span>}
-        {status === 'error' && <span className="flex items-center gap-1 text-xs text-red-600"><AlertCircle className="w-4 h-4" /> {msg}</span>}
+        {status === 'ok' && (
+          <span className="flex items-center gap-1 text-xs text-green-600">
+            <CheckCircle2 className="w-4 h-4" /> {msg}
+          </span>
+        )}
+        {status === 'error' && (
+          <span className="flex items-center gap-1 text-xs text-red-600">
+            <AlertCircle className="w-4 h-4" /> {msg}
+          </span>
+        )}
       </div>
 
       <div className="text-xs text-gray-400 bg-gray-50 rounded-lg p-3 border">
-        Verificación hace <code>GET https://graph.facebook.com/v20.0/{'{phoneNumberId}'}?fields=verified_name</code> con Bearer token. Si usás token temporal, requiere renovar. Plantillas deben estar aprobadas en Meta Dashboard para <code>type: template</code>.
+        Verificación hace{' '}
+        <code>GET https://graph.facebook.com/v20.0/{'{phoneNumberId}'}?fields=verified_name</code>{' '}
+        con Bearer token. Si usás token temporal, requiere renovar. Plantillas deben estar aprobadas
+        en Meta Dashboard para <code>type: template</code>.
       </div>
     </div>
   )

@@ -1,28 +1,33 @@
-import { createClient } from '@/lib/supabase/server'
-import { Header } from '@/components/layout/header'
-import { formatCurrency, formatInBusinessTimezone } from '@/lib/utils'
-import { getTranslations } from 'next-intl/server'
 import Link from 'next/link'
-import { HistoryFilters } from './history-filters'
-import { getAuthUser } from '@/lib/auth-user'
+import { getTranslations } from 'next-intl/server'
 
-export default async function TransactionHistoryPage(
-  props: {
-    searchParams: Promise<{ method?: string; from?: string; to?: string; client?: string }>
-  }
-) {
-  const searchParams = await props.searchParams;
+import { Header } from '@/components/layout/header'
+import { getAuthUser } from '@/lib/auth-user'
+import { createClient } from '@/lib/supabase/server'
+import { formatCurrency, formatInBusinessTimezone } from '@/lib/utils'
+
+import { HistoryFilters } from './history-filters'
+
+export default async function TransactionHistoryPage(props: {
+  searchParams: Promise<{ method?: string; from?: string; to?: string; client?: string }>
+}) {
+  const searchParams = await props.searchParams
   const supabase = await createClient()
   const t = await getTranslations('transactions')
   const user = await getAuthUser()
 
   const { data: business } = await supabase
-    .from('businesses').select('id, currency, timezone').eq('owner_id', user!.id).maybeSingle()
+    .from('businesses')
+    .select('id, currency, timezone')
+    .eq('owner_id', user!.id)
+    .maybeSingle()
   if (!business) return null
 
   let query = supabase
     .from('transactions')
-    .select('id, receipt_number, amount, payment_method, status, items, created_at, clients(id, name), employees(name)')
+    .select(
+      'id, receipt_number, amount, payment_method, status, items, created_at, clients(id, name), employees(name)',
+    )
     .eq('business_id', business.id)
     .eq('status', 'completed')
     .order('created_at', { ascending: false })
@@ -111,11 +116,19 @@ export default async function TransactionHistoryPage(
                 <tr className="border-b border-gray-100 bg-gray-50 text-xs text-gray-500 uppercase">
                   <th className="text-left px-4 py-3 font-medium">{t('table.receipt')}</th>
                   <th className="text-left px-4 py-3 font-medium">{t('table.client')}</th>
-                  <th className="text-left px-4 py-3 font-medium hidden md:table-cell">{t('table.employee')}</th>
-                  <th className="text-left px-4 py-3 font-medium hidden lg:table-cell">{t('table.items')}</th>
-                  <th className="text-left px-4 py-3 font-medium hidden sm:table-cell">{t('table.method')}</th>
+                  <th className="text-left px-4 py-3 font-medium hidden md:table-cell">
+                    {t('table.employee')}
+                  </th>
+                  <th className="text-left px-4 py-3 font-medium hidden lg:table-cell">
+                    {t('table.items')}
+                  </th>
+                  <th className="text-left px-4 py-3 font-medium hidden sm:table-cell">
+                    {t('table.method')}
+                  </th>
                   <th className="text-right px-4 py-3 font-medium">{t('table.amount')}</th>
-                  <th className="text-right px-4 py-3 font-medium hidden md:table-cell">{t('table.date')}</th>
+                  <th className="text-right px-4 py-3 font-medium hidden md:table-cell">
+                    {t('table.date')}
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -127,20 +140,41 @@ export default async function TransactionHistoryPage(
                   const employee = tx.employees as { name: string } | null
 
                   return (
-                    <tr key={tx.id} className="border-b border-gray-100 hover:bg-gray-50 last:border-0">
-                      <td className="px-4 py-3 font-mono text-xs text-gray-500">{tx.receipt_number}</td>
+                    <tr
+                      key={tx.id}
+                      className="border-b border-gray-100 hover:bg-gray-50 last:border-0"
+                    >
+                      <td className="px-4 py-3 font-mono text-xs text-gray-500">
+                        {tx.receipt_number}
+                      </td>
                       <td className="px-4 py-3">
-                        {client
-                          ? <Link href={`/crm/${client.id}`} className="font-medium text-gray-900 hover:text-blue-600">{client.name}</Link>
-                          : <span className="text-gray-400">{t('walkIn')}</span>}
+                        {client ? (
+                          <Link
+                            href={`/crm/${client.id}`}
+                            className="font-medium text-gray-900 hover:text-blue-600"
+                          >
+                            {client.name}
+                          </Link>
+                        ) : (
+                          <span className="text-gray-400">{t('walkIn')}</span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-gray-500 hidden md:table-cell">
                         {employee?.name ?? t('unassigned')}
                       </td>
                       <td className="px-4 py-3 hidden lg:table-cell">
-                        {firstName
-                          ? <span className="text-gray-900">{firstName}{extraCount > 0 && <span className="text-gray-400 ml-1">{t('moreItems', { count: extraCount })}</span>}</span>
-                          : <span className="text-gray-400">—</span>}
+                        {firstName ? (
+                          <span className="text-gray-900">
+                            {firstName}
+                            {extraCount > 0 && (
+                              <span className="text-gray-400 ml-1">
+                                {t('moreItems', { count: extraCount })}
+                              </span>
+                            )}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )}
                       </td>
                       <td className="px-4 py-3 hidden sm:table-cell">
                         <span className="capitalize text-gray-600">{tx.payment_method}</span>
@@ -150,7 +184,9 @@ export default async function TransactionHistoryPage(
                       </td>
                       <td className="px-4 py-3 text-right text-gray-500 hidden md:table-cell">
                         <div>{formatInBusinessTimezone(tx.created_at, business.timezone)}</div>
-                        <div className="text-xs">{formatInBusinessTimezone(tx.created_at, business.timezone, 'time')}</div>
+                        <div className="text-xs">
+                          {formatInBusinessTimezone(tx.created_at, business.timezone, 'time')}
+                        </div>
                       </td>
                     </tr>
                   )

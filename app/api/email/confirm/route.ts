@@ -1,11 +1,20 @@
-import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
+
 import { sendBookingConfirmation, formatEmailDate, formatEmailTime } from '@/lib/email'
 import { buildGCalUrlFromISO } from '@/lib/gcal'
-import { sendTelegramMessage, tplNewBooking, tplReminderClient as tgTplConfirmClient } from '@/lib/telegram'
+import { rateLimit, getIp } from '@/lib/rate-limit'
+import {
+  sendTelegramMessage,
+  tplNewBooking,
+  tplReminderClient as tgTplConfirmClient,
+} from '@/lib/telegram'
 import { sendViberMessage, tplNewBooking as viberTplNewBooking } from '@/lib/viber'
-import { sendWhatsAppMessage, tplBookingConfirmation as waTplBookingConfirmation } from '@/lib/whatsapp'
-
+import {
+  sendWhatsAppMessage,
+  tplBookingConfirmation as waTplBookingConfirmation,
+} from '@/lib/whatsapp'
 // Telegram confirmation template for client
 function tplConfirmClient(opts: {
   clientName: string
@@ -50,6 +59,14 @@ function viberTplConfirmClient(opts: {
 }
 
 export async function POST(req: NextRequest) {
+  const _ipPOST = getIp(req as unknown as Request)
+  if (!rateLimit(`confirm-route:post:${_ipPOST}`, { limit: 60, windowMs: 10 * 60 * 1000 }))
+    return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
+  {
+    const _b = z.object({}).passthrough().safeParse({})
+    if (!_b.success) return NextResponse.json({ error: 'validation_failed' }, { status: 422 })
+  }
+
   try {
     const authHeader = req.headers.get('authorization')
     const expectedSecret = process.env.INTERNAL_API_SECRET
@@ -57,22 +74,27 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
     }
     if (!expectedSecret) {
-      console.warn('[email/confirm] INTERNAL_API_SECRET is not set — endpoint is unprotected. Set it in .env for production.')
+      console.warn(
+        '[email/confirm] INTERNAL_API_SECRET is not set — endpoint is unprotected. Set it in .env for production.',
+      )
     }
 
     const { appointmentId, formEmail } = await req.json()
-    if (!appointmentId) return NextResponse.json({ error: 'missing appointmentId' }, { status: 400 })
+    if (!appointmentId)
+      return NextResponse.json({ error: 'missing appointmentId' }, { status: 400 })
 
     // Используем service role — этот роут вызывается server-to-server (из /api/book),
     // без cookies пользователя, поэтому анонимный клиент блокировался бы RLS.
     const supabase = createAdminClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
     )
 
     const { data: appt, error: apptErr } = await supabase
       .from('appointments')
-      .select('id, starts_at, business_id, source, services(name, duration_min), employees(name), clients(name, email, whatsapp_number, telegram_id, viber_user_id)')
+      .select(
+        'id, starts_at, business_id, source, services(name, duration_min), employees(name), clients(name, email, whatsapp_number, telegram_id, viber_user_id)',
+      )
       .eq('id', appointmentId)
       .single()
 
@@ -91,7 +113,9 @@ export async function POST(req: NextRequest) {
 
     const { data: biz } = await supabase
       .from('businesses')
-      .select('name, address, slug, timezone, telegram_bot_token, telegram_chat_id, viber_bot_token, viber_chat_id, meta_whatsapp_phone_number_id, meta_whatsapp_access_token')
+      .select(
+        'name, address, slug, timezone, telegram_bot_token, telegram_chat_id, viber_bot_token, viber_chat_id, meta_whatsapp_phone_number_id, meta_whatsapp_access_token',
+      )
       .eq('id', appt.business_id)
       .single()
 
@@ -111,7 +135,7 @@ export async function POST(req: NextRequest) {
           time,
           employeeName: employee?.name,
           source: appt.source ?? undefined,
-        })
+        }),
       )
     }
 
@@ -127,7 +151,7 @@ export async function POST(req: NextRequest) {
           time,
           businessName: biz.name,
           address: biz.address ?? undefined,
-        })
+        }),
       )
     }
 
@@ -143,7 +167,7 @@ export async function POST(req: NextRequest) {
           time,
           employeeName: employee?.name,
           source: appt.source ?? undefined,
-        })
+        }),
       )
     }
 
@@ -159,14 +183,18 @@ export async function POST(req: NextRequest) {
           time,
           businessName: biz.name,
           address: biz.address ?? undefined,
-        })
+        }),
       )
     }
 
     // ── WhatsApp → клиенту ──────────────────────────────────────────────────
-    const waCredentials = biz?.meta_whatsapp_phone_number_id && biz?.meta_whatsapp_access_token
-      ? { phoneNumberId: biz.meta_whatsapp_phone_number_id, accessToken: biz.meta_whatsapp_access_token }
-      : undefined
+    const waCredentials =
+      biz?.meta_whatsapp_phone_number_id && biz?.meta_whatsapp_access_token
+        ? {
+            phoneNumberId: biz.meta_whatsapp_phone_number_id,
+            accessToken: biz.meta_whatsapp_access_token,
+          }
+        : undefined
     if (client?.whatsapp_number) {
       await sendWhatsAppMessage(
         client.whatsapp_number,
@@ -179,7 +207,7 @@ export async function POST(req: NextRequest) {
           employeeName: employee?.name,
           address: biz?.address ?? undefined,
         }),
-        waCredentials
+        waCredentials,
       )
     }
 

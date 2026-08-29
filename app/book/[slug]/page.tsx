@@ -1,12 +1,14 @@
 export const dynamic = 'force-dynamic'
 
-import { createServiceClient } from '@/lib/supabase/service'
+import { Playfair_Display, Montserrat } from 'next/font/google'
+import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { PublicBookingForm } from './booking-form'
+
+import { createServiceClient } from '@/lib/supabase/service'
 import { getTelegramBotInfo } from '@/lib/telegram'
 import { getViberBotInfo } from '@/lib/viber'
-import Link from 'next/link'
-import { Playfair_Display, Montserrat } from 'next/font/google'
+
+import { PublicBookingForm } from './booking-form'
 
 const playfair = Playfair_Display({ subsets: ['latin'], weight: ['500', '600', '700'] })
 const montserrat = Montserrat({ subsets: ['latin'], weight: ['400', '500', '600'] })

@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
-import { Button } from '@/components/ui/button'
 import { Download } from 'lucide-react'
 import { useTranslations } from 'next-intl'
+import { useState } from 'react'
+
+import { Button } from '@/components/ui/button'
 
 export function InventoryExportButton() {
   const [loading, setLoading] = useState(false)

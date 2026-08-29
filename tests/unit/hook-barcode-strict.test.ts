@@ -1,5 +1,6 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+
 import { useBarcodeScanner } from '@/hooks/useBarcodeScanner'
 
 describe('useBarcodeScanner strict 100%', () => {
@@ -92,7 +93,9 @@ describe('useBarcodeScanner strict 100%', () => {
     const { unmount } = renderHook(() => useBarcodeScanner(onScan, true))
     fireKey('a')
     fireKey('b')
-    act(() => { vi.advanceTimersByTime(100) })
+    act(() => {
+      vi.advanceTimersByTime(100)
+    })
     fireKey('c')
     fireKey('d')
     fireKey('e')

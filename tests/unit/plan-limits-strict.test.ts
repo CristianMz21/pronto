@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { checkClientLimit, checkEmployeeLimit, checkBookingLimit, checkProductLimit, checkNotificationChannel } from '@/lib/plan-limits'
+
+import {
+  checkClientLimit,
+  checkEmployeeLimit,
+  checkBookingLimit,
+  checkProductLimit,
+  checkNotificationChannel,
+} from '@/lib/plan-limits'
 
 describe('plan-limits strict 100%', () => {
   it('checkClientLimit always allowed self-hosted', async () => {

@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { parseRRule, validateRRule, generateOccurrences, buildOccurrencesWithEnd } from '@/lib/recurring'
+
+import {
+  parseRRule,
+  validateRRule,
+  generateOccurrences,
+  buildOccurrencesWithEnd,
+} from '@/lib/recurring'
 
 describe('recurring RRule', () => {
   const dtstart = new Date('2026-08-10T14:00:00.000Z') // Monday 10:00 America/Bogota is 15:00 UTC? but use UTC for test

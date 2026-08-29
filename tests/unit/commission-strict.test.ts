@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'vitest'
-import { calcCommission } from '@/lib/commission'
 import fc from 'fast-check'
+import { describe, it, expect } from 'vitest'
+
+import { calcCommission } from '@/lib/commission'
 
 describe('commission strict 100%', () => {
   it('fixed priority over rate', () => {
@@ -50,18 +51,27 @@ describe('commission strict 100%', () => {
     expect(calcCommission(1000, 50, 5).type).toBe('fixed')
   })
   it('property: amount never negative', () => {
-    fc.assert(fc.property(fc.double({ min: -1e6, max: 1e6, noNaN: true }), fc.double({ min: -100, max: 100, noNaN: true }), fc.double({ min: -100, max: 100, noNaN: true }), (amt, rate, fixed) => {
-      const r = calcCommission(amt, rate, fixed)
-      expect(r.amount).toBeGreaterThanOrEqual(0)
-      expect(['fixed','percentage',null]).toContain(r.type)
-    }))
+    fc.assert(
+      fc.property(
+        fc.double({ min: -1e6, max: 1e6, noNaN: true }),
+        fc.double({ min: -100, max: 100, noNaN: true }),
+        fc.double({ min: -100, max: 100, noNaN: true }),
+        (amt, rate, fixed) => {
+          const r = calcCommission(amt, rate, fixed)
+          expect(r.amount).toBeGreaterThanOrEqual(0)
+          expect(['fixed', 'percentage', null]).toContain(r.type)
+        },
+      ),
+    )
   })
   it('property: fixed branch rounding is 2 decimals', () => {
-    fc.assert(fc.property(fc.double({ min: 0.01, max: 1000, noNaN: true }), (fixed) => {
-      const r = calcCommission(100, null, fixed)
-      if (fixed > 0) {
-        expect(r.amount).toBe(Math.round(fixed*100)/100)
-      }
-    }))
+    fc.assert(
+      fc.property(fc.double({ min: 0.01, max: 1000, noNaN: true }), (fixed) => {
+        const r = calcCommission(100, null, fixed)
+        if (fixed > 0) {
+          expect(r.amount).toBe(Math.round(fixed * 100) / 100)
+        }
+      }),
+    )
   })
 })

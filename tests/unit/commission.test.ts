@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+
 import { calcCommission } from '@/lib/commission'
 
 describe('calcCommission — lib/commission.ts (043 trigger)', () => {

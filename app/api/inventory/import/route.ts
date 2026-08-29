@@ -1,23 +1,27 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { z } from 'zod'
 import DOMPurify from 'isomorphic-dompurify'
+import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
+
 import { rateLimit, getIp } from '@/lib/rate-limit'
+import { createClient } from '@/lib/supabase/server'
 
 const ImportRowSchema = z.object({
-  name:        z.string().max(200).optional(),
-  sku:        z.string().max(50).optional(),
-  barcode:    z.string().max(100).optional(),
-  category:   z.string().max(100).optional(),
-  unit:       z.string().max(20).optional(),
-  quantity:   z.string().max(20).optional(),
+  name: z.string().max(200).optional(),
+  sku: z.string().max(50).optional(),
+  barcode: z.string().max(100).optional(),
+  category: z.string().max(100).optional(),
+  unit: z.string().max(20).optional(),
+  quantity: z.string().max(20).optional(),
   cost_price: z.string().max(20).optional(),
   sell_price: z.string().max(20).optional(),
   description: z.string().max(1000).optional(),
 })
 const BodySchema = z.object({ rows: z.array(ImportRowSchema).max(500).optional() })
 
-const sanitize = (s: string, max = 500) => DOMPurify.sanitize(s ?? '', { ALLOWED_TAGS: [] }).trim().slice(0, max)
+const sanitize = (s: string, max = 500) =>
+  DOMPurify.sanitize(s ?? '', { ALLOWED_TAGS: [] })
+    .trim()
+    .slice(0, max)
 
 function parseNum(val: string | undefined): number | null {
   if (!val) return null
@@ -47,7 +51,10 @@ export async function POST(req: NextRequest) {
   }
 
   const supabase = await createClient()
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser()
   if (authError || !user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -70,20 +77,23 @@ export async function POST(req: NextRequest) {
   }
   const parsed = BodySchema.safeParse(rawBody)
   if (!parsed.success) {
-    return NextResponse.json({ error: 'validation_failed', details: parsed.error.flatten().fieldErrors }, { status: 422 })
+    return NextResponse.json(
+      { error: 'validation_failed', details: parsed.error.flatten().fieldErrors },
+      { status: 422 },
+    )
   }
   const rawRows = parsed.data.rows ?? []
 
   const sanitized = rawRows
     .map((row) => ({
-      name:        sanitize(String(row.name ?? ''), 200),
-      sku:         row.sku     ? sanitize(String(row.sku),     50) : '',
-      barcode:     row.barcode ? sanitize(String(row.barcode), 100) : '',
-      category:    row.category ? sanitize(String(row.category), 100) : '',
-      unit:        row.unit    ? sanitize(String(row.unit), 20) : 'pcs',
-      quantity:    String(row.quantity ?? '0'),
-      cost_price:  String(row.cost_price ?? ''),
-      sell_price:  String(row.sell_price ?? ''),
+      name: sanitize(String(row.name ?? ''), 200),
+      sku: row.sku ? sanitize(String(row.sku), 50) : '',
+      barcode: row.barcode ? sanitize(String(row.barcode), 100) : '',
+      category: row.category ? sanitize(String(row.category), 100) : '',
+      unit: row.unit ? sanitize(String(row.unit), 20) : 'pcs',
+      quantity: String(row.quantity ?? '0'),
+      cost_price: String(row.cost_price ?? ''),
+      sell_price: String(row.sell_price ?? ''),
       description: row.description ? sanitize(String(row.description), 1000) : '',
     }))
     .filter((r) => r.name.length > 0)
@@ -100,15 +110,13 @@ export async function POST(req: NextRequest) {
     .eq('business_id', business.id)
 
   const existingBarcodes = new Set(
-    (existing ?? []).filter((e) => e.barcode).map((e) => e.barcode as string)
+    (existing ?? []).filter((e) => e.barcode).map((e) => e.barcode as string),
   )
-  const existingSkus = new Set(
-    (existing ?? []).filter((e) => e.sku).map((e) => e.sku as string)
-  )
+  const existingSkus = new Set((existing ?? []).filter((e) => e.sku).map((e) => e.sku as string))
   const existingNames = new Set(
     (existing ?? [])
       .filter((e) => !e.barcode && !e.sku)
-      .map((e) => (e.name as string).toLowerCase().trim())
+      .map((e) => (e.name as string).toLowerCase().trim()),
   )
 
   let skippedDupes = 0
@@ -128,7 +136,7 @@ export async function POST(req: NextRequest) {
       continue
     }
     if (row.barcode) existingBarcodes.add(row.barcode)
-    if (row.sku)     existingSkus.add(row.sku)
+    if (row.sku) existingSkus.add(row.sku)
     if (!row.barcode && !row.sku) existingNames.add(row.name.toLowerCase().trim())
     toInsert.push(row)
   }
@@ -138,16 +146,16 @@ export async function POST(req: NextRequest) {
   }
 
   const rows = toInsert.map((r) => ({
-    business_id:         business.id,
-    name:                r.name,
-    sku:                 r.sku  || null,
-    barcode:             r.barcode || null,
-    category:            r.category || null,
-    unit:                r.unit || 'pcs',
-    quantity:            parseQty(r.quantity),
-    cost_price:          parseMoney(r.cost_price),
-    sell_price:          parseMoney(r.sell_price),
-    description:         r.description || null,
+    business_id: business.id,
+    name: r.name,
+    sku: r.sku || null,
+    barcode: r.barcode || null,
+    category: r.category || null,
+    unit: r.unit || 'pcs',
+    quantity: parseQty(r.quantity),
+    cost_price: parseMoney(r.cost_price),
+    sell_price: parseMoney(r.sell_price),
+    description: r.description || null,
     low_stock_threshold: 5,
   }))
 
@@ -162,7 +170,7 @@ export async function POST(req: NextRequest) {
   }
 
   const imported = inserted?.length ?? 0
-  const skipped  = skippedEmpty + skippedDupes + (toInsert.length - imported)
+  const skipped = skippedEmpty + skippedDupes + (toInsert.length - imported)
 
   return NextResponse.json({ imported, skipped, errors: [] })
 }

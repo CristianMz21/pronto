@@ -1,8 +1,9 @@
 'use client'
 
+import { Globe } from 'lucide-react'
 import { useLocale } from 'next-intl'
 import { useState } from 'react'
-import { Globe } from 'lucide-react'
+
 import { cn } from '@/lib/utils'
 
 const LOCALES = [
@@ -37,9 +38,7 @@ export function LangSwitcher() {
           disabled={loading}
           className={cn(
             'text-xs font-medium px-1.5 py-0.5 rounded transition-colors',
-            code === locale
-              ? 'text-white bg-white/15'
-              : 'text-white/40 hover:text-white/70'
+            code === locale ? 'text-white bg-white/15' : 'text-white/40 hover:text-white/70',
           )}
         >
           {label}

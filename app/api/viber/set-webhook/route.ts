@@ -9,15 +9,28 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
+
+import { rateLimit, getIp } from '@/lib/rate-limit'
 import { createClient } from '@/lib/supabase/server'
 import { setViberWebhook, getViberBotInfo } from '@/lib/viber'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? ''
 
 export async function POST(req: NextRequest) {
+  const _ipPOST = getIp(req as unknown as Request)
+  if (!rateLimit(`set-webhook-route:post:${_ipPOST}`, { limit: 60, windowMs: 10 * 60 * 1000 }))
+    return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
+  {
+    const _b = z.object({}).passthrough().safeParse({})
+    if (!_b.success) return NextResponse.json({ error: 'validation_failed' }, { status: 422 })
+  }
+
   try {
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 
     const { data: biz } = await supabase
@@ -29,14 +42,17 @@ export async function POST(req: NextRequest) {
     if (!biz?.viber_bot_token) {
       return NextResponse.json(
         { error: 'No bot token saved. Save it in Settings first.' },
-        { status: 400 }
+        { status: 400 },
       )
     }
 
     if (!APP_URL || APP_URL.includes('localhost')) {
       return NextResponse.json(
-        { error: 'Viber webhooks require a public HTTPS URL. Set NEXT_PUBLIC_APP_URL to your deployed domain.' },
-        { status: 400 }
+        {
+          error:
+            'Viber webhooks require a public HTTPS URL. Set NEXT_PUBLIC_APP_URL to your deployed domain.',
+        },
+        { status: 400 },
       )
     }
 
@@ -45,7 +61,7 @@ export async function POST(req: NextRequest) {
     if (!botInfo.ok) {
       return NextResponse.json(
         { error: 'Invalid bot token. Check it at partners.viber.com.' },
-        { status: 400 }
+        { status: 400 },
       )
     }
 
@@ -56,7 +72,7 @@ export async function POST(req: NextRequest) {
     if (!result.ok) {
       return NextResponse.json(
         { error: result.description ?? 'Failed to set webhook' },
-        { status: 400 }
+        { status: 400 },
       )
     }
 

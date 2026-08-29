@@ -29,7 +29,10 @@ export function comboApplies(combo: ServiceCombo, cartServiceIds: string[]): boo
   return combo.service_ids.every((sid) => cartServiceIds.includes(sid))
 }
 
-export function calculateComboDiscount(combo: ServiceCombo, cartServices: { id: string; price: number }[]): number {
+export function calculateComboDiscount(
+  combo: ServiceCombo,
+  cartServices: { id: string; price: number }[],
+): number {
   // Discount = sum of individual prices - combo price (if positive)
   const included = cartServices.filter((s) => combo.service_ids.includes(s.id))
   const sum = included.reduce((acc, s) => acc + Number(s.price), 0)
@@ -37,7 +40,10 @@ export function calculateComboDiscount(combo: ServiceCombo, cartServices: { id: 
   return sum - combo.price
 }
 
-export function findBestCombo(combos: ServiceCombo[], cartServices: { id: string; price: number }[]): { combo: ServiceCombo | null; discount: number } {
+export function findBestCombo(
+  combos: ServiceCombo[],
+  cartServices: { id: string; price: number }[],
+): { combo: ServiceCombo | null; discount: number } {
   let best: ServiceCombo | null = null
   let bestDiscount = 0
   const cartIds = cartServices.map((s) => s.id)
@@ -53,12 +59,27 @@ export function findBestCombo(combos: ServiceCombo[], cartServices: { id: string
 }
 
 export async function listActiveCombos(
-  supabase: { from: (t: string) => { select: (c: string) => { eq: (a:string,b:unknown)=> { eq:(c:string,d:unknown)=> unknown } } } },
-  businessId: string
+  supabase: {
+    from: (t: string) => {
+      select: (c: string) => {
+        eq: (a: string, b: unknown) => { eq: (c: string, d: unknown) => unknown }
+      }
+    }
+  },
+  businessId: string,
 ): Promise<ServiceCombo[]> {
-  const { data, error } = await (supabase.from('service_combos') as unknown as {
-    select:(c:string)=>{ eq:(a:string,b:unknown)=>Promise<{data:ServiceCombo[]|null;error:unknown}> }
-  }).select('*').eq('business_id', businessId) as unknown as Promise<{data:ServiceCombo[]|null;error:unknown}>
+  const { data, error } = await ((
+    supabase.from('service_combos') as unknown as {
+      select: (c: string) => {
+        eq: (a: string, b: unknown) => Promise<{ data: ServiceCombo[] | null; error: unknown }>
+      }
+    }
+  )
+    .select('*')
+    .eq('business_id', businessId) as unknown as Promise<{
+    data: ServiceCombo[] | null
+    error: unknown
+  }>)
   if (error || !data) return []
   return (data as ServiceCombo[]).filter((c) => c.is_active)
 }

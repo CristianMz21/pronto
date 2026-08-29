@@ -1,6 +1,7 @@
+import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { createClient as createAdminClient } from '@supabase/supabase-js'
+
 import { rateLimit, getIp } from '@/lib/rate-limit'
 import { getSupabaseUrl } from '@/lib/supabase/getUrl'
 
@@ -39,7 +40,10 @@ async function verifyTurnstile(token: string | null | undefined): Promise<boolea
 export async function POST(req: NextRequest) {
   const ip = getIp(req)
   if (!rateLimit(`apply:${ip}`, { limit: 5, windowMs: 60 * 60 * 1000 })) {
-    return NextResponse.json({ error: 'rate_limited', message: 'Demasiadas solicitudes, intenta en una hora' }, { status: 429 })
+    return NextResponse.json(
+      { error: 'rate_limited', message: 'Demasiadas solicitudes, intenta en una hora' },
+      { status: 429 },
+    )
   }
 
   let body: unknown
@@ -51,36 +55,59 @@ export async function POST(req: NextRequest) {
 
   const parsed = ApplySchema.safeParse(body)
   if (!parsed.success) {
-    return NextResponse.json({ error: 'validation_failed', details: parsed.error.flatten().fieldErrors }, { status: 422 })
+    return NextResponse.json(
+      { error: 'validation_failed', details: parsed.error.flatten().fieldErrors },
+      { status: 422 },
+    )
   }
 
   const { turnstile_token, ...data } = parsed.data
 
   const turnstileOk = await verifyTurnstile(turnstile_token)
   if (!turnstileOk) {
-    return NextResponse.json({ error: 'turnstile_failed', message: 'Verificación CAPTCHA fallida' }, { status: 400 })
+    return NextResponse.json(
+      { error: 'turnstile_failed', message: 'Verificación CAPTCHA fallida' },
+      { status: 400 },
+    )
   }
 
   // Use service_role to bypass RLS (public form must work for anon)
   const supabase = createAdminClient(getSupabaseUrl(), process.env.SUPABASE_SERVICE_ROLE_KEY!)
-  const { data: existing } = await supabase.from('barbershop_applications').select('id, status').eq('email', data.email).maybeSingle()
+  const { data: existing } = await supabase
+    .from('barbershop_applications')
+    .select('id, status')
+    .eq('email', data.email)
+    .maybeSingle()
   if (existing && (existing as { status: string }).status === 'pending') {
-    return NextResponse.json({ error: 'already_pending', message: 'Ya tienes una solicitud pendiente' }, { status: 409 })
+    return NextResponse.json(
+      { error: 'already_pending', message: 'Ya tienes una solicitud pendiente' },
+      { status: 409 },
+    )
   }
 
-  const { data: inserted, error } = await supabase.from('barbershop_applications').insert({
-    business_name: data.business_name,
-    owner_name: data.owner_name,
-    email: data.email,
-    phone: data.phone ?? null,
-    nit: data.nit ?? null,
-    city: data.city ?? null,
-    requested_plan: data.requested_plan ?? null,
-    status: 'pending',
-  }).select('id').single()
+  const { data: inserted, error } = await supabase
+    .from('barbershop_applications')
+    .insert({
+      business_name: data.business_name,
+      owner_name: data.owner_name,
+      email: data.email,
+      phone: data.phone ?? null,
+      nit: data.nit ?? null,
+      city: data.city ?? null,
+      requested_plan: data.requested_plan ?? null,
+      status: 'pending',
+    })
+    .select('id')
+    .single()
   if (error || !inserted) {
-    return NextResponse.json({ error: 'insert_failed', message: error?.message ?? 'Error' }, { status: 500 })
+    return NextResponse.json(
+      { error: 'insert_failed', message: error?.message ?? 'Error' },
+      { status: 500 },
+    )
   }
 
-  return NextResponse.json({ id: (inserted as { id: string }).id, message: 'Solicitud recibida, te contactaremos pronto' }, { status: 201 })
+  return NextResponse.json(
+    { id: (inserted as { id: string }).id, message: 'Solicitud recibida, te contactaremos pronto' },
+    { status: 201 },
+  )
 }

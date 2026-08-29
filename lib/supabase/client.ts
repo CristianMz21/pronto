@@ -1,4 +1,5 @@
 import { createBrowserClient } from '@supabase/ssr'
+
 import type { Database } from './database.types'
 
 function getCookieName(): string {
@@ -20,6 +21,6 @@ export function createClient() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookieOptions: { name: getCookieName() },
-    }
+    },
   )
 }

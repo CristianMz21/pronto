@@ -1,5 +1,5 @@
-import Link from 'next/link'
 import { Mail } from 'lucide-react'
+import Link from 'next/link'
 import { getTranslations } from 'next-intl/server'
 
 export default async function CheckEmailPage() {
@@ -15,7 +15,9 @@ export default async function CheckEmailPage() {
         <p className="text-sm text-gray-500 mb-6">{t('body')}</p>
         <p className="text-xs text-gray-400">
           {t('noEmail')}{' '}
-          <Link href="/register" className="text-blue-600 hover:underline">{t('registerAgain')}</Link>
+          <Link href="/register" className="text-blue-600 hover:underline">
+            {t('registerAgain')}
+          </Link>
         </p>
       </div>
     </div>

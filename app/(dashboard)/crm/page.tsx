@@ -1,4 +1,12 @@
-import { db } from '@/lib/db'
+import { eq, and, or, ilike, desc, sql, inArray } from 'drizzle-orm'
+import { Plus, Search, Phone, Mail } from 'lucide-react'
+import Link from 'next/link'
+import { getTranslations } from 'next-intl/server'
+
+import { CrmImportButton } from '@/components/clients/crm-import-button'
+import { Header } from '@/components/layout/header'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import {
   businesses,
   employees,
@@ -6,16 +14,9 @@ import {
   locations,
   transactions,
 } from '@/drizzle/schema'
-import { eq, and, or, ilike, desc, sql, inArray } from 'drizzle-orm'
-import { Header } from '@/components/layout/header'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { CrmImportButton } from '@/components/clients/crm-import-button'
-import { formatCurrency, formatInBusinessTimezone } from '@/lib/utils'
-import { Plus, Search, Phone, Mail } from 'lucide-react'
-import Link from 'next/link'
-import { getTranslations } from 'next-intl/server'
 import { getAuthUser } from '@/lib/auth-user'
+import { db } from '@/lib/db'
+import { formatCurrency, formatInBusinessTimezone } from '@/lib/utils'
 
 function inDaysFromNow(dateStr: string, days: number): boolean {
   if (!dateStr) return false

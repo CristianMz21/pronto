@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { DatePicker } from '@/components/ui/date-picker'
 import { Search } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { useState } from 'react'
+
+import { DatePicker } from '@/components/ui/date-picker'
 
 interface Props {
   from: string
@@ -71,7 +72,9 @@ export function HistoryFilters({ from, to, method, client, methods }: Props) {
           className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           {methods.map((m) => (
-            <option key={m.value} value={m.value}>{m.label}</option>
+            <option key={m.value} value={m.value}>
+              {m.label}
+            </option>
           ))}
         </select>
       </div>

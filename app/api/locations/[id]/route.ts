@@ -1,9 +1,10 @@
-import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { z } from 'zod'
 import DOMPurify from 'isomorphic-dompurify'
-import { rateLimit, getIp } from '@/lib/rate-limit'
+import { NextResponse } from 'next/server'
+import { z } from 'zod'
+
 import { formatLocationSlug } from '@/lib/locations'
+import { rateLimit, getIp } from '@/lib/rate-limit'
+import { createClient } from '@/lib/supabase/server'
 
 function sanitize(s: string): string {
   return DOMPurify.sanitize(s, { ALLOWED_TAGS: [] }).trim()
@@ -19,9 +20,13 @@ const UpdateSchema = z.object({
 
 async function resolveBusinessId(
   supabase: Awaited<ReturnType<typeof createClient>>,
-  userId: string
+  userId: string,
 ): Promise<string | null> {
-  const { data: owned } = await supabase.from('businesses').select('id').eq('owner_id', userId).maybeSingle()
+  const { data: owned } = await supabase
+    .from('businesses')
+    .select('id')
+    .eq('owner_id', userId)
+    .maybeSingle()
   if (owned) return (owned as { id: string }).id
   const { data: emp } = await supabase
     .from('employees')
@@ -34,10 +39,7 @@ async function resolveBusinessId(
   return null
 }
 
-export async function PATCH(
-  request: Request,
-  props: { params: Promise<{ id: string }> }
-) {
+export async function PATCH(request: Request, props: { params: Promise<{ id: string }> }) {
   const ip = getIp(request)
   if (!rateLimit(`locations-update:${ip}`, { limit: 60, windowMs: 10 * 60 * 1000 })) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
@@ -67,7 +69,7 @@ export async function PATCH(
   if (!parsed.success) {
     return NextResponse.json(
       { error: 'validation_failed', details: parsed.error.flatten().fieldErrors },
-      { status: 422 }
+      { status: 422 },
     )
   }
 
@@ -76,21 +78,33 @@ export async function PATCH(
   if (parsed.data.slug !== undefined) {
     const rawSlug = parsed.data.slug ?? parsed.data.name ?? ''
     const slug = formatLocationSlug(String(rawSlug))
-    if (!slug) return NextResponse.json({ error: 'validation_failed', details: { slug: ['invalid slug'] } }, { status: 422 })
+    if (!slug)
+      return NextResponse.json(
+        { error: 'validation_failed', details: { slug: ['invalid slug'] } },
+        { status: 422 },
+      )
     if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
       return NextResponse.json(
-        { error: 'validation_failed', details: { slug: ['slug must be lowercase alphanumeric with hyphens'] } },
-        { status: 422 }
+        {
+          error: 'validation_failed',
+          details: { slug: ['slug must be lowercase alphanumeric with hyphens'] },
+        },
+        { status: 422 },
       )
     }
     updates.slug = slug
   }
-  if (parsed.data.address !== undefined) updates.address = parsed.data.address ? sanitize(parsed.data.address) : null
-  if (parsed.data.phone !== undefined) updates.phone = parsed.data.phone ? sanitize(parsed.data.phone) : null
+  if (parsed.data.address !== undefined)
+    updates.address = parsed.data.address ? sanitize(parsed.data.address) : null
+  if (parsed.data.phone !== undefined)
+    updates.phone = parsed.data.phone ? sanitize(parsed.data.phone) : null
   if (parsed.data.is_active !== undefined) updates.is_active = parsed.data.is_active
 
   if (Object.keys(updates).length === 0) {
-    return NextResponse.json({ error: 'validation_failed', message: 'No fields to update' }, { status: 422 })
+    return NextResponse.json(
+      { error: 'validation_failed', message: 'No fields to update' },
+      { status: 422 },
+    )
   }
 
   const { data, error } = await supabase
@@ -105,7 +119,10 @@ export async function PATCH(
     const msg = String(error.message ?? '')
     const code = (error as { code?: string }).code ?? ''
     if (code === '23505' || msg.includes('duplicate') || msg.includes('unique')) {
-      return NextResponse.json({ error: 'slug_taken', message: 'Ya existe una sucursal con ese slug' }, { status: 409 })
+      return NextResponse.json(
+        { error: 'slug_taken', message: 'Ya existe una sucursal con ese slug' },
+        { status: 409 },
+      )
     }
     if (msg.includes('not found') || code === 'PGRST116') {
       return NextResponse.json({ error: 'not_found' }, { status: 404 })
@@ -116,10 +133,7 @@ export async function PATCH(
   return NextResponse.json(data)
 }
 
-export async function DELETE(
-  request: Request,
-  props: { params: Promise<{ id: string }> }
-) {
+export async function DELETE(request: Request, props: { params: Promise<{ id: string }> }) {
   const ip = getIp(request)
   if (!rateLimit(`locations-delete:${ip}`, { limit: 30, windowMs: 10 * 60 * 1000 })) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
@@ -177,10 +191,7 @@ export async function DELETE(
   return NextResponse.json({ ok: true, soft_deleted: true })
 }
 
-export async function GET(
-  request: Request,
-  props: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: Request, props: { params: Promise<{ id: string }> }) {
   const supabase = await createClient()
   const {
     data: { user },

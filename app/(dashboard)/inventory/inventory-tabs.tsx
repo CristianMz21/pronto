@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
 import { useTranslations } from 'next-intl'
+import { useState } from 'react'
+
 import { InventoryList } from './inventory-list'
 import { SalesTab } from './sales-tab'
 

@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { UnitSelect } from '../unit-select'
-import { CategoryCombobox } from '../category-combobox'
+import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
+import { useState } from 'react'
+
+import { CategoryCombobox } from '../category-combobox'
+import { UnitSelect } from '../unit-select'
 
 interface Props {
   categories: string[]
@@ -77,7 +78,9 @@ export function NewInventoryForm({ categories }: Props) {
           {skuError && <p className="mt-1 text-xs text-red-500">{skuError}</p>}
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">{t('fields.category')}</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            {t('fields.category')}
+          </label>
           <CategoryCombobox
             value={category}
             onChange={setCategory}
@@ -93,7 +96,9 @@ export function NewInventoryForm({ categories }: Props) {
           <UnitSelect value={unit} onChange={setUnit} />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">{t('fields.quantity')}</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            {t('fields.quantity')}
+          </label>
           <input
             type="number"
             name="quantity"
@@ -106,7 +111,9 @@ export function NewInventoryForm({ categories }: Props) {
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">{t('fields.costPrice')}</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            {t('fields.costPrice')}
+          </label>
           <input
             type="number"
             name="cost_price"
@@ -117,7 +124,9 @@ export function NewInventoryForm({ categories }: Props) {
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">{t('fields.sellPrice')}</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            {t('fields.sellPrice')}
+          </label>
           <input
             type="number"
             name="sell_price"
@@ -130,7 +139,9 @@ export function NewInventoryForm({ categories }: Props) {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">{t('fields.lowStockThreshold')}</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          {t('fields.lowStockThreshold')}
+        </label>
         <input
           type="number"
           name="low_stock_threshold"

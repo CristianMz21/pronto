@@ -12,11 +12,21 @@
  *  /help                → command list
  */
 
-import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { sendViberMessage } from '@/lib/viber'
+import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 
+import { rateLimit, getIp } from '@/lib/rate-limit'
+import { sendViberMessage } from '@/lib/viber'
 export async function POST(req: NextRequest) {
+  const _ipPOST = getIp(req as unknown as Request)
+  if (!rateLimit(`webhook-route:post:${_ipPOST}`, { limit: 60, windowMs: 10 * 60 * 1000 }))
+    return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
+  {
+    const _b = z.object({}).passthrough().safeParse({})
+    if (!_b.success) return NextResponse.json({ error: 'validation_failed' }, { status: 422 })
+  }
+
   try {
     const businessId = req.nextUrl.searchParams.get('bid')
     if (!businessId) return NextResponse.json({ status: 0 })
@@ -26,7 +36,10 @@ export async function POST(req: NextRequest) {
 
     if (!event) return NextResponse.json({ status: 0 })
 
-    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    )
 
     const { data: biz } = await supabase
       .from('businesses')
@@ -56,10 +69,7 @@ export async function POST(req: NextRequest) {
             .maybeSingle()
 
           if (client) {
-            await supabase
-              .from('clients')
-              .update({ viber_user_id: senderId })
-              .eq('id', clientId)
+            await supabase.from('clients').update({ viber_user_id: senderId }).eq('id', clientId)
 
             await sendViberMessage(
               biz.viber_bot_token,
@@ -71,13 +81,13 @@ export async function POST(req: NextRequest) {
                 `You'll receive appointment reminders here automatically.`,
                 ``,
                 `See you soon! 👋`,
-              ].join('\n')
+              ].join('\n'),
             )
           } else {
             await sendViberMessage(
               biz.viber_bot_token,
               senderId,
-              `❌ Link not found. Please use the link from your booking confirmation.`
+              `❌ Link not found. Please use the link from your booking confirmation.`,
             )
           }
           return NextResponse.json({ status: 0 })
@@ -86,10 +96,7 @@ export async function POST(req: NextRequest) {
 
       // Owner connect — first time (no viber_chat_id yet)
       if (!biz.viber_chat_id && senderId) {
-        await supabase
-          .from('businesses')
-          .update({ viber_chat_id: senderId })
-          .eq('id', businessId)
+        await supabase.from('businesses').update({ viber_chat_id: senderId }).eq('id', businessId)
 
         await sendViberMessage(
           biz.viber_bot_token,
@@ -106,7 +113,7 @@ export async function POST(req: NextRequest) {
             `• ✅ Visit completions`,
             ``,
             `Send /help to see available commands.`,
-          ].join('\n')
+          ].join('\n'),
         )
       }
       return NextResponse.json({ status: 0 })
@@ -118,15 +125,12 @@ export async function POST(req: NextRequest) {
 
       // /start — owner re-connect
       if (text.startsWith('/start') && senderId) {
-        await supabase
-          .from('businesses')
-          .update({ viber_chat_id: senderId })
-          .eq('id', businessId)
+        await supabase.from('businesses').update({ viber_chat_id: senderId }).eq('id', businessId)
 
         await sendViberMessage(
           biz.viber_bot_token,
           senderId,
-          `✅ Connected to ${biz.name}! You will receive notifications here.`
+          `✅ Connected to ${biz.name}! You will receive notifications here.`,
         )
         return NextResponse.json({ status: 0 })
       }
@@ -143,21 +147,18 @@ export async function POST(req: NextRequest) {
             .maybeSingle()
 
           if (client) {
-            await supabase
-              .from('clients')
-              .update({ viber_user_id: senderId })
-              .eq('id', client.id)
+            await supabase.from('clients').update({ viber_user_id: senderId }).eq('id', client.id)
 
             await sendViberMessage(
               biz.viber_bot_token,
               senderId,
-              `✅ Hi ${client.name}! Your Viber is now linked. You'll receive appointment reminders here.`
+              `✅ Hi ${client.name}! Your Viber is now linked. You'll receive appointment reminders here.`,
             )
           } else {
             await sendViberMessage(
               biz.viber_bot_token,
               senderId,
-              `❌ Phone number not found. Make sure it matches the number you used when booking.`
+              `❌ Phone number not found. Make sure it matches the number you used when booking.`,
             )
           }
         }
@@ -183,19 +184,25 @@ export async function POST(req: NextRequest) {
         } else {
           const lines = appts.map((a) => {
             const time = new Date(a.starts_at).toLocaleTimeString('en-US', {
-              hour: '2-digit', minute: '2-digit', hour12: false,
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: false,
             })
             const client = (a.clients as unknown as { name: string } | null)?.name ?? 'Walk-in'
             const service = (a.services as unknown as { name: string } | null)?.name ?? '—'
             const statusEmoji: Record<string, string> = {
-              confirmed: '🔵', pending: '🟡', completed: '🟢', cancelled: '⛔', no_show: '❌',
+              confirmed: '🔵',
+              pending: '🟡',
+              completed: '🟢',
+              cancelled: '⛔',
+              no_show: '❌',
             }
             return `${statusEmoji[a.status] ?? '⚪'} ${time} — ${client} (${service})`
           })
           await sendViberMessage(
             biz.viber_bot_token,
             senderId,
-            `📅 Today's appointments (${appts.length})\n\n${lines.join('\n')}`
+            `📅 Today's appointments (${appts.length})\n\n${lines.join('\n')}`,
           )
         }
         return NextResponse.json({ status: 0 })
@@ -213,14 +220,18 @@ export async function POST(req: NextRequest) {
             `/link {phone} — link your Viber to your client profile`,
             `  Example: /link +79001234567`,
             `/help — this message`,
-          ].join('\n')
+          ].join('\n'),
         )
         return NextResponse.json({ status: 0 })
       }
 
       // Fallback
       if (senderId) {
-        await sendViberMessage(biz.viber_bot_token, senderId, 'Send /help to see available commands.')
+        await sendViberMessage(
+          biz.viber_bot_token,
+          senderId,
+          'Send /help to see available commands.',
+        )
       }
     }
 

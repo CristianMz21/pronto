@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NextRequest } from 'next/server'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }))
 vi.mock('@/lib/supabase/service', () => ({ createServiceClient: vi.fn() }))
@@ -14,7 +14,10 @@ const CLIENT_ID = '33333333-3333-4333-a333-333333333333'
 const USER_ID = '44444444-4444-4444-a444-444444444444'
 
 // Helper pure logic for allow_guest_bookings (057)
-function canGuestBook(allowGuest: boolean | null | undefined, user: { id: string } | null): boolean {
+function canGuestBook(
+  allowGuest: boolean | null | undefined,
+  user: { id: string } | null,
+): boolean {
   const allow = allowGuest ?? true
   if (!allow && !user) return false
   return true
@@ -24,11 +27,37 @@ function makeChain(result: unknown) {
   const c: Record<string, unknown> = {}
   const p = Promise.resolve(result as { data: unknown; error: unknown })
   // thenable
-  ;(c as unknown as { then: unknown }).then = (p.then.bind(p) as unknown)
-  ;(c as unknown as { catch: unknown }).catch = (p.catch.bind(p) as unknown)
-  if ((p as unknown as { finally: unknown }).finally) (c as unknown as { finally: unknown }).finally = (p as unknown as { finally: unknown }).finally.bind(p)
-  const methods = ['select','insert','update','upsert','delete','eq','neq','or','in','single','maybeSingle','order','limit','range','ilike','gte','lte','gt','lt','rpc']
-  methods.forEach((m) => { (c as Record<string, unknown>)[m] = vi.fn((..._args: unknown[]) => c) })
+  ;(c as unknown as { then: unknown }).then = p.then.bind(p) as unknown
+  ;(c as unknown as { catch: unknown }).catch = p.catch.bind(p) as unknown
+  if ((p as unknown as { finally: unknown }).finally)
+    (c as unknown as { finally: unknown }).finally = (
+      p as unknown as { finally: unknown }
+    ).finally.bind(p)
+  const methods = [
+    'select',
+    'insert',
+    'update',
+    'upsert',
+    'delete',
+    'eq',
+    'neq',
+    'or',
+    'in',
+    'single',
+    'maybeSingle',
+    'order',
+    'limit',
+    'range',
+    'ilike',
+    'gte',
+    'lte',
+    'gt',
+    'lt',
+    'rpc',
+  ]
+  methods.forEach((m) => {
+    ;(c as Record<string, unknown>)[m] = vi.fn((..._args: unknown[]) => c)
+  })
   return c
 }
 
@@ -62,21 +91,35 @@ describe('business-guest-config — pure logic (057)', () => {
 })
 
 describe('business-guest-config — /api/book guest guard (057)', () => {
-  beforeEach(() => { vi.clearAllMocks() })
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
 
-  function setup(opts: {
-    user?: { id: string; email?: string } | null,
-    biz?: Record<string, unknown> | null,
-    service?: Record<string, unknown> | null,
-    businessHours?: unknown[],
-    clientLinked?: unknown | null,
-    clientByContact?: unknown[] | null,
-    insertClient?: { data: unknown; error: unknown } | null,
-    appointmentInsert?: { data: unknown; error: unknown } | null,
-  } = {}) {
+  function setup(
+    opts: {
+      user?: { id: string; email?: string } | null
+      biz?: Record<string, unknown> | null
+      service?: Record<string, unknown> | null
+      businessHours?: unknown[]
+      clientLinked?: unknown | null
+      clientByContact?: unknown[] | null
+      insertClient?: { data: unknown; error: unknown } | null
+      appointmentInsert?: { data: unknown; error: unknown } | null
+    } = {},
+  ) {
     const user = opts.user !== undefined ? opts.user : null
-    const biz = opts.biz !== undefined ? opts.biz : { id: BIZ_ID, timezone: 'UTC', min_advance_minutes: 30, booking_lead_time_enabled: true, allow_guest_bookings: true }
-    const service = opts.service !== undefined ? opts.service : { id: SVC_ID, duration_min: 30, price: 100 }
+    const biz =
+      opts.biz !== undefined
+        ? opts.biz
+        : {
+            id: BIZ_ID,
+            timezone: 'UTC',
+            min_advance_minutes: 30,
+            booking_lead_time_enabled: true,
+            allow_guest_bookings: true,
+          }
+    const service =
+      opts.service !== undefined ? opts.service : { id: SVC_ID, duration_min: 30, price: 100 }
     const businessHours = opts.businessHours !== undefined ? opts.businessHours : []
 
     // Auth client (getUser)
@@ -89,10 +132,24 @@ describe('business-guest-config — /api/book guest guard (057)', () => {
     const bizChain = makeChain({ data: biz, error: null })
     const hoursChain = makeChain({ data: businessHours, error: null })
     // For clients
-    const clientLinkedChain = makeChain({ data: opts.clientLinked !== undefined ? opts.clientLinked : null, error: null })
-    const clientByContactChain = makeChain({ data: opts.clientByContact !== undefined ? opts.clientByContact : [], error: null })
-    const insertChain = makeChain(opts.insertClient !== undefined ? opts.insertClient : { data: { id: CLIENT_ID }, error: null })
-    const apptChain = makeChain(opts.appointmentInsert !== undefined ? opts.appointmentInsert : { data: { id: 'appt-1' }, error: null })
+    const clientLinkedChain = makeChain({
+      data: opts.clientLinked !== undefined ? opts.clientLinked : null,
+      error: null,
+    })
+    const clientByContactChain = makeChain({
+      data: opts.clientByContact !== undefined ? opts.clientByContact : [],
+      error: null,
+    })
+    const insertChain = makeChain(
+      opts.insertClient !== undefined
+        ? opts.insertClient
+        : { data: { id: CLIENT_ID }, error: null },
+    )
+    const apptChain = makeChain(
+      opts.appointmentInsert !== undefined
+        ? opts.appointmentInsert
+        : { data: { id: 'appt-1' }, error: null },
+    )
 
     let callIdx = 0
     const from = vi.fn((table: string) => {
@@ -130,7 +187,16 @@ describe('business-guest-config — /api/book guest guard (057)', () => {
   }
 
   it('guest allowed when allow_guest_bookings true and no user => 200 path (not 401)', async () => {
-    setup({ user: null, biz: { id: BIZ_ID, timezone: 'UTC', min_advance_minutes: 0, booking_lead_time_enabled: false, allow_guest_bookings: true } })
+    setup({
+      user: null,
+      biz: {
+        id: BIZ_ID,
+        timezone: 'UTC',
+        min_advance_minutes: 0,
+        booking_lead_time_enabled: false,
+        allow_guest_bookings: true,
+      },
+    })
     // Need to adjust from mock to allow proper client flow: we default to insert success
     // The POST will try to insert client and appointment; with our mock it should succeed and return 200
     // However our simplified chain may not correctly handle the clientByContact -> empty -> insert -> appointment.
@@ -141,7 +207,16 @@ describe('business-guest-config — /api/book guest guard (057)', () => {
   })
 
   it('guest blocked when allow_guest_bookings false and no user => 401 guest_not_allowed', async () => {
-    setup({ user: null, biz: { id: BIZ_ID, timezone: 'UTC', min_advance_minutes: 0, booking_lead_time_enabled: false, allow_guest_bookings: false } })
+    setup({
+      user: null,
+      biz: {
+        id: BIZ_ID,
+        timezone: 'UTC',
+        min_advance_minutes: 0,
+        booking_lead_time_enabled: false,
+        allow_guest_bookings: false,
+      },
+    })
     const res = await POST(bookingReq(baseBooking))
     expect(res.status).toBe(401)
     const json = await res.json()
@@ -152,7 +227,13 @@ describe('business-guest-config — /api/book guest guard (057)', () => {
   it('authenticated allowed when allow_guest_bookings false => not 401', async () => {
     setup({
       user: { id: USER_ID, email: 'test@example.com' },
-      biz: { id: BIZ_ID, timezone: 'UTC', min_advance_minutes: 0, booking_lead_time_enabled: false, allow_guest_bookings: false },
+      biz: {
+        id: BIZ_ID,
+        timezone: 'UTC',
+        min_advance_minutes: 0,
+        booking_lead_time_enabled: false,
+        allow_guest_bookings: false,
+      },
       clientLinked: null,
       clientByContact: [],
       insertClient: { data: { id: CLIENT_ID }, error: null },
@@ -162,25 +243,55 @@ describe('business-guest-config — /api/book guest guard (057)', () => {
   })
 
   it('allow_guest null defaults to true => guest not blocked', async () => {
-    setup({ user: null, biz: { id: BIZ_ID, timezone: 'UTC', min_advance_minutes: 0, booking_lead_time_enabled: false, allow_guest_bookings: null } })
+    setup({
+      user: null,
+      biz: {
+        id: BIZ_ID,
+        timezone: 'UTC',
+        min_advance_minutes: 0,
+        booking_lead_time_enabled: false,
+        allow_guest_bookings: null,
+      },
+    })
     const res = await POST(bookingReq(baseBooking))
     expect(res.status).not.toBe(401)
   })
 
   it('allow_guest undefined defaults to true', async () => {
-    setup({ user: null, biz: { id: BIZ_ID, timezone: 'UTC', min_advance_minutes: 0, booking_lead_time_enabled: false } as unknown as Record<string, unknown> })
+    setup({
+      user: null,
+      biz: {
+        id: BIZ_ID,
+        timezone: 'UTC',
+        min_advance_minutes: 0,
+        booking_lead_time_enabled: false,
+      } as unknown as Record<string, unknown>,
+    })
     const res = await POST(bookingReq(baseBooking))
     expect(res.status).not.toBe(401)
   })
 
   it('claim logic: existing guest record without user_id should be claimed (update set user_id)', async () => {
     // This test verifies the branching: when user exists and contact matches guest record, update should be called
-    const guestRecord = { id: CLIENT_ID, name: 'Old Name', email: 'test@example.com', telegram_id: null, viber_user_id: null, user_id: null }
+    const guestRecord = {
+      id: CLIENT_ID,
+      name: 'Old Name',
+      email: 'test@example.com',
+      telegram_id: null,
+      viber_user_id: null,
+      user_id: null,
+    }
     // Setup will have clientLinked = null (no previous link), clientByContact = [guestRecord]
     // The second branch should trigger update
     const svc = setup({
       user: { id: USER_ID, email: 'test@example.com' },
-      biz: { id: BIZ_ID, timezone: 'UTC', min_advance_minutes: 0, booking_lead_time_enabled: false, allow_guest_bookings: false },
+      biz: {
+        id: BIZ_ID,
+        timezone: 'UTC',
+        min_advance_minutes: 0,
+        booking_lead_time_enabled: false,
+        allow_guest_bookings: false,
+      },
       clientLinked: null,
       clientByContact: [guestRecord],
     })

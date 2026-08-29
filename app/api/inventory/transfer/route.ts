@@ -1,9 +1,10 @@
+import DOMPurify from 'isomorphic-dompurify'
 import { NextResponse } from 'next/server'
+import { z } from 'zod'
+
+import { rateLimit, getIp } from '@/lib/rate-limit'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
-import { z } from 'zod'
-import DOMPurify from 'isomorphic-dompurify'
-import { rateLimit, getIp } from '@/lib/rate-limit'
 
 const BodySchema = z.object({
   item_id: z.string().uuid(),
@@ -21,9 +22,13 @@ function sanitize(s: string): string {
 
 async function resolveBusinessId(
   supabase: Awaited<ReturnType<typeof createClient>>,
-  userId: string
+  userId: string,
 ): Promise<string | null> {
-  const { data: owned } = await supabase.from('businesses').select('id').eq('owner_id', userId).maybeSingle()
+  const { data: owned } = await supabase
+    .from('businesses')
+    .select('id')
+    .eq('owner_id', userId)
+    .maybeSingle()
   if (owned) return (owned as { id: string }).id
   const { data: emp } = await supabase
     .from('employees')
@@ -59,7 +64,7 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json(
       { error: 'validation_failed', details: parsed.error.flatten().fieldErrors },
-      { status: 422 }
+      { status: 422 },
     )
   }
 
@@ -77,7 +82,11 @@ export async function POST(request: Request) {
     .eq('business_id', businessId)
     .maybeSingle()
   if (itemErr) return NextResponse.json({ error: itemErr.message }, { status: 500 })
-  if (!item) return NextResponse.json({ error: 'not_found', message: 'Item no encontrado en este negocio' }, { status: 404 })
+  if (!item)
+    return NextResponse.json(
+      { error: 'not_found', message: 'Item no encontrado en este negocio' },
+      { status: 404 },
+    )
 
   // Validate from/to locations belong to same business (if provided)
   if (fromId) {
@@ -87,7 +96,11 @@ export async function POST(request: Request) {
       .eq('id', fromId)
       .eq('business_id', businessId)
       .maybeSingle()
-    if (!fromLoc) return NextResponse.json({ error: 'from_location_not_found', message: 'Sede origen no pertenece a este negocio' }, { status: 404 })
+    if (!fromLoc)
+      return NextResponse.json(
+        { error: 'from_location_not_found', message: 'Sede origen no pertenece a este negocio' },
+        { status: 404 },
+      )
   }
   if (toId) {
     const { data: toLoc } = await supabase
@@ -96,18 +109,28 @@ export async function POST(request: Request) {
       .eq('id', toId)
       .eq('business_id', businessId)
       .maybeSingle()
-    if (!toLoc) return NextResponse.json({ error: 'to_location_not_found', message: 'Sede destino no pertenece a este negocio' }, { status: 404 })
+    if (!toLoc)
+      return NextResponse.json(
+        { error: 'to_location_not_found', message: 'Sede destino no pertenece a este negocio' },
+        { status: 404 },
+      )
   }
   if (fromId && toId && fromId === toId) {
-    return NextResponse.json({ error: 'same_location', message: 'Origen y destino no pueden ser la misma sede' }, { status: 422 })
+    return NextResponse.json(
+      { error: 'same_location', message: 'Origen y destino no pueden ser la misma sede' },
+      { status: 422 },
+    )
   }
 
   // Quick stock check before RPC (optimistic, advisory lock will enforce)
   const currentQty = Number((item as { quantity: number }).quantity ?? 0)
   if (currentQty < quantity) {
     return NextResponse.json(
-      { error: 'insufficient_stock', message: `Stock insuficiente: ${currentQty} disponible, ${quantity} solicitados` },
-      { status: 409 }
+      {
+        error: 'insufficient_stock',
+        message: `Stock insuficiente: ${currentQty} disponible, ${quantity} solicitados`,
+      },
+      { status: 409 },
     )
   }
 
@@ -131,15 +154,22 @@ export async function POST(request: Request) {
   try {
     // Use service client for RPC to bypass RLS issues with advisory lock + ensure atomicity
     const svc = createServiceClient()
-    const { error: rpcError } = await (svc as unknown as {
-      rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string; code?: string } | null }>
-    }).rpc('transfer_inventory', {
+    const { error: rpcError } = await (
+      svc as unknown as {
+        rpc: (
+          fn: string,
+          args: Record<string, unknown>,
+        ) => Promise<{ data: unknown; error: { message: string; code?: string } | null }>
+      }
+    ).rpc('transfer_inventory', {
       p_business_id: businessId,
       p_item_id: item_id,
       p_quantity: quantity,
       p_from_location_id: fromId,
       p_to_location_id: toId,
-      p_note: note ? `${note}${idempotencyKey ? ` [${idempotencyKey}]` : ''}` : `Transfer ${fromId ?? '—'} → ${toId ?? '—'}${idempotencyKey ? ` [${idempotencyKey}]` : ''}`,
+      p_note: note
+        ? `${note}${idempotencyKey ? ` [${idempotencyKey}]` : ''}`
+        : `Transfer ${fromId ?? '—'} → ${toId ?? '—'}${idempotencyKey ? ` [${idempotencyKey}]` : ''}`,
       p_user_id: user.id,
     })
 
@@ -149,10 +179,7 @@ export async function POST(request: Request) {
 
     const rpcMsg = String(rpcError.message ?? '')
     if (rpcMsg.includes('insufficient_stock')) {
-      return NextResponse.json(
-        { error: 'insufficient_stock', message: rpcMsg },
-        { status: 409 }
-      )
+      return NextResponse.json({ error: 'insufficient_stock', message: rpcMsg }, { status: 409 })
     }
     if (rpcMsg.includes('item_not_found')) {
       return NextResponse.json({ error: 'not_found' }, { status: 404 })
@@ -161,10 +188,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'location_not_found', message: rpcMsg }, { status: 404 })
     }
     if (rpcMsg.includes('same_location')) {
-      return NextResponse.json({ error: 'same_location', message: 'Origen y destino no pueden ser la misma sede' }, { status: 422 })
+      return NextResponse.json(
+        { error: 'same_location', message: 'Origen y destino no pueden ser la misma sede' },
+        { status: 422 },
+      )
     }
     // If RPC missing (function does not exist), fall through to fallback path
-    if (!rpcMsg.includes('does not exist') && !rpcMsg.includes('not found') && !rpcMsg.includes('schema cache')) {
+    if (
+      !rpcMsg.includes('does not exist') &&
+      !rpcMsg.includes('not found') &&
+      !rpcMsg.includes('schema cache')
+    ) {
       // Unknown RPC error — log and fallback only if it's truly missing; otherwise return 500
       if (rpcMsg.includes('quantity_must_be_positive')) {
         return NextResponse.json({ error: 'validation_failed', message: rpcMsg }, { status: 422 })
@@ -189,13 +223,18 @@ export async function POST(request: Request) {
   const freshQty = Number((freshItem as { quantity: number } | null)?.quantity ?? currentQty)
   if (freshQty < quantity) {
     return NextResponse.json(
-      { error: 'insufficient_stock', message: `Stock insuficiente: ${freshQty} disponible, ${quantity} solicitados` },
-      { status: 409 }
+      {
+        error: 'insufficient_stock',
+        message: `Stock insuficiente: ${freshQty} disponible, ${quantity} solicitados`,
+      },
+      { status: 409 },
     )
   }
 
   // Insert transfer movement (single record with from/to)
-  const insertNote = note ? `${note}${idempotencyKey ? ` [${idempotencyKey}]` : ''}` : `Transfer ${fromId ?? '—'} → ${toId ?? '—'}${idempotencyKey ? ` [${idempotencyKey}]` : ''}`
+  const insertNote = note
+    ? `${note}${idempotencyKey ? ` [${idempotencyKey}]` : ''}`
+    : `Transfer ${fromId ?? '—'} → ${toId ?? '—'}${idempotencyKey ? ` [${idempotencyKey}]` : ''}`
   const { error: insErr } = await supabase.from('inventory_movements').insert({
     business_id: businessId,
     item_id,

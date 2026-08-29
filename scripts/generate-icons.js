@@ -9,9 +9,10 @@
  *   public/icons/apple-touch-icon.png  (180x180)
  */
 
-const sharp = require('sharp')
-const path = require('path')
 const fs = require('fs')
+const path = require('path')
+
+const sharp = require('sharp')
 
 const svgPath = path.join(__dirname, '../public/icons/icon.svg')
 const outDir = path.join(__dirname, '../public/icons')
@@ -27,10 +28,7 @@ const sizes = [
 ;(async () => {
   const svgBuffer = fs.readFileSync(svgPath)
   for (const { name, size } of sizes) {
-    await sharp(svgBuffer)
-      .resize(size, size)
-      .png()
-      .toFile(path.join(outDir, name))
+    await sharp(svgBuffer).resize(size, size).png().toFile(path.join(outDir, name))
     console.log(`✓ Generated ${name} (${size}×${size})`)
   }
   console.log('\nAll icons generated. You can now uninstall sharp:\n  npm uninstall sharp')

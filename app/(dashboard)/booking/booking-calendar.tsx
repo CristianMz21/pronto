@@ -1,16 +1,5 @@
 'use client'
 
-import { useState, useMemo, useEffect, useRef } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import { formatInBusinessTimezone, uses12HourClock } from '@/lib/utils'
-import { isDayClosed as isDayClosedLib, isPastInTz, DEFAULT_LEAD_MINUTES } from '@/lib/booking-availability'
-import { Button } from '@/components/ui/button'
-import { DatePicker } from '@/components/ui/date-picker'
-import { ChevronLeft, ChevronRight, ExternalLink, CreditCard, Palette, Clock, Repeat } from 'lucide-react'
-import { WaitlistPanel } from './waitlist-panel'
-import { RecurringModal } from './recurring-modal'
-import { useTranslations } from 'next-intl'
-import { useRouter } from 'next/navigation'
 import {
   DndContext,
   DragEndEvent,
@@ -22,34 +11,90 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core'
+import {
+  ChevronLeft,
+  ChevronRight,
+  ExternalLink,
+  CreditCard,
+  Palette,
+  Clock,
+  Repeat,
+} from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
+import { useState, useMemo, useEffect, useRef } from 'react'
+
+import { Button } from '@/components/ui/button'
+import { DatePicker } from '@/components/ui/date-picker'
+import {
+  isDayClosed as isDayClosedLib,
+  isPastInTz,
+  DEFAULT_LEAD_MINUTES,
+} from '@/lib/booking-availability'
+import { createClient } from '@/lib/supabase/client'
+import { formatInBusinessTimezone, uses12HourClock } from '@/lib/utils'
+
+import { RecurringModal } from './recurring-modal'
+import { WaitlistPanel } from './waitlist-panel'
 
 interface Appointment {
-  id: string; starts_at: string; ends_at: string; status: string; source: string | null; notes: string | null
+  id: string
+  starts_at: string
+  ends_at: string
+  status: string
+  source: string | null
+  notes: string | null
   clients: { id: string; name: string } | null
   employees: { id: string; name: string } | null
   services: { id: string; name: string; price: number } | null
 }
 
 /** Get year/month/day/hour of a UTC ISO timestamp in the given IANA timezone. */
-function apptTzParts(iso: string, tz: string): { year: number; month: number; day: number; hour: number } {
+function apptTzParts(
+  iso: string,
+  tz: string,
+): { year: number; month: number; day: number; hour: number } {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: tz,
-    year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', hour12: false,
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    hour: 'numeric',
+    hour12: false,
   }).formatToParts(new Date(iso))
   const get = (type: string) => parseInt(parts.find((p) => p.type === type)?.value ?? '0')
   return { year: get('year'), month: get('month'), day: get('day'), hour: get('hour') % 24 }
 }
 
 /** Convert a wall-clock date+time in the business timezone to a UTC Date. */
-function wallclockToUtc(year: number, month: number, day: number, hour: number, minute: number, tz: string): Date {
+function wallclockToUtc(
+  year: number,
+  month: number,
+  day: number,
+  hour: number,
+  minute: number,
+  tz: string,
+): Date {
   const noonUtc = new Date(Date.UTC(year, month - 1, day, 12, 0))
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: tz,
-    year: 'numeric', month: 'numeric', day: 'numeric',
-    hour: 'numeric', minute: 'numeric', second: 'numeric', hour12: false,
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: 'numeric',
+    second: 'numeric',
+    hour12: false,
   }).formatToParts(noonUtc)
   const get = (t: string) => parseInt(parts.find((p) => p.type === t)?.value ?? '0')
-  const localNoonMs = Date.UTC(get('year'), get('month') - 1, get('day'), get('hour') % 24, get('minute'), get('second'))
+  const localNoonMs = Date.UTC(
+    get('year'),
+    get('month') - 1,
+    get('day'),
+    get('hour') % 24,
+    get('minute'),
+    get('second'),
+  )
   const offsetMs = localNoonMs - noonUtc.getTime()
   return new Date(Date.UTC(year, month - 1, day, hour, minute) - offsetMs)
 }
@@ -75,12 +120,12 @@ function getEmployeeColor(employeeId: string | null | undefined) {
 }
 
 const STATUS_STRIPE: Record<string, string> = {
-  pending:   '#94a3b8',
+  pending: '#94a3b8',
   confirmed: '#16a34a',
   completed: '#3b82f6',
-  paid:      '#eab308',
+  paid: '#eab308',
   cancelled: '#ef4444',
-  no_show:   '#f97316',
+  no_show: '#f97316',
 }
 
 function getStatusStripe(status: string): string {
@@ -88,22 +133,56 @@ function getStatusStripe(status: string): string {
 }
 
 const SOURCE_BADGE: Record<string, { label: string; pill: string }> = {
-  online:   { label: 'Online',   pill: 'bg-blue-100 text-blue-700' },
-  manual:   { label: 'Manual',   pill: 'bg-gray-100 text-gray-500' },
+  online: { label: 'Online', pill: 'bg-blue-100 text-blue-700' },
+  manual: { label: 'Manual', pill: 'bg-gray-100 text-gray-500' },
   telegram: { label: 'Telegram', pill: 'bg-sky-100 text-sky-700' },
-  viber:    { label: 'Viber',    pill: 'bg-purple-100 text-purple-700' },
+  viber: { label: 'Viber', pill: 'bg-purple-100 text-purple-700' },
 }
-interface Employee { id: string; name: string }
-interface Service { id: string; name: string; duration_min: number; price: number }
-interface Client { id: string; name: string; phone: string | null }
+interface Employee {
+  id: string
+  name: string
+}
+interface Service {
+  id: string
+  name: string
+  duration_min: number
+  price: number
+}
+interface Client {
+  id: string
+  name: string
+  phone: string | null
+}
 
-interface BusinessHour { day_of_week: number; is_open: boolean; open_time: string; close_time: string; break_start?: string | null; break_end?: string | null }
-interface Holiday { id: string; business_id: string; location_id: string | null; date: string; reason: string | null; is_open: boolean }
-interface Location { id: string; name: string }
+interface BusinessHour {
+  day_of_week: number
+  is_open: boolean
+  open_time: string
+  close_time: string
+  break_start?: string | null
+  break_end?: string | null
+}
+interface Holiday {
+  id: string
+  business_id: string
+  location_id: string | null
+  date: string
+  reason: string | null
+  is_open: boolean
+}
+interface Location {
+  id: string
+  name: string
+}
 
 interface Props {
-  businessId: string; slug: string; timezone: string
-  appointments: Appointment[]; employees: Employee[]; services: Service[]; clients: Client[]
+  businessId: string
+  slug: string
+  timezone: string
+  appointments: Appointment[]
+  employees: Employee[]
+  services: Service[]
+  clients: Client[]
   businessHours: BusinessHour[]
   holidays?: Holiday[]
   locations?: Location[]
@@ -132,17 +211,19 @@ function DraggableAppt({ id, children }: { id: string; children: React.ReactNode
 
 // ─── Droppable time-slot cell ──────────────────────────────────────────────────
 function DroppableCell({
-  id, children, onClick, className,
+  id,
+  children,
+  onClick,
+  className,
 }: {
-  id: string; children: React.ReactNode; onClick: () => void; className: string
+  id: string
+  children: React.ReactNode
+  onClick: () => void
+  className: string
 }) {
   const { isOver, setNodeRef } = useDroppable({ id })
   return (
-    <td
-      ref={setNodeRef}
-      className={`${className}${isOver ? ' bg-blue-50' : ''}`}
-      onClick={onClick}
-    >
+    <td ref={setNodeRef} className={`${className}${isOver ? ' bg-blue-50' : ''}`} onClick={onClick}>
       {children}
     </td>
   )
@@ -166,26 +247,52 @@ function getMonday(date: Date) {
 }
 
 function todayInTz(tz: string): string {
-  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date())
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: tz,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date())
   const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '00'
   return `${get('year')}-${get('month')}-${get('day')}`
 }
 
-export function BookingCalendar({ businessId, slug, timezone, appointments: initial, employees, services, clients: initialClients, businessHours, holidays = [], locations = [], selectedLocation = null, minAdvanceMinutes, bookingLeadTimeEnabled, isBarbero = false, currentEmployeeId = null }: Props) {
+export function BookingCalendar({
+  businessId,
+  slug,
+  timezone,
+  appointments: initial,
+  employees,
+  services,
+  clients: initialClients,
+  businessHours,
+  holidays = [],
+  locations = [],
+  selectedLocation = null,
+  minAdvanceMinutes,
+  bookingLeadTimeEnabled,
+  isBarbero = false,
+  currentEmployeeId = null,
+}: Props) {
   const supabase = createClient()
   const router = useRouter()
   const t = useTranslations('booking')
   const [weekStart, setWeekStart] = useState<Date | null>(null)
-  useEffect(() => { setWeekStart(getMonday(new Date())) }, [])
+  useEffect(() => {
+    setWeekStart(getMonday(new Date()))
+  }, [])
   // Hydration-safe isToday: server and initial client render with no highlight (null),
   // after mount we compute the real today string. This prevents mismatch where
   // server's "today" (UTC) differs from client's local date, or hydration at midnight boundary.
   const [todayStr, setTodayStr] = useState<string | null>(null)
-  useEffect(() => { setTodayStr(new Date().toDateString()) }, [])
+  useEffect(() => {
+    setTodayStr(new Date().toDateString())
+  }, [])
   const bookingUrl = useMemo(() => {
     if (process.env.NEXT_PUBLIC_DEPLOYMENT_MODE === 'saas') {
       const baseDomain = (process.env.NEXT_PUBLIC_APP_URL ?? 'https://trypronto.app')
-        .replace(/^https?:\/\//, '').replace(/\/$/, '')
+        .replace(/^https?:\/\//, '')
+        .replace(/\/$/, '')
       return `https://${slug}.${baseDomain}/book`
     }
     return `/book/${slug}`
@@ -196,12 +303,14 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
   // Dynamic hour range: derived from business hours + actual appointment times
   const HOURS = useMemo(() => {
     const openDays = businessHours.filter((h) => h.is_open && h.open_time && h.close_time)
-    let minHour = openDays.length > 0
-      ? Math.min(...openDays.map((h) => parseInt(h.open_time.split(':')[0])))
-      : 8
-    let maxHour = openDays.length > 0
-      ? Math.max(...openDays.map((h) => parseInt(h.close_time.split(':')[0])))
-      : 20
+    let minHour =
+      openDays.length > 0
+        ? Math.min(...openDays.map((h) => parseInt(h.open_time.split(':')[0])))
+        : 8
+    let maxHour =
+      openDays.length > 0
+        ? Math.max(...openDays.map((h) => parseInt(h.close_time.split(':')[0])))
+        : 20
     // Expand to cover any appointment that falls outside the business-hours window
     for (const appt of appointments) {
       const { hour: h } = apptTzParts(appt.starts_at, timezone)
@@ -282,7 +391,12 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
   // US7 panels
   const [showWaitlist, setShowWaitlist] = useState(false)
   const [showRecurring, setShowRecurring] = useState(false)
-  const [recurringPrefill, setRecurringPrefill] = useState<{ date?: string; time?: string; serviceId?: string; employeeId?: string } | null>(null)
+  const [recurringPrefill, setRecurringPrefill] = useState<{
+    date?: string
+    time?: string
+    serviceId?: string
+    employeeId?: string
+  } | null>(null)
 
   // day_of_week: 0=Sun, 1=Mon … 6=Sat — always in business timezone
   // Dashboard note (054): lead time is intentionally NOT enforced here.
@@ -291,7 +405,9 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
   // DB trigger 053 also only blocks past. If a business wants dashboard to respect lead time,
   // it could be made configurable here, but default is past-only for admin.
   function getDowInBusinessTz(date: Date): number {
-    const wd = new Intl.DateTimeFormat('en-US', { timeZone: timezone, weekday: 'short' }).format(date)
+    const wd = new Intl.DateTimeFormat('en-US', { timeZone: timezone, weekday: 'short' }).format(
+      date,
+    )
     const map: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }
     return map[wd] ?? date.getDay()
   }
@@ -312,7 +428,11 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
   function isDayClosed(date: Date) {
     // Use centralized helper for testability; fallback to local logic if lib helper not available
     if (isHoliday(date)) return true
-    return isDayClosedLib(date, businessHours as unknown as import('@/lib/booking-availability').DayHours[], timezone)
+    return isDayClosedLib(
+      date,
+      businessHours as unknown as import('@/lib/booking-availability').DayHours[],
+      timezone,
+    )
   }
 
   function isOutsideWorkingHours(date: string, time: string): boolean {
@@ -358,12 +478,17 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
       p.year === sameDay.getFullYear() &&
       p.month === sameDay.getMonth() + 1 &&
       p.day === sameDay.getDate()
-    ) return
+    )
+      return
 
     // Build the new UTC timestamp from the business-timezone wall-clock time
     const newStartsAt = wallclockToUtc(
-      sameDay.getFullYear(), sameDay.getMonth() + 1, sameDay.getDate(),
-      hour, 0, timezone
+      sameDay.getFullYear(),
+      sameDay.getMonth() + 1,
+      sameDay.getDate(),
+      hour,
+      0,
+      timezone,
     )
 
     // Prevent dropping in the past or on a closed day (synchronized with business timezone)
@@ -380,14 +505,17 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
       prev.map((a) =>
         a.id === apptId
           ? { ...a, starts_at: newStartsAt.toISOString(), ends_at: newEndsAt.toISOString() }
-          : a
-      )
+          : a,
+      ),
     )
 
-    const { error } = await supabase.from('appointments').update({
-      starts_at: newStartsAt.toISOString(),
-      ends_at: newEndsAt.toISOString(),
-    }).eq('id', apptId)
+    const { error } = await supabase
+      .from('appointments')
+      .update({
+        starts_at: newStartsAt.toISOString(),
+        ends_at: newEndsAt.toISOString(),
+      })
+      .eq('id', apptId)
     if (error) {
       console.error('[booking] drag update failed:', error.message)
       // Revert optimistic on error (e.g. 401, RLS)
@@ -397,11 +525,13 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
 
   const days = t.raw('calendar.days') as string[]
 
-  const weekDates = weekStart ? Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(weekStart)
-    d.setDate(d.getDate() + i)
-    return d
-  }) : []
+  const weekDates = weekStart
+    ? Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(weekStart)
+        d.setDate(d.getDate() + i)
+        return d
+      })
+    : []
 
   // Load week when weekStart is set (client only, after mount)
   useEffect(() => {
@@ -409,12 +539,22 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
   }, [weekStart])
 
   async function loadWeek(start: Date) {
-    const end = new Date(start); end.setDate(start.getDate() + 7)
-    let q = supabase.from('appointments')
-      .select('id, starts_at, ends_at, status, source, notes, clients(id, name), employees(id, name), services(id, name, price)')
-      .eq('business_id', businessId).gte('starts_at', start.toISOString()).lt('starts_at', end.toISOString()).order('starts_at')
+    const end = new Date(start)
+    end.setDate(start.getDate() + 7)
+    let q = supabase
+      .from('appointments')
+      .select(
+        'id, starts_at, ends_at, status, source, notes, clients(id, name), employees(id, name), services(id, name, price)',
+      )
+      .eq('business_id', businessId)
+      .gte('starts_at', start.toISOString())
+      .lt('starts_at', end.toISOString())
+      .order('starts_at')
     if (isBarbero && currentEmployeeId) {
-      q = (q as unknown as { eq: (c: string, v: string) => typeof q }).eq('employee_id', currentEmployeeId) as typeof q
+      q = (q as unknown as { eq: (c: string, v: string) => typeof q }).eq(
+        'employee_id',
+        currentEmployeeId,
+      ) as typeof q
     }
     const { data, error } = await q
     if (error) {
@@ -428,15 +568,22 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
   }
 
   async function navigate(delta: number) {
-    const next = new Date(weekStart); next.setDate(next.getDate() + delta * 7)
-    setWeekStart(next); await loadWeek(next)
+    const next = new Date(weekStart!)
+    next.setDate(next.getDate() + delta * 7)
+    setWeekStart(next)
+    await loadWeek(next)
   }
 
   function getApptForCell(dayIndex: number, hour: number) {
     const day = weekDates[dayIndex]
     return appointments.filter((a) => {
       const p = apptTzParts(a.starts_at, timezone)
-      return p.year === day.getFullYear() && p.month === day.getMonth() + 1 && p.day === day.getDate() && p.hour === hour
+      return (
+        p.year === day.getFullYear() &&
+        p.month === day.getMonth() + 1 &&
+        p.day === day.getDate() &&
+        p.hour === hour
+      )
     })
   }
 
@@ -457,24 +604,49 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
     const service = services.find((s) => s.id === form.service_id)!
     const endsAt = new Date(startsAt.getTime() + service.duration_min * 60000)
 
-    const effectiveEmployeeId = isBarbero && currentEmployeeId ? currentEmployeeId : (form.employee_id || null)
-    const { data, error } = await supabase.from('appointments').insert({
-      business_id: businessId, client_id: form.client_id || null, employee_id: effectiveEmployeeId,
-      service_id: form.service_id, starts_at: startsAt.toISOString(), ends_at: endsAt.toISOString(),
-      notes: form.notes ? form.notes.trim() || null : null, price: service.price, status: 'confirmed', source: 'manual',
-    }).select('id, starts_at, ends_at, status, source, notes, clients(id, name), employees(id, name), services(id, name, price)').single()
+    const effectiveEmployeeId =
+      isBarbero && currentEmployeeId ? currentEmployeeId : form.employee_id || null
+    const { data, error } = await supabase
+      .from('appointments')
+      .insert({
+        business_id: businessId,
+        client_id: form.client_id || null,
+        employee_id: effectiveEmployeeId,
+        service_id: form.service_id,
+        starts_at: startsAt.toISOString(),
+        ends_at: endsAt.toISOString(),
+        notes: form.notes ? form.notes.trim() || null : null,
+        price: service.price,
+        status: 'confirmed',
+        source: 'manual',
+      })
+      .select(
+        'id, starts_at, ends_at, status, source, notes, clients(id, name), employees(id, name), services(id, name, price)',
+      )
+      .single()
 
     if (!error && data) {
       setAppointments((prev) => [...prev, data as Appointment])
       setShowForm(false)
       setFormError(null)
-      setForm({ client_id: '', employee_id: isBarbero && currentEmployeeId ? currentEmployeeId : '', service_id: '', date: '', hour: '', minute: '00', period: 'AM', notes: '' })
+      setForm({
+        client_id: '',
+        employee_id: isBarbero && currentEmployeeId ? currentEmployeeId : '',
+        service_id: '',
+        date: '',
+        hour: '',
+        minute: '00',
+        period: 'AM',
+        notes: '',
+      })
       router.refresh()
       fetch('/api/email/confirm', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ appointmentId: data.id }),
-      }).catch(() => {/* non-critical */})
+      }).catch(() => {
+        /* non-critical */
+      })
     } else if (error) {
       if (error.message?.includes('in_past')) {
         setFormError('No se puede reservar en el pasado. Elegí una fecha y hora futuras.')
@@ -484,9 +656,13 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
         const lead = minAdvanceMinutes ?? DEFAULT_LEAD_MINUTES
         setFormError(`Reservá con al menos ${lead} minutos de anticipación.`)
       } else if (error.message?.includes('no_staff_available')) {
-        setFormError('No active staff available to take this booking. Add an employee in Settings, or select a specific employee.')
+        setFormError(
+          'No active staff available to take this booking. Add an employee in Settings, or select a specific employee.',
+        )
       } else if (error.message?.includes('slot_already_booked')) {
-        setFormError('This time slot is already booked for the selected employee. Please choose a different time.')
+        setFormError(
+          'This time slot is already booked for the selected employee. Please choose a different time.',
+        )
       } else {
         setFormError('Failed to save the appointment. Please try again.')
       }
@@ -498,8 +674,8 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
     const prev = appointments
     const prevSelected = selectedAppt
     // Optimistic
-    setAppointments((prev) => prev.map((a) => a.id === id ? { ...a, status } : a))
-    setSelectedAppt((a) => a?.id === id ? { ...a, status } : a)
+    setAppointments((prev) => prev.map((a) => (a.id === id ? { ...a, status } : a)))
+    setSelectedAppt((a) => (a?.id === id ? { ...a, status } : a))
     const { error } = await supabase.from('appointments').update({ status }).eq('id', id)
     if (error) {
       console.error('[booking] updateStatus failed:', error.message)
@@ -538,9 +714,9 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
     const updated = await res.json()
     const newEmployee = updated.employees ?? null
     setAppointments((prev) =>
-      prev.map((a) => a.id === apptId ? { ...a, employees: newEmployee } : a)
+      prev.map((a) => (a.id === apptId ? { ...a, employees: newEmployee } : a)),
     )
-    setSelectedAppt((a) => a?.id === apptId ? { ...a, employees: newEmployee } : a)
+    setSelectedAppt((a) => (a?.id === apptId ? { ...a, employees: newEmployee } : a))
     router.refresh()
   }
 
@@ -563,7 +739,11 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
   }, [showLegend])
 
   if (!weekStart) {
-    return <div className="flex-1 flex items-center justify-center p-6 text-sm text-gray-500">Cargando calendario...</div>
+    return (
+      <div className="flex-1 flex items-center justify-center p-6 text-sm text-gray-500">
+        Cargando calendario...
+      </div>
+    )
   }
 
   return (
@@ -571,19 +751,35 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
       {/* Toolbar */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
-          <button onClick={() => navigate(-1)} className="p-1.5 rounded-lg hover:bg-gray-100"><ChevronLeft className="w-4 h-4" /></button>
+          <button onClick={() => navigate(-1)} className="p-1.5 rounded-lg hover:bg-gray-100">
+            <ChevronLeft className="w-4 h-4" />
+          </button>
           <span className="text-sm font-medium text-gray-700 w-40 text-center">
-            {weekDates.length ? `${weekDates[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${weekDates[6].toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : '—'}
+            {weekDates.length
+              ? `${weekDates[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${weekDates[6].toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+              : '—'}
           </span>
-          <button onClick={() => navigate(1)} className="p-1.5 rounded-lg hover:bg-gray-100"><ChevronRight className="w-4 h-4" /></button>
-          <button onClick={() => { const m = getMonday(new Date()); setWeekStart(m); loadWeek(m) }}
-            className="text-xs px-2 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600">
+          <button onClick={() => navigate(1)} className="p-1.5 rounded-lg hover:bg-gray-100">
+            <ChevronRight className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => {
+              const m = getMonday(new Date())
+              setWeekStart(m)
+              loadWeek(m)
+            }}
+            className="text-xs px-2 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600"
+          >
             {t('calendar.today')}
           </button>
         </div>
         <div className="flex items-center gap-2 self-end sm:self-auto">
-          <a href={bookingUrl} target="_blank" rel="noopener noreferrer"
-            className="flex items-center gap-1 text-xs text-blue-600 hover:underline">
+          <a
+            href={bookingUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 text-xs text-blue-600 hover:underline"
+          >
             <ExternalLink className="w-3 h-3" /> {t('calendar.publicPage')}
           </a>
           {/* Legend button */}
@@ -597,7 +793,9 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
             </button>
             {showLegend && (
               <div className="absolute right-0 top-8 z-30 w-56 bg-white rounded-xl border border-gray-200 shadow-lg p-3">
-                <div className="text-xs font-semibold text-gray-500 uppercase mb-2">Team colors</div>
+                <div className="text-xs font-semibold text-gray-500 uppercase mb-2">
+                  Team colors
+                </div>
                 {employees.length === 0 ? (
                   <p className="text-xs text-gray-400">No team members yet</p>
                 ) : (
@@ -606,24 +804,40 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
                       const c = getEmployeeColor(emp.id)
                       return (
                         <div key={emp.id} className="flex items-center gap-2">
-                          <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: c.bg, border: '1px solid rgba(0,0,0,0.1)' }} />
+                          <span
+                            className="w-3 h-3 rounded-full shrink-0"
+                            style={{ backgroundColor: c.bg, border: '1px solid rgba(0,0,0,0.1)' }}
+                          />
                           <span className="text-xs text-gray-700 truncate">{emp.name}</span>
                         </div>
                       )
                     })}
                     <div className="flex items-center gap-2">
-                      <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: NO_EMPLOYEE_COLOR.bg, border: '1px solid rgba(0,0,0,0.1)' }} />
+                      <span
+                        className="w-3 h-3 rounded-full shrink-0"
+                        style={{
+                          backgroundColor: NO_EMPLOYEE_COLOR.bg,
+                          border: '1px solid rgba(0,0,0,0.1)',
+                        }}
+                      />
                       <span className="text-xs text-gray-500 truncate">Unassigned</span>
                     </div>
                   </div>
                 )}
                 <div className="border-t border-gray-100 pt-2 mt-1">
-                  <div className="text-xs font-semibold text-gray-500 uppercase mb-2">Appointment status</div>
+                  <div className="text-xs font-semibold text-gray-500 uppercase mb-2">
+                    Appointment status
+                  </div>
                   <div className="space-y-1.5">
                     {Object.entries(STATUS_STRIPE).map(([status, color]) => (
                       <div key={status} className="flex items-center gap-2">
-                        <span className="w-1 h-4 rounded-full shrink-0" style={{ backgroundColor: color }} />
-                        <span className="text-xs text-gray-700 capitalize">{status.replace('_', ' ')}</span>
+                        <span
+                          className="w-1 h-4 rounded-full shrink-0"
+                          style={{ backgroundColor: color }}
+                        />
+                        <span className="text-xs text-gray-700 capitalize">
+                          {status.replace('_', ' ')}
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -631,13 +845,28 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
               </div>
             )}
           </div>
-          <Button variant="outline" size="sm" onClick={() => setShowWaitlist((v) => !v)} className="gap-1">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowWaitlist((v) => !v)}
+            className="gap-1"
+          >
             <Clock className="w-3.5 h-3.5" /> {showWaitlist ? 'Ocultar espera' : 'Lista de espera'}
           </Button>
-          <Button variant="outline" size="sm" onClick={() => { setRecurringPrefill(null); setShowRecurring(true) }} className="gap-1">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setRecurringPrefill(null)
+              setShowRecurring(true)
+            }}
+            className="gap-1"
+          >
             <Repeat className="w-3.5 h-3.5" /> Recurrente
           </Button>
-          <Button size="sm" onClick={() => openForm()}>{t('newAppointment')}</Button>
+          <Button size="sm" onClick={() => openForm()}>
+            {t('newAppointment')}
+          </Button>
         </div>
       </div>
 
@@ -647,7 +876,12 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
       )}
       {holidays && holidays.length > 0 && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-800">
-          <span className="font-semibold">Próximos bloqueos:</span> {holidays.slice(0, 5).map((h) => `${h.date.slice(0,10)}${h.reason ? ` (${h.reason})` : ''}`).join(' · ')} {holidays.length > 5 ? `+${holidays.length - 5} más` : ''}
+          <span className="font-semibold">Próximos bloqueos:</span>{' '}
+          {holidays
+            .slice(0, 5)
+            .map((h) => `${h.date.slice(0, 10)}${h.reason ? ` (${h.reason})` : ''}`)
+            .join(' · ')}{' '}
+          {holidays.length > 5 ? `+${holidays.length - 5} más` : ''}
         </div>
       )}
 
@@ -663,10 +897,19 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
                   const holiday = isHoliday(d)
                   const isClosed = isDayClosed(d)
                   return (
-                    <th key={i} className={`sticky top-0 z-10 border-b border-r border-gray-100 py-2 font-medium text-center ${isToday ? 'bg-blue-50 text-blue-700' : holiday ? 'bg-amber-50 text-amber-700' : 'text-gray-600 bg-white'} ${isClosed ? 'opacity-60' : ''}`}>
+                    <th
+                      key={i}
+                      className={`sticky top-0 z-10 border-b border-r border-gray-100 py-2 font-medium text-center ${isToday ? 'bg-blue-50 text-blue-700' : holiday ? 'bg-amber-50 text-amber-700' : 'text-gray-600 bg-white'} ${isClosed ? 'opacity-60' : ''}`}
+                    >
                       <div>{days[i]}</div>
-                      <div className={`text-lg font-bold ${isToday ? 'text-blue-600' : holiday ? 'text-amber-700' : 'text-gray-900'}`}>{d.getDate()}</div>
-                      {holiday && <div className="text-[10px] leading-none text-amber-700">festivo</div>}
+                      <div
+                        className={`text-lg font-bold ${isToday ? 'text-blue-600' : holiday ? 'text-amber-700' : 'text-gray-900'}`}
+                      >
+                        {d.getDate()}
+                      </div>
+                      {holiday && (
+                        <div className="text-[10px] leading-none text-amber-700">festivo</div>
+                      )}
                     </th>
                   )
                 })}
@@ -675,7 +918,9 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
             <tbody>
               {HOURS.map((hour) => (
                 <tr key={hour} className="h-14">
-                  <td className="border-r border-b border-gray-100 text-right pr-2 text-gray-400 text-xs align-top pt-1 w-14">{hour}:00</td>
+                  <td className="border-r border-b border-gray-100 text-right pr-2 text-gray-400 text-xs align-top pt-1 w-14">
+                    {hour}:00
+                  </td>
                   {weekDates.map((_, di) => {
                     const cellAppts = getApptForCell(di, hour)
                     return (
@@ -690,7 +935,12 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
                             const mm = String(d.getMonth() + 1).padStart(2, '0')
                             const dd = String(d.getDate()).padStart(2, '0')
                             const hh = String(hour).padStart(2, '0')
-                            openForm({ date: `${yyyy}-${mm}-${dd}`, hour: hh, minute: '00', period: parseInt(hh) < 12 ? 'AM' : 'PM' })
+                            openForm({
+                              date: `${yyyy}-${mm}-${dd}`,
+                              hour: hh,
+                              minute: '00',
+                              period: parseInt(hh) < 12 ? 'AM' : 'PM',
+                            })
                           }
                         }}
                       >
@@ -700,17 +950,37 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
                           return (
                             <DraggableAppt key={a.id} id={a.id}>
                               <div
-                                onClick={(e) => { e.stopPropagation(); setSelectedAppt(a) }}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setSelectedAppt(a)
+                                }}
                                 className="rounded px-1 py-0.5 mb-0.5 cursor-grab active:cursor-grabbing text-xs"
-                                style={{ backgroundColor: empColor.bg, color: empColor.text, borderLeft: `5px solid ${stripe}`, borderTop: '1px solid rgba(0,0,0,0.08)', borderRight: '1px solid rgba(0,0,0,0.08)', borderBottom: '1px solid rgba(0,0,0,0.08)' }}
+                                style={{
+                                  backgroundColor: empColor.bg,
+                                  color: empColor.text,
+                                  borderLeft: `5px solid ${stripe}`,
+                                  borderTop: '1px solid rgba(0,0,0,0.08)',
+                                  borderRight: '1px solid rgba(0,0,0,0.08)',
+                                  borderBottom: '1px solid rgba(0,0,0,0.08)',
+                                }}
                               >
-                                <div className="font-semibold truncate">{a.clients?.name ?? (a.source === 'online' ? 'Online' : t('walkIn'))}</div>
-                                <div className="truncate">{a.services?.name} · {formatInBusinessTimezone(a.starts_at, timezone, 'time')}</div>
+                                <div className="font-semibold truncate">
+                                  {a.clients?.name ??
+                                    (a.source === 'online' ? 'Online' : t('walkIn'))}
+                                </div>
+                                <div className="truncate">
+                                  {a.services?.name} ·{' '}
+                                  {formatInBusinessTimezone(a.starts_at, timezone, 'time')}
+                                </div>
                                 {a.employees?.name && (
-                                  <div className="truncate text-[10px] opacity-70">{a.employees.name}</div>
+                                  <div className="truncate text-[10px] opacity-70">
+                                    {a.employees.name}
+                                  </div>
                                 )}
                                 {a.source && SOURCE_BADGE[a.source] && (
-                                  <span className={`inline-block mt-0.5 text-[9px] leading-tight px-1 rounded font-medium ${SOURCE_BADGE[a.source].pill}`}>
+                                  <span
+                                    className={`inline-block mt-0.5 text-[9px] leading-tight px-1 rounded font-medium ${SOURCE_BADGE[a.source].pill}`}
+                                  >
                                     {SOURCE_BADGE[a.source].label}
                                   </span>
                                 )}
@@ -729,20 +999,33 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
 
         {/* Drag overlay — shown while dragging */}
         <DragOverlay>
-          {draggedAppt && (() => {
-            const empColor = getEmployeeColor(draggedAppt.employees?.id)
-            const stripe = getStatusStripe(draggedAppt.status)
-            return (
-              <div className="rounded px-2 py-1 text-xs shadow-lg w-28"
-                style={{ backgroundColor: empColor.bg, color: empColor.text, borderLeft: `5px solid ${stripe}`, borderTop: '1px solid rgba(0,0,0,0.08)', borderRight: '1px solid rgba(0,0,0,0.08)', borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
-                <div className="font-semibold truncate">{draggedAppt.clients?.name ?? (draggedAppt.source === 'online' ? 'Online' : t('walkIn'))}</div>
-                <div className="truncate">{draggedAppt.services?.name}</div>
-                {draggedAppt.employees?.name && (
-                  <div className="truncate opacity-70">{draggedAppt.employees.name}</div>
-                )}
-              </div>
-            )
-          })()}
+          {draggedAppt &&
+            (() => {
+              const empColor = getEmployeeColor(draggedAppt.employees?.id)
+              const stripe = getStatusStripe(draggedAppt.status)
+              return (
+                <div
+                  className="rounded px-2 py-1 text-xs shadow-lg w-28"
+                  style={{
+                    backgroundColor: empColor.bg,
+                    color: empColor.text,
+                    borderLeft: `5px solid ${stripe}`,
+                    borderTop: '1px solid rgba(0,0,0,0.08)',
+                    borderRight: '1px solid rgba(0,0,0,0.08)',
+                    borderBottom: '1px solid rgba(0,0,0,0.08)',
+                  }}
+                >
+                  <div className="font-semibold truncate">
+                    {draggedAppt.clients?.name ??
+                      (draggedAppt.source === 'online' ? 'Online' : t('walkIn'))}
+                  </div>
+                  <div className="truncate">{draggedAppt.services?.name}</div>
+                  {draggedAppt.employees?.name && (
+                    <div className="truncate opacity-70">{draggedAppt.employees.name}</div>
+                  )}
+                </div>
+              )
+            })()}
         </DragOverlay>
       </DndContext>
 
@@ -753,26 +1036,36 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
             <h2 className="text-base font-semibold mb-4">{t('form.heading')}</h2>
             <div className="space-y-3">
               <div>
-                <label className="text-xs text-gray-500 font-medium">{t('form.serviceLabel')}</label>
-                <select value={form.service_id} onChange={(e) => setForm((f) => ({ ...f, service_id: e.target.value }))}
-                  className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <label className="text-xs text-gray-500 font-medium">
+                  {t('form.serviceLabel')}
+                </label>
+                <select
+                  value={form.service_id}
+                  onChange={(e) => setForm((f) => ({ ...f, service_id: e.target.value }))}
+                  className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
                   <option value="">{t('form.servicePlaceholder')}</option>
                   {services.map((s) => (
                     <option key={s.id} value={s.id}>
-                      {s.name}{s.duration_min > 0 ? ` — ${s.duration_min} min` : ''}
+                      {s.name}
+                      {s.duration_min > 0 ? ` — ${s.duration_min} min` : ''}
                     </option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="text-xs text-gray-500 font-medium">{t('form.datetimeLabel')}</label>
+                <label className="text-xs text-gray-500 font-medium">
+                  {t('form.datetimeLabel')}
+                </label>
                 <div className="flex gap-2 mt-1">
                   <DatePicker
                     value={form.date}
                     onChange={(v) => setForm((f) => ({ ...f, date: v }))}
                     className="flex-1"
                     minDate={todayInTz(timezone)}
-                    disabledWeekdays={businessHours.filter((h) => !h.is_open).map((h) => h.day_of_week)}
+                    disabledWeekdays={businessHours
+                      .filter((h) => !h.is_open)
+                      .map((h) => h.day_of_week)}
                   />
                   {is12h ? (
                     <>
@@ -782,14 +1075,22 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
                         className="w-16 border border-gray-200 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
                         <option value="">hh</option>
-                        {hours12.map((h) => <option key={h} value={h}>{h}</option>)}
+                        {hours12.map((h) => (
+                          <option key={h} value={h}>
+                            {h}
+                          </option>
+                        ))}
                       </select>
                       <select
                         value={form.minute}
                         onChange={(e) => setForm((f) => ({ ...f, minute: e.target.value }))}
                         className="w-16 border border-gray-200 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
-                        {minutes.map((m) => <option key={m} value={m}>{m}</option>)}
+                        {minutes.map((m) => (
+                          <option key={m} value={m}>
+                            {m}
+                          </option>
+                        ))}
                       </select>
                       <select
                         value={form.period}
@@ -808,14 +1109,22 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
                         className="w-20 border border-gray-200 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
                         <option value="">hh</option>
-                        {hours24.map((h) => <option key={h} value={h}>{h}</option>)}
+                        {hours24.map((h) => (
+                          <option key={h} value={h}>
+                            {h}
+                          </option>
+                        ))}
                       </select>
                       <select
                         value={form.minute}
                         onChange={(e) => setForm((f) => ({ ...f, minute: e.target.value }))}
                         className="w-16 border border-gray-200 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
-                        {minutes.map((m) => <option key={m} value={m}>{m}</option>)}
+                        {minutes.map((m) => (
+                          <option key={m} value={m}>
+                            {m}
+                          </option>
+                        ))}
                       </select>
                     </>
                   )}
@@ -828,27 +1137,48 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
               </div>
               <div>
                 <label className="text-xs text-gray-500 font-medium">{t('form.clientLabel')}</label>
-                <select value={form.client_id} onChange={(e) => setForm((f) => ({ ...f, client_id: e.target.value }))}
-                  className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <select
+                  value={form.client_id}
+                  onChange={(e) => setForm((f) => ({ ...f, client_id: e.target.value }))}
+                  className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
                   <option value="">{t('walkIn')}</option>
-                  {clientsList.map((c) => <option key={c.id} value={c.id}>{c.name}{c.phone ? ` · ${c.phone}` : ''}</option>)}
+                  {clientsList.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                      {c.phone ? ` · ${c.phone}` : ''}
+                    </option>
+                  ))}
                 </select>
               </div>
               {!isBarbero && employees.length > 0 && (
                 <div>
-                  <label className="text-xs text-gray-500 font-medium">{t('form.employeeLabel')}</label>
-                  <select value={form.employee_id} onChange={(e) => setForm((f) => ({ ...f, employee_id: e.target.value }))}
-                    className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <label className="text-xs text-gray-500 font-medium">
+                    {t('form.employeeLabel')}
+                  </label>
+                  <select
+                    value={form.employee_id}
+                    onChange={(e) => setForm((f) => ({ ...f, employee_id: e.target.value }))}
+                    className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
                     <option value="">{t('form.anyEmployee')}</option>
-                    {employees.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+                    {employees.map((e) => (
+                      <option key={e.id} value={e.id}>
+                        {e.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
               )}
               <div>
                 <label className="text-xs text-gray-500 font-medium">{t('form.notesLabel')}</label>
-                <textarea value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-                  rows={2} placeholder={t('form.notesPlaceholder')}
-                  className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+                <textarea
+                  value={form.notes}
+                  onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+                  rows={2}
+                  placeholder={t('form.notesPlaceholder')}
+                  className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                />
               </div>
             </div>
             {formError && (
@@ -857,8 +1187,14 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
               </div>
             )}
             <div className="flex gap-2 mt-5">
-              <Button variant="outline" className="flex-1" onClick={() => setShowForm(false)}>{t('form.cancel')}</Button>
-              <Button className="flex-1" onClick={saveAppointment} disabled={saving || !form.service_id || !form.date || !form.hour}>
+              <Button variant="outline" className="flex-1" onClick={() => setShowForm(false)}>
+                {t('form.cancel')}
+              </Button>
+              <Button
+                className="flex-1"
+                onClick={saveAppointment}
+                disabled={saving || !form.service_id || !form.date || !form.hour}
+              >
                 {saving ? t('form.saving') : t('form.save')}
               </Button>
             </div>
@@ -870,20 +1206,29 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
       {selectedAppt && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
-            <h2 className="text-base font-semibold mb-1">{selectedAppt.clients?.name ?? (selectedAppt.source === 'online' ? 'Online booking' : t('walkIn'))}</h2>
+            <h2 className="text-base font-semibold mb-1">
+              {selectedAppt.clients?.name ??
+                (selectedAppt.source === 'online' ? 'Online booking' : t('walkIn'))}
+            </h2>
             <p className="text-sm text-gray-500 mb-4">
-              {selectedAppt.services?.name} · {formatInBusinessTimezone(selectedAppt.starts_at, timezone, 'time')} – {formatInBusinessTimezone(selectedAppt.ends_at, timezone, 'time')}
+              {selectedAppt.services?.name} ·{' '}
+              {formatInBusinessTimezone(selectedAppt.starts_at, timezone, 'time')} –{' '}
+              {formatInBusinessTimezone(selectedAppt.ends_at, timezone, 'time')}
             </p>
             <div className="flex items-center gap-2 mb-3 flex-wrap">
               {selectedAppt.source && SOURCE_BADGE[selectedAppt.source] && (
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${SOURCE_BADGE[selectedAppt.source].pill}`}>
+                <span
+                  className={`text-xs px-2 py-0.5 rounded-full font-medium ${SOURCE_BADGE[selectedAppt.source].pill}`}
+                >
                   {SOURCE_BADGE[selectedAppt.source].label}
                 </span>
               )}
             </div>
             {!isBarbero && employees.length > 0 && (
               <div className="mb-4">
-                <label className="text-xs text-gray-400 uppercase font-medium">{t('detail.employeeLabel')}</label>
+                <label className="text-xs text-gray-400 uppercase font-medium">
+                  {t('detail.employeeLabel')}
+                </label>
                 <select
                   value={selectedAppt.employees?.id ?? ''}
                   onChange={(e) => assignEmployee(selectedAppt.id, e.target.value)}
@@ -891,29 +1236,48 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
                 >
                   <option value="">Unassigned</option>
                   {employees.map((emp) => (
-                    <option key={emp.id} value={emp.id}>{emp.name}</option>
+                    <option key={emp.id} value={emp.id}>
+                      {emp.name}
+                    </option>
                   ))}
                 </select>
-                {assignError && (
-                  <p className="mt-1 text-xs text-red-600">{assignError}</p>
-                )}
+                {assignError && <p className="mt-1 text-xs text-red-600">{assignError}</p>}
               </div>
             )}
             {isBarbero && selectedAppt.employees?.name && (
               <div className="mb-4">
-                <label className="text-xs text-gray-400 uppercase font-medium">{t('detail.employeeLabel')}</label>
-                <div className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-700">{selectedAppt.employees.name}</div>
+                <label className="text-xs text-gray-400 uppercase font-medium">
+                  {t('detail.employeeLabel')}
+                </label>
+                <div className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-700">
+                  {selectedAppt.employees.name}
+                </div>
               </div>
             )}
-            {selectedAppt.notes && <p className="text-sm text-gray-600 mb-4 italic">{'"'}{selectedAppt.notes}{'"'}</p>}
+            {selectedAppt.notes && (
+              <p className="text-sm text-gray-600 mb-4 italic">
+                {'"'}
+                {selectedAppt.notes}
+                {'"'}
+              </p>
+            )}
             <div className="mb-4">
-              <div className="text-xs text-gray-400 mb-2 uppercase font-medium">{t('detail.statusLabel')}</div>
+              <div className="text-xs text-gray-400 mb-2 uppercase font-medium">
+                {t('detail.statusLabel')}
+              </div>
               <div className="flex flex-wrap gap-2">
-                {(['pending', 'confirmed', 'completed', 'paid', 'cancelled', 'no_show'] as const).map((s) => (
-                  <button key={s} onClick={() => updateStatus(selectedAppt.id, s)}
+                {(
+                  ['pending', 'confirmed', 'completed', 'paid', 'cancelled', 'no_show'] as const
+                ).map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => updateStatus(selectedAppt.id, s)}
                     className={`text-xs px-3 py-1 rounded-full border transition-colors capitalize ${
-                      selectedAppt.status === s ? statusColors[s] : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
-                    }`}>
+                      selectedAppt.status === s
+                        ? statusColors[s]
+                        : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
+                    }`}
+                  >
                     {t(`status.${s}`)}
                   </button>
                 ))}
@@ -962,7 +1326,17 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
                 Delete appointment
               </Button>
             )}
-            <Button variant="outline" className="w-full" onClick={() => { setSelectedAppt(null); setConfirmDelete(false); setAssignError(null) }}>{t('detail.close')}</Button>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => {
+                setSelectedAppt(null)
+                setConfirmDelete(false)
+                setAssignError(null)
+              }}
+            >
+              {t('detail.close')}
+            </Button>
           </div>
         </div>
       )}

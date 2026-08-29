@@ -17,8 +17,10 @@
  *  - WhatsApp  → клиенту (если заполнен whatsapp_number; требует approved templates для продакшена)
  */
 
-import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
+
 import {
   sendReminder,
   sendThankYou,
@@ -27,6 +29,7 @@ import {
   formatEmailDate,
   formatEmailTime,
 } from '@/lib/email'
+import { rateLimit, getIp } from '@/lib/rate-limit'
 import {
   sendTelegramMessage,
   tplThankYou,
@@ -52,10 +55,20 @@ import {
   tplReactivation as waTplReactivation,
   tplBirthday as waTplBirthday,
 } from '@/lib/whatsapp'
-
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
 
 export async function GET(req: NextRequest) {
+  const _ipGET = getIp(req as unknown as Request)
+  if (!rateLimit(`notify-route:get:${_ipGET}`, { limit: 60, windowMs: 10 * 60 * 1000 }))
+    return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
+  {
+    const _parsed = z
+      .object({})
+      .passthrough()
+      .safeParse(Object.fromEntries(new URL(req.url).searchParams))
+    if (!_parsed.success) return NextResponse.json({ error: 'validation_failed' }, { status: 422 })
+  }
+
   // Принимаем секрет только через заголовок Authorization: Bearer {secret}
   // Query-параметр ?secret= намеренно убран — он виден в логах серверов и прокси.
   // Используйте pg_cron или cron-job.org с заголовком Authorization.
@@ -69,7 +82,7 @@ export async function GET(req: NextRequest) {
   // Service role — cron запускается без сессии пользователя, RLS должен быть обойдён
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
   )
   const now = new Date()
   const results: string[] = []
@@ -88,65 +101,114 @@ export async function GET(req: NextRequest) {
 
   // ── 1. 24h reminders ────────────────────────────────────────────────────────
   const from24 = new Date(now.getTime() + 23 * 3600_000).toISOString()
-  const to24   = new Date(now.getTime() + 25 * 3600_000).toISOString()
+  const to24 = new Date(now.getTime() + 25 * 3600_000).toISOString()
   debug.window_24h = { from: from24, to: to24 }
 
   const { data: appts24, error: err24 } = await supabase
     .from('appointments')
-    .select('id, starts_at, business_id, services(name), employees(name), clients(name, email, whatsapp_number, viber_user_id, telegram_id)')
+    .select(
+      'id, starts_at, business_id, services(name), employees(name), clients(name, email, whatsapp_number, viber_user_id, telegram_id)',
+    )
     .gte('starts_at', from24)
     .lte('starts_at', to24)
     .eq('status', 'confirmed')
   debug.appts24 = { count: appts24?.length ?? 0, error: err24?.message ?? null }
 
   for (const a of appts24 ?? []) {
-    const client = a.clients as unknown as { name: string; email: string | null; whatsapp_number: string | null; viber_user_id: string | null; telegram_id: string | null } | null
+    const client = a.clients as unknown as {
+      name: string
+      email: string | null
+      whatsapp_number: string | null
+      viber_user_id: string | null
+      telegram_id: string | null
+    } | null
     // Skip without logging if client has no contact channels at all.
     // This prevents burning a notification_log entry for a booking that can never
     // be delivered — which would permanently block retries once contact info is added.
-    if (!client?.telegram_id && !client?.email && !client?.viber_user_id && !client?.whatsapp_number) continue
-    if (!await logged(a.business_id, a.id, 'reminder_24h')) continue
+    if (
+      !client?.telegram_id &&
+      !client?.email &&
+      !client?.viber_user_id &&
+      !client?.whatsapp_number
+    )
+      continue
+    if (!(await logged(a.business_id, a.id, 'reminder_24h'))) continue
 
     const { data: biz } = await supabase
       .from('businesses')
-      .select('name, address, timezone, telegram_bot_token, telegram_chat_id, viber_bot_token, viber_chat_id, meta_whatsapp_phone_number_id, meta_whatsapp_access_token')
-      .eq('id', a.business_id).single()
+      .select(
+        'name, address, timezone, telegram_bot_token, telegram_chat_id, viber_bot_token, viber_chat_id, meta_whatsapp_phone_number_id, meta_whatsapp_access_token',
+      )
+      .eq('id', a.business_id)
+      .single()
 
-    const service  = a.services  as unknown as { name: string } | null
+    const service = a.services as unknown as { name: string } | null
     const employee = a.employees as unknown as { name: string } | null
     const tz = biz?.timezone ?? 'UTC'
     const date = formatEmailDate(a.starts_at, tz)
     const time = formatEmailTime(a.starts_at, tz)
-    const waCredentials = biz?.meta_whatsapp_phone_number_id && biz?.meta_whatsapp_access_token
-      ? { phoneNumberId: biz.meta_whatsapp_phone_number_id, accessToken: biz.meta_whatsapp_access_token }
-      : undefined
+    const waCredentials =
+      biz?.meta_whatsapp_phone_number_id && biz?.meta_whatsapp_access_token
+        ? {
+            phoneNumberId: biz.meta_whatsapp_phone_number_id,
+            accessToken: biz.meta_whatsapp_access_token,
+          }
+        : undefined
 
     // Telegram → клиенту (владельцу reminder не нужен — он уже получил уведомление при создании записи)
     if (biz?.telegram_bot_token && client?.telegram_id) {
-      await sendTelegramMessage(biz.telegram_bot_token, client.telegram_id,
-        tgTplReminderClient({ clientName: client.name, serviceName: service?.name ?? '—', date, time, businessName: biz.name, address: biz.address ?? undefined })
+      await sendTelegramMessage(
+        biz.telegram_bot_token,
+        client.telegram_id,
+        tgTplReminderClient({
+          clientName: client.name,
+          serviceName: service?.name ?? '—',
+          date,
+          time,
+          businessName: biz.name,
+          address: biz.address ?? undefined,
+        }),
       )
     }
     // Viber → клиенту
     if (biz?.viber_bot_token && client?.viber_user_id) {
-      await sendViberMessage(biz.viber_bot_token, client.viber_user_id,
-        viberTplReminderClient({ clientName: client.name, serviceName: service?.name ?? '—', date, time, businessName: biz.name, address: biz.address ?? undefined })
+      await sendViberMessage(
+        biz.viber_bot_token,
+        client.viber_user_id,
+        viberTplReminderClient({
+          clientName: client.name,
+          serviceName: service?.name ?? '—',
+          date,
+          time,
+          businessName: biz.name,
+          address: biz.address ?? undefined,
+        }),
       )
     }
     // WhatsApp → клиенту
     if (client?.whatsapp_number) {
-      await sendWhatsAppMessage(client.whatsapp_number,
-        waTplReminder({ clientName: client.name, serviceName: service?.name ?? '—', date, time, businessName: biz?.name ?? '' }),
-        waCredentials
+      await sendWhatsAppMessage(
+        client.whatsapp_number,
+        waTplReminder({
+          clientName: client.name,
+          serviceName: service?.name ?? '—',
+          date,
+          time,
+          businessName: biz?.name ?? '',
+        }),
+        waCredentials,
       )
     }
     // Email → клиенту
     if (client?.email) {
       try {
         await sendReminder({
-          to: client.email, clientName: client.name,
-          businessName: biz?.name ?? '', serviceName: service?.name ?? '—',
-          date, time,
+          to: client.email,
+          clientName: client.name,
+          businessName: biz?.name ?? '',
+          serviceName: service?.name ?? '—',
+          date,
+          time,
           employeeName: employee?.name ?? undefined,
           address: biz?.address ?? undefined,
         })
@@ -159,65 +221,117 @@ export async function GET(req: NextRequest) {
 
   // ── 2. 1h reminders ─────────────────────────────────────────────────────────
   const from1h = new Date(now.getTime() + 45 * 60_000).toISOString()
-  const to1h   = new Date(now.getTime() + 75 * 60_000).toISOString()
+  const to1h = new Date(now.getTime() + 75 * 60_000).toISOString()
   debug.window_1h = { from: from1h, to: to1h }
 
   const { data: appts1h, error: err1h } = await supabase
     .from('appointments')
-    .select('id, starts_at, business_id, services(name), employees(name), clients(name, email, whatsapp_number, viber_user_id, telegram_id)')
+    .select(
+      'id, starts_at, business_id, services(name), employees(name), clients(name, email, whatsapp_number, viber_user_id, telegram_id)',
+    )
     .gte('starts_at', from1h)
     .lte('starts_at', to1h)
     .eq('status', 'confirmed')
   debug.appts1h = { count: appts1h?.length ?? 0, error: err1h?.message ?? null }
 
   for (const a of appts1h ?? []) {
-    const client = a.clients as unknown as { name: string; email: string | null; whatsapp_number: string | null; viber_user_id: string | null; telegram_id: string | null } | null
+    const client = a.clients as unknown as {
+      name: string
+      email: string | null
+      whatsapp_number: string | null
+      viber_user_id: string | null
+      telegram_id: string | null
+    } | null
     // Skip without logging if client has no contact channels at all.
     // This prevents burning a notification_log entry for a booking that can never
     // be delivered — which would permanently block retries once contact info is added.
-    if (!client?.telegram_id && !client?.email && !client?.viber_user_id && !client?.whatsapp_number) continue
-    if (!await logged(a.business_id, a.id, 'reminder_1h')) continue
+    if (
+      !client?.telegram_id &&
+      !client?.email &&
+      !client?.viber_user_id &&
+      !client?.whatsapp_number
+    )
+      continue
+    if (!(await logged(a.business_id, a.id, 'reminder_1h'))) continue
 
     const { data: biz } = await supabase
       .from('businesses')
-      .select('name, address, timezone, telegram_bot_token, telegram_chat_id, viber_bot_token, viber_chat_id, meta_whatsapp_phone_number_id, meta_whatsapp_access_token')
-      .eq('id', a.business_id).single()
+      .select(
+        'name, address, timezone, telegram_bot_token, telegram_chat_id, viber_bot_token, viber_chat_id, meta_whatsapp_phone_number_id, meta_whatsapp_access_token',
+      )
+      .eq('id', a.business_id)
+      .single()
 
-    const service  = a.services  as unknown as { name: string } | null
+    const service = a.services as unknown as { name: string } | null
     const employee = a.employees as unknown as { name: string } | null
     const tz = biz?.timezone ?? 'UTC'
     const date = formatEmailDate(a.starts_at, tz)
     const time = formatEmailTime(a.starts_at, tz)
-    const waCredentials = biz?.meta_whatsapp_phone_number_id && biz?.meta_whatsapp_access_token
-      ? { phoneNumberId: biz.meta_whatsapp_phone_number_id, accessToken: biz.meta_whatsapp_access_token }
-      : undefined
+    const waCredentials =
+      biz?.meta_whatsapp_phone_number_id && biz?.meta_whatsapp_access_token
+        ? {
+            phoneNumberId: biz.meta_whatsapp_phone_number_id,
+            accessToken: biz.meta_whatsapp_access_token,
+          }
+        : undefined
 
     // Telegram → клиенту (владельцу reminder не нужен — он уже получил уведомление при создании записи)
     if (biz?.telegram_bot_token && client?.telegram_id) {
-      await sendTelegramMessage(biz.telegram_bot_token, client.telegram_id,
-        tgTplReminderClient({ clientName: client.name, serviceName: service?.name ?? '—', date, time, businessName: biz.name, address: biz.address ?? undefined, isOneHour: true })
+      await sendTelegramMessage(
+        biz.telegram_bot_token,
+        client.telegram_id,
+        tgTplReminderClient({
+          clientName: client.name,
+          serviceName: service?.name ?? '—',
+          date,
+          time,
+          businessName: biz.name,
+          address: biz.address ?? undefined,
+          isOneHour: true,
+        }),
       )
     }
     // Viber → клиенту
     if (biz?.viber_bot_token && client?.viber_user_id) {
-      await sendViberMessage(biz.viber_bot_token, client.viber_user_id,
-        viberTplReminderClient({ clientName: client.name, serviceName: service?.name ?? '—', date, time, businessName: biz.name, address: biz.address ?? undefined, isOneHour: true })
+      await sendViberMessage(
+        biz.viber_bot_token,
+        client.viber_user_id,
+        viberTplReminderClient({
+          clientName: client.name,
+          serviceName: service?.name ?? '—',
+          date,
+          time,
+          businessName: biz.name,
+          address: biz.address ?? undefined,
+          isOneHour: true,
+        }),
       )
     }
     // WhatsApp → клиенту
     if (client?.whatsapp_number) {
-      await sendWhatsAppMessage(client.whatsapp_number,
-        waTplReminder({ clientName: client.name, serviceName: service?.name ?? '—', date, time, businessName: biz?.name ?? '', isOneHour: true }),
-        waCredentials
+      await sendWhatsAppMessage(
+        client.whatsapp_number,
+        waTplReminder({
+          clientName: client.name,
+          serviceName: service?.name ?? '—',
+          date,
+          time,
+          businessName: biz?.name ?? '',
+          isOneHour: true,
+        }),
+        waCredentials,
       )
     }
     // Email → клиенту
     if (client?.email) {
       try {
         await sendReminder({
-          to: client.email, clientName: client.name,
-          businessName: biz?.name ?? '', serviceName: service?.name ?? '—',
-          date, time,
+          to: client.email,
+          clientName: client.name,
+          businessName: biz?.name ?? '',
+          serviceName: service?.name ?? '—',
+          date,
+          time,
           employeeName: employee?.name ?? undefined,
           address: biz?.address ?? undefined,
           isOneHour: true,
@@ -235,62 +349,105 @@ export async function GET(req: NextRequest) {
 
   const { data: completed, error: errTy } = await supabase
     .from('appointments')
-    .select('id, business_id, services(name), clients(name, email, whatsapp_number, viber_user_id, telegram_id)')
+    .select(
+      'id, business_id, services(name), clients(name, email, whatsapp_number, viber_user_id, telegram_id)',
+    )
     .eq('status', 'completed')
     .gte('ends_at', twoHoursAgo)
     .lte('ends_at', now.toISOString())
   debug.thankyou = { count: completed?.length ?? 0, error: errTy?.message ?? null }
 
   for (const a of completed ?? []) {
-    if (!await logged(a.business_id, a.id, 'thankyou')) continue
+    if (!(await logged(a.business_id, a.id, 'thankyou'))) continue
 
     const { data: biz } = await supabase
       .from('businesses')
-      .select('name, slug, telegram_bot_token, telegram_chat_id, viber_bot_token, viber_chat_id, meta_whatsapp_phone_number_id, meta_whatsapp_access_token')
-      .eq('id', a.business_id).single()
+      .select(
+        'name, slug, telegram_bot_token, telegram_chat_id, viber_bot_token, viber_chat_id, meta_whatsapp_phone_number_id, meta_whatsapp_access_token',
+      )
+      .eq('id', a.business_id)
+      .single()
 
-    const client  = a.clients  as unknown as { name: string; email: string | null; whatsapp_number: string | null; viber_user_id: string | null; telegram_id: string | null } | null
+    const client = a.clients as unknown as {
+      name: string
+      email: string | null
+      whatsapp_number: string | null
+      viber_user_id: string | null
+      telegram_id: string | null
+    } | null
     const service = a.services as unknown as { name: string } | null
     const bookingUrl = biz?.slug ? `${APP_URL}/book/${biz.slug}` : undefined
-    const waCredentials = biz?.meta_whatsapp_phone_number_id && biz?.meta_whatsapp_access_token
-      ? { phoneNumberId: biz.meta_whatsapp_phone_number_id, accessToken: biz.meta_whatsapp_access_token }
-      : undefined
+    const waCredentials =
+      biz?.meta_whatsapp_phone_number_id && biz?.meta_whatsapp_access_token
+        ? {
+            phoneNumberId: biz.meta_whatsapp_phone_number_id,
+            accessToken: biz.meta_whatsapp_access_token,
+          }
+        : undefined
 
     // Telegram → владельцу
     if (biz?.telegram_bot_token && biz?.telegram_chat_id) {
-      await sendTelegramMessage(biz.telegram_bot_token, biz.telegram_chat_id,
-        tplThankYou({ clientName: client?.name ?? 'Walk-in', serviceName: service?.name ?? '—' })
+      await sendTelegramMessage(
+        biz.telegram_bot_token,
+        biz.telegram_chat_id,
+        tplThankYou({ clientName: client?.name ?? 'Walk-in', serviceName: service?.name ?? '—' }),
       )
     }
     // Telegram → клиенту
     if (biz?.telegram_bot_token && client?.telegram_id) {
-      await sendTelegramMessage(biz.telegram_bot_token, client.telegram_id,
-        tgTplThankYouClient({ clientName: client.name, serviceName: service?.name ?? '—', businessName: biz.name, bookingUrl })
+      await sendTelegramMessage(
+        biz.telegram_bot_token,
+        client.telegram_id,
+        tgTplThankYouClient({
+          clientName: client.name,
+          serviceName: service?.name ?? '—',
+          businessName: biz.name,
+          bookingUrl,
+        }),
       )
     }
     // Viber → владельцу
     if (biz?.viber_bot_token && biz?.viber_chat_id) {
-      await sendViberMessage(biz.viber_bot_token, biz.viber_chat_id,
-        viberTplThankYou({ clientName: client?.name ?? 'Walk-in', serviceName: service?.name ?? '—' })
+      await sendViberMessage(
+        biz.viber_bot_token,
+        biz.viber_chat_id,
+        viberTplThankYou({
+          clientName: client?.name ?? 'Walk-in',
+          serviceName: service?.name ?? '—',
+        }),
       )
     }
     // Viber → клиенту
     if (biz?.viber_bot_token && client?.viber_user_id) {
-      await sendViberMessage(biz.viber_bot_token, client.viber_user_id,
-        viberTplThankYouClient({ clientName: client.name, serviceName: service?.name ?? '—', businessName: biz.name, bookingUrl })
+      await sendViberMessage(
+        biz.viber_bot_token,
+        client.viber_user_id,
+        viberTplThankYouClient({
+          clientName: client.name,
+          serviceName: service?.name ?? '—',
+          businessName: biz.name,
+          bookingUrl,
+        }),
       )
     }
     // WhatsApp → клиенту
     if (client?.whatsapp_number) {
-      await sendWhatsAppMessage(client.whatsapp_number,
-        waTplThankYou({ clientName: client.name, serviceName: service?.name ?? '—', businessName: biz?.name ?? '', bookingUrl }),
-        waCredentials
+      await sendWhatsAppMessage(
+        client.whatsapp_number,
+        waTplThankYou({
+          clientName: client.name,
+          serviceName: service?.name ?? '—',
+          businessName: biz?.name ?? '',
+          bookingUrl,
+        }),
+        waCredentials,
       )
     }
     // Email → клиенту
     if (client?.email) {
       await sendThankYou({
-        to: client.email, clientName: client.name,
+        to: client.email,
+        clientName: client.name,
         businessName: biz?.name ?? '',
         serviceName: service?.name ?? '—',
         bookingUrl,
@@ -317,43 +474,61 @@ export async function GET(req: NextRequest) {
 
   for (const c of dormant ?? []) {
     if (!c.email && !c.whatsapp_number && !c.viber_user_id && !c.telegram_id) continue
-    if (!await logged(c.business_id, c.id, 'reactivation')) continue
+    if (!(await logged(c.business_id, c.id, 'reactivation'))) continue
 
-    const { data: biz } = await supabase.from('businesses').select('name, slug, telegram_bot_token, telegram_chat_id, viber_bot_token, meta_whatsapp_phone_number_id, meta_whatsapp_access_token').eq('id', c.business_id).single()
+    const { data: biz } = await supabase
+      .from('businesses')
+      .select(
+        'name, slug, telegram_bot_token, telegram_chat_id, viber_bot_token, meta_whatsapp_phone_number_id, meta_whatsapp_access_token',
+      )
+      .eq('id', c.business_id)
+      .single()
     const bookingUrl = biz?.slug ? `${APP_URL}/book/${biz.slug}` : undefined
-    const waCredentials = biz?.meta_whatsapp_phone_number_id && biz?.meta_whatsapp_access_token
-      ? { phoneNumberId: biz.meta_whatsapp_phone_number_id, accessToken: biz.meta_whatsapp_access_token }
-      : undefined
+    const waCredentials =
+      biz?.meta_whatsapp_phone_number_id && biz?.meta_whatsapp_access_token
+        ? {
+            phoneNumberId: biz.meta_whatsapp_phone_number_id,
+            accessToken: biz.meta_whatsapp_access_token,
+          }
+        : undefined
 
     // Telegram → владельцу
     if (biz?.telegram_bot_token && biz?.telegram_chat_id) {
-      await sendTelegramMessage(biz.telegram_bot_token, biz.telegram_chat_id,
-        tgTplReactivation({ clientName: c.name })
+      await sendTelegramMessage(
+        biz.telegram_bot_token,
+        biz.telegram_chat_id,
+        tgTplReactivation({ clientName: c.name }),
       )
     }
     // Telegram → клиенту
     if (biz?.telegram_bot_token && c.telegram_id) {
-      await sendTelegramMessage(biz.telegram_bot_token, c.telegram_id,
-        tgTplReactivationClient({ clientName: c.name, businessName: biz.name, bookingUrl })
+      await sendTelegramMessage(
+        biz.telegram_bot_token,
+        c.telegram_id,
+        tgTplReactivationClient({ clientName: c.name, businessName: biz.name, bookingUrl }),
       )
     }
     // Viber → клиенту
     if (biz?.viber_bot_token && c.viber_user_id) {
-      await sendViberMessage(biz.viber_bot_token, c.viber_user_id,
-        viberTplReactivation({ clientName: c.name, businessName: biz.name, bookingUrl })
+      await sendViberMessage(
+        biz.viber_bot_token,
+        c.viber_user_id,
+        viberTplReactivation({ clientName: c.name, businessName: biz.name, bookingUrl }),
       )
     }
     // WhatsApp → клиенту
     if (c.whatsapp_number) {
-      await sendWhatsAppMessage(c.whatsapp_number,
+      await sendWhatsAppMessage(
+        c.whatsapp_number,
         waTplReactivation({ clientName: c.name, businessName: biz?.name ?? '', bookingUrl }),
-        waCredentials
+        waCredentials,
       )
     }
     // Email → клиенту
     if (c.email) {
       await sendReactivation({
-        to: c.email, clientName: c.name,
+        to: c.email,
+        clientName: c.name,
         businessName: biz?.name ?? '',
         bookingUrl,
       })
@@ -371,49 +546,67 @@ export async function GET(req: NextRequest) {
     .not('birthday', 'is', null)
 
   const bdays = (allClientsWithBday ?? []).filter(
-    (c) => typeof c.birthday === 'string' && c.birthday.slice(5) === todayMD
+    (c) => typeof c.birthday === 'string' && c.birthday.slice(5) === todayMD,
   )
 
   for (const c of bdays ?? []) {
     if (!c.email && !c.whatsapp_number && !c.viber_user_id && !c.telegram_id) continue
     const year = now.getFullYear()
-    if (!await logged(c.business_id, `${c.id}_bday_${year}`, 'birthday')) continue
+    if (!(await logged(c.business_id, `${c.id}_bday_${year}`, 'birthday'))) continue
 
-    const { data: biz } = await supabase.from('businesses').select('name, slug, telegram_bot_token, telegram_chat_id, viber_bot_token, meta_whatsapp_phone_number_id, meta_whatsapp_access_token').eq('id', c.business_id).single()
+    const { data: biz } = await supabase
+      .from('businesses')
+      .select(
+        'name, slug, telegram_bot_token, telegram_chat_id, viber_bot_token, meta_whatsapp_phone_number_id, meta_whatsapp_access_token',
+      )
+      .eq('id', c.business_id)
+      .single()
     const bookingUrl = biz?.slug ? `${APP_URL}/book/${biz.slug}` : undefined
-    const waCredentials = biz?.meta_whatsapp_phone_number_id && biz?.meta_whatsapp_access_token
-      ? { phoneNumberId: biz.meta_whatsapp_phone_number_id, accessToken: biz.meta_whatsapp_access_token }
-      : undefined
+    const waCredentials =
+      biz?.meta_whatsapp_phone_number_id && biz?.meta_whatsapp_access_token
+        ? {
+            phoneNumberId: biz.meta_whatsapp_phone_number_id,
+            accessToken: biz.meta_whatsapp_access_token,
+          }
+        : undefined
 
     // Telegram → владельцу
     if (biz?.telegram_bot_token && biz?.telegram_chat_id) {
-      await sendTelegramMessage(biz.telegram_bot_token, biz.telegram_chat_id,
-        tgTplBirthday({ clientName: c.name })
+      await sendTelegramMessage(
+        biz.telegram_bot_token,
+        biz.telegram_chat_id,
+        tgTplBirthday({ clientName: c.name }),
       )
     }
     // Telegram → клиенту
     if (biz?.telegram_bot_token && c.telegram_id) {
-      await sendTelegramMessage(biz.telegram_bot_token, c.telegram_id,
-        tgTplBirthdayClient({ clientName: c.name, businessName: biz.name, bookingUrl })
+      await sendTelegramMessage(
+        biz.telegram_bot_token,
+        c.telegram_id,
+        tgTplBirthdayClient({ clientName: c.name, businessName: biz.name, bookingUrl }),
       )
     }
     // Viber → клиенту
     if (biz?.viber_bot_token && c.viber_user_id) {
-      await sendViberMessage(biz.viber_bot_token, c.viber_user_id,
-        viberTplBirthday({ clientName: c.name, businessName: biz.name, bookingUrl })
+      await sendViberMessage(
+        biz.viber_bot_token,
+        c.viber_user_id,
+        viberTplBirthday({ clientName: c.name, businessName: biz.name, bookingUrl }),
       )
     }
     // WhatsApp → клиенту
     if (c.whatsapp_number) {
-      await sendWhatsAppMessage(c.whatsapp_number,
+      await sendWhatsAppMessage(
+        c.whatsapp_number,
         waTplBirthday({ clientName: c.name, businessName: biz?.name ?? '', bookingUrl }),
-        waCredentials
+        waCredentials,
       )
     }
     // Email → клиенту
     if (c.email) {
       await sendBirthday({
-        to: c.email, clientName: c.name,
+        to: c.email,
+        clientName: c.name,
         businessName: biz?.name ?? '',
         bookingUrl,
       })
@@ -487,11 +680,29 @@ export async function GET(req: NextRequest) {
       .select('id, name, slug, meta_whatsapp_phone_number_id, meta_whatsapp_access_token')
       .limit(20)
 
-    for (const bizRaw of (businesses as unknown as { id: string; name: string; slug: string | null; meta_whatsapp_phone_number_id: string | null; meta_whatsapp_access_token: string | null }[] | null) ?? []) {
-      const biz = bizRaw as { id: string; name: string; slug: string | null; meta_whatsapp_phone_number_id: string | null; meta_whatsapp_access_token: string | null }
-      const waCreds = biz.meta_whatsapp_phone_number_id && biz.meta_whatsapp_access_token
-        ? { phoneNumberId: biz.meta_whatsapp_phone_number_id, accessToken: biz.meta_whatsapp_access_token }
-        : undefined
+    for (const bizRaw of (businesses as unknown as
+      | {
+          id: string
+          name: string
+          slug: string | null
+          meta_whatsapp_phone_number_id: string | null
+          meta_whatsapp_access_token: string | null
+        }[]
+      | null) ?? []) {
+      const biz = bizRaw as {
+        id: string
+        name: string
+        slug: string | null
+        meta_whatsapp_phone_number_id: string | null
+        meta_whatsapp_access_token: string | null
+      }
+      const waCreds =
+        biz.meta_whatsapp_phone_number_id && biz.meta_whatsapp_access_token
+          ? {
+              phoneNumberId: biz.meta_whatsapp_phone_number_id,
+              accessToken: biz.meta_whatsapp_access_token,
+            }
+          : undefined
       const bookingUrl = biz.slug ? `${APP_URL}/book/${biz.slug}` : undefined
 
       // Helper to send segment campaign if not already sent today (via notification_log)
@@ -516,24 +727,38 @@ export async function GET(req: NextRequest) {
           .eq('business_id', biz.id)
           .limit(300)
 
-        const clients = (clientsRaw as unknown as { id: string; name: string; phone: string | null; whatsapp_number: string | null; email: string | null; birthday: string | null; tags: string[] | null; last_visit_at: string | null }[] | null) ?? []
+        const clients =
+          (clientsRaw as unknown as
+            | {
+                id: string
+                name: string
+                phone: string | null
+                whatsapp_number: string | null
+                email: string | null
+                birthday: string | null
+                tags: string[] | null
+                last_visit_at: string | null
+              }[]
+            | null) ?? []
         // Enrich with transaction stats for visits
         const ids = clients.map((c) => c.id)
         const statsMap: Record<string, { total_visits: number; last_visit_at: string | null }> = {}
         if (ids.length > 0) {
-          const { data: txs } = await supabase
+          const { data: txs } = (await supabase
             .from('transactions')
             .select('client_id, created_at')
             .eq('business_id', biz.id)
             .eq('status', 'completed')
             .in('client_id', ids)
             .order('created_at', { ascending: false })
-            .limit(1000) as unknown as { data: { client_id: string; created_at: string }[] | null }
+            .limit(1000)) as unknown as { data: { client_id: string; created_at: string }[] | null }
           for (const tx of txs ?? []) {
             if (!tx.client_id) continue
-            if (!statsMap[tx.client_id]) statsMap[tx.client_id] = { total_visits: 0, last_visit_at: null }
+            if (!statsMap[tx.client_id])
+              statsMap[tx.client_id] = { total_visits: 0, last_visit_at: null }
             statsMap[tx.client_id].total_visits++
-            if (!statsMap[tx.client_id].last_visit_at) statsMap[tx.client_id].last_visit_at = tx.created_at
+            if (!statsMap[tx.client_id].last_visit_at)
+              statsMap[tx.client_id].last_visit_at = tx.created_at
           }
         }
         const enriched = clients.map((c) => ({
@@ -556,17 +781,18 @@ export async function GET(req: NextRequest) {
         }
 
         let sentCount = 0
-        for (const c of recipients.slice(0, 100)) { // cap 100 per run to avoid timeout
+        for (const c of recipients.slice(0, 100)) {
+          // cap 100 per run to avoid timeout
           const dedupKey = `campaign_auto:${segment}:${c.id}`
           const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
-          const { data: recent } = await supabase
+          const { data: recent } = (await supabase
             .from('notification_log')
             .select('id')
             .eq('business_id', biz.id)
             .eq('ref_id', c.id)
             .eq('type', dedupKey)
             .gte('sent_at', oneHourAgo)
-            .limit(1) as unknown as { data: unknown[] | null }
+            .limit(1)) as unknown as { data: unknown[] | null }
           if ((recent as unknown[])?.length) continue
 
           const body = template.replaceAll('{{name}}', c.name).replaceAll('{{business}}', biz.name)
@@ -611,19 +837,35 @@ export async function GET(req: NextRequest) {
       .in('source', ['campaign', 'campaign_auto'])
       .limit(100)
 
-    for (const a of (recentCampaignAppts as unknown as { id: string; client_id: string | null; business_id: string; campaign_id: string | null; source: string }[] | null) ?? []) {
+    for (const a of (recentCampaignAppts as unknown as
+      | {
+          id: string
+          client_id: string | null
+          business_id: string
+          campaign_id: string | null
+          source: string
+        }[]
+      | null) ?? []) {
       if (!a.client_id) continue
       try {
         if (a.campaign_id) {
-          const { data: existing } = await supabase
+          const { data: existing } = (await supabase
             .from('campaign_recipients')
             .select('status')
             .eq('campaign_id', a.campaign_id)
             .eq('client_id', a.client_id)
-            .maybeSingle() as unknown as { data: { status: string } | null }
+            .maybeSingle()) as unknown as { data: { status: string } | null }
           if (existing && existing.status !== 'rebooked') {
-            await supabase.from('campaign_recipients').update({ status: 'rebooked' }).eq('campaign_id', a.campaign_id).eq('client_id', a.client_id)
-            const { data: camp } = await supabase.from('campaigns').select('stats').eq('id', a.campaign_id).maybeSingle() as unknown as { data: { stats: Record<string, number> } | null }
+            await supabase
+              .from('campaign_recipients')
+              .update({ status: 'rebooked' })
+              .eq('campaign_id', a.campaign_id)
+              .eq('client_id', a.client_id)
+            const { data: camp } = (await supabase
+              .from('campaigns')
+              .select('stats')
+              .eq('id', a.campaign_id)
+              .maybeSingle()) as unknown as { data: { stats: Record<string, number> } | null }
             if (camp?.stats) {
               const next = { ...camp.stats, rebooked: (camp.stats.rebooked ?? 0) + 1 }
               await supabase.from('campaigns').update({ stats: next }).eq('id', a.campaign_id)
@@ -633,7 +875,10 @@ export async function GET(req: NextRequest) {
         } else {
           // No campaign_id, attribute to most recent sent campaign for this client
           const { attributeRebooking } = await import('@/lib/campaigns')
-          await attributeRebooking(supabase as unknown as Parameters<typeof attributeRebooking>[0], { clientId: a.client_id, businessId: a.business_id })
+          await attributeRebooking(
+            supabase as unknown as Parameters<typeof attributeRebooking>[0],
+            { clientId: a.client_id, businessId: a.business_id },
+          )
           results.push(`campaign_rebooked_auto:${a.client_id}`)
         }
       } catch {}

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+
 import {
   parseDateTimeInTz,
   isPastInTz,
@@ -91,11 +92,11 @@ describe('booking-lead-time — isPastInTz / isTooSoonInTz', () => {
 
   it('isTooSoon respects minAdvance and enabled flag', () => {
     // now 10:00, lead 30
-    expect(isTooSoonInTz(new Date('2030-01-15T10:20:00.000Z'), baseNow, 30, true)).toBe(true)  // 20 min <30
+    expect(isTooSoonInTz(new Date('2030-01-15T10:20:00.000Z'), baseNow, 30, true)).toBe(true) // 20 min <30
     expect(isTooSoonInTz(new Date('2030-01-15T10:30:00.000Z'), baseNow, 30, true)).toBe(false) // exactly 30 => ok
-    expect(isTooSoonInTz(new Date('2030-01-15T10:10:00.000Z'), baseNow, 15, true)).toBe(true)  // 10<15
+    expect(isTooSoonInTz(new Date('2030-01-15T10:10:00.000Z'), baseNow, 15, true)).toBe(true) // 10<15
     expect(isTooSoonInTz(new Date('2030-01-15T10:15:00.000Z'), baseNow, 15, true)).toBe(false) // exactly 15 => ok
-    expect(isTooSoonInTz(new Date('2030-01-15T10:30:00.000Z'), baseNow, 60, true)).toBe(true)  // 30<60
+    expect(isTooSoonInTz(new Date('2030-01-15T10:30:00.000Z'), baseNow, 60, true)).toBe(true) // 30<60
     expect(isTooSoonInTz(new Date('2030-01-15T11:00:00.000Z'), baseNow, 60, true)).toBe(false) // exactly 60 => ok
   })
 
@@ -106,8 +107,12 @@ describe('booking-lead-time — isPastInTz / isTooSoonInTz', () => {
 
   it('isTooSoon with 0 or null lead never too soon', () => {
     expect(isTooSoonInTz(new Date('2030-01-15T10:01:00.000Z'), baseNow, 0, true)).toBe(false)
-    expect(isTooSoonInTz(new Date('2030-01-15T10:01:00.000Z'), baseNow, null as any, true)).toBe(false)
-    expect(isTooSoonInTz(new Date('2030-01-15T10:01:00.000Z'), baseNow, undefined as any, true)).toBe(false)
+    expect(isTooSoonInTz(new Date('2030-01-15T10:01:00.000Z'), baseNow, null as any, true)).toBe(
+      false,
+    )
+    expect(
+      isTooSoonInTz(new Date('2030-01-15T10:01:00.000Z'), baseNow, undefined as any, true),
+    ).toBe(false)
   })
 
   it('lead time with different timezones: parse then compare UTC correctly', () => {
@@ -140,21 +145,42 @@ describe('booking-lead-time — isPastInTz / isTooSoonInTz', () => {
 // ---------------------------------------------------------------------------
 describe('booking-lead-time — checkSlotWithinHours', () => {
   it('ok inside hours without break', () => {
-    const day: DayHours = { day_of_week: 1, is_open: true, open_time: '09:00', close_time: '20:00', break_start: null, break_end: null }
+    const day: DayHours = {
+      day_of_week: 1,
+      is_open: true,
+      open_time: '09:00',
+      close_time: '20:00',
+      break_start: null,
+      break_end: null,
+    }
     expect(checkSlotWithinHours(day, '09:00', 30)).toEqual({ ok: true })
     expect(checkSlotWithinHours(day, '19:30', 30)).toEqual({ ok: true })
     expect(checkSlotWithinHours(day, '12:00', 60)).toEqual({ ok: true })
   })
 
   it('outside_hours before open and after close', () => {
-    const day: DayHours = { day_of_week: 1, is_open: true, open_time: '09:00', close_time: '20:00', break_start: null, break_end: null }
+    const day: DayHours = {
+      day_of_week: 1,
+      is_open: true,
+      open_time: '09:00',
+      close_time: '20:00',
+      break_start: null,
+      break_end: null,
+    }
     expect(checkSlotWithinHours(day, '08:59', 30)).toEqual({ ok: false, reason: 'outside_hours' })
     expect(checkSlotWithinHours(day, '19:31', 30)).toEqual({ ok: false, reason: 'outside_hours' })
     expect(checkSlotWithinHours(day, '20:00', 30)).toEqual({ ok: false, reason: 'outside_hours' })
   })
 
   it('break overlap detection', () => {
-    const day: DayHours = { day_of_week: 1, is_open: true, open_time: '09:00', close_time: '20:00', break_start: '12:00', break_end: '13:00' }
+    const day: DayHours = {
+      day_of_week: 1,
+      is_open: true,
+      open_time: '09:00',
+      close_time: '20:00',
+      break_start: '12:00',
+      break_end: '13:00',
+    }
     expect(checkSlotWithinHours(day, '11:30', 60)).toEqual({ ok: false, reason: 'break' }) // 11:30-12:30 overlaps
     expect(checkSlotWithinHours(day, '12:00', 30)).toEqual({ ok: false, reason: 'break' })
     expect(checkSlotWithinHours(day, '12:30', 30)).toEqual({ ok: false, reason: 'break' })
@@ -163,14 +189,28 @@ describe('booking-lead-time — checkSlotWithinHours', () => {
   })
 
   it('closed when is_open false or undefined', () => {
-    const closed: DayHours = { day_of_week: 0, is_open: false, open_time: '09:00', close_time: '20:00', break_start: null, break_end: null }
+    const closed: DayHours = {
+      day_of_week: 0,
+      is_open: false,
+      open_time: '09:00',
+      close_time: '20:00',
+      break_start: null,
+      break_end: null,
+    }
     expect(checkSlotWithinHours(closed, '10:00', 30)).toEqual({ ok: false, reason: 'closed' })
     expect(checkSlotWithinHours(undefined, '10:00', 30)).toEqual({ ok: false, reason: 'closed' })
   })
 
   it('various timezones do not affect checkSlotWithinHours (wall time only)', () => {
     // checkSlotWithinHours works on wall-clock minutes, timezone already accounted via effectiveHours
-    const day: DayHours = { day_of_week: 1, is_open: true, open_time: '09:00', close_time: '20:00', break_start: null, break_end: null }
+    const day: DayHours = {
+      day_of_week: 1,
+      is_open: true,
+      open_time: '09:00',
+      close_time: '20:00',
+      break_start: null,
+      break_end: null,
+    }
     // Same wall time should give same result regardless of timezone, because hours are business local
     expect(checkSlotWithinHours(day, '10:00', 30)).toEqual({ ok: true })
   })
@@ -181,13 +221,62 @@ describe('booking-lead-time — checkSlotWithinHours', () => {
 // ---------------------------------------------------------------------------
 describe('booking-lead-time — isDayClosed timezone', () => {
   const hours: DayHours[] = [
-    { day_of_week: 0, is_open: false, open_time: '09:00', close_time: '20:00', break_start: null, break_end: null }, // Sun closed
-    { day_of_week: 1, is_open: true, open_time: '09:00', close_time: '20:00', break_start: null, break_end: null }, // Mon open
-    { day_of_week: 2, is_open: true, open_time: '09:00', close_time: '20:00', break_start: null, break_end: null },
-    { day_of_week: 3, is_open: true, open_time: '09:00', close_time: '20:00', break_start: null, break_end: null },
-    { day_of_week: 4, is_open: true, open_time: '09:00', close_time: '20:00', break_start: null, break_end: null },
-    { day_of_week: 5, is_open: true, open_time: '09:00', close_time: '20:00', break_start: null, break_end: null },
-    { day_of_week: 6, is_open: true, open_time: '09:00', close_time: '20:00', break_start: null, break_end: null }, // Sat open
+    {
+      day_of_week: 0,
+      is_open: false,
+      open_time: '09:00',
+      close_time: '20:00',
+      break_start: null,
+      break_end: null,
+    }, // Sun closed
+    {
+      day_of_week: 1,
+      is_open: true,
+      open_time: '09:00',
+      close_time: '20:00',
+      break_start: null,
+      break_end: null,
+    }, // Mon open
+    {
+      day_of_week: 2,
+      is_open: true,
+      open_time: '09:00',
+      close_time: '20:00',
+      break_start: null,
+      break_end: null,
+    },
+    {
+      day_of_week: 3,
+      is_open: true,
+      open_time: '09:00',
+      close_time: '20:00',
+      break_start: null,
+      break_end: null,
+    },
+    {
+      day_of_week: 4,
+      is_open: true,
+      open_time: '09:00',
+      close_time: '20:00',
+      break_start: null,
+      break_end: null,
+    },
+    {
+      day_of_week: 5,
+      is_open: true,
+      open_time: '09:00',
+      close_time: '20:00',
+      break_start: null,
+      break_end: null,
+    },
+    {
+      day_of_week: 6,
+      is_open: true,
+      open_time: '09:00',
+      close_time: '20:00',
+      break_start: null,
+      break_end: null,
+    }, // Sat open
   ]
 
   it('empty hours => not closed (fallback to default open)', () => {
@@ -247,7 +336,7 @@ describe('booking-lead-time — isDayClosed timezone', () => {
   it('computeEffectiveHours fallback matches isDayClosed logic', () => {
     const empty = computeEffectiveHours([])
     // DEFAULT_HOURS: Sun closed
-    expect(empty.find(h => h.day_of_week === 0)?.is_open).toBe(false)
+    expect(empty.find((h) => h.day_of_week === 0)?.is_open).toBe(false)
     const sunday = new Date('2026-08-30T12:00:00.000Z')
     expect(isDayClosed(sunday, empty, 'UTC')).toBe(true)
   })

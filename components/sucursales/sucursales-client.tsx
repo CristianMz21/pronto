@@ -1,13 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { Plus, Pencil, Trash2, MapPin, Phone } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { useState } from 'react'
+
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Plus, Pencil, Trash2, MapPin, Phone } from 'lucide-react'
-import { LocationForm } from './location-form'
 import { EmptyState } from '@/components/ui/empty-state'
+
+import { LocationForm } from './location-form'
 
 interface Location {
   id: string
@@ -52,14 +54,20 @@ export function SucursalesClient({ locations }: { locations: Location[] }) {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <p className="text-sm text-gray-500">Gestiona sedes físicas. El slug es único por negocio.</p>
+        <p className="text-sm text-gray-500">
+          Gestiona sedes físicas. El slug es único por negocio.
+        </p>
         <Button size="sm" onClick={() => setCreating(true)}>
           <Plus className="w-4 h-4 mr-1" /> Nueva sucursal
         </Button>
       </div>
 
       {locations.length === 0 ? (
-        <EmptyState variant="locations" actionLabel="Crear primera sede" onAction={() => setCreating(true)} />
+        <EmptyState
+          variant="locations"
+          actionLabel="Crear primera sede"
+          onAction={() => setCreating(true)}
+        />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {locations.map((loc) => (

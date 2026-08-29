@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+
 import {
   checkSlotWithinHours,
   checkSlotWithHolidays,
@@ -15,13 +16,32 @@ import { isHoliday, isHolidayForLocation, getHolidaysForDate } from '@/lib/holid
 import { getLocationOrDefault, assertLocationAccess, formatLocationSlug } from '@/lib/locations'
 
 describe('US1 — booking-availability holidays, break, past_booking, lead_time, location_id', () => {
-  const dayOpen: DayHours = { day_of_week: 1, is_open: true, open_time: '09:00', close_time: '19:00', break_start: '13:00', break_end: '14:00' }
-  const dayClosed: DayHours = { day_of_week: 0, is_open: false, open_time: '09:00', close_time: '19:00', break_start: null, break_end: null }
+  const dayOpen: DayHours = {
+    day_of_week: 1,
+    is_open: true,
+    open_time: '09:00',
+    close_time: '19:00',
+    break_start: '13:00',
+    break_end: '14:00',
+  }
+  const dayClosed: DayHours = {
+    day_of_week: 0,
+    is_open: false,
+    open_time: '09:00',
+    close_time: '19:00',
+    break_start: null,
+    break_end: null,
+  }
 
   it('holidays: checkSlotWithHolidays returns holiday when date is holiday', () => {
     const holidays = [{ date: '2026-12-25', is_open: false }]
-    expect(checkSlotWithHolidays(dayOpen, '10:00', 30, '2026-12-25', holidays)).toEqual({ ok: false, reason: 'holiday' })
-    expect(checkSlotWithHolidays(dayOpen, '10:00', 30, '2026-12-24', holidays)).toEqual({ ok: true })
+    expect(checkSlotWithHolidays(dayOpen, '10:00', 30, '2026-12-25', holidays)).toEqual({
+      ok: false,
+      reason: 'holiday',
+    })
+    expect(checkSlotWithHolidays(dayOpen, '10:00', 30, '2026-12-24', holidays)).toEqual({
+      ok: true,
+    })
   })
 
   it('holidays: location filtering via checkSlotWithinLocation', () => {
@@ -29,11 +49,29 @@ describe('US1 — booking-availability holidays, break, past_booking, lead_time,
       { date: '2026-12-25', location_id: 'loc-centro', is_open: false },
       { date: '2026-12-25', location_id: 'loc-norte', is_open: false },
     ]
-    expect(checkSlotWithinLocation(dayOpen, '10:00', 30, { date: '2026-12-25', holidays, locationId: 'loc-centro' })).toEqual({ ok: false, reason: 'holiday' })
-    expect(checkSlotWithinLocation(dayOpen, '10:00', 30, { date: '2026-12-25', holidays, locationId: 'loc-sur' })).toEqual({ ok: true })
+    expect(
+      checkSlotWithinLocation(dayOpen, '10:00', 30, {
+        date: '2026-12-25',
+        holidays,
+        locationId: 'loc-centro',
+      }),
+    ).toEqual({ ok: false, reason: 'holiday' })
+    expect(
+      checkSlotWithinLocation(dayOpen, '10:00', 30, {
+        date: '2026-12-25',
+        holidays,
+        locationId: 'loc-sur',
+      }),
+    ).toEqual({ ok: true })
     // business-wide holiday (null location) blocks all
     const bizHoliday = [{ date: '2026-01-01', location_id: null, is_open: false }]
-    expect(checkSlotWithinLocation(dayOpen, '10:00', 30, { date: '2026-01-01', holidays: bizHoliday, locationId: 'loc-norte' })).toEqual({ ok: false, reason: 'holiday' })
+    expect(
+      checkSlotWithinLocation(dayOpen, '10:00', 30, {
+        date: '2026-01-01',
+        holidays: bizHoliday,
+        locationId: 'loc-norte',
+      }),
+    ).toEqual({ ok: false, reason: 'holiday' })
   })
 
   it('break: overlap detection unchanged', () => {
@@ -81,8 +119,20 @@ describe('US1 — booking-availability holidays, break, past_booking, lead_time,
 
   it('locations helpers', () => {
     const locs = [
-      { id: '11111111-1111-1111-1111-111111111111', business_id: 'b1', name: 'Escudería Centro', slug: 'centro', is_active: true },
-      { id: '22222222-2222-2222-2222-222222222222', business_id: 'b1', name: 'Norte', slug: 'norte', is_active: true },
+      {
+        id: '11111111-1111-1111-1111-111111111111',
+        business_id: 'b1',
+        name: 'Escudería Centro',
+        slug: 'centro',
+        is_active: true,
+      },
+      {
+        id: '22222222-2222-2222-2222-222222222222',
+        business_id: 'b1',
+        name: 'Norte',
+        slug: 'norte',
+        is_active: true,
+      },
     ]
     expect(getLocationOrDefault(locs, 'centro')?.id).toBe(locs[0].id)
     expect(getLocationOrDefault(locs, locs[1].id)?.slug).toBe('norte')

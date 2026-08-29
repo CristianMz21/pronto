@@ -1,9 +1,3 @@
-const createNextIntlPlugin = require('next-intl/plugin')
-// next-pwa (previous library, dead since 2024) only injected its SW
-// registration script into the Pages Router `main.js` entry — App Router
-// never loads that chunk, so the service worker never registered. Migrated
-// to @serwist/next, which injects into `main-app` too. Service worker
-// source: app/sw.ts (compiled to public/sw.js at build time).
 const withSerwist = require('@serwist/next').default({
   swSrc: 'app/sw.ts',
   swDest: 'public/sw.js',
@@ -30,6 +24,12 @@ const withSerwist = require('@serwist/next').default({
   // (this repo's `next dev` uses --turbopack).
   disable: process.env.NODE_ENV === 'development',
 })
+const createNextIntlPlugin = require('next-intl/plugin')
+// next-pwa (previous library, dead since 2024) only injected its SW
+// registration script into the Pages Router `main.js` entry — App Router
+// never loads that chunk, so the service worker never registered. Migrated
+// to @serwist/next, which injects into `main-app` too. Service worker
+// source: app/sw.ts (compiled to public/sw.js at build time).
 
 const withNextIntl = createNextIntlPlugin('./i18n/request.ts')
 
@@ -55,7 +55,10 @@ const nextConfig = {
       {
         source: '/(.*)',
         headers: [
-          { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains; preload' },
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=31536000; includeSubDomains; preload',
+          },
           { key: 'X-Frame-Options', value: 'DENY' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin' },
@@ -64,7 +67,11 @@ const nextConfig = {
           // 045 audit: removed 'unsafe-eval' (not needed for Next 16) and added object-src/base-uri hardening
           // 050: added upgrade-insecure-requests (safe with wss://*.supabase.co in connect-src)
           // 051: allow local Supabase (127.0.0.1:54321, localhost, host.docker.internal) for selfhosted dev/Docker
-          { key: 'Content-Security-Policy', value: "upgrade-insecure-requests; default-src 'self'; script-src 'self' 'unsafe-inline' https://*.supabase.co; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co http://127.0.0.1:54321 http://localhost:54321 http://host.docker.internal:54321 ws://127.0.0.1:54321 ws://localhost:54321 ws://host.docker.internal:54321 wss://127.0.0.1:54321 wss://localhost:54321 wss://host.docker.internal:54321; object-src 'none'; base-uri 'self'" },
+          {
+            key: 'Content-Security-Policy',
+            value:
+              "upgrade-insecure-requests; default-src 'self'; script-src 'self' 'unsafe-inline' https://*.supabase.co; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co http://127.0.0.1:54321 http://localhost:54321 http://host.docker.internal:54321 ws://127.0.0.1:54321 ws://localhost:54321 ws://host.docker.internal:54321 wss://127.0.0.1:54321 wss://localhost:54321 wss://host.docker.internal:54321; object-src 'none'; base-uri 'self'",
+          },
         ],
       },
     ]

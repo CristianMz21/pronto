@@ -1,26 +1,53 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  Check,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
+  Users,
+  Eye,
+  EyeOff,
+  Settings,
+} from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Plus, Pencil, Trash2, Check, Loader2, CheckCircle2, AlertCircle, Users, Eye, EyeOff, Settings } from 'lucide-react'
 import { useTranslations } from 'next-intl'
+import { useState, useEffect, useMemo } from 'react'
+
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { MODULES, ModuleKey } from '@/lib/modules'
+import { createClient } from '@/lib/supabase/client'
+
 import { HolidaysSection } from './holidays-section'
 
 const clean = (s: string, max = 500) => s?.trim().slice(0, max) ?? ''
 
 interface Business {
-  id: string; owner_id?: string | null; name: string; slug: string; type: string | null; phone: string | null
-  email: string | null; address: string | null; timezone: string; currency: string; plan: string
+  id: string
+  owner_id?: string | null
+  name: string
+  slug: string
+  type: string | null
+  phone: string | null
+  email: string | null
+  address: string | null
+  timezone: string
+  currency: string
+  plan: string
   plan_expires_at: string | null
-  telegram_bot_token: string | null; viber_bot_token: string | null
+  telegram_bot_token: string | null
+  viber_bot_token: string | null
   owner_whatsapp: string | null
   email_provider: string | null
-  smtp_host: string | null; smtp_port: number | null; smtp_user: string | null
-  smtp_pass: string | null; smtp_from: string | null
+  smtp_host: string | null
+  smtp_port: number | null
+  smtp_user: string | null
+  smtp_pass: string | null
+  smtp_from: string | null
   resend_api_key: string | null
   meta_whatsapp_phone_number_id: string | null
   meta_whatsapp_access_token: string | null
@@ -39,9 +66,39 @@ interface Business {
   require_cash_register_for_cash?: boolean | null
   allow_guest_bookings?: boolean | null
 }
-interface Service { id: string; name: string; description: string | null; price: number; duration_min: number; category: string | null; is_active: boolean; capacity: number; cost?: number | null }
-interface Employee { id: string; name: string; role: string; email: string | null; phone: string | null; is_active: boolean; color?: string | null; specialties?: string[]; commission_rate?: number | null; commission_fixed?: number | null; bio?: string | null; avatar_url?: string | null }
-interface DayHours { day_of_week: number; is_open: boolean; open_time: string; close_time: string; break_start?: string | null; break_end?: string | null }
+interface Service {
+  id: string
+  name: string
+  description: string | null
+  price: number
+  duration_min: number
+  category: string | null
+  is_active: boolean
+  capacity: number
+  cost?: number | null
+}
+interface Employee {
+  id: string
+  name: string
+  role: string
+  email: string | null
+  phone: string | null
+  is_active: boolean
+  color?: string | null
+  specialties?: string[]
+  commission_rate?: number | null
+  commission_fixed?: number | null
+  bio?: string | null
+  avatar_url?: string | null
+}
+interface DayHours {
+  day_of_week: number
+  is_open: boolean
+  open_time: string
+  close_time: string
+  break_start?: string | null
+  break_end?: string | null
+}
 
 const DEFAULT_HOURS: DayHours[] = [0, 1, 2, 3, 4, 5, 6].map((dow) => ({
   day_of_week: dow,
@@ -58,21 +115,55 @@ const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
   return `${String(h).padStart(2, '0')}:${m}`
 })
 
-interface Props { business: Business & { telegram_chat_id?: string | null; viber_chat_id?: string | null }; services: Service[]; employees: Employee[]; workingHours: DayHours[]; userEmail: string; userId?: string }
-type Tab = 'general' | 'services' | 'employees' | 'notifications' | 'billing' | 'account' | 'modules' | 'advanced'
+interface Props {
+  business: Business & { telegram_chat_id?: string | null; viber_chat_id?: string | null }
+  services: Service[]
+  employees: Employee[]
+  workingHours: DayHours[]
+  userEmail: string
+  userId?: string
+}
+type Tab =
+  | 'general'
+  | 'services'
+  | 'employees'
+  | 'notifications'
+  | 'billing'
+  | 'account'
+  | 'modules'
+  | 'advanced'
 
-export function SettingsTabs({ business: initial, services: initServices, employees: initEmployees, workingHours: initHours, userEmail, userId }: Props) {
+export function SettingsTabs({
+  business: initial,
+  services: initServices,
+  employees: initEmployees,
+  workingHours: initHours,
+  userEmail,
+  userId,
+}: Props) {
   const supabase = createClient()
   const router = useRouter()
   const t = useTranslations('settings')
   const searchParams = useSearchParams()
-  const initialTab = (['general', 'services', 'employees', 'notifications', 'billing', 'modules', 'advanced'].includes(searchParams.get('tab') ?? '')
-    ? searchParams.get('tab')
-    : 'general') as Tab
+  const initialTab = (
+    [
+      'general',
+      'services',
+      'employees',
+      'notifications',
+      'billing',
+      'modules',
+      'advanced',
+    ].includes(searchParams.get('tab') ?? '')
+      ? searchParams.get('tab')
+      : 'general'
+  ) as Tab
   const [tab, setTab] = useState<Tab>(initialTab)
   const [webhookStatus, setWebhookStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle')
   const [webhookMsg, setWebhookMsg] = useState('')
-  const [viberWebhookStatus, setViberWebhookStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle')
+  const [viberWebhookStatus, setViberWebhookStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>(
+    'idle',
+  )
   const [viberWebhookMsg, setViberWebhookMsg] = useState('')
   const [waStatus, setWaStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle')
   const [waMsg, setWaMsg] = useState('')
@@ -92,7 +183,7 @@ export function SettingsTabs({ business: initial, services: initServices, employ
   // Modules tab state
   const DEFAULT_MODULES = ['bookings', 'crm', 'pos', 'inventory', 'notifications']
   const [enabledModules, setEnabledModules] = useState<string[]>(
-    initial.enabled_modules ?? DEFAULT_MODULES
+    initial.enabled_modules ?? DEFAULT_MODULES,
   )
   const [modulesSaving, setModulesSaving] = useState(false)
   const [confirmModule, setConfirmModule] = useState<ModuleKey | null>(null)
@@ -122,12 +213,15 @@ export function SettingsTabs({ business: initial, services: initServices, employ
     }
     setAdvancedSaving(true)
     setAdvancedError('')
-    const { error } = await supabase.from('businesses').update({
-      min_advance_minutes: v,
-      booking_lead_time_enabled: biz.booking_lead_time_enabled ?? true,
-      require_cash_register_for_cash: biz.require_cash_register_for_cash ?? true,
-      allow_guest_bookings: biz.allow_guest_bookings ?? true,
-    }).eq('id', biz.id)
+    const { error } = await supabase
+      .from('businesses')
+      .update({
+        min_advance_minutes: v,
+        booking_lead_time_enabled: biz.booking_lead_time_enabled ?? true,
+        require_cash_register_for_cash: biz.require_cash_register_for_cash ?? true,
+        allow_guest_bookings: biz.allow_guest_bookings ?? true,
+      })
+      .eq('id', biz.id)
     setAdvancedSaving(false)
     if (error) {
       setAdvancedError(error.message)
@@ -146,14 +240,22 @@ export function SettingsTabs({ business: initial, services: initServices, employ
       form.append('logo', file)
       const res = await fetch('/api/business/logo', { method: 'POST', body: form })
       let data: { logo_url?: string; error?: string } = {}
-      try { data = await res.json() } catch { /* non-JSON response */ }
+      try {
+        data = await res.json()
+      } catch {
+        /* non-JSON response */
+      }
       if (!res.ok) {
         setLogoError(data.error ?? `Upload failed (HTTP ${res.status})`)
         return
       }
       setLogoUrl(data.logo_url ?? null)
     } catch (e) {
-      setLogoError(t('general.logoErrorNetwork', { message: e instanceof Error ? e.message : 'please try again' }))
+      setLogoError(
+        t('general.logoErrorNetwork', {
+          message: e instanceof Error ? e.message : 'please try again',
+        }),
+      )
     } finally {
       setLogoUploading(false)
     }
@@ -180,7 +282,9 @@ export function SettingsTabs({ business: initial, services: initServices, employ
   })
   const [savingHours, setSavingHours] = useState(false)
   const [origin, setOrigin] = useState('')
-  useEffect(() => { setOrigin(window.location.origin) }, [])
+  useEffect(() => {
+    setOrigin(window.location.origin)
+  }, [])
 
   const bookingUrl = useMemo(() => `${origin}/book/${biz.slug}`, [biz.slug, origin])
 
@@ -226,7 +330,7 @@ export function SettingsTabs({ business: initial, services: initServices, employ
   }
 
   function updateDay(dow: number, patch: Partial<DayHours>) {
-    setHours((prev) => prev.map((h) => h.day_of_week === dow ? { ...h, ...patch } : h))
+    setHours((prev) => prev.map((h) => (h.day_of_week === dow ? { ...h, ...patch } : h)))
   }
 
   const [pwForm, setPwForm] = useState({ newPassword: '', confirm: '' })
@@ -235,12 +339,27 @@ export function SettingsTabs({ business: initial, services: initServices, employ
   const [pwMsg, setPwMsg] = useState('')
 
   async function changePassword() {
-    if (pwForm.newPassword.length < 8) { setPwStatus('error'); setPwMsg(t('account.pwMinLength')); return }
-    if (pwForm.newPassword !== pwForm.confirm) { setPwStatus('error'); setPwMsg(t('account.pwNoMatch')); return }
-    setPwStatus('loading'); setPwMsg('')
+    if (pwForm.newPassword.length < 8) {
+      setPwStatus('error')
+      setPwMsg(t('account.pwMinLength'))
+      return
+    }
+    if (pwForm.newPassword !== pwForm.confirm) {
+      setPwStatus('error')
+      setPwMsg(t('account.pwNoMatch'))
+      return
+    }
+    setPwStatus('loading')
+    setPwMsg('')
     const { error } = await supabase.auth.updateUser({ password: pwForm.newPassword })
-    if (error) { setPwStatus('error'); setPwMsg(error.message) }
-    else { setPwStatus('ok'); setPwMsg(t('account.pwSuccess')); setPwForm({ newPassword: '', confirm: '' }) }
+    if (error) {
+      setPwStatus('error')
+      setPwMsg(error.message)
+    } else {
+      setPwStatus('ok')
+      setPwMsg(t('account.pwSuccess'))
+      setPwForm({ newPassword: '', confirm: '' })
+    }
   }
 
   const [newEmail, setNewEmail] = useState('')
@@ -248,11 +367,18 @@ export function SettingsTabs({ business: initial, services: initServices, employ
   const [emailMsg, setEmailMsg] = useState('')
 
   async function changeEmail() {
-    if (!newEmail.includes('@')) { setEmailStatus('error'); setEmailMsg(t('account.emailInvalid')); return }
-    setEmailStatus('loading'); setEmailMsg('')
+    if (!newEmail.includes('@')) {
+      setEmailStatus('error')
+      setEmailMsg(t('account.emailInvalid'))
+      return
+    }
+    setEmailStatus('loading')
+    setEmailMsg('')
     const { error } = await supabase.auth.updateUser({ email: newEmail })
-    if (error) { setEmailStatus('error'); setEmailMsg(error.message) }
-    else {
+    if (error) {
+      setEmailStatus('error')
+      setEmailMsg(error.message)
+    } else {
       setEmailStatus('ok')
       setEmailMsg(t('account.emailConfirmSent', { email: newEmail }))
       setNewEmail('')
@@ -262,31 +388,51 @@ export function SettingsTabs({ business: initial, services: initServices, employ
   async function saveBusiness() {
     if (slugError) return
     setSaving(true)
-    const cleanSlug = biz.slug.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || initial.slug
+    const cleanSlug =
+      biz.slug
+        .toLowerCase()
+        .replace(/[^a-z0-9-]/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '') || initial.slug
     const bizName = clean(biz.name || '', 100)
     const bizAddress = biz.address ? clean(biz.address, 200) || null : null
     setBiz((b) => ({ ...b, slug: cleanSlug }))
-    await supabase.from('businesses').update({
-      name: bizName, slug: cleanSlug, type: biz.type, phone: biz.phone, email: biz.email, address: bizAddress,
-      timezone: biz.timezone, currency: biz.currency,
-      telegram_bot_token: biz.telegram_bot_token, viber_bot_token: biz.viber_bot_token,
-      owner_whatsapp: biz.owner_whatsapp,
-      email_provider: biz.email_provider,
-      smtp_host: biz.smtp_host, smtp_port: biz.smtp_port, smtp_user: biz.smtp_user,
-      smtp_pass: biz.smtp_pass, smtp_from: biz.smtp_from,
-      resend_api_key: biz.resend_api_key,
-      meta_whatsapp_phone_number_id: biz.meta_whatsapp_phone_number_id,
-      meta_whatsapp_access_token: biz.meta_whatsapp_access_token,
-      wa_template_confirmation: biz.wa_template_confirmation,
-      wa_template_reminder: biz.wa_template_reminder,
-      wa_template_thankyou: biz.wa_template_thankyou,
-      wa_template_reactivation: biz.wa_template_reactivation,
-      wa_template_birthday: biz.wa_template_birthday,
-      wa_template_language: biz.wa_template_language ?? 'en',
-      brand_color: biz.brand_color || '#2D2926',
-      notification_language: biz.notification_language ?? 'en',
-    }).eq('id', biz.id)
-    setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 2000)
+    await supabase
+      .from('businesses')
+      .update({
+        name: bizName,
+        slug: cleanSlug,
+        type: biz.type,
+        phone: biz.phone,
+        email: biz.email,
+        address: bizAddress,
+        timezone: biz.timezone,
+        currency: biz.currency,
+        telegram_bot_token: biz.telegram_bot_token,
+        viber_bot_token: biz.viber_bot_token,
+        owner_whatsapp: biz.owner_whatsapp,
+        email_provider: biz.email_provider,
+        smtp_host: biz.smtp_host,
+        smtp_port: biz.smtp_port,
+        smtp_user: biz.smtp_user,
+        smtp_pass: biz.smtp_pass,
+        smtp_from: biz.smtp_from,
+        resend_api_key: biz.resend_api_key,
+        meta_whatsapp_phone_number_id: biz.meta_whatsapp_phone_number_id,
+        meta_whatsapp_access_token: biz.meta_whatsapp_access_token,
+        wa_template_confirmation: biz.wa_template_confirmation,
+        wa_template_reminder: biz.wa_template_reminder,
+        wa_template_thankyou: biz.wa_template_thankyou,
+        wa_template_reactivation: biz.wa_template_reactivation,
+        wa_template_birthday: biz.wa_template_birthday,
+        wa_template_language: biz.wa_template_language ?? 'en',
+        brand_color: biz.brand_color || '#2D2926',
+        notification_language: biz.notification_language ?? 'en',
+      })
+      .eq('id', biz.id)
+    setSaving(false)
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
     router.refresh()
   }
 
@@ -296,19 +442,35 @@ export function SettingsTabs({ business: initial, services: initServices, employ
     if (!svcName) return
     const svcDescription = svcForm.description ? clean(svcForm.description, 500) || null : null
     const svcCategory = svcForm.category ? clean(svcForm.category, 100) || null : null
-    const sanitizedForm = { ...svcForm, name: svcName, description: svcDescription, category: svcCategory }
+    const sanitizedForm = {
+      ...svcForm,
+      name: svcName,
+      description: svcDescription,
+      category: svcCategory,
+    }
     if (editingSvc) {
       await supabase.from('services').update(sanitizedForm).eq('id', editingSvc)
-      setServices((prev) => prev.map((s) => s.id === editingSvc ? { ...s, ...sanitizedForm } as Service : s))
+      setServices((prev) =>
+        prev.map((s) => (s.id === editingSvc ? ({ ...s, ...sanitizedForm } as Service) : s)),
+      )
     } else {
-      const { data } = await supabase.from('services').insert({
-        business_id: biz.id, name: svcName, description: svcDescription,
-        price: svcForm.price!, duration_min: svcForm.duration_min ?? 60, category: svcCategory,
-        capacity: svcForm.capacity ?? 1,
-      }).select().single()
+      const { data } = await supabase
+        .from('services')
+        .insert({
+          business_id: biz.id,
+          name: svcName,
+          description: svcDescription,
+          price: svcForm.price!,
+          duration_min: svcForm.duration_min ?? 60,
+          category: svcCategory,
+          capacity: svcForm.capacity ?? 1,
+        })
+        .select()
+        .single()
       if (data) setServices((prev) => [...prev, data as Service])
     }
-    setSvcForm({}); setEditingSvc(null)
+    setSvcForm({})
+    setEditingSvc(null)
     router.refresh()
   }
 
@@ -326,25 +488,38 @@ export function SettingsTabs({ business: initial, services: initServices, employ
     const sanitizedEmp = { ...empForm, name: empName }
     if (editingEmp) {
       await supabase.from('employees').update(sanitizedEmp).eq('id', editingEmp)
-      setEmployees((prev) => prev.map((e) => e.id === editingEmp ? { ...e, ...sanitizedEmp } as Employee : e))
+      setEmployees((prev) =>
+        prev.map((e) => (e.id === editingEmp ? ({ ...e, ...sanitizedEmp } as Employee) : e)),
+      )
     } else {
-      const { data } = await supabase.from('employees').insert({
-        business_id: biz.id, name: empName, role: empForm.role ?? 'employee',
-        email: empForm.email ?? null, phone: empForm.phone ?? null,
-      }).select().single()
+      const { data } = await supabase
+        .from('employees')
+        .insert({
+          business_id: biz.id,
+          name: empName,
+          role: empForm.role ?? 'employee',
+          email: empForm.email ?? null,
+          phone: empForm.phone ?? null,
+        })
+        .select()
+        .single()
       if (data) setEmployees((prev) => [...prev, data as Employee])
     }
-    setEmpForm({}); setEditingEmp(null)
+    setEmpForm({})
+    setEditingEmp(null)
     router.refresh()
   }
 
   async function connectWhatsApp() {
     setWaStatus('loading')
     setWaMsg('')
-    const { error } = await supabase.from('businesses').update({
-      meta_whatsapp_phone_number_id: biz.meta_whatsapp_phone_number_id,
-      meta_whatsapp_access_token: biz.meta_whatsapp_access_token,
-    }).eq('id', biz.id)
+    const { error } = await supabase
+      .from('businesses')
+      .update({
+        meta_whatsapp_phone_number_id: biz.meta_whatsapp_phone_number_id,
+        meta_whatsapp_access_token: biz.meta_whatsapp_access_token,
+      })
+      .eq('id', biz.id)
     if (error) {
       setWaStatus('error')
       setWaMsg(error.message)
@@ -358,12 +533,17 @@ export function SettingsTabs({ business: initial, services: initServices, employ
   async function connectViber() {
     setViberWebhookStatus('loading')
     setViberWebhookMsg('')
-    await supabase.from('businesses').update({ viber_bot_token: biz.viber_bot_token }).eq('id', biz.id)
+    await supabase
+      .from('businesses')
+      .update({ viber_bot_token: biz.viber_bot_token })
+      .eq('id', biz.id)
     const res = await fetch('/api/viber/set-webhook', { method: 'POST' })
     const json = await res.json()
     if (json.ok) {
       setViberWebhookStatus('ok')
-      setViberWebhookMsg(`Connected! Bot: ${json.botName}. Now open your Viber bot and start a conversation.`)
+      setViberWebhookMsg(
+        `Connected! Bot: ${json.botName}. Now open your Viber bot and start a conversation.`,
+      )
     } else {
       setViberWebhookStatus('error')
       setViberWebhookMsg(json.error ?? 'Unknown error')
@@ -373,12 +553,17 @@ export function SettingsTabs({ business: initial, services: initServices, employ
   async function connectTelegram() {
     setWebhookStatus('loading')
     setWebhookMsg('')
-    await supabase.from('businesses').update({ telegram_bot_token: biz.telegram_bot_token }).eq('id', biz.id)
+    await supabase
+      .from('businesses')
+      .update({ telegram_bot_token: biz.telegram_bot_token })
+      .eq('id', biz.id)
     const res = await fetch('/api/telegram/set-webhook', { method: 'POST' })
     const json = await res.json()
     if (json.ok) {
       setWebhookStatus('ok')
-      setWebhookMsg(`Connected! Bot: @${json.botUsername}. Now open your bot in Telegram and send /start.`)
+      setWebhookMsg(
+        `Connected! Bot: @${json.botUsername}. Now open your bot in Telegram and send /start.`,
+      )
     } else {
       setWebhookStatus('error')
       setWebhookMsg(json.error ?? 'Unknown error')
@@ -401,7 +586,15 @@ export function SettingsTabs({ business: initial, services: initServices, employ
     { key: 'billing', label: t('tabs.billing') },
     { key: 'modules', label: t('tabs.modules') },
     { key: 'account', label: t('tabs.account') },
-    ...(isOwner ? [{ key: 'advanced' as Tab, label: t('tabs.advanced'), icon: <Settings className="w-3.5 h-3.5" /> }] : []),
+    ...(isOwner
+      ? [
+          {
+            key: 'advanced' as Tab,
+            label: t('tabs.advanced'),
+            icon: <Settings className="w-3.5 h-3.5" />,
+          },
+        ]
+      : []),
   ]
 
   const generalFields: { key: keyof Business; label: string; type: string }[] = [
@@ -435,53 +628,53 @@ export function SettingsTabs({ business: initial, services: initServices, employ
   ]
 
   const isKnownCurrency = CURRENCIES.some((c) => c.value !== 'other' && c.value === biz.currency)
-  const currencySelectValue = isKnownCurrency ? biz.currency : (biz.currency ? 'other' : 'USD')
+  const currencySelectValue = isKnownCurrency ? biz.currency : biz.currency ? 'other' : 'USD'
 
   const TIMEZONES: { value: string; label: string }[] = [
-    { value: 'UTC',                    label: '(UTC+0) UTC' },
-    { value: 'Europe/London',          label: '(UTC+0) London' },
-    { value: 'Europe/Paris',           label: '(UTC+1) Paris' },
-    { value: 'Europe/Berlin',          label: '(UTC+1) Berlin' },
-    { value: 'Europe/Rome',            label: '(UTC+1) Rome' },
-    { value: 'Europe/Madrid',          label: '(UTC+1) Madrid' },
-    { value: 'Europe/Amsterdam',       label: '(UTC+1) Amsterdam' },
-    { value: 'Europe/Brussels',        label: '(UTC+1) Brussels' },
-    { value: 'Europe/Vienna',          label: '(UTC+1) Vienna' },
-    { value: 'Europe/Warsaw',          label: '(UTC+1) Warsaw' },
-    { value: 'Europe/Prague',          label: '(UTC+1) Prague' },
-    { value: 'Europe/Budapest',        label: '(UTC+1) Budapest' },
-    { value: 'Europe/Bucharest',       label: '(UTC+2) Bucharest' },
-    { value: 'Europe/Sofia',           label: '(UTC+2) Sofia' },
-    { value: 'Europe/Athens',          label: '(UTC+2) Athens' },
-    { value: 'Europe/Kiev',            label: '(UTC+2) Kyiv' },
-    { value: 'Europe/Minsk',           label: '(UTC+3) Minsk' },
-    { value: 'Europe/Moscow',          label: '(UTC+3) Moscow' },
-    { value: 'Europe/Istanbul',        label: '(UTC+3) Istanbul' },
-    { value: 'Asia/Dubai',             label: '(UTC+4) Dubai' },
-    { value: 'Asia/Karachi',           label: '(UTC+5) Karachi' },
-    { value: 'Asia/Kolkata',           label: '(UTC+5:30) Kolkata' },
-    { value: 'Asia/Dhaka',             label: '(UTC+6) Dhaka' },
-    { value: 'Asia/Bangkok',           label: '(UTC+7) Bangkok' },
-    { value: 'Asia/Singapore',         label: '(UTC+8) Singapore' },
-    { value: 'Asia/Shanghai',          label: '(UTC+8) Shanghai' },
-    { value: 'Asia/Tokyo',             label: '(UTC+9) Tokyo' },
-    { value: 'Asia/Seoul',             label: '(UTC+9) Seoul' },
-    { value: 'Australia/Sydney',       label: '(UTC+10) Sydney' },
-    { value: 'Australia/Melbourne',    label: '(UTC+10) Melbourne' },
-    { value: 'Pacific/Auckland',       label: '(UTC+12) Auckland' },
-    { value: 'America/New_York',       label: '(UTC-5) New York' },
-    { value: 'America/Toronto',        label: '(UTC-5) Toronto' },
-    { value: 'America/Chicago',        label: '(UTC-6) Chicago' },
-    { value: 'America/Mexico_City',    label: '(UTC-6) Mexico City' },
-    { value: 'America/Denver',         label: '(UTC-7) Denver' },
-    { value: 'America/Los_Angeles',    label: '(UTC-8) Los Angeles' },
-    { value: 'America/Vancouver',      label: '(UTC-8) Vancouver' },
-    { value: 'America/Anchorage',      label: '(UTC-9) Anchorage' },
-    { value: 'Pacific/Honolulu',       label: '(UTC-10) Honolulu' },
-    { value: 'America/Bogota',         label: '(UTC-5) Bogota' },
-    { value: 'America/Lima',           label: '(UTC-5) Lima' },
-    { value: 'America/Sao_Paulo',      label: '(UTC-3) São Paulo' },
-    { value: 'America/Buenos_Aires',   label: '(UTC-3) Buenos Aires' },
+    { value: 'UTC', label: '(UTC+0) UTC' },
+    { value: 'Europe/London', label: '(UTC+0) London' },
+    { value: 'Europe/Paris', label: '(UTC+1) Paris' },
+    { value: 'Europe/Berlin', label: '(UTC+1) Berlin' },
+    { value: 'Europe/Rome', label: '(UTC+1) Rome' },
+    { value: 'Europe/Madrid', label: '(UTC+1) Madrid' },
+    { value: 'Europe/Amsterdam', label: '(UTC+1) Amsterdam' },
+    { value: 'Europe/Brussels', label: '(UTC+1) Brussels' },
+    { value: 'Europe/Vienna', label: '(UTC+1) Vienna' },
+    { value: 'Europe/Warsaw', label: '(UTC+1) Warsaw' },
+    { value: 'Europe/Prague', label: '(UTC+1) Prague' },
+    { value: 'Europe/Budapest', label: '(UTC+1) Budapest' },
+    { value: 'Europe/Bucharest', label: '(UTC+2) Bucharest' },
+    { value: 'Europe/Sofia', label: '(UTC+2) Sofia' },
+    { value: 'Europe/Athens', label: '(UTC+2) Athens' },
+    { value: 'Europe/Kiev', label: '(UTC+2) Kyiv' },
+    { value: 'Europe/Minsk', label: '(UTC+3) Minsk' },
+    { value: 'Europe/Moscow', label: '(UTC+3) Moscow' },
+    { value: 'Europe/Istanbul', label: '(UTC+3) Istanbul' },
+    { value: 'Asia/Dubai', label: '(UTC+4) Dubai' },
+    { value: 'Asia/Karachi', label: '(UTC+5) Karachi' },
+    { value: 'Asia/Kolkata', label: '(UTC+5:30) Kolkata' },
+    { value: 'Asia/Dhaka', label: '(UTC+6) Dhaka' },
+    { value: 'Asia/Bangkok', label: '(UTC+7) Bangkok' },
+    { value: 'Asia/Singapore', label: '(UTC+8) Singapore' },
+    { value: 'Asia/Shanghai', label: '(UTC+8) Shanghai' },
+    { value: 'Asia/Tokyo', label: '(UTC+9) Tokyo' },
+    { value: 'Asia/Seoul', label: '(UTC+9) Seoul' },
+    { value: 'Australia/Sydney', label: '(UTC+10) Sydney' },
+    { value: 'Australia/Melbourne', label: '(UTC+10) Melbourne' },
+    { value: 'Pacific/Auckland', label: '(UTC+12) Auckland' },
+    { value: 'America/New_York', label: '(UTC-5) New York' },
+    { value: 'America/Toronto', label: '(UTC-5) Toronto' },
+    { value: 'America/Chicago', label: '(UTC-6) Chicago' },
+    { value: 'America/Mexico_City', label: '(UTC-6) Mexico City' },
+    { value: 'America/Denver', label: '(UTC-7) Denver' },
+    { value: 'America/Los_Angeles', label: '(UTC-8) Los Angeles' },
+    { value: 'America/Vancouver', label: '(UTC-8) Vancouver' },
+    { value: 'America/Anchorage', label: '(UTC-9) Anchorage' },
+    { value: 'Pacific/Honolulu', label: '(UTC-10) Honolulu' },
+    { value: 'America/Bogota', label: '(UTC-5) Bogota' },
+    { value: 'America/Lima', label: '(UTC-5) Lima' },
+    { value: 'America/Sao_Paulo', label: '(UTC-3) São Paulo' },
+    { value: 'America/Buenos_Aires', label: '(UTC-3) Buenos Aires' },
   ]
 
   const triggers = [
@@ -498,14 +691,19 @@ export function SettingsTabs({ business: initial, services: initServices, employ
     <div className="p-3 sm:p-6 max-w-3xl">
       {!isOwner && (
         <div className="mb-4 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 flex items-center gap-2 text-sm text-amber-800">
-          <AlertCircle className="w-4 h-4 shrink-0" />{t('advanced.ownerOnly')}
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          {t('advanced.ownerOnly')}
         </div>
       )}
       <div className="flex flex-nowrap overflow-x-auto sm:flex-wrap sm:overflow-x-visible gap-1 bg-gray-100 p-1 rounded-lg mb-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         {tabs.map((tb) => (
-          <button key={tb.key} onClick={() => setTab(tb.key)}
-            className={`shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${tab === tb.key ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
-            {tb.icon ? tb.icon : null}{tb.label}
+          <button
+            key={tb.key}
+            onClick={() => setTab(tb.key)}
+            className={`shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${tab === tb.key ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+          >
+            {tb.icon ? tb.icon : null}
+            {tb.label}
           </button>
         ))}
       </div>
@@ -513,257 +711,371 @@ export function SettingsTabs({ business: initial, services: initServices, employ
       {/* General */}
       {tab === 'general' && (
         <div className="space-y-6">
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h2 className="font-semibold text-gray-900 mb-4">{t('general.heading')}</h2>
-          <div className="grid sm:grid-cols-2 gap-4">
-            {generalFields.map(({ key, label, type }) => (
-              <div key={key}>
-                <label className="text-xs font-medium text-gray-500">{label}</label>
-                <input type={type} value={(biz[key] as string) ?? ''}
-                  onChange={(e) => setBiz((b) => ({ ...b, [key]: e.target.value }))}
-                  className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-            ))}
-            <div>
-              <label className="text-xs font-medium text-gray-500">{t('general.fields.timezone')}</label>
-              <select value={biz.timezone ?? 'UTC'} onChange={(e) => setBiz((b) => ({ ...b, timezone: e.target.value }))}
-                className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                {TIMEZONES.map((tz) => (
-                  <option key={tz.value} value={tz.value}>{tz.label}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="text-xs font-medium text-gray-500">{t('general.fields.currency')}</label>
-              <select value={currencySelectValue}
-                onChange={(e) => {
-                  if (e.target.value !== 'other') setBiz((b) => ({ ...b, currency: e.target.value }))
-                  else setBiz((b) => ({ ...b, currency: '' }))
-                }}
-                className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                {CURRENCIES.map((c) => (
-                  <option key={c.value} value={c.value}>{c.label}</option>
-                ))}
-              </select>
-              {currencySelectValue === 'other' && (
-                <input
-                  type="text"
-                  value={biz.currency ?? ''}
-                  onChange={(e) => setBiz((b) => ({ ...b, currency: e.target.value.toUpperCase() }))}
-                  placeholder="e.g. SGD"
-                  maxLength={10}
-                  className="w-full mt-2 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              )}
-            </div>
-          </div>
-          <div className="pt-2">
-            <label className="text-xs font-medium text-gray-500">{t('general.typeLabel')}</label>
-            <select value={biz.type ?? ''} onChange={(e) => setBiz((b) => ({ ...b, type: e.target.value }))}
-              className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option value="">{t('general.typeDefault')}</option>
-              {(['salon', 'barbershop', 'auto_repair', 'cafe', 'dental', 'fitness', 'massage', 'other'] as const).map((tp) => (
-                <option key={tp} value={tp}>{t(`general.types.${tp}`)}</option>
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <h2 className="font-semibold text-gray-900 mb-4">{t('general.heading')}</h2>
+            <div className="grid sm:grid-cols-2 gap-4">
+              {generalFields.map(({ key, label, type }) => (
+                <div key={key}>
+                  <label className="text-xs font-medium text-gray-500">{label}</label>
+                  <input
+                    type={type}
+                    value={(biz[key] as string) ?? ''}
+                    onChange={(e) => setBiz((b) => ({ ...b, [key]: e.target.value }))}
+                    className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
               ))}
-            </select>
-          </div>
-          <div className="pt-2">
-            <label className="text-xs font-medium text-gray-500">{t('general.fields.slug')}</label>
-            <input type="text" value={biz.slug ?? ''}
-              onChange={(e) => {
-                const converted = e.target.value.toLowerCase().replace(/ /g, '-')
-                setBiz((b) => ({ ...b, slug: converted }))
-                setSlugError(/[^a-z0-9-]/.test(converted) ? t('general.slugError') : '')
-              }}
-              className={`w-full mt-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ${slugError ? 'border-red-400 focus:ring-red-400' : 'border-gray-200 focus:ring-blue-500'}`} />
-            {slugError
-              ? <p className="text-xs text-red-500 mt-1">{slugError}</p>
-              : <p className="text-xs text-gray-400 mt-1">{t('general.slugHint')}</p>}
-          </div>
-          <div className="pt-2">
-            <label className="text-xs font-medium text-gray-500">{t('general.brandColorLabel')}</label>
-            <div className="flex items-center gap-2 mt-1">
-              <input
-                type="color"
-                value={biz.brand_color || '#2D2926'}
-                onChange={(e) => setBiz((b) => ({ ...b, brand_color: e.target.value }))}
-                className="w-10 h-9 p-0.5 border border-gray-200 rounded-lg cursor-pointer"
-              />
+              <div>
+                <label className="text-xs font-medium text-gray-500">
+                  {t('general.fields.timezone')}
+                </label>
+                <select
+                  value={biz.timezone ?? 'UTC'}
+                  onChange={(e) => setBiz((b) => ({ ...b, timezone: e.target.value }))}
+                  className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {TIMEZONES.map((tz) => (
+                    <option key={tz.value} value={tz.value}>
+                      {tz.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-500">
+                  {t('general.fields.currency')}
+                </label>
+                <select
+                  value={currencySelectValue}
+                  onChange={(e) => {
+                    if (e.target.value !== 'other')
+                      setBiz((b) => ({ ...b, currency: e.target.value }))
+                    else setBiz((b) => ({ ...b, currency: '' }))
+                  }}
+                  className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {CURRENCIES.map((c) => (
+                    <option key={c.value} value={c.value}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+                {currencySelectValue === 'other' && (
+                  <input
+                    type="text"
+                    value={biz.currency ?? ''}
+                    onChange={(e) =>
+                      setBiz((b) => ({ ...b, currency: e.target.value.toUpperCase() }))
+                    }
+                    placeholder="e.g. SGD"
+                    maxLength={10}
+                    className="w-full mt-2 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                )}
+              </div>
+            </div>
+            <div className="pt-2">
+              <label className="text-xs font-medium text-gray-500">{t('general.typeLabel')}</label>
+              <select
+                value={biz.type ?? ''}
+                onChange={(e) => setBiz((b) => ({ ...b, type: e.target.value }))}
+                className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">{t('general.typeDefault')}</option>
+                {(
+                  [
+                    'salon',
+                    'barbershop',
+                    'auto_repair',
+                    'cafe',
+                    'dental',
+                    'fitness',
+                    'massage',
+                    'other',
+                  ] as const
+                ).map((tp) => (
+                  <option key={tp} value={tp}>
+                    {t(`general.types.${tp}`)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="pt-2">
+              <label className="text-xs font-medium text-gray-500">
+                {t('general.fields.slug')}
+              </label>
               <input
                 type="text"
-                value={biz.brand_color || '#2D2926'}
-                onChange={(e) => setBiz((b) => ({ ...b, brand_color: e.target.value }))}
-                maxLength={7}
-                className="w-32 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                value={biz.slug ?? ''}
+                onChange={(e) => {
+                  const converted = e.target.value.toLowerCase().replace(/ /g, '-')
+                  setBiz((b) => ({ ...b, slug: converted }))
+                  setSlugError(/[^a-z0-9-]/.test(converted) ? t('general.slugError') : '')
+                }}
+                className={`w-full mt-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ${slugError ? 'border-red-400 focus:ring-red-400' : 'border-gray-200 focus:ring-blue-500'}`}
               />
+              {slugError ? (
+                <p className="text-xs text-red-500 mt-1">{slugError}</p>
+              ) : (
+                <p className="text-xs text-gray-400 mt-1">{t('general.slugHint')}</p>
+              )}
             </div>
-            <p className="text-xs text-gray-400 mt-1">{t('general.brandColorHint')}</p>
-          </div>
-          {/* Business Logo */}
-          <div className="pt-2">
-            <label className="text-xs font-medium text-gray-500">{t('general.logoLabel')}</label>
-            <p className="text-xs text-gray-400 mt-0.5 mb-2">{t('general.logoHint')}</p>
-            {logoUrl ? (
-              <div className="flex items-center gap-3">
-                <div className="w-16 h-16 rounded-lg border border-gray-200 bg-white flex items-center justify-center overflow-hidden">
-                  <img src={logoUrl} alt="Business logo" style={{ width: 52, height: 52, objectFit: 'contain' }} />
-                </div>
-                <button
-                  onClick={removeLogo}
-                  disabled={logoUploading}
-                  className="text-sm text-red-500 hover:text-red-700 font-medium disabled:opacity-50"
-                >
-                  {logoUploading ? t('general.logoRemoving') : t('general.logoRemove')}
-                </button>
-              </div>
-            ) : (
-              <label className={`flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${logoUploading ? 'opacity-50 pointer-events-none' : 'border-gray-200 hover:border-blue-400 bg-gray-50 hover:bg-blue-50'}`}>
-                <span className="text-sm text-gray-500">{logoUploading ? t('general.logoUploading') : t('general.logoUpload')}</span>
-                <span className="text-xs text-gray-400 mt-1">{t('general.logoFormats')}</span>
-                <input
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp,image/svg+xml"
-                  className="hidden"
-                  onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadLogo(f) }}
-                />
+            <div className="pt-2">
+              <label className="text-xs font-medium text-gray-500">
+                {t('general.brandColorLabel')}
               </label>
-            )}
-            {logoError && (
-              <p className="text-xs text-red-500 mt-1">{logoError}</p>
-            )}
-          </div>
-
-          <div className="pt-2">
-            <label className="text-xs font-medium text-gray-500">{t('general.notificationLanguageLabel')}</label>
-            <div className="flex gap-2 mt-1">
-              {(['en', 'es', 'pt'] as const).map((lang) => (
-                <button
-                  key={lang}
-                  type="button"
-                  onClick={() => setBiz((b) => ({ ...b, notification_language: lang }))}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
-                    (biz.notification_language ?? 'en') === lang
-                      ? 'bg-green-600 text-white border-green-600'
-                      : 'bg-white text-gray-600 border-gray-200 hover:border-green-400'
-                  }`}
-                >
-                  {lang === 'en' ? 'English' : lang === 'es' ? 'Español' : 'Português'}
-                </button>
-              ))}
+              <div className="flex items-center gap-2 mt-1">
+                <input
+                  type="color"
+                  value={biz.brand_color || '#2D2926'}
+                  onChange={(e) => setBiz((b) => ({ ...b, brand_color: e.target.value }))}
+                  className="w-10 h-9 p-0.5 border border-gray-200 rounded-lg cursor-pointer"
+                />
+                <input
+                  type="text"
+                  value={biz.brand_color || '#2D2926'}
+                  onChange={(e) => setBiz((b) => ({ ...b, brand_color: e.target.value }))}
+                  maxLength={7}
+                  className="w-32 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                />
+              </div>
+              <p className="text-xs text-gray-400 mt-1">{t('general.brandColorHint')}</p>
             </div>
-            <p className="text-xs text-gray-400 mt-1">{t('general.notificationLanguageHint')}</p>
-          </div>
-          <div className="pt-2">
-            <div className="text-xs font-medium text-gray-500 mb-1">{t('general.bookingUrlLabel')}</div>
-            <div className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-blue-600 select-all">
-              {bookingUrl}
-            </div>
-          </div>
-          <div className="flex items-center gap-3 pt-2">
-            <Button onClick={saveBusiness} disabled={saving || !!slugError}>
-              {saving ? t('general.saving') : saved ? <><Check className="w-4 h-4 mr-1" />{t('general.saved')}</> : t('general.saveButton')}
-            </Button>
-            <Badge variant="outline">{t('general.planLabel')} {biz.plan}</Badge>
-          </div>
-        </div>
-
-        {/* Working Hours card */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h2 className="font-semibold text-gray-900 mb-5">{t('workingHours.heading')}</h2>
-          <div className="space-y-2">
-            {[1, 2, 3, 4, 5, 6, 0].map((dow) => {
-              const day = hours.find((h) => h.day_of_week === dow)!
-              const dayName = (t.raw('workingHours.dayNames') as string[])[dow]
-              return (
-                <div key={dow}>
-                  <div className="flex items-center gap-3">
-                  <label className="flex items-center cursor-pointer relative">
-                    <input
-                      type="checkbox"
-                      checked={day.is_open}
-                      onChange={(e) => updateDay(dow, { is_open: e.target.checked })}
-                      className="sr-only"
+            {/* Business Logo */}
+            <div className="pt-2">
+              <label className="text-xs font-medium text-gray-500">{t('general.logoLabel')}</label>
+              <p className="text-xs text-gray-400 mt-0.5 mb-2">{t('general.logoHint')}</p>
+              {logoUrl ? (
+                <div className="flex items-center gap-3">
+                  <div className="w-16 h-16 rounded-lg border border-gray-200 bg-white flex items-center justify-center overflow-hidden">
+                    <img
+                      src={logoUrl}
+                      alt="Business logo"
+                      style={{ width: 52, height: 52, objectFit: 'contain' }}
                     />
-                    <div className={`w-9 h-5 rounded-full transition-colors relative ${day.is_open ? 'bg-blue-600' : 'bg-gray-200'}`}>
-                      <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${day.is_open ? 'translate-x-4' : 'translate-x-0.5'}`} />
-                    </div>
-                  </label>
-                  <span className={`w-10 text-sm font-medium ${day.is_open ? 'text-gray-900' : 'text-gray-400'}`}>
-                    {dayName}
-                  </span>
-                  {day.is_open ? (
-                    <div className="flex items-center gap-2 flex-1">
-                      <span className="text-xs text-gray-400">{t('workingHours.from')}</span>
-                      <select
-                        value={day.open_time}
-                        onChange={(e) => updateDay(dow, { open_time: e.target.value })}
-                        className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        {TIME_OPTIONS.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
-                      </select>
-                      <span className="text-xs text-gray-400">{t('workingHours.to')}</span>
-                      <select
-                        value={day.close_time}
-                        onChange={(e) => updateDay(dow, { close_time: e.target.value })}
-                        className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        {TIME_OPTIONS.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
-                      </select>
-                    </div>
-                  ) : (
-                    <span className="text-sm text-gray-300 flex-1">{t('workingHours.closed')}</span>
-                  )}
                   </div>
-                  {day.is_open && (
-                    <div className="flex items-center gap-3 pl-12">
+                  <button
+                    onClick={removeLogo}
+                    disabled={logoUploading}
+                    className="text-sm text-red-500 hover:text-red-700 font-medium disabled:opacity-50"
+                  >
+                    {logoUploading ? t('general.logoRemoving') : t('general.logoRemove')}
+                  </button>
+                </div>
+              ) : (
+                <label
+                  className={`flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${logoUploading ? 'opacity-50 pointer-events-none' : 'border-gray-200 hover:border-blue-400 bg-gray-50 hover:bg-blue-50'}`}
+                >
+                  <span className="text-sm text-gray-500">
+                    {logoUploading ? t('general.logoUploading') : t('general.logoUpload')}
+                  </span>
+                  <span className="text-xs text-gray-400 mt-1">{t('general.logoFormats')}</span>
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0]
+                      if (f) uploadLogo(f)
+                    }}
+                  />
+                </label>
+              )}
+              {logoError && <p className="text-xs text-red-500 mt-1">{logoError}</p>}
+            </div>
+
+            <div className="pt-2">
+              <label className="text-xs font-medium text-gray-500">
+                {t('general.notificationLanguageLabel')}
+              </label>
+              <div className="flex gap-2 mt-1">
+                {(['en', 'es', 'pt'] as const).map((lang) => (
+                  <button
+                    key={lang}
+                    type="button"
+                    onClick={() => setBiz((b) => ({ ...b, notification_language: lang }))}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+                      (biz.notification_language ?? 'en') === lang
+                        ? 'bg-green-600 text-white border-green-600'
+                        : 'bg-white text-gray-600 border-gray-200 hover:border-green-400'
+                    }`}
+                  >
+                    {lang === 'en' ? 'English' : lang === 'es' ? 'Español' : 'Português'}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-gray-400 mt-1">{t('general.notificationLanguageHint')}</p>
+            </div>
+            <div className="pt-2">
+              <div className="text-xs font-medium text-gray-500 mb-1">
+                {t('general.bookingUrlLabel')}
+              </div>
+              <div className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-blue-600 select-all">
+                {bookingUrl}
+              </div>
+            </div>
+            <div className="flex items-center gap-3 pt-2">
+              <Button onClick={saveBusiness} disabled={saving || !!slugError}>
+                {saving ? (
+                  t('general.saving')
+                ) : saved ? (
+                  <>
+                    <Check className="w-4 h-4 mr-1" />
+                    {t('general.saved')}
+                  </>
+                ) : (
+                  t('general.saveButton')
+                )}
+              </Button>
+              <Badge variant="outline">
+                {t('general.planLabel')} {biz.plan}
+              </Badge>
+            </div>
+          </div>
+
+          {/* Working Hours card */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <h2 className="font-semibold text-gray-900 mb-5">{t('workingHours.heading')}</h2>
+            <div className="space-y-2">
+              {[1, 2, 3, 4, 5, 6, 0].map((dow) => {
+                const day = hours.find((h) => h.day_of_week === dow)!
+                const dayName = (t.raw('workingHours.dayNames') as string[])[dow]
+                return (
+                  <div key={dow}>
+                    <div className="flex items-center gap-3">
                       <label className="flex items-center cursor-pointer relative">
                         <input
                           type="checkbox"
-                          checked={!!(day.break_start && day.break_end)}
-                          onChange={(e) => updateDay(dow, e.target.checked
-                            ? { break_start: day.open_time, break_end: day.close_time }
-                            : { break_start: null, break_end: null })}
+                          checked={day.is_open}
+                          onChange={(e) => updateDay(dow, { is_open: e.target.checked })}
                           className="sr-only"
                         />
-                        <div className={`w-9 h-5 rounded-full transition-colors relative ${day.break_start && day.break_end ? 'bg-blue-600' : 'bg-gray-200'}`}>
-                          <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${day.break_start && day.break_end ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                        <div
+                          className={`w-9 h-5 rounded-full transition-colors relative ${day.is_open ? 'bg-blue-600' : 'bg-gray-200'}`}
+                        >
+                          <div
+                            className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${day.is_open ? 'translate-x-4' : 'translate-x-0.5'}`}
+                          />
                         </div>
                       </label>
-                      <span className="w-24 text-xs text-gray-500">{t('workingHours.addBreak')}</span>
-                      {day.break_start && day.break_end && (
+                      <span
+                        className={`w-10 text-sm font-medium ${day.is_open ? 'text-gray-900' : 'text-gray-400'}`}
+                      >
+                        {dayName}
+                      </span>
+                      {day.is_open ? (
                         <div className="flex items-center gap-2 flex-1">
                           <span className="text-xs text-gray-400">{t('workingHours.from')}</span>
                           <select
-                            value={day.break_start}
-                            onChange={(e) => updateDay(dow, { break_start: e.target.value })}
+                            value={day.open_time}
+                            onChange={(e) => updateDay(dow, { open_time: e.target.value })}
                             className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                           >
-                            {TIME_OPTIONS.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+                            {TIME_OPTIONS.map((opt) => (
+                              <option key={opt} value={opt}>
+                                {opt}
+                              </option>
+                            ))}
                           </select>
                           <span className="text-xs text-gray-400">{t('workingHours.to')}</span>
                           <select
-                            value={day.break_end}
-                            onChange={(e) => updateDay(dow, { break_end: e.target.value })}
+                            value={day.close_time}
+                            onChange={(e) => updateDay(dow, { close_time: e.target.value })}
                             className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                           >
-                            {TIME_OPTIONS.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+                            {TIME_OPTIONS.map((opt) => (
+                              <option key={opt} value={opt}>
+                                {opt}
+                              </option>
+                            ))}
                           </select>
                         </div>
+                      ) : (
+                        <span className="text-sm text-gray-300 flex-1">
+                          {t('workingHours.closed')}
+                        </span>
                       )}
                     </div>
-                  )}
-                </div>
-              )
-            })}
+                    {day.is_open && (
+                      <div className="flex items-center gap-3 pl-12">
+                        <label className="flex items-center cursor-pointer relative">
+                          <input
+                            type="checkbox"
+                            checked={!!(day.break_start && day.break_end)}
+                            onChange={(e) =>
+                              updateDay(
+                                dow,
+                                e.target.checked
+                                  ? { break_start: day.open_time, break_end: day.close_time }
+                                  : { break_start: null, break_end: null },
+                              )
+                            }
+                            className="sr-only"
+                          />
+                          <div
+                            className={`w-9 h-5 rounded-full transition-colors relative ${day.break_start && day.break_end ? 'bg-blue-600' : 'bg-gray-200'}`}
+                          >
+                            <div
+                              className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${day.break_start && day.break_end ? 'translate-x-4' : 'translate-x-0.5'}`}
+                            />
+                          </div>
+                        </label>
+                        <span className="w-24 text-xs text-gray-500">
+                          {t('workingHours.addBreak')}
+                        </span>
+                        {day.break_start && day.break_end && (
+                          <div className="flex items-center gap-2 flex-1">
+                            <span className="text-xs text-gray-400">{t('workingHours.from')}</span>
+                            <select
+                              value={day.break_start}
+                              onChange={(e) => updateDay(dow, { break_start: e.target.value })}
+                              className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                              {TIME_OPTIONS.map((opt) => (
+                                <option key={opt} value={opt}>
+                                  {opt}
+                                </option>
+                              ))}
+                            </select>
+                            <span className="text-xs text-gray-400">{t('workingHours.to')}</span>
+                            <select
+                              value={day.break_end}
+                              onChange={(e) => updateDay(dow, { break_end: e.target.value })}
+                              className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                              {TIME_OPTIONS.map((opt) => (
+                                <option key={opt} value={opt}>
+                                  {opt}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+            <div className="mt-5 flex items-center gap-3">
+              <Button onClick={saveWorkingHours} disabled={savingHours}>
+                {savingHours ? (
+                  t('workingHours.saving')
+                ) : savedHours ? (
+                  <>
+                    <Check className="w-4 h-4 mr-1" />
+                    {t('workingHours.saved')}
+                  </>
+                ) : (
+                  t('workingHours.saveButton')
+                )}
+              </Button>
+              {hoursValidationError && (
+                <p className="text-xs text-red-500">{hoursValidationError}</p>
+              )}
+            </div>
           </div>
-          <div className="mt-5 flex items-center gap-3">
-            <Button onClick={saveWorkingHours} disabled={savingHours}>
-              {savingHours ? t('workingHours.saving') : savedHours ? <><Check className="w-4 h-4 mr-1" />{t('workingHours.saved')}</> : t('workingHours.saveButton')}
-            </Button>
-            {hoursValidationError && <p className="text-xs text-red-500">{hoursValidationError}</p>}
-          </div>
-        </div>
-        <HolidaysSection businessId={biz.id} />
+          <HolidaysSection businessId={biz.id} />
         </div>
       )}
 
@@ -778,38 +1090,81 @@ export function SettingsTabs({ business: initial, services: initServices, employ
                 <thead>
                   <tr className="border-b border-gray-100 bg-gray-50 text-xs text-gray-500 uppercase">
                     <th className="text-left px-4 py-3 font-medium">{t('services.table.name')}</th>
-                    <th className="text-left px-4 py-3 font-medium hidden sm:table-cell">{t('services.table.category')}</th>
-                    <th className="text-right px-4 py-3 font-medium">{t('services.table.price')}</th>
-                    <th className="text-right px-4 py-3 font-medium">{t('services.table.duration')}</th>
-                    <th className="text-right px-4 py-3 font-medium hidden sm:table-cell">{t('services.table.capacity')}</th>
+                    <th className="text-left px-4 py-3 font-medium hidden sm:table-cell">
+                      {t('services.table.category')}
+                    </th>
+                    <th className="text-right px-4 py-3 font-medium">
+                      {t('services.table.price')}
+                    </th>
+                    <th className="text-right px-4 py-3 font-medium">
+                      {t('services.table.duration')}
+                    </th>
+                    <th className="text-right px-4 py-3 font-medium hidden sm:table-cell">
+                      {t('services.table.capacity')}
+                    </th>
                     <th className="px-4 py-3" />
                   </tr>
                 </thead>
                 <tbody>
                   {services.map((s) => (
-                    <tr key={s.id} className="border-b border-gray-100 hover:bg-gray-50 last:border-0">
+                    <tr
+                      key={s.id}
+                      className="border-b border-gray-100 hover:bg-gray-50 last:border-0"
+                    >
                       <td className="px-4 py-3 font-medium text-gray-900">{s.name}</td>
-                      <td className="px-4 py-3 text-gray-500 hidden sm:table-cell">{s.category ?? '—'}</td>
-                      <td className="px-4 py-3 text-right">{biz.currency} {s.price}</td>
+                      <td className="px-4 py-3 text-gray-500 hidden sm:table-cell">
+                        {s.category ?? '—'}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        {biz.currency} {s.price}
+                      </td>
                       <td className="px-4 py-3 text-right text-gray-500">{s.duration_min} min</td>
                       <td className="px-4 py-3 text-right text-gray-500 hidden sm:table-cell">
                         {(s.capacity ?? 1) > 1 ? (
                           <span className="inline-flex items-center gap-1 text-xs bg-purple-50 text-purple-700 border border-purple-200 rounded-full px-2 py-0.5">
-                            <Users className="w-3 h-3" />{s.capacity}
+                            <Users className="w-3 h-3" />
+                            {s.capacity}
                           </span>
-                        ) : '1'}
+                        ) : (
+                          '1'
+                        )}
                       </td>
                       <td className="px-4 py-3 text-right">
                         {confirmDeleteSvcId === s.id ? (
                           <div className="flex justify-end items-center gap-2">
-                            <span className="text-xs text-gray-500">{t('services.deleteConfirm')}</span>
-                            <button onClick={() => deleteService(s.id)} className="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600">{t('services.deleteYes')}</button>
-                            <button onClick={() => setConfirmDeleteSvcId(null)} className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50">{t('services.deleteNo')}</button>
+                            <span className="text-xs text-gray-500">
+                              {t('services.deleteConfirm')}
+                            </span>
+                            <button
+                              onClick={() => deleteService(s.id)}
+                              className="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600"
+                            >
+                              {t('services.deleteYes')}
+                            </button>
+                            <button
+                              onClick={() => setConfirmDeleteSvcId(null)}
+                              className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50"
+                            >
+                              {t('services.deleteNo')}
+                            </button>
                           </div>
                         ) : (
                           <div className="flex justify-end gap-1">
-                            <button onClick={() => { setSvcForm(s); setEditingSvc(s.id) }} className="p-1.5 hover:bg-gray-100 rounded"><Pencil className="w-3.5 h-3.5 text-gray-500" /></button>
-                            <button onClick={() => setConfirmDeleteSvcId(s.id)} className="p-1.5 hover:bg-red-50 rounded"><Trash2 className="w-3.5 h-3.5 text-red-400" /></button>
+                            <button
+                              onClick={() => {
+                                setSvcForm(s)
+                                setEditingSvc(s.id)
+                              }}
+                              className="p-1.5 hover:bg-gray-100 rounded"
+                            >
+                              <Pencil className="w-3.5 h-3.5 text-gray-500" />
+                            </button>
+                            <button
+                              onClick={() => setConfirmDeleteSvcId(s.id)}
+                              className="p-1.5 hover:bg-red-50 rounded"
+                            >
+                              <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                            </button>
                           </div>
                         )}
                       </td>
@@ -820,33 +1175,64 @@ export function SettingsTabs({ business: initial, services: initServices, employ
             )}
           </div>
           <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <h3 className="text-sm font-semibold text-gray-900 mb-4">{editingSvc ? t('services.editHeading') : t('services.addHeading')}</h3>
+            <h3 className="text-sm font-semibold text-gray-900 mb-4">
+              {editingSvc ? t('services.editHeading') : t('services.addHeading')}
+            </h3>
             <div className="grid sm:grid-cols-2 gap-3">
-              {([
-                { key: 'name', label: t('services.fields.name'), type: 'text' },
-                { key: 'category', label: t('services.fields.category'), type: 'text' },
-                { key: 'price', label: t('services.fields.price'), type: 'number' },
-                { key: 'duration_min', label: t('services.fields.duration'), type: 'number' },
-              ] as { key: keyof Service; label: string; type: string }[]).map(({ key, label, type }) => (
+              {(
+                [
+                  { key: 'name', label: t('services.fields.name'), type: 'text' },
+                  { key: 'category', label: t('services.fields.category'), type: 'text' },
+                  { key: 'price', label: t('services.fields.price'), type: 'number' },
+                  { key: 'duration_min', label: t('services.fields.duration'), type: 'number' },
+                ] as { key: keyof Service; label: string; type: string }[]
+              ).map(({ key, label, type }) => (
                 <div key={key}>
                   <label className="text-xs font-medium text-gray-500">{label}</label>
-                  <input type={type} value={(svcForm[key] as string | number) ?? ''}
-                    onChange={(e) => setSvcForm((f) => ({ ...f, [key]: type === 'number' ? Number(e.target.value) : e.target.value }))}
-                    className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  <input
+                    type={type}
+                    value={(svcForm[key] as string | number) ?? ''}
+                    onChange={(e) =>
+                      setSvcForm((f) => ({
+                        ...f,
+                        [key]: type === 'number' ? Number(e.target.value) : e.target.value,
+                      }))
+                    }
+                    className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
                 </div>
               ))}
               <div>
-                <label className="text-xs font-medium text-gray-500">{t('services.fields.capacity')}</label>
-                <input type="number" min={1} value={(svcForm.capacity as number) ?? 1}
-                  onChange={(e) => setSvcForm((f) => ({ ...f, capacity: Math.max(1, Number(e.target.value)) }))}
-                  className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <label className="text-xs font-medium text-gray-500">
+                  {t('services.fields.capacity')}
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  value={(svcForm.capacity as number) ?? 1}
+                  onChange={(e) =>
+                    setSvcForm((f) => ({ ...f, capacity: Math.max(1, Number(e.target.value)) }))
+                  }
+                  className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
                 <p className="text-xs text-gray-400 mt-1">{t('services.capacityHint')}</p>
               </div>
             </div>
             <div className="flex gap-2 mt-4">
-              {editingSvc && <Button variant="outline" onClick={() => { setSvcForm({}); setEditingSvc(null) }}>{t('services.cancelButton')}</Button>}
+              {editingSvc && (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSvcForm({})
+                    setEditingSvc(null)
+                  }}
+                >
+                  {t('services.cancelButton')}
+                </Button>
+              )}
               <Button onClick={saveService} disabled={!svcForm.name}>
-                <Plus className="w-4 h-4 mr-1" />{editingSvc ? t('services.updateButton') : t('services.addButton')}
+                <Plus className="w-4 h-4 mr-1" />
+                {editingSvc ? t('services.updateButton') : t('services.addButton')}
               </Button>
             </div>
           </div>
@@ -864,30 +1250,70 @@ export function SettingsTabs({ business: initial, services: initServices, employ
                 <thead>
                   <tr className="border-b border-gray-100 bg-gray-50 text-xs text-gray-500 uppercase">
                     <th className="text-left px-4 py-3 font-medium">{t('employees.table.name')}</th>
-                    <th className="text-left px-4 py-3 font-medium hidden sm:table-cell">{t('employees.table.role')}</th>
-                    <th className="text-left px-4 py-3 font-medium hidden md:table-cell">{t('employees.table.contact')}</th>
-                    <th className="text-left px-4 py-3 font-medium hidden lg:table-cell">{t('employees.table.phone')}</th>
+                    <th className="text-left px-4 py-3 font-medium hidden sm:table-cell">
+                      {t('employees.table.role')}
+                    </th>
+                    <th className="text-left px-4 py-3 font-medium hidden md:table-cell">
+                      {t('employees.table.contact')}
+                    </th>
+                    <th className="text-left px-4 py-3 font-medium hidden lg:table-cell">
+                      {t('employees.table.phone')}
+                    </th>
                     <th className="px-4 py-3" />
                   </tr>
                 </thead>
                 <tbody>
                   {employees.map((e) => (
-                    <tr key={e.id} className="border-b border-gray-100 hover:bg-gray-50 last:border-0">
+                    <tr
+                      key={e.id}
+                      className="border-b border-gray-100 hover:bg-gray-50 last:border-0"
+                    >
                       <td className="px-4 py-3 font-medium text-gray-900">{e.name}</td>
-                      <td className="px-4 py-3 text-gray-500 hidden sm:table-cell capitalize">{e.role}</td>
-                      <td className="px-4 py-3 text-gray-500 hidden md:table-cell">{e.email ?? '—'}</td>
-                      <td className="px-4 py-3 text-gray-500 hidden lg:table-cell">{e.phone ?? '—'}</td>
+                      <td className="px-4 py-3 text-gray-500 hidden sm:table-cell capitalize">
+                        {e.role}
+                      </td>
+                      <td className="px-4 py-3 text-gray-500 hidden md:table-cell">
+                        {e.email ?? '—'}
+                      </td>
+                      <td className="px-4 py-3 text-gray-500 hidden lg:table-cell">
+                        {e.phone ?? '—'}
+                      </td>
                       <td className="px-4 py-3 text-right">
                         {confirmDeleteEmpId === e.id ? (
                           <div className="flex justify-end items-center gap-2">
-                            <span className="text-xs text-gray-500">{t('employees.deleteConfirm')}</span>
-                            <button onClick={() => deleteEmployee(e.id)} className="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600">{t('employees.deleteYes')}</button>
-                            <button onClick={() => setConfirmDeleteEmpId(null)} className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50">{t('employees.deleteNo')}</button>
+                            <span className="text-xs text-gray-500">
+                              {t('employees.deleteConfirm')}
+                            </span>
+                            <button
+                              onClick={() => deleteEmployee(e.id)}
+                              className="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600"
+                            >
+                              {t('employees.deleteYes')}
+                            </button>
+                            <button
+                              onClick={() => setConfirmDeleteEmpId(null)}
+                              className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50"
+                            >
+                              {t('employees.deleteNo')}
+                            </button>
                           </div>
                         ) : (
                           <div className="flex justify-end gap-1">
-                            <button onClick={() => { setEmpForm(e); setEditingEmp(e.id) }} className="p-1.5 hover:bg-gray-100 rounded"><Pencil className="w-3.5 h-3.5 text-gray-500" /></button>
-                            <button onClick={() => setConfirmDeleteEmpId(e.id)} className="p-1.5 hover:bg-red-50 rounded"><Trash2 className="w-3.5 h-3.5 text-red-400" /></button>
+                            <button
+                              onClick={() => {
+                                setEmpForm(e)
+                                setEditingEmp(e.id)
+                              }}
+                              className="p-1.5 hover:bg-gray-100 rounded"
+                            >
+                              <Pencil className="w-3.5 h-3.5 text-gray-500" />
+                            </button>
+                            <button
+                              onClick={() => setConfirmDeleteEmpId(e.id)}
+                              className="p-1.5 hover:bg-red-50 rounded"
+                            >
+                              <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                            </button>
                           </div>
                         )}
                       </td>
@@ -898,26 +1324,44 @@ export function SettingsTabs({ business: initial, services: initServices, employ
             )}
           </div>
           <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <h3 className="text-sm font-semibold text-gray-900 mb-4">{editingEmp ? t('employees.editHeading') : t('employees.addHeading')}</h3>
+            <h3 className="text-sm font-semibold text-gray-900 mb-4">
+              {editingEmp ? t('employees.editHeading') : t('employees.addHeading')}
+            </h3>
             <div className="grid sm:grid-cols-2 gap-3">
-              {([
-                { key: 'name', label: t('employees.fields.name'), type: 'text' },
-                { key: 'role', label: t('employees.fields.role'), type: 'text' },
-                { key: 'email', label: t('employees.fields.email'), type: 'email' },
-                { key: 'phone', label: t('employees.fields.phone'), type: 'tel' },
-              ] as { key: keyof Employee; label: string; type: string }[]).map(({ key, label, type }) => (
+              {(
+                [
+                  { key: 'name', label: t('employees.fields.name'), type: 'text' },
+                  { key: 'role', label: t('employees.fields.role'), type: 'text' },
+                  { key: 'email', label: t('employees.fields.email'), type: 'email' },
+                  { key: 'phone', label: t('employees.fields.phone'), type: 'tel' },
+                ] as { key: keyof Employee; label: string; type: string }[]
+              ).map(({ key, label, type }) => (
                 <div key={key}>
                   <label className="text-xs font-medium text-gray-500">{label}</label>
-                  <input type={type} value={(empForm[key] as string) ?? ''}
+                  <input
+                    type={type}
+                    value={(empForm[key] as string) ?? ''}
                     onChange={(e) => setEmpForm((f) => ({ ...f, [key]: e.target.value }))}
-                    className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
                 </div>
               ))}
             </div>
             <div className="flex gap-2 mt-4">
-              {editingEmp && <Button variant="outline" onClick={() => { setEmpForm({}); setEditingEmp(null) }}>{t('employees.cancelButton')}</Button>}
+              {editingEmp && (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setEmpForm({})
+                    setEditingEmp(null)
+                  }}
+                >
+                  {t('employees.cancelButton')}
+                </Button>
+              )}
               <Button onClick={saveEmployee} disabled={!empForm.name}>
-                <Plus className="w-4 h-4 mr-1" />{editingEmp ? t('employees.updateButton') : t('employees.addButton')}
+                <Plus className="w-4 h-4 mr-1" />
+                {editingEmp ? t('employees.updateButton') : t('employees.addButton')}
               </Button>
             </div>
           </div>
@@ -933,22 +1377,39 @@ export function SettingsTabs({ business: initial, services: initServices, employ
             {/* Email */}
             <div>
               <div className="flex items-center gap-2 mb-3">
-                <span className="text-sm font-medium text-gray-900">{t('notifications.email.label')}</span>
-                {(biz.email_provider === 'smtp' && biz.smtp_host && biz.smtp_user && biz.smtp_pass && biz.smtp_from) ||
-                 (biz.email_provider === 'resend' && biz.resend_api_key)
-                  ? <Badge variant="success"><CheckCircle2 className="w-3 h-3 mr-1" />{t('notifications.email.connected')}</Badge>
-                  : <Badge variant="secondary">{t('notifications.email.notSet')}</Badge>}
+                <span className="text-sm font-medium text-gray-900">
+                  {t('notifications.email.label')}
+                </span>
+                {(biz.email_provider === 'smtp' &&
+                  biz.smtp_host &&
+                  biz.smtp_user &&
+                  biz.smtp_pass &&
+                  biz.smtp_from) ||
+                (biz.email_provider === 'resend' && biz.resend_api_key) ? (
+                  <Badge variant="success">
+                    <CheckCircle2 className="w-3 h-3 mr-1" />
+                    {t('notifications.email.connected')}
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary">{t('notifications.email.notSet')}</Badge>
+                )}
               </div>
 
               <div className="flex flex-col gap-2 mb-4">
                 {(['smtp', 'resend'] as const).map((p) => (
                   <label key={p} className="flex items-center gap-2 cursor-pointer">
-                    <input type="radio" name="email_provider" value={p}
+                    <input
+                      type="radio"
+                      name="email_provider"
+                      value={p}
                       checked={biz.email_provider === p}
                       onChange={() => setBiz((b) => ({ ...b, email_provider: p }))}
-                      className="accent-blue-600" />
+                      className="accent-blue-600"
+                    />
                     <span className="text-sm text-gray-700">
-                      {p === 'smtp' ? t('notifications.email.smtpOption') : t('notifications.email.resendOption')}
+                      {p === 'smtp'
+                        ? t('notifications.email.smtpOption')
+                        : t('notifications.email.resendOption')}
                     </span>
                   </label>
                 ))}
@@ -957,50 +1418,93 @@ export function SettingsTabs({ business: initial, services: initServices, employ
               {biz.email_provider === 'smtp' && (
                 <div className="grid sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-medium text-gray-500">{t('notifications.email.smtpHost')}</label>
-                    <input type="text" value={biz.smtp_host ?? ''}
+                    <label className="text-xs font-medium text-gray-500">
+                      {t('notifications.email.smtpHost')}
+                    </label>
+                    <input
+                      type="text"
+                      value={biz.smtp_host ?? ''}
                       onChange={(e) => setBiz((b) => ({ ...b, smtp_host: e.target.value || null }))}
                       placeholder={t('notifications.email.smtpHostPlaceholder')}
-                      className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-gray-500">{t('notifications.email.smtpPort')}</label>
-                    <input type="number" value={biz.smtp_port ?? 587}
-                      onChange={(e) => setBiz((b) => ({ ...b, smtp_port: parseInt(e.target.value) || 587 }))}
-                      className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    <label className="text-xs font-medium text-gray-500">
+                      {t('notifications.email.smtpPort')}
+                    </label>
+                    <input
+                      type="number"
+                      value={biz.smtp_port ?? 587}
+                      onChange={(e) =>
+                        setBiz((b) => ({ ...b, smtp_port: parseInt(e.target.value) || 587 }))
+                      }
+                      className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-gray-500">{t('notifications.email.smtpUser')}</label>
-                    <input type="text" value={biz.smtp_user ?? ''}
+                    <label className="text-xs font-medium text-gray-500">
+                      {t('notifications.email.smtpUser')}
+                    </label>
+                    <input
+                      type="text"
+                      value={biz.smtp_user ?? ''}
                       onChange={(e) => setBiz((b) => ({ ...b, smtp_user: e.target.value || null }))}
-                      className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-gray-500">{t('notifications.email.smtpPass')}</label>
-                    <input type="password" value={biz.smtp_pass ?? ''}
+                    <label className="text-xs font-medium text-gray-500">
+                      {t('notifications.email.smtpPass')}
+                    </label>
+                    <input
+                      type="password"
+                      value={biz.smtp_pass ?? ''}
                       onChange={(e) => setBiz((b) => ({ ...b, smtp_pass: e.target.value || null }))}
-                      className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                    <p className="text-xs text-gray-400 mt-1">{t('notifications.email.smtpPassHint')}</p>
+                      className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <p className="text-xs text-gray-400 mt-1">
+                      {t('notifications.email.smtpPassHint')}
+                    </p>
                   </div>
                   <div className="sm:col-span-2">
-                    <label className="text-xs font-medium text-gray-500">{t('notifications.email.smtpFrom')}</label>
-                    <input type="email" value={biz.smtp_from ?? ''}
+                    <label className="text-xs font-medium text-gray-500">
+                      {t('notifications.email.smtpFrom')}
+                    </label>
+                    <input
+                      type="email"
+                      value={biz.smtp_from ?? ''}
                       onChange={(e) => setBiz((b) => ({ ...b, smtp_from: e.target.value || null }))}
                       placeholder={t('notifications.email.smtpFromPlaceholder')}
-                      className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
                   </div>
                 </div>
               )}
 
               {biz.email_provider === 'resend' && (
                 <div>
-                  <label className="text-xs font-medium text-gray-500">{t('notifications.email.resendApiKey')}</label>
-                  <input type="password" value={biz.resend_api_key ?? ''}
-                    onChange={(e) => setBiz((b) => ({ ...b, resend_api_key: e.target.value || null }))}
+                  <label className="text-xs font-medium text-gray-500">
+                    {t('notifications.email.resendApiKey')}
+                  </label>
+                  <input
+                    type="password"
+                    value={biz.resend_api_key ?? ''}
+                    onChange={(e) =>
+                      setBiz((b) => ({ ...b, resend_api_key: e.target.value || null }))
+                    }
                     placeholder={t('notifications.email.resendApiKeyPlaceholder')}
-                    className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
                   <p className="text-xs text-gray-400 mt-1">
-                    <a href="https://resend.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{t('notifications.email.resendSignup')}</a>
+                    <a
+                      href="https://resend.com"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline"
+                    >
+                      {t('notifications.email.resendSignup')}
+                    </a>
                   </p>
                 </div>
               )}
@@ -1011,10 +1515,17 @@ export function SettingsTabs({ business: initial, services: initServices, employ
             {/* Telegram */}
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-sm font-medium text-gray-900">{t('notifications.telegram.label')}</span>
-                {biz.telegram_chat_id
-                  ? <Badge variant="success"><CheckCircle2 className="w-3 h-3 mr-1" />{t('notifications.telegram.connected')}</Badge>
-                  : <Badge variant="secondary">{t('notifications.telegram.notSet')}</Badge>}
+                <span className="text-sm font-medium text-gray-900">
+                  {t('notifications.telegram.label')}
+                </span>
+                {biz.telegram_chat_id ? (
+                  <Badge variant="success">
+                    <CheckCircle2 className="w-3 h-3 mr-1" />
+                    {t('notifications.telegram.connected')}
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary">{t('notifications.telegram.notSet')}</Badge>
+                )}
               </div>
 
               <ol className="text-xs text-gray-500 space-y-1 mb-3 list-decimal list-inside">
@@ -1024,25 +1535,37 @@ export function SettingsTabs({ business: initial, services: initServices, employ
               </ol>
 
               <div className="flex gap-2 min-w-0">
-                <input type="text" value={biz.telegram_bot_token ?? ''}
+                <input
+                  type="text"
+                  value={biz.telegram_bot_token ?? ''}
                   onChange={(e) => setBiz((b) => ({ ...b, telegram_bot_token: e.target.value }))}
                   placeholder={t('notifications.telegram.placeholder')}
-                  className="min-w-0 flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                <Button onClick={connectTelegram} disabled={webhookStatus === 'loading' || !biz.telegram_bot_token} variant="outline" className="shrink-0">
-                  {webhookStatus === 'loading'
-                    ? <Loader2 className="w-4 h-4 animate-spin" />
-                    : t('notifications.telegram.connectButton')}
+                  className="min-w-0 flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <Button
+                  onClick={connectTelegram}
+                  disabled={webhookStatus === 'loading' || !biz.telegram_bot_token}
+                  variant="outline"
+                  className="shrink-0"
+                >
+                  {webhookStatus === 'loading' ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    t('notifications.telegram.connectButton')
+                  )}
                 </Button>
               </div>
 
               {webhookStatus === 'ok' && (
                 <div className="mt-2 flex items-start gap-2 text-xs text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
-                  <CheckCircle2 className="w-3.5 h-3.5 mt-0.5 shrink-0" />{webhookMsg}
+                  <CheckCircle2 className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                  {webhookMsg}
                 </div>
               )}
               {webhookStatus === 'error' && (
                 <div className="mt-2 flex items-start gap-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                  <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />{webhookMsg}
+                  <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                  {webhookMsg}
                 </div>
               )}
             </div>
@@ -1052,10 +1575,17 @@ export function SettingsTabs({ business: initial, services: initServices, employ
             {/* Viber */}
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-sm font-medium text-gray-900">{t('notifications.viber.label')}</span>
-                {initial.viber_chat_id
-                  ? <Badge variant="success"><CheckCircle2 className="w-3 h-3 mr-1" />{t('notifications.viber.connected')}</Badge>
-                  : <Badge variant="secondary">{t('notifications.viber.notSet')}</Badge>}
+                <span className="text-sm font-medium text-gray-900">
+                  {t('notifications.viber.label')}
+                </span>
+                {initial.viber_chat_id ? (
+                  <Badge variant="success">
+                    <CheckCircle2 className="w-3 h-3 mr-1" />
+                    {t('notifications.viber.connected')}
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary">{t('notifications.viber.notSet')}</Badge>
+                )}
               </div>
 
               <ol className="text-xs text-gray-500 space-y-1 mb-3 list-decimal list-inside">
@@ -1065,25 +1595,37 @@ export function SettingsTabs({ business: initial, services: initServices, employ
               </ol>
 
               <div className="flex gap-2 min-w-0">
-                <input type="text" value={biz.viber_bot_token ?? ''}
+                <input
+                  type="text"
+                  value={biz.viber_bot_token ?? ''}
                   onChange={(e) => setBiz((b) => ({ ...b, viber_bot_token: e.target.value }))}
                   placeholder={t('notifications.viber.placeholder')}
-                  className="min-w-0 flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                <Button onClick={connectViber} disabled={viberWebhookStatus === 'loading' || !biz.viber_bot_token} variant="outline" className="shrink-0">
-                  {viberWebhookStatus === 'loading'
-                    ? <Loader2 className="w-4 h-4 animate-spin" />
-                    : t('notifications.viber.connectButton')}
+                  className="min-w-0 flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <Button
+                  onClick={connectViber}
+                  disabled={viberWebhookStatus === 'loading' || !biz.viber_bot_token}
+                  variant="outline"
+                  className="shrink-0"
+                >
+                  {viberWebhookStatus === 'loading' ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    t('notifications.viber.connectButton')
+                  )}
                 </Button>
               </div>
 
               {viberWebhookStatus === 'ok' && (
                 <div className="mt-2 flex items-start gap-2 text-xs text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
-                  <CheckCircle2 className="w-3.5 h-3.5 mt-0.5 shrink-0" />{viberWebhookMsg}
+                  <CheckCircle2 className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                  {viberWebhookMsg}
                 </div>
               )}
               {viberWebhookStatus === 'error' && (
                 <div className="mt-2 flex items-start gap-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                  <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />{viberWebhookMsg}
+                  <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                  {viberWebhookMsg}
                 </div>
               )}
             </div>
@@ -1093,16 +1635,32 @@ export function SettingsTabs({ business: initial, services: initServices, employ
             {/* WhatsApp */}
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-sm font-medium text-gray-900">{t('notifications.whatsapp.label')}</span>
-                {biz.meta_whatsapp_phone_number_id && biz.meta_whatsapp_access_token
-                  ? <Badge variant="success"><CheckCircle2 className="w-3 h-3 mr-1" />{t('notifications.whatsapp.connected')}</Badge>
-                  : <Badge variant="secondary">{t('notifications.whatsapp.notSet')}</Badge>}
+                <span className="text-sm font-medium text-gray-900">
+                  {t('notifications.whatsapp.label')}
+                </span>
+                {biz.meta_whatsapp_phone_number_id && biz.meta_whatsapp_access_token ? (
+                  <Badge variant="success">
+                    <CheckCircle2 className="w-3 h-3 mr-1" />
+                    {t('notifications.whatsapp.connected')}
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary">{t('notifications.whatsapp.notSet')}</Badge>
+                )}
               </div>
-              <p className="text-xs text-gray-500 mb-3">{t('notifications.whatsapp.description')}</p>
+              <p className="text-xs text-gray-500 mb-3">
+                {t('notifications.whatsapp.description')}
+              </p>
               <ol className="text-xs text-gray-500 space-y-1 mb-3 list-decimal list-inside">
                 <li dangerouslySetInnerHTML={{ __html: t.raw('notifications.whatsapp.step1') }} />
                 <li dangerouslySetInnerHTML={{ __html: t.raw('notifications.whatsapp.step2') }} />
-                <li dangerouslySetInnerHTML={{ __html: (t.raw('notifications.whatsapp.step3') as string).replace('{saveButton}', `<strong>${t('notifications.whatsapp.saveButton')}</strong>`) }} />
+                <li
+                  dangerouslySetInnerHTML={{
+                    __html: (t.raw('notifications.whatsapp.step3') as string).replace(
+                      '{saveButton}',
+                      `<strong>${t('notifications.whatsapp.saveButton')}</strong>`,
+                    ),
+                  }}
+                />
                 <li>{t('notifications.whatsapp.step4')}</li>
               </ol>
               <div className="space-y-2 mb-2">
@@ -1110,7 +1668,9 @@ export function SettingsTabs({ business: initial, services: initServices, employ
                   type="text"
                   autoComplete="off"
                   value={biz.meta_whatsapp_phone_number_id ?? ''}
-                  onChange={(e) => setBiz((b) => ({ ...b, meta_whatsapp_phone_number_id: e.target.value || null }))}
+                  onChange={(e) =>
+                    setBiz((b) => ({ ...b, meta_whatsapp_phone_number_id: e.target.value || null }))
+                  }
                   placeholder={t('notifications.whatsapp.phoneNumberIdPlaceholder')}
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
@@ -1118,38 +1678,56 @@ export function SettingsTabs({ business: initial, services: initServices, employ
                   type="password"
                   autoComplete="new-password"
                   value={biz.meta_whatsapp_access_token ?? ''}
-                  onChange={(e) => setBiz((b) => ({ ...b, meta_whatsapp_access_token: e.target.value || null }))}
+                  onChange={(e) =>
+                    setBiz((b) => ({ ...b, meta_whatsapp_access_token: e.target.value || null }))
+                  }
                   placeholder={t('notifications.whatsapp.accessTokenPlaceholder')}
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <Button
                 onClick={connectWhatsApp}
-                disabled={waStatus === 'loading' || !biz.meta_whatsapp_phone_number_id || !biz.meta_whatsapp_access_token}
+                disabled={
+                  waStatus === 'loading' ||
+                  !biz.meta_whatsapp_phone_number_id ||
+                  !biz.meta_whatsapp_access_token
+                }
                 variant="outline"
               >
-                {waStatus === 'loading' ? <Loader2 className="w-4 h-4 animate-spin" /> : t('notifications.whatsapp.saveButton')}
+                {waStatus === 'loading' ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  t('notifications.whatsapp.saveButton')
+                )}
               </Button>
               {waStatus === 'ok' && (
                 <div className="mt-2 flex items-start gap-2 text-xs text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
-                  <CheckCircle2 className="w-3.5 h-3.5 mt-0.5 shrink-0" />{waMsg}
+                  <CheckCircle2 className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                  {waMsg}
                 </div>
               )}
               {waStatus === 'error' && (
                 <div className="mt-2 flex items-start gap-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                  <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />{waMsg}
+                  <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                  {waMsg}
                 </div>
               )}
             </div>
 
             {!!(biz.meta_whatsapp_phone_number_id && biz.meta_whatsapp_access_token) && (
               <div>
-                <label className="text-xs font-medium text-gray-500">{t('notifications.ownerWhatsapp.label')}</label>
-                <p className="text-xs text-gray-400 mb-2">{t('notifications.ownerWhatsapp.description')}</p>
+                <label className="text-xs font-medium text-gray-500">
+                  {t('notifications.ownerWhatsapp.label')}
+                </label>
+                <p className="text-xs text-gray-400 mb-2">
+                  {t('notifications.ownerWhatsapp.description')}
+                </p>
                 <input
                   type="tel"
                   value={biz.owner_whatsapp ?? ''}
-                  onChange={(e) => setBiz((b) => ({ ...b, owner_whatsapp: e.target.value || null }))}
+                  onChange={(e) =>
+                    setBiz((b) => ({ ...b, owner_whatsapp: e.target.value || null }))
+                  }
                   placeholder={t('notifications.ownerWhatsapp.placeholder')}
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
@@ -1160,16 +1738,40 @@ export function SettingsTabs({ business: initial, services: initServices, employ
 
             {/* WhatsApp Templates */}
             <div>
-              <h3 className="text-sm font-medium text-gray-900 mb-1">{t('notifications.waTemplates.heading')}</h3>
-              <p className="text-xs text-gray-500 mb-3">{t('notifications.waTemplates.description')}</p>
+              <h3 className="text-sm font-medium text-gray-900 mb-1">
+                {t('notifications.waTemplates.heading')}
+              </h3>
+              <p className="text-xs text-gray-500 mb-3">
+                {t('notifications.waTemplates.description')}
+              </p>
               <div className="space-y-3">
-                {([
-                  { field: 'wa_template_confirmation' as const, label: t('notifications.waTemplates.confirmation'), placeholder: t('notifications.waTemplates.confirmationPlaceholder') },
-                  { field: 'wa_template_reminder' as const, label: t('notifications.waTemplates.reminder'), placeholder: t('notifications.waTemplates.reminderPlaceholder') },
-                  { field: 'wa_template_thankyou' as const, label: t('notifications.waTemplates.thankyou'), placeholder: t('notifications.waTemplates.thankyouPlaceholder') },
-                  { field: 'wa_template_reactivation' as const, label: t('notifications.waTemplates.reengagement'), placeholder: t('notifications.waTemplates.reengagementPlaceholder') },
-                  { field: 'wa_template_birthday' as const, label: t('notifications.waTemplates.birthday'), placeholder: t('notifications.waTemplates.birthdayPlaceholder') },
-                ]).map(({ field, label, placeholder }) => (
+                {[
+                  {
+                    field: 'wa_template_confirmation' as const,
+                    label: t('notifications.waTemplates.confirmation'),
+                    placeholder: t('notifications.waTemplates.confirmationPlaceholder'),
+                  },
+                  {
+                    field: 'wa_template_reminder' as const,
+                    label: t('notifications.waTemplates.reminder'),
+                    placeholder: t('notifications.waTemplates.reminderPlaceholder'),
+                  },
+                  {
+                    field: 'wa_template_thankyou' as const,
+                    label: t('notifications.waTemplates.thankyou'),
+                    placeholder: t('notifications.waTemplates.thankyouPlaceholder'),
+                  },
+                  {
+                    field: 'wa_template_reactivation' as const,
+                    label: t('notifications.waTemplates.reengagement'),
+                    placeholder: t('notifications.waTemplates.reengagementPlaceholder'),
+                  },
+                  {
+                    field: 'wa_template_birthday' as const,
+                    label: t('notifications.waTemplates.birthday'),
+                    placeholder: t('notifications.waTemplates.birthdayPlaceholder'),
+                  },
+                ].map(({ field, label, placeholder }) => (
                   <div key={field}>
                     <label className="text-xs font-medium text-gray-500">{label}</label>
                     <input
@@ -1182,11 +1784,15 @@ export function SettingsTabs({ business: initial, services: initServices, employ
                   </div>
                 ))}
                 <div>
-                  <label className="text-xs font-medium text-gray-500">{t('notifications.waTemplates.language')}</label>
+                  <label className="text-xs font-medium text-gray-500">
+                    {t('notifications.waTemplates.language')}
+                  </label>
                   <input
                     type="text"
                     value={biz.wa_template_language ?? ''}
-                    onChange={(e) => setBiz((b) => ({ ...b, wa_template_language: e.target.value || null }))}
+                    onChange={(e) =>
+                      setBiz((b) => ({ ...b, wa_template_language: e.target.value || null }))
+                    }
                     placeholder="en"
                     className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
@@ -1195,15 +1801,22 @@ export function SettingsTabs({ business: initial, services: initServices, employ
             </div>
 
             <Button onClick={saveBusiness} disabled={saving}>
-              {saving ? t('notifications.saving') : saved ? t('notifications.saved') : t('notifications.save')}
+              {saving
+                ? t('notifications.saving')
+                : saved
+                  ? t('notifications.saved')
+                  : t('notifications.save')}
             </Button>
           </div>
           <div className="bg-gray-50 rounded-xl border border-gray-200 p-5">
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">{t('notifications.triggersHeading')}</h3>
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">
+              {t('notifications.triggersHeading')}
+            </h3>
             <ul className="space-y-2 text-sm text-gray-600">
               {triggers.map((tr) => (
                 <li key={tr} className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />{tr}
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />
+                  {tr}
                 </li>
               ))}
             </ul>
@@ -1217,13 +1830,16 @@ export function SettingsTabs({ business: initial, services: initServices, employ
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <h2 className="font-semibold text-gray-900 mb-2">{t('tabs.billing')}</h2>
             <p className="text-sm text-gray-500 mb-4">
-              You are running the self-hosted version of Pronto. All features are available without subscription.
+              You are running the self-hosted version of Pronto. All features are available without
+              subscription.
             </p>
             <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-              <p className="text-sm font-medium text-green-800 mb-1">Self-hosted — All features unlocked</p>
+              <p className="text-sm font-medium text-green-800 mb-1">
+                Self-hosted — All features unlocked
+              </p>
               <p className="text-sm text-green-700">
-                All Pro/Agency features are available to you at no charge.
-                Manage your instance via Docker Compose.
+                All Pro/Agency features are available to you at no charge. Manage your instance via
+                Docker Compose.
               </p>
             </div>
           </div>
@@ -1240,13 +1856,24 @@ export function SettingsTabs({ business: initial, services: initServices, employ
             </div>
 
             <div>
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">{t('modules.presetsLabel')}</p>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
+                {t('modules.presetsLabel')}
+              </p>
               <div className="flex flex-wrap gap-2">
                 {[
-                  { labelKey: 'modules.presets.salon' as const, modules: ['bookings','crm','pos','inventory','notifications'] },
-                  { labelKey: 'modules.presets.shop'  as const, modules: ['inventory','pos','notifications'] },
-                  { labelKey: 'modules.presets.cafe'  as const, modules: ['pos','crm','inventory','notifications'] },
-                  { labelKey: 'modules.presets.all'   as const, modules: DEFAULT_MODULES },
+                  {
+                    labelKey: 'modules.presets.salon' as const,
+                    modules: ['bookings', 'crm', 'pos', 'inventory', 'notifications'],
+                  },
+                  {
+                    labelKey: 'modules.presets.shop' as const,
+                    modules: ['inventory', 'pos', 'notifications'],
+                  },
+                  {
+                    labelKey: 'modules.presets.cafe' as const,
+                    modules: ['pos', 'crm', 'inventory', 'notifications'],
+                  },
+                  { labelKey: 'modules.presets.all' as const, modules: DEFAULT_MODULES },
                 ].map((preset) => (
                   <button
                     key={preset.labelKey}
@@ -1268,7 +1895,9 @@ export function SettingsTabs({ business: initial, services: initServices, employ
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-gray-900">{modLabel}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">{t(`modules.items.${key}.description` as Parameters<typeof t>[0])}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {t(`modules.items.${key}.description` as Parameters<typeof t>[0])}
+                        </p>
                       </div>
                       <button
                         onClick={() => {
@@ -1280,12 +1909,16 @@ export function SettingsTabs({ business: initial, services: initServices, employ
                         }}
                         className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${on ? 'bg-blue-600' : 'bg-gray-200'}`}
                       >
-                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${on ? 'translate-x-6' : 'translate-x-1'}`} />
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${on ? 'translate-x-6' : 'translate-x-1'}`}
+                        />
                       </button>
                     </div>
                     {confirmModule === key && (
                       <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 flex items-center justify-between gap-3">
-                        <p className="text-xs text-amber-800">{t('modules.confirmOff', { label: modLabel })}</p>
+                        <p className="text-xs text-amber-800">
+                          {t('modules.confirmOff', { label: modLabel })}
+                        </p>
                         <div className="flex gap-2 shrink-0">
                           <button
                             onClick={() => setConfirmModule(null)}
@@ -1294,7 +1927,10 @@ export function SettingsTabs({ business: initial, services: initServices, employ
                             {t('modules.cancelButton')}
                           </button>
                           <button
-                            onClick={() => { setEnabledModules((prev) => prev.filter((m) => m !== key)); setConfirmModule(null) }}
+                            onClick={() => {
+                              setEnabledModules((prev) => prev.filter((m) => m !== key))
+                              setConfirmModule(null)
+                            }}
                             className="text-xs px-3 py-1.5 rounded-md bg-red-600 text-white hover:bg-red-700 transition-colors"
                           >
                             {t('modules.turnOffButton')}
@@ -1324,7 +1960,11 @@ export function SettingsTabs({ business: initial, services: initServices, employ
               disabled={modulesSaving}
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
             >
-              {modulesSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : modulesSaved ? <Check className="w-4 h-4" /> : null}
+              {modulesSaving ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : modulesSaved ? (
+                <Check className="w-4 h-4" />
+              ) : null}
               {modulesSaved ? t('modules.saved') : t('modules.saveButton')}
             </button>
           </div>
@@ -1338,17 +1978,24 @@ export function SettingsTabs({ business: initial, services: initServices, employ
             <h2 className="font-semibold text-gray-900 mb-4">{t('account.heading')}</h2>
             <div className="space-y-3 max-w-sm">
               <div>
-                <label className="text-xs font-medium text-gray-500">{t('account.currentEmailLabel')}</label>
+                <label className="text-xs font-medium text-gray-500">
+                  {t('account.currentEmailLabel')}
+                </label>
                 <div className="mt-1 flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-2 bg-gray-50">
                   <span className="text-sm text-gray-700 flex-1">{userEmail}</span>
                 </div>
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-500">{t('account.newEmailLabel')}</label>
+                <label className="text-xs font-medium text-gray-500">
+                  {t('account.newEmailLabel')}
+                </label>
                 <input
                   type="email"
                   value={newEmail}
-                  onChange={(e) => { setNewEmail(e.target.value); setEmailStatus('idle') }}
+                  onChange={(e) => {
+                    setNewEmail(e.target.value)
+                    setEmailStatus('idle')
+                  }}
                   placeholder={t('account.newEmailPlaceholder')}
                   className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
@@ -1370,9 +2017,14 @@ export function SettingsTabs({ business: initial, services: initServices, employ
                 variant="outline"
                 disabled={emailStatus === 'loading' || !newEmail}
               >
-                {emailStatus === 'loading'
-                  ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{t('account.saving')}</>
-                  : t('account.changeEmailButton')}
+                {emailStatus === 'loading' ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    {t('account.saving')}
+                  </>
+                ) : (
+                  t('account.changeEmailButton')
+                )}
               </Button>
               <p className="text-xs text-gray-400">{t('account.emailHint')}</p>
             </div>
@@ -1382,7 +2034,9 @@ export function SettingsTabs({ business: initial, services: initServices, employ
             <h3 className="font-semibold text-gray-900 mb-4">{t('account.passwordHeading')}</h3>
             <div className="space-y-3 max-w-sm">
               <div>
-                <label className="text-xs font-medium text-gray-500">{t('account.newPasswordLabel')}</label>
+                <label className="text-xs font-medium text-gray-500">
+                  {t('account.newPasswordLabel')}
+                </label>
                 <div className="relative mt-1">
                   <input
                     type={showPw ? 'text' : 'password'}
@@ -1391,14 +2045,19 @@ export function SettingsTabs({ business: initial, services: initServices, employ
                     placeholder="Min. 8 characters"
                     className="w-full border border-gray-200 rounded-lg pl-3 pr-9 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
-                  <button type="button" onClick={() => setShowPw((v) => !v)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                  <button
+                    type="button"
+                    onClick={() => setShowPw((v) => !v)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
                     {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-500">{t('account.confirmPasswordLabel')}</label>
+                <label className="text-xs font-medium text-gray-500">
+                  {t('account.confirmPasswordLabel')}
+                </label>
                 <input
                   type={showPw ? 'text' : 'password'}
                   value={pwForm.confirm}
@@ -1423,9 +2082,14 @@ export function SettingsTabs({ business: initial, services: initServices, employ
                 onClick={changePassword}
                 disabled={pwStatus === 'loading' || !pwForm.newPassword || !pwForm.confirm}
               >
-                {pwStatus === 'loading'
-                  ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{t('account.saving')}</>
-                  : t('account.changePasswordButton')}
+                {pwStatus === 'loading' ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    {t('account.saving')}
+                  </>
+                ) : (
+                  t('account.changePasswordButton')
+                )}
               </Button>
             </div>
           </div>
@@ -1447,34 +2111,49 @@ export function SettingsTabs({ business: initial, services: initServices, employ
             <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-6">
               <div>
                 <h2 className="font-semibold text-gray-900 flex items-center gap-2">
-                  <Settings className="w-4 h-4 text-gray-500" />{t('advanced.heading')}
+                  <Settings className="w-4 h-4 text-gray-500" />
+                  {t('advanced.heading')}
                 </h2>
                 <p className="text-xs text-gray-500 mt-1">{t('advanced.description')}</p>
               </div>
 
               {/* Reservas — Antelación */}
               <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-gray-900 border-t border-gray-100 pt-4">{t('advanced.bookingHeading')}</h3>
+                <h3 className="text-sm font-semibold text-gray-900 border-t border-gray-100 pt-4">
+                  {t('advanced.bookingHeading')}
+                </h3>
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-900">{t('advanced.bookingLeadTimeEnabledLabel')}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">{t('advanced.bookingLeadTimeEnabledHint')}</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {t('advanced.bookingLeadTimeEnabledLabel')}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {t('advanced.bookingLeadTimeEnabledHint')}
+                    </p>
                   </div>
                   <label className="flex items-center cursor-pointer relative shrink-0 ml-4">
                     <input
                       type="checkbox"
                       checked={bookingLeadEnabled}
-                      onChange={(e) => setBiz((b) => ({ ...b, booking_lead_time_enabled: e.target.checked }))}
+                      onChange={(e) =>
+                        setBiz((b) => ({ ...b, booking_lead_time_enabled: e.target.checked }))
+                      }
                       className="sr-only"
                     />
-                    <div className={`w-11 h-6 rounded-full transition-colors relative ${bookingLeadEnabled ? 'bg-blue-600' : 'bg-gray-200'}`}>
-                      <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${bookingLeadEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                    <div
+                      className={`w-11 h-6 rounded-full transition-colors relative ${bookingLeadEnabled ? 'bg-blue-600' : 'bg-gray-200'}`}
+                    >
+                      <div
+                        className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${bookingLeadEnabled ? 'translate-x-5' : 'translate-x-0.5'}`}
+                      />
                     </div>
                   </label>
                 </div>
 
                 <div>
-                  <label className="text-xs font-medium text-gray-500">{t('advanced.minAdvanceMinutesLabel')}</label>
+                  <label className="text-xs font-medium text-gray-500">
+                    {t('advanced.minAdvanceMinutesLabel')}
+                  </label>
                   <input
                     type="number"
                     min={0}
@@ -1494,9 +2173,13 @@ export function SettingsTabs({ business: initial, services: initServices, employ
                     }}
                     className={`w-full mt-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${!bookingLeadEnabled ? 'bg-gray-50 text-gray-400 border-gray-200' : 'border-gray-200'} ${advancedError ? 'border-red-300 focus:ring-red-400' : ''}`}
                   />
-                  <p className="text-xs text-gray-400 mt-1">{t('advanced.minAdvanceMinutesHint')}</p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    {t('advanced.minAdvanceMinutesHint')}
+                  </p>
                   {!bookingLeadEnabled && (
-                    <p className="text-xs text-amber-600 mt-1">{t('advanced.minAdvanceDisabledHint')}</p>
+                    <p className="text-xs text-amber-600 mt-1">
+                      {t('advanced.minAdvanceDisabledHint')}
+                    </p>
                   )}
                 </div>
               </div>
@@ -1508,22 +2191,34 @@ export function SettingsTabs({ business: initial, services: initServices, employ
                 <h3 className="text-sm font-semibold text-gray-900">{t('advanced.posHeading')}</h3>
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-900">{t('advanced.requireCashRegisterLabel')}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">{t('advanced.requireCashRegisterHint')}</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {t('advanced.requireCashRegisterLabel')}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {t('advanced.requireCashRegisterHint')}
+                    </p>
                   </div>
                   <label className="flex items-center cursor-pointer relative shrink-0 ml-4">
                     <input
                       type="checkbox"
                       checked={requireCashRegister}
-                      onChange={(e) => setBiz((b) => ({ ...b, require_cash_register_for_cash: e.target.checked }))}
+                      onChange={(e) =>
+                        setBiz((b) => ({ ...b, require_cash_register_for_cash: e.target.checked }))
+                      }
                       className="sr-only"
                     />
-                    <div className={`w-11 h-6 rounded-full transition-colors relative ${requireCashRegister ? 'bg-blue-600' : 'bg-gray-200'}`}>
-                      <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${requireCashRegister ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                    <div
+                      className={`w-11 h-6 rounded-full transition-colors relative ${requireCashRegister ? 'bg-blue-600' : 'bg-gray-200'}`}
+                    >
+                      <div
+                        className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${requireCashRegister ? 'translate-x-5' : 'translate-x-0.5'}`}
+                      />
                     </div>
                   </label>
                 </div>
-                <p className="text-xs text-gray-400">{t('advanced.requireCashRegisterDescription')}</p>
+                <p className="text-xs text-gray-400">
+                  {t('advanced.requireCashRegisterDescription')}
+                </p>
               </div>
 
               <hr className="border-gray-100" />
@@ -1533,18 +2228,28 @@ export function SettingsTabs({ business: initial, services: initServices, employ
                 <h3 className="text-sm font-semibold text-gray-900">Acceso clientes</h3>
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-900">Permitir reservas sin registro (invitados)</p>
-                    <p className="text-xs text-gray-500 mt-0.5">Si está desactivado, solo clientes registrados pueden reservar online</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      Permitir reservas sin registro (invitados)
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Si está desactivado, solo clientes registrados pueden reservar online
+                    </p>
                   </div>
                   <label className="flex items-center cursor-pointer relative shrink-0 ml-4">
                     <input
                       type="checkbox"
                       checked={allowGuestBookings}
-                      onChange={(e) => setBiz((b) => ({ ...b, allow_guest_bookings: e.target.checked }))}
+                      onChange={(e) =>
+                        setBiz((b) => ({ ...b, allow_guest_bookings: e.target.checked }))
+                      }
                       className="sr-only"
                     />
-                    <div className={`w-11 h-6 rounded-full transition-colors relative ${allowGuestBookings ? 'bg-blue-600' : 'bg-gray-200'}`}>
-                      <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${allowGuestBookings ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                    <div
+                      className={`w-11 h-6 rounded-full transition-colors relative ${allowGuestBookings ? 'bg-blue-600' : 'bg-gray-200'}`}
+                    >
+                      <div
+                        className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${allowGuestBookings ? 'translate-x-5' : 'translate-x-0.5'}`}
+                      />
                     </div>
                   </label>
                 </div>
@@ -1559,14 +2264,22 @@ export function SettingsTabs({ business: initial, services: initServices, employ
               <div className="flex items-center gap-3 pt-2">
                 <Button onClick={saveAdvanced} disabled={advancedSaving}>
                   {advancedSaving ? (
-                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{t('advanced.saving')}</>
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      {t('advanced.saving')}
+                    </>
                   ) : advancedSaved ? (
-                    <><Check className="w-4 h-4 mr-1" />{t('advanced.saved')}</>
+                    <>
+                      <Check className="w-4 h-4 mr-1" />
+                      {t('advanced.saved')}
+                    </>
                   ) : (
                     t('advanced.saveButton')
                   )}
                 </Button>
-                {advancedSaved && <span className="text-xs text-green-600">{t('advanced.savedHint')}</span>}
+                {advancedSaved && (
+                  <span className="text-xs text-green-600">{t('advanced.savedHint')}</span>
+                )}
               </div>
             </div>
           )}

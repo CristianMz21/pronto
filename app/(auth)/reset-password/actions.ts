@@ -1,7 +1,8 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+
+import { createClient } from '@/lib/supabase/server'
 
 export async function updatePassword(formData: FormData) {
   const password = formData.get('password') as string
@@ -12,7 +13,7 @@ export async function updatePassword(formData: FormData) {
   }
 
   if (password !== confirm) {
-    redirect("/reset-password?error=Passwords+don%27t+match")
+    redirect('/reset-password?error=Passwords+don%27t+match')
   }
 
   const supabase = await createClient()

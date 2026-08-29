@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { Button } from '@/components/ui/button'
 import { RefreshCw } from 'lucide-react'
+import { useEffect, useState } from 'react'
+
+import { Button } from '@/components/ui/button'
 
 interface Props {
   open: boolean
@@ -20,7 +21,15 @@ interface Props {
   onCreated?: (result: { id: string; created: number; skipped: unknown[] }) => void
 }
 
-function buildRRule(opts: { freq: string; interval: number; count?: number; until?: string; byday?: string[]; byhour?: number; byminute?: number }): string {
+function buildRRule(opts: {
+  freq: string
+  interval: number
+  count?: number
+  until?: string
+  byday?: string[]
+  byhour?: number
+  byminute?: number
+}): string {
   const parts = [`FREQ=${opts.freq}`, `INTERVAL=${opts.interval}`]
   if (opts.count) parts.push(`COUNT=${opts.count}`)
   if (opts.until) {
@@ -39,7 +48,21 @@ function buildRRule(opts: { freq: string; interval: number; count?: number; unti
   return parts.join(';')
 }
 
-export function RecurringModal({ open, onClose, businessId, timezone, clients, services, employees, locations = [], initialDate, initialTime, initialServiceId, initialEmployeeId, onCreated }: Props) {
+export function RecurringModal({
+  open,
+  onClose,
+  businessId,
+  timezone,
+  clients,
+  services,
+  employees,
+  locations = [],
+  initialDate,
+  initialTime,
+  initialServiceId,
+  initialEmployeeId,
+  onCreated,
+}: Props) {
   const [clientId, setClientId] = useState('')
   const [serviceId, setServiceId] = useState(initialServiceId ?? '')
   const [employeeId, setEmployeeId] = useState(initialEmployeeId ?? '')
@@ -53,7 +76,11 @@ export function RecurringModal({ open, onClose, businessId, timezone, clients, s
   const [byday, setByday] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [result, setResult] = useState<{ created: number; skipped: { reason: string; starts_at: string }[]; id: string } | null>(null)
+  const [result, setResult] = useState<{
+    created: number
+    skipped: { reason: string; starts_at: string }[]
+    id: string
+  } | null>(null)
 
   useEffect(() => {
     if (open) {
@@ -68,7 +95,13 @@ export function RecurringModal({ open, onClose, businessId, timezone, clients, s
 
   if (!open) return null
 
-  const rrulePreview = buildRRule({ freq, interval, count: until ? undefined : count, until: until || undefined, byday })
+  const rrulePreview = buildRRule({
+    freq,
+    interval,
+    count: until ? undefined : count,
+    until: until || undefined,
+    byday,
+  })
 
   async function submit() {
     if (!clientId || !serviceId || !date || !time) {
@@ -106,7 +139,13 @@ export function RecurringModal({ open, onClose, businessId, timezone, clients, s
   }
 
   const days = [
-    { v: 'MO', l: 'Lun' }, { v: 'TU', l: 'Mar' }, { v: 'WE', l: 'Mié' }, { v: 'TH', l: 'Jue' }, { v: 'FR', l: 'Vie' }, { v: 'SA', l: 'Sáb' }, { v: 'SU', l: 'Dom' },
+    { v: 'MO', l: 'Lun' },
+    { v: 'TU', l: 'Mar' },
+    { v: 'WE', l: 'Mié' },
+    { v: 'TH', l: 'Jue' },
+    { v: 'FR', l: 'Vie' },
+    { v: 'SA', l: 'Sáb' },
+    { v: 'SU', l: 'Dom' },
   ]
 
   return (
@@ -123,16 +162,32 @@ export function RecurringModal({ open, onClose, businessId, timezone, clients, s
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-medium text-gray-500">Cliente *</label>
-                <select value={clientId} onChange={(e) => setClientId(e.target.value)} className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <select
+                  value={clientId}
+                  onChange={(e) => setClientId(e.target.value)}
+                  className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
                   <option value="">Seleccionar</option>
-                  {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  {clients.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>
                 <label className="text-xs font-medium text-gray-500">Servicio *</label>
-                <select value={serviceId} onChange={(e) => setServiceId(e.target.value)} className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <select
+                  value={serviceId}
+                  onChange={(e) => setServiceId(e.target.value)}
+                  className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
                   <option value="">Seleccionar</option>
-                  {services.map((s) => <option key={s.id} value={s.id}>{s.name} · {s.duration_min}m</option>)}
+                  {services.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} · {s.duration_min}m
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -140,17 +195,33 @@ export function RecurringModal({ open, onClose, businessId, timezone, clients, s
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-medium text-gray-500">Barbero</label>
-                <select value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <select
+                  value={employeeId}
+                  onChange={(e) => setEmployeeId(e.target.value)}
+                  className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
                   <option value="">Cualquiera</option>
-                  {employees.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+                  {employees.map((e) => (
+                    <option key={e.id} value={e.id}>
+                      {e.name}
+                    </option>
+                  ))}
                 </select>
               </div>
               {locations.length > 1 && (
                 <div>
                   <label className="text-xs font-medium text-gray-500">Sede</label>
-                  <select value={locationId} onChange={(e) => setLocationId(e.target.value)} className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <select
+                    value={locationId}
+                    onChange={(e) => setLocationId(e.target.value)}
+                    className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
                     <option value="">Principal</option>
-                    {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+                    {locations.map((l) => (
+                      <option key={l.id} value={l.id}>
+                        {l.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
               )}
@@ -159,11 +230,21 @@ export function RecurringModal({ open, onClose, businessId, timezone, clients, s
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-medium text-gray-500">Fecha inicio *</label>
-                <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
               </div>
               <div>
                 <label className="text-xs font-medium text-gray-500">Hora *</label>
-                <input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <input
+                  type="time"
+                  value={time}
+                  onChange={(e) => setTime(e.target.value)}
+                  className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
               </div>
             </div>
 
@@ -171,7 +252,11 @@ export function RecurringModal({ open, onClose, businessId, timezone, clients, s
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="text-xs font-medium text-gray-500">Frecuencia</label>
-                  <select value={freq} onChange={(e) => setFreq(e.target.value)} className="w-full mt-1 border border-gray-200 rounded-lg px-2 py-2 text-sm bg-white">
+                  <select
+                    value={freq}
+                    onChange={(e) => setFreq(e.target.value)}
+                    className="w-full mt-1 border border-gray-200 rounded-lg px-2 py-2 text-sm bg-white"
+                  >
                     <option value="DAILY">Diaria</option>
                     <option value="WEEKLY">Semanal</option>
                     <option value="MONTHLY">Mensual</option>
@@ -180,56 +265,132 @@ export function RecurringModal({ open, onClose, businessId, timezone, clients, s
                 <div>
                   <label className="text-xs font-medium text-gray-500">Cada</label>
                   <div className="flex items-center gap-1 mt-1">
-                    <input type="number" min={1} max={12} value={interval} onChange={(e) => setInterval(Math.max(1, parseInt(e.target.value) || 1))} className="w-full border border-gray-200 rounded-lg px-2 py-2 text-sm" />
-                    <span className="text-xs text-gray-500">{freq === 'DAILY' ? 'días' : freq === 'WEEKLY' ? 'semanas' : 'meses'}</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={12}
+                      value={interval}
+                      onChange={(e) => setInterval(Math.max(1, parseInt(e.target.value) || 1))}
+                      className="w-full border border-gray-200 rounded-lg px-2 py-2 text-sm"
+                    />
+                    <span className="text-xs text-gray-500">
+                      {freq === 'DAILY' ? 'días' : freq === 'WEEKLY' ? 'semanas' : 'meses'}
+                    </span>
                   </div>
                 </div>
                 <div>
                   <label className="text-xs font-medium text-gray-500">Repeticiones</label>
-                  <input type="number" min={1} max={52} value={count} onChange={(e) => setCount(Math.min(52, Math.max(1, parseInt(e.target.value) || 1)))} disabled={!!until} className="w-full mt-1 border border-gray-200 rounded-lg px-2 py-2 text-sm disabled:opacity-50" />
+                  <input
+                    type="number"
+                    min={1}
+                    max={52}
+                    value={count}
+                    onChange={(e) =>
+                      setCount(Math.min(52, Math.max(1, parseInt(e.target.value) || 1)))
+                    }
+                    disabled={!!until}
+                    className="w-full mt-1 border border-gray-200 rounded-lg px-2 py-2 text-sm disabled:opacity-50"
+                  />
                 </div>
               </div>
               {freq === 'WEEKLY' && (
                 <div>
-                  <label className="text-xs font-medium text-gray-500">Días (BYDAY) — opcional</label>
+                  <label className="text-xs font-medium text-gray-500">
+                    Días (BYDAY) — opcional
+                  </label>
                   <div className="flex flex-wrap gap-1 mt-1">
                     {days.map((d) => (
-                      <button key={d.v} type="button" onClick={() => setByday((prev) => prev.includes(d.v) ? prev.filter((x) => x !== d.v) : [...prev, d.v])} className={`px-2 py-1 rounded-full text-xs border ${byday.includes(d.v) ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200'}`}>
+                      <button
+                        key={d.v}
+                        type="button"
+                        onClick={() =>
+                          setByday((prev) =>
+                            prev.includes(d.v) ? prev.filter((x) => x !== d.v) : [...prev, d.v],
+                          )
+                        }
+                        className={`px-2 py-1 rounded-full text-xs border ${byday.includes(d.v) ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200'}`}
+                      >
                         {d.l}
                       </button>
                     ))}
-                    {byday.length > 0 && <button type="button" onClick={() => setByday([])} className="px-2 py-1 text-xs text-gray-500">Limpiar</button>}
+                    {byday.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setByday([])}
+                        className="px-2 py-1 text-xs text-gray-500"
+                      >
+                        Limpiar
+                      </button>
+                    )}
                   </div>
                 </div>
               )}
               <div>
-                <label className="text-xs font-medium text-gray-500">Hasta (UNTIL) — opcional, anula repeticiones</label>
-                <input type="date" value={until} onChange={(e) => setUntil(e.target.value)} className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white" />
+                <label className="text-xs font-medium text-gray-500">
+                  Hasta (UNTIL) — opcional, anula repeticiones
+                </label>
+                <input
+                  type="date"
+                  value={until}
+                  onChange={(e) => setUntil(e.target.value)}
+                  className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
+                />
               </div>
               <div className="rounded-lg bg-white border border-gray-200 px-3 py-2">
                 <div className="text-[11px] font-medium text-gray-500 uppercase">RRULE</div>
                 <code className="text-xs text-gray-700 break-all">{rrulePreview}</code>
-                <div className="text-[11px] text-gray-400 mt-1">dtstart: {date} {time} ({timezone}) · Máx 52 ocurrencias</div>
+                <div className="text-[11px] text-gray-400 mt-1">
+                  dtstart: {date} {time} ({timezone}) · Máx 52 ocurrencias
+                </div>
               </div>
             </div>
 
-            {error && <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
+            {error && (
+              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {error}
+              </div>
+            )}
             {result && (
               <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
-                Serie <code>{result.id.slice(0, 8)}</code> creada: <strong>{result.created} creadas</strong>
-                {result.skipped.length > 0 && <span> · {result.skipped.length} omitidas ({result.skipped.slice(0, 3).map((s) => s.reason).join(', ')}{result.skipped.length > 3 ? '…' : ''})</span>}
+                Serie <code>{result.id.slice(0, 8)}</code> creada:{' '}
+                <strong>{result.created} creadas</strong>
+                {result.skipped.length > 0 && (
+                  <span>
+                    {' '}
+                    · {result.skipped.length} omitidas (
+                    {result.skipped
+                      .slice(0, 3)
+                      .map((s) => s.reason)
+                      .join(', ')}
+                    {result.skipped.length > 3 ? '…' : ''})
+                  </span>
+                )}
               </div>
             )}
           </div>
 
           <div className="flex gap-2 mt-6">
-            <Button variant="outline" className="flex-1" onClick={onClose}>Cerrar</Button>
-            <Button className="flex-1 gap-2" onClick={submit} disabled={saving || !clientId || !serviceId || !date || !time}>
-              {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CalendarRepeat className="w-4 h-4" />}
+            <Button variant="outline" className="flex-1" onClick={onClose}>
+              Cerrar
+            </Button>
+            <Button
+              className="flex-1 gap-2"
+              onClick={submit}
+              disabled={saving || !clientId || !serviceId || !date || !time}
+            >
+              {saving ? (
+                <RefreshCw className="w-4 h-4 animate-spin" />
+              ) : (
+                <CalendarRepeat className="w-4 h-4" />
+              )}
               {saving ? 'Creando…' : 'Crear serie'}
             </Button>
           </div>
-          <p className="text-[11px] text-gray-400 mt-3">Cada ocurrencia valida <code>checkSlotWithinHours</code> + festivos + <code>employee_unavailability</code>. Conflicto → se omite con aviso y el resto se crea (SC-011).</p>
+          <p className="text-[11px] text-gray-400 mt-3">
+            Cada ocurrencia valida <code>checkSlotWithinHours</code> + festivos +{' '}
+            <code>employee_unavailability</code>. Conflicto → se omite con aviso y el resto se crea
+            (SC-011).
+          </p>
         </div>
       </div>
     </div>
@@ -239,7 +400,15 @@ export function RecurringModal({ open, onClose, businessId, timezone, clients, s
 // tiny helper to satisfy icon import missing
 function CalendarRepeat(props: React.SVGProps<SVGSVGElement>) {
   return (
-    <svg {...props} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      {...props}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <rect x="3" y="4" width="18" height="18" rx="2" />
       <path d="M16 2v4M8 2v4M3 10h18" />
       <path d="M12 14v4M14 16l-4 2 4 2v-4z" />

@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
 // SECURITY: xlsx@0.18.5 has GHSA-4r6h-8v6p-xvw6 + GHSA-5pgg-2g8v-p4x9 — no upstream fix.
 // Server-only json_to_sheet/write, no trusted XLSX.read — mitigated. TODO: migrate to exceljs.
 import * as XLSX from 'xlsx'
+import { z } from 'zod'
 
+import { rateLimit, getIp } from '@/lib/rate-limit'
+import { createClient } from '@/lib/supabase/server'
 type Period = 'today' | '7d' | '30d'
 
 function getPeriodStart(period: Period): Date {
@@ -34,6 +36,17 @@ interface TxItem {
 }
 
 export async function GET(req: NextRequest) {
+  const _ipGET = getIp(req as unknown as Request)
+  if (!rateLimit(`export-sales-route:get:${_ipGET}`, { limit: 60, windowMs: 10 * 60 * 1000 }))
+    return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
+  {
+    const _parsed = z
+      .object({})
+      .passthrough()
+      .safeParse(Object.fromEntries(new URL(req.url).searchParams))
+    if (!_parsed.success) return NextResponse.json({ error: 'validation_failed' }, { status: 422 })
+  }
+
   const supabase = await createClient()
   const {
     data: { user },

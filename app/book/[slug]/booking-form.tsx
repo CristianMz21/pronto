@@ -1,12 +1,10 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import { formatCurrency, uses12HourClock } from '@/lib/utils'
 import { CalendarPlus, Loader2 } from 'lucide-react'
-import { buildGCalUrl } from '@/lib/gcal'
-import { DatePicker } from '@/components/ui/date-picker'
 import { useTranslations } from 'next-intl'
+import { useState, useEffect, useMemo, useCallback } from 'react'
+
+import { DatePicker } from '@/components/ui/date-picker'
 import {
   computeEffectiveHours,
   type DayHours,
@@ -15,6 +13,9 @@ import {
   isTooSoonMinutes,
   DEFAULT_LEAD_MINUTES,
 } from '@/lib/booking-availability'
+import { buildGCalUrl } from '@/lib/gcal'
+import { createClient } from '@/lib/supabase/client'
+import { formatCurrency, uses12HourClock } from '@/lib/utils'
 
 interface Service {
   id: string

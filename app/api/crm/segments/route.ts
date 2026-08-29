@@ -1,18 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
 import { z } from 'zod'
+
 import { SEGMENTS, filterClientsBySegment } from '@/lib/campaigns'
 import { rateLimit, getIp } from '@/lib/rate-limit'
+import { createClient } from '@/lib/supabase/server'
 
 const QuerySchema = z.object({
   segment: z.enum(SEGMENTS),
   location_id: z.string().uuid().nullable().optional().or(z.literal('')),
 })
 
-async function resolveBusinessId(supabase: Awaited<ReturnType<typeof createClient>>, userId: string): Promise<string | null> {
-  const { data: owned } = await supabase.from('businesses').select('id').eq('owner_id', userId).maybeSingle()
+async function resolveBusinessId(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+): Promise<string | null> {
+  const { data: owned } = await supabase
+    .from('businesses')
+    .select('id')
+    .eq('owner_id', userId)
+    .maybeSingle()
   if (owned) return (owned as { id: string }).id
-  const { data: emp } = await supabase.from('employees').select('business_id').eq('user_id', userId).eq('is_active', true).limit(1).maybeSingle()
+  const { data: emp } = await supabase
+    .from('employees')
+    .select('business_id')
+    .eq('user_id', userId)
+    .eq('is_active', true)
+    .limit(1)
+    .maybeSingle()
   if (emp) return (emp as { business_id: string }).business_id
   return null
 }
@@ -29,17 +43,23 @@ function inDaysFromNow(dateStr: string, days: number, now: Date): boolean {
 
 export async function GET(req: NextRequest) {
   const ip = getIp(req)
-  if (!rateLimit(`crm-segments:${ip}`, { limit: 60, windowMs: 60 * 1000 })) return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
+  if (!rateLimit(`crm-segments:${ip}`, { limit: 60, windowMs: 60 * 1000 }))
+    return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
   const url = new URL(req.url)
   const segment = url.searchParams.get('segment')
   const locationId = url.searchParams.get('location_id')
   const parsed = QuerySchema.safeParse({ segment, location_id: locationId || null })
   if (!parsed.success) {
-    return NextResponse.json({ error: 'validation_failed', details: parsed.error.flatten().fieldErrors }, { status: 422 })
+    return NextResponse.json(
+      { error: 'validation_failed', details: parsed.error.flatten().fieldErrors },
+      { status: 422 },
+    )
   }
 
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   const businessId = await resolveBusinessId(supabase, user.id)
   if (!businessId) return NextResponse.json({ error: 'not_found' }, { status: 404 })
@@ -75,11 +95,20 @@ export async function GET(req: NextRequest) {
       if (!tx.client_id) continue
       if (!statsMap[tx.client_id]) statsMap[tx.client_id] = { total_visits: 0, last_visit_at: null }
       statsMap[tx.client_id].total_visits++
-      if (!statsMap[tx.client_id].last_visit_at) statsMap[tx.client_id].last_visit_at = tx.created_at
+      if (!statsMap[tx.client_id].last_visit_at)
+        statsMap[tx.client_id].last_visit_at = tx.created_at
     }
   }
 
-  const enriched = (clients as unknown as { id: string; birthday: string | null; tags: string[] | null; last_visit_at: string | null; location_id: string | null }[]).map((c) => ({
+  const enriched = (
+    clients as unknown as {
+      id: string
+      birthday: string | null
+      tags: string[] | null
+      last_visit_at: string | null
+      location_id: string | null
+    }[]
+  ).map((c) => ({
     id: c.id,
     birthday: c.birthday,
     tags: c.tags,
@@ -92,7 +121,9 @@ export async function GET(req: NextRequest) {
 
   // Also return full client rows for preview
   const filteredIds = new Set(filtered.map((f) => f.id))
-  const preview = (clients as unknown as { id: string }[]).filter((c) => filteredIds.has(c.id)).slice(0, 50)
+  const preview = (clients as unknown as { id: string }[])
+    .filter((c) => filteredIds.has(c.id))
+    .slice(0, 50)
 
   return NextResponse.json({
     segment: parsed.data.segment,

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { z } from 'zod'
 
+import { rateLimit, getIp } from '@/lib/rate-limit'
+import { createClient } from '@/lib/supabase/server'
 type Period = 'today' | '7d' | '30d'
 
 function getPeriodStart(period: Period): Date {
@@ -40,12 +42,28 @@ interface Transaction {
 }
 
 export async function GET(req: NextRequest) {
+  const _ipGET = getIp(req as unknown as Request)
+  if (!rateLimit(`sales-route:get:${_ipGET}`, { limit: 60, windowMs: 10 * 60 * 1000 }))
+    return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
+  {
+    const _parsed = z
+      .object({})
+      .passthrough()
+      .safeParse(Object.fromEntries(new URL(req.url).searchParams))
+    if (!_parsed.success) return NextResponse.json({ error: 'validation_failed' }, { status: 422 })
+  }
+
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 
   const { data: business } = await supabase
-    .from('businesses').select('id, currency').eq('owner_id', user.id).maybeSingle()
+    .from('businesses')
+    .select('id, currency')
+    .eq('owner_id', user.id)
+    .maybeSingle()
   if (!business) return NextResponse.json({ error: 'not_found' }, { status: 404 })
 
   const fromParam = req.nextUrl.searchParams.get('from')
@@ -87,8 +105,8 @@ export async function GET(req: NextRequest) {
     })
   }
 
-  const txsWithItems = (rows as unknown as Transaction[]).filter((tx) =>
-    Array.isArray(tx.items) && tx.items.some((it) => !!it.item_id)
+  const txsWithItems = (rows as unknown as Transaction[]).filter(
+    (tx) => Array.isArray(tx.items) && tx.items.some((it) => !!it.item_id),
   )
 
   let totalRevenue = 0

@@ -1,6 +1,14 @@
 import { describe, it, expect, beforeEach } from 'vitest'
+
 import 'fake-indexeddb/auto'
-import { queueTransaction, getPendingTransactions, markTransactionSynced, getPendingCount, cacheData, getCachedData } from '@/lib/offline-db'
+import {
+  queueTransaction,
+  getPendingTransactions,
+  markTransactionSynced,
+  getPendingCount,
+  cacheData,
+  getCachedData,
+} from '@/lib/offline-db'
 
 describe('offline-db strict 100%', () => {
   // Note: we don't delete DB each time to avoid fake-indexeddb hanging.
@@ -10,7 +18,14 @@ describe('offline-db strict 100%', () => {
   })
 
   it('queue and getPending', async () => {
-    const tx = await queueTransaction({ business_id: 'biz', client_id: null, employee_id: null, amount: 10, payment_method: 'cash', items: [] })
+    const tx = await queueTransaction({
+      business_id: 'biz',
+      client_id: null,
+      employee_id: null,
+      amount: 10,
+      payment_method: 'cash',
+      items: [],
+    })
     expect(tx.id).toBeTruthy()
     expect(tx.synced).toBe(false)
     expect(tx.local_receipt).toMatch(/OFFLINE-/)
@@ -22,7 +37,14 @@ describe('offline-db strict 100%', () => {
   it('queue with crypto fallback', async () => {
     const orig = (globalThis.crypto as any)?.randomUUID
     if (globalThis.crypto) (globalThis.crypto as any).randomUUID = undefined
-    const tx = await queueTransaction({ business_id: 'biz', client_id: null, employee_id: null, amount: 1, payment_method: 'cash', items: [] })
+    const tx = await queueTransaction({
+      business_id: 'biz',
+      client_id: null,
+      employee_id: null,
+      amount: 1,
+      payment_method: 'cash',
+      items: [],
+    })
     expect(tx.id).toMatch(/fallback-/)
     if (orig) (globalThis.crypto as any).randomUUID = orig
   })
@@ -30,15 +52,31 @@ describe('offline-db strict 100%', () => {
   it('queue throws when indexedDB undefined', async () => {
     const orig = globalThis.indexedDB
     ;(globalThis as any).indexedDB = undefined
-    await expect(queueTransaction({ business_id: 'b', client_id: null, employee_id: null, amount: 1, payment_method: 'cash', items: [] })).rejects.toThrow('IndexedDB not available')
+    await expect(
+      queueTransaction({
+        business_id: 'b',
+        client_id: null,
+        employee_id: null,
+        amount: 1,
+        payment_method: 'cash',
+        items: [],
+      }),
+    ).rejects.toThrow('IndexedDB not available')
     globalThis.indexedDB = orig
   })
 
   it('markTransactionSynced', async () => {
-    const tx = await queueTransaction({ business_id: 'biz', client_id: null, employee_id: null, amount: 5, payment_method: 'cash', items: [] })
+    const tx = await queueTransaction({
+      business_id: 'biz',
+      client_id: null,
+      employee_id: null,
+      amount: 5,
+      payment_method: 'cash',
+      items: [],
+    })
     await markTransactionSynced(tx.id)
     const pending = await getPendingTransactions()
-    expect(pending.find(t => t.id === tx.id)).toBeUndefined()
+    expect(pending.find((t) => t.id === tx.id)).toBeUndefined()
   })
 
   it('markTransactionSynced non-existent id still resolves', async () => {
@@ -47,8 +85,22 @@ describe('offline-db strict 100%', () => {
 
   it('getPendingCount returns number and handles error', async () => {
     const before = await getPendingCount()
-    await queueTransaction({ business_id: `biz-${Math.random()}`, client_id: null, employee_id: null, amount: 1, payment_method: 'cash', items: [] })
-    await queueTransaction({ business_id: `biz-${Math.random()}`, client_id: null, employee_id: null, amount: 2, payment_method: 'cash', items: [] })
+    await queueTransaction({
+      business_id: `biz-${Math.random()}`,
+      client_id: null,
+      employee_id: null,
+      amount: 1,
+      payment_method: 'cash',
+      items: [],
+    })
+    await queueTransaction({
+      business_id: `biz-${Math.random()}`,
+      client_id: null,
+      employee_id: null,
+      amount: 2,
+      payment_method: 'cash',
+      items: [],
+    })
     const after = await getPendingCount()
     expect(after).toBeGreaterThanOrEqual(before + 2)
     // error branch: mock getPendingTransactions to throw by deleting DB
@@ -59,22 +111,30 @@ describe('offline-db strict 100%', () => {
   })
 
   it('cacheData and getCachedData services', async () => {
-    await cacheData('services_cache', [{ id: 's1', name: 'Cut', price: 10, duration_min: 30, category: null }])
+    await cacheData('services_cache', [
+      { id: 's1', name: 'Cut', price: 10, duration_min: 30, category: null },
+    ])
     const data = await getCachedData('services_cache')
     expect(data.length).toBe(1)
     expect((data[0] as any).name).toBe('Cut')
   })
 
   it('cacheData empty no-op', async () => {
-    await cacheData('services_cache', [{ id: 's1', name: 'A', price: 10, duration_min: 30, category: null }])
+    await cacheData('services_cache', [
+      { id: 's1', name: 'A', price: 10, duration_min: 30, category: null },
+    ])
     await cacheData('services_cache', [])
     const data = await getCachedData('services_cache')
     expect(data.length).toBe(1) // still previous because empty does not clear?
   })
 
   it('cacheData replaces', async () => {
-    await cacheData('services_cache', [{ id: 's1', name: 'A', price: 10, duration_min: 30, category: null }])
-    await cacheData('services_cache', [{ id: 's2', name: 'B', price: 20, duration_min: 30, category: 'cat' }])
+    await cacheData('services_cache', [
+      { id: 's1', name: 'A', price: 10, duration_min: 30, category: null },
+    ])
+    await cacheData('services_cache', [
+      { id: 's2', name: 'B', price: 20, duration_min: 30, category: 'cat' },
+    ])
     const data = await getCachedData('services_cache')
     expect(data.length).toBe(1)
     expect((data[0] as any).id).toBe('s2')
@@ -98,7 +158,9 @@ describe('offline-db strict 100%', () => {
     // Force error by making indexedDB.open throw
     const origOpen = globalThis.indexedDB.open
     // @ts-ignore
-    globalThis.indexedDB.open = () => { throw new Error('open fail') }
+    globalThis.indexedDB.open = () => {
+      throw new Error('open fail')
+    }
     expect(await getCachedData('services_cache')).toEqual([])
     globalThis.indexedDB.open = origOpen
   })

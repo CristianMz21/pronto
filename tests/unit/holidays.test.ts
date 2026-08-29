@@ -1,12 +1,25 @@
 import { describe, it, expect } from 'vitest'
-import { isHoliday, isHolidayForLocation, getHolidaysForDate } from '@/lib/holidays'
+
 import { checkSlotWithHolidays, checkSlotWithinLocation } from '@/lib/booking-availability'
+import { isHoliday, isHolidayForLocation, getHolidaysForDate } from '@/lib/holidays'
 
 describe('holidays', () => {
   const holidays = [
     { business_id: 'b1', location_id: null, date: '2026-12-25', reason: 'Navidad', is_open: false },
-    { business_id: 'b1', location_id: 'loc-1', date: '2026-12-24', reason: 'Mantenimiento Norte', is_open: false },
-    { business_id: 'b1', location_id: null, date: '2026-01-01', reason: 'Año nuevo pero abierto', is_open: true },
+    {
+      business_id: 'b1',
+      location_id: 'loc-1',
+      date: '2026-12-24',
+      reason: 'Mantenimiento Norte',
+      is_open: false,
+    },
+    {
+      business_id: 'b1',
+      location_id: null,
+      date: '2026-01-01',
+      reason: 'Año nuevo pero abierto',
+      is_open: true,
+    },
   ]
 
   it('isHoliday false when empty', () => {
@@ -33,7 +46,9 @@ describe('holidays', () => {
   })
   it('checkSlotWithHolidays blocks holiday', () => {
     const dayHours = { day_of_week: 1, is_open: true, open_time: '09:00', close_time: '19:00' }
-    const res = checkSlotWithHolidays(dayHours, '10:00', 60, '2026-12-25', [{ date: '2026-12-25', is_open: false }])
+    const res = checkSlotWithHolidays(dayHours, '10:00', 60, '2026-12-25', [
+      { date: '2026-12-25', is_open: false },
+    ])
     expect(res.ok).toBe(false)
     expect((res as { reason: string }).reason).toBe('holiday')
   })
@@ -44,10 +59,28 @@ describe('holidays', () => {
       { date: '2026-12-25', is_open: false, location_id: null },
     ]
     // loc-1 should be blocked on 24th
-    expect(checkSlotWithinLocation(dayHours, '10:00', 60, { date: '2026-12-24', holidays: holidaysCheck as any, locationId: 'loc-1' }).ok).toBe(false)
+    expect(
+      checkSlotWithinLocation(dayHours, '10:00', 60, {
+        date: '2026-12-24',
+        holidays: holidaysCheck as any,
+        locationId: 'loc-1',
+      }).ok,
+    ).toBe(false)
     // loc-2 not blocked on 24th
-    expect(checkSlotWithinLocation(dayHours, '10:00', 60, { date: '2026-12-24', holidays: holidaysCheck as any, locationId: 'loc-2' }).ok).toBe(true)
+    expect(
+      checkSlotWithinLocation(dayHours, '10:00', 60, {
+        date: '2026-12-24',
+        holidays: holidaysCheck as any,
+        locationId: 'loc-2',
+      }).ok,
+    ).toBe(true)
     // business-wide holiday blocks any location
-    expect(checkSlotWithinLocation(dayHours, '10:00', 60, { date: '2026-12-25', holidays: holidaysCheck as any, locationId: 'loc-2' }).ok).toBe(false)
+    expect(
+      checkSlotWithinLocation(dayHours, '10:00', 60, {
+        date: '2026-12-25',
+        holidays: holidaysCheck as any,
+        locationId: 'loc-2',
+      }).ok,
+    ).toBe(false)
   })
 })

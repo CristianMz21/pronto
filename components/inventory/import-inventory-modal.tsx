@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
-import * as XLSX from 'xlsx'
-import { Button } from '@/components/ui/button'
 import { X, Upload, CheckCircle, AlertCircle, Download } from 'lucide-react'
 import { useTranslations } from 'next-intl'
+import { useState, useRef, useCallback } from 'react'
+import * as XLSX from 'xlsx'
+
+import { Button } from '@/components/ui/button'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -32,8 +33,8 @@ interface Props {
 // ─── CSV delimiter detection ──────────────────────────────────────────────────
 
 function detectDelimiter(firstLine: string): string {
-  const commaCount     = (firstLine.match(/,/g)  ?? []).length
-  const semicolonCount = (firstLine.match(/;/g)  ?? []).length
+  const commaCount = (firstLine.match(/,/g) ?? []).length
+  const semicolonCount = (firstLine.match(/;/g) ?? []).length
   return semicolonCount > commaCount ? ';' : ','
 }
 
@@ -47,34 +48,58 @@ function parseCSV(text: string, delimiter = ','): string[][] {
   let i = 0
 
   while (i < text.length) {
-    const ch   = text[i]
+    const ch = text[i]
     const next = text[i + 1]
 
     if (inQuotes) {
-      if (ch === '"' && next === '"') { field += '"'; i += 2; continue }
-      if (ch === '"') { inQuotes = false; i++; continue }
-      field += ch; i++; continue
+      if (ch === '"' && next === '"') {
+        field += '"'
+        i += 2
+        continue
+      }
+      if (ch === '"') {
+        inQuotes = false
+        i++
+        continue
+      }
+      field += ch
+      i++
+      continue
     }
 
-    if (ch === '"') { inQuotes = true; i++; continue }
+    if (ch === '"') {
+      inQuotes = true
+      i++
+      continue
+    }
 
     if (ch === delimiter) {
-      row.push(field.trim()); field = ''; i++; continue
+      row.push(field.trim())
+      field = ''
+      i++
+      continue
     }
 
     if (ch === '\r' && next === '\n') {
       row.push(field.trim())
       if (row.some((c) => c !== '')) rows.push(row)
-      row = []; field = ''; i += 2; continue
+      row = []
+      field = ''
+      i += 2
+      continue
     }
 
     if (ch === '\n' || ch === '\r') {
       row.push(field.trim())
       if (row.some((c) => c !== '')) rows.push(row)
-      row = []; field = ''; i++; continue
+      row = []
+      field = ''
+      i++
+      continue
     }
 
-    field += ch; i++
+    field += ch
+    i++
   }
 
   if (field.length > 0 || row.length > 0) {
@@ -107,14 +132,14 @@ async function parseFile(file: File): Promise<string[][]> {
 // ─── Column detection ─────────────────────────────────────────────────────────
 
 const COLUMN_KEYWORDS: Record<keyof ParsedRow, string[]> = {
-  name:        ['name', 'product', 'item'],
-  sku:         ['sku', 'code'],
-  barcode:     ['barcode', 'ean', 'upc'],
-  category:    ['category', 'group'],
-  unit:        ['unit', 'uom'],
-  quantity:    ['quantity', 'qty', 'stock'],
-  cost_price:  ['cost price', 'cost_price', 'cost'],
-  sell_price:  ['sell price', 'sell_price', 'selling price', 'retail price', 'sale price'],
+  name: ['name', 'product', 'item'],
+  sku: ['sku', 'code'],
+  barcode: ['barcode', 'ean', 'upc'],
+  category: ['category', 'group'],
+  unit: ['unit', 'uom'],
+  quantity: ['quantity', 'qty', 'stock'],
+  cost_price: ['cost price', 'cost_price', 'cost'],
+  sell_price: ['sell price', 'sell_price', 'selling price', 'retail price', 'sale price'],
   description: ['description', 'notes'],
 }
 
@@ -125,12 +150,18 @@ function detectColumns(headers: string[]): Record<keyof ParsedRow, number> {
     let found = -1
     for (const kw of keywords) {
       const idx = normalized.findIndex((h) => h === kw.toLowerCase())
-      if (idx !== -1) { found = idx; break }
+      if (idx !== -1) {
+        found = idx
+        break
+      }
     }
     if (found === -1) {
       for (const kw of keywords) {
         const idx = normalized.findIndex((h) => h.includes(kw.toLowerCase()))
-        if (idx !== -1) { found = idx; break }
+        if (idx !== -1) {
+          found = idx
+          break
+        }
       }
     }
     result[field as keyof ParsedRow] = found
@@ -143,14 +174,14 @@ function rowsToParsed(rows: string[][], colMap: Record<keyof ParsedRow, number>)
     const get = (field: keyof ParsedRow) =>
       colMap[field] >= 0 ? String(row[colMap[field]] ?? '') : ''
     return {
-      name:        get('name'),
-      sku:         get('sku'),
-      barcode:     get('barcode'),
-      category:    get('category'),
-      unit:        get('unit'),
-      quantity:    get('quantity'),
-      cost_price:  get('cost_price'),
-      sell_price:  get('sell_price'),
+      name: get('name'),
+      sku: get('sku'),
+      barcode: get('barcode'),
+      category: get('category'),
+      unit: get('unit'),
+      quantity: get('quantity'),
+      cost_price: get('cost_price'),
+      sell_price: get('sell_price'),
       description: get('description'),
     }
   })
@@ -161,16 +192,16 @@ function rowsToParsed(rows: string[][], colMap: Record<keyof ParsedRow, number>)
 export function ImportInventoryModal({ open, onClose, onImported }: Props) {
   const t = useTranslations('inventory')
 
-  const [step, setStep]                     = useState<Step>('upload')
-  const [dragging, setDragging]             = useState(false)
-  const [parsedRows, setParsedRows]         = useState<ParsedRow[]>([])
-  const [colMap, setColMap]                 = useState<Record<keyof ParsedRow, number> | null>(null)
-  const [headers, setHeaders]               = useState<string[]>([])
-  const [rowCount, setRowCount]             = useState(0)
-  const [loading, setLoading]               = useState(false)
+  const [step, setStep] = useState<Step>('upload')
+  const [dragging, setDragging] = useState(false)
+  const [parsedRows, setParsedRows] = useState<ParsedRow[]>([])
+  const [colMap, setColMap] = useState<Record<keyof ParsedRow, number> | null>(null)
+  const [headers, setHeaders] = useState<string[]>([])
+  const [rowCount, setRowCount] = useState(0)
+  const [loading, setLoading] = useState(false)
   const [resultImported, setResultImported] = useState(0)
-  const [resultSkipped, setResultSkipped]   = useState(0)
-  const [importError, setImportError]       = useState<string | null>(null)
+  const [resultSkipped, setResultSkipped] = useState(0)
+  const [importError, setImportError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   function handleClose() {
@@ -186,13 +217,29 @@ export function ImportInventoryModal({ open, onClose, onImported }: Props) {
 
   function downloadTemplate() {
     const headers = [
-      ['Name', 'SKU', 'Barcode', 'Category', 'Unit',
-       'Quantity', 'Cost price', 'Sell price', 'Description'],
+      [
+        'Name',
+        'SKU',
+        'Barcode',
+        'Category',
+        'Unit',
+        'Quantity',
+        'Cost price',
+        'Sell price',
+        'Description',
+      ],
     ]
     const ws = XLSX.utils.aoa_to_sheet(headers)
     ws['!cols'] = [
-      { wch: 30 }, { wch: 15 }, { wch: 18 }, { wch: 20 }, { wch: 8 },
-      { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 40 },
+      { wch: 30 },
+      { wch: 15 },
+      { wch: 18 },
+      { wch: 20 },
+      { wch: 8 },
+      { wch: 10 },
+      { wch: 12 },
+      { wch: 12 },
+      { wch: 40 },
     ]
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Products')
@@ -207,9 +254,9 @@ export function ImportInventoryModal({ open, onClose, onImported }: Props) {
         setImportError('File appears empty or could not be parsed.')
         return
       }
-      const hdrs     = matrix[0].map(String)
+      const hdrs = matrix[0].map(String)
       const dataRows = matrix.slice(1).map((r) => r.map(String))
-      const map      = detectColumns(hdrs)
+      const map = detectColumns(hdrs)
 
       if (map.name === -1) {
         setImportError('No "name" column found. Please check your file headers.')
@@ -271,17 +318,24 @@ export function ImportInventoryModal({ open, onClose, onImported }: Props) {
   const PREVIEW_FIELDS: (keyof ParsedRow)[] = ['name', 'sku', 'quantity', 'sell_price']
 
   return (
-    <Dialog.Root open={open} onOpenChange={(o) => { if (!o) handleClose() }}>
+    <Dialog.Root
+      open={open}
+      onOpenChange={(o) => {
+        if (!o) handleClose()
+      }}
+    >
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/50 z-40" />
         <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6 focus:outline-none">
-
           {/* Header */}
           <div className="flex items-center justify-between mb-5">
             <Dialog.Title className="text-lg font-semibold text-gray-900">
               Import Products
             </Dialog.Title>
-            <button onClick={handleClose} className="text-gray-400 hover:text-gray-600 transition-colors">
+            <button
+              onClick={handleClose}
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+            >
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -289,12 +343,13 @@ export function ImportInventoryModal({ open, onClose, onImported }: Props) {
           {/* ── Step: upload ─────────────────────────────────────────────── */}
           {step === 'upload' && (
             <div>
-              <p className="text-sm text-gray-600 mb-4">
-                {t('import.uploadHint')}
-              </p>
+              <p className="text-sm text-gray-600 mb-4">{t('import.uploadHint')}</p>
 
               <div
-                onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
+                onDragOver={(e) => {
+                  e.preventDefault()
+                  setDragging(true)
+                }}
                 onDragLeave={() => setDragging(false)}
                 onDrop={handleDrop}
                 onClick={() => fileInputRef.current?.click()}
@@ -347,7 +402,10 @@ export function ImportInventoryModal({ open, onClose, onImported }: Props) {
                   {t('import.productsFound', { count: rowCount })}
                 </span>
                 <button
-                  onClick={() => { setStep('upload'); setImportError(null) }}
+                  onClick={() => {
+                    setStep('upload')
+                    setImportError(null)
+                  }}
                   className="ml-auto text-xs text-blue-600 hover:underline"
                 >
                   Change file
@@ -359,9 +417,11 @@ export function ImportInventoryModal({ open, onClose, onImported }: Props) {
                   <span
                     key={field}
                     className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full font-medium
-                      ${colMap[field] >= 0
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-gray-100 text-gray-400'}`}
+                      ${
+                        colMap[field] >= 0
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-gray-100 text-gray-400'
+                      }`}
                   >
                     {colMap[field] >= 0 ? '✓' : '—'} {field}
                     {colMap[field] >= 0 && (
@@ -376,7 +436,10 @@ export function ImportInventoryModal({ open, onClose, onImported }: Props) {
                   <thead>
                     <tr className="bg-gray-50 border-b border-gray-200">
                       {PREVIEW_FIELDS.map((f) => (
-                        <th key={f} className="px-3 py-2 text-left font-medium text-gray-500 capitalize">
+                        <th
+                          key={f}
+                          className="px-3 py-2 text-left font-medium text-gray-500 capitalize"
+                        >
                           {f.replace('_', ' ')}
                         </th>
                       ))}
@@ -412,11 +475,7 @@ export function ImportInventoryModal({ open, onClose, onImported }: Props) {
                 <Button variant="outline" size="sm" onClick={() => setStep('upload')}>
                   Back
                 </Button>
-                <Button
-                  size="sm"
-                  onClick={handleImport}
-                  disabled={loading || rowCount === 0}
-                >
+                <Button size="sm" onClick={handleImport} disabled={loading || rowCount === 0}>
                   {loading ? t('import.importing') : t('import.importN', { count: rowCount })}
                 </Button>
               </div>
@@ -437,10 +496,11 @@ export function ImportInventoryModal({ open, onClose, onImported }: Props) {
                   {t('import.skipped', { count: resultSkipped })}
                 </p>
               )}
-              <Button onClick={handleClose} className="mt-2">Done</Button>
+              <Button onClick={handleClose} className="mt-2">
+                Done
+              </Button>
             </div>
           )}
-
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

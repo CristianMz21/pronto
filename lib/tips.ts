@@ -32,7 +32,7 @@ export interface Tip {
 export function isValidTipAmount(
   tipAmount: number,
   transactionAmount: number,
-  opts?: { isManager?: boolean }
+  opts?: { isManager?: boolean },
 ): { ok: true } | { ok: false; reason: string } {
   if (!Number.isInteger(tipAmount) || tipAmount < 0) return { ok: false, reason: 'tip_negative' }
   if (tipAmount === 0) return { ok: true }
@@ -42,9 +42,12 @@ export function isValidTipAmount(
   return { ok: true }
 }
 
-export function validateTipInput(data: unknown): { ok: true; data: TipInput } | { ok: false; reason: string; details?: unknown } {
+export function validateTipInput(
+  data: unknown,
+): { ok: true; data: TipInput } | { ok: false; reason: string; details?: unknown } {
   const parsed = TipSchema.safeParse(data)
-  if (!parsed.success) return { ok: false, reason: 'validation_failed', details: parsed.error.flatten().fieldErrors }
+  if (!parsed.success)
+    return { ok: false, reason: 'validation_failed', details: parsed.error.flatten().fieldErrors }
   return { ok: true, data: parsed.data }
 }
 
@@ -54,12 +57,13 @@ type SupabaseLike = {
   rpc?: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>
 }
 
-export async function createTip(
-  supabase: SupabaseLike,
-  params: TipInput
-): Promise<Tip> {
+export async function createTip(supabase: SupabaseLike, params: TipInput): Promise<Tip> {
   const parsed = TipSchema.safeParse(params)
-  if (!parsed.success) throw Object.assign(new Error('validation_failed'), { details: parsed.error.flatten().fieldErrors, code: 'validation_failed' })
+  if (!parsed.success)
+    throw Object.assign(new Error('validation_failed'), {
+      details: parsed.error.flatten().fieldErrors,
+      code: 'validation_failed',
+    })
 
   const payload = {
     business_id: parsed.data.business_id,
@@ -69,21 +73,48 @@ export async function createTip(
     method: parsed.data.method ?? 'cash',
   }
 
-  const { data, error } = await (supabase.from('tips') as unknown as {
-    insert: (d: unknown) => { select: (c: string) => { single: () => Promise<{ data: Tip | null; error: unknown }> } }
-  }).insert(payload).select('*').single()
+  const { data, error } = await (
+    supabase.from('tips') as unknown as {
+      insert: (d: unknown) => {
+        select: (c: string) => { single: () => Promise<{ data: Tip | null; error: unknown }> }
+      }
+    }
+  )
+    .insert(payload)
+    .select('*')
+    .single()
 
-  if (error || !data) throw Object.assign(new Error('tip_create_failed: ' + String((error as { message?: string })?.message ?? error)), { code: 'tip_create_failed' })
+  if (error || !data)
+    throw Object.assign(
+      new Error('tip_create_failed: ' + String((error as { message?: string })?.message ?? error)),
+      { code: 'tip_create_failed' },
+    )
 
   // Also update transactions.tip_amount for reporting consistency (sum of tips)
   try {
-    const { data: tx } = await (supabase.from('transactions') as unknown as {
-      select: (c: string) => { eq: (a: string, b: unknown) => { maybeSingle: () => Promise<{ data: { tip_amount: number } | null; error: unknown }> } }
-    }).select('tip_amount').eq('id', payload.transaction_id).maybeSingle()
+    const { data: tx } = await (
+      supabase.from('transactions') as unknown as {
+        select: (c: string) => {
+          eq: (
+            a: string,
+            b: unknown,
+          ) => {
+            maybeSingle: () => Promise<{ data: { tip_amount: number } | null; error: unknown }>
+          }
+        }
+      }
+    )
+      .select('tip_amount')
+      .eq('id', payload.transaction_id)
+      .maybeSingle()
     const currentTip = (tx as { tip_amount: number } | null)?.tip_amount ?? 0
-    await (supabase.from('transactions') as unknown as {
-      update: (d: unknown) => { eq: (a: string, b: unknown) => Promise<unknown> }
-    }).update({ tip_amount: currentTip + payload.amount } as unknown as never).eq('id', payload.transaction_id)
+    await (
+      supabase.from('transactions') as unknown as {
+        update: (d: unknown) => { eq: (a: string, b: unknown) => Promise<unknown> }
+      }
+    )
+      .update({ tip_amount: currentTip + payload.amount } as unknown as never)
+      .eq('id', payload.transaction_id)
   } catch {}
 
   return data as Tip
@@ -93,11 +124,32 @@ export async function listByEmployee(
   supabase: SupabaseLike,
   businessId: string,
   employeeId: string,
-  opts?: { from?: string; to?: string }
+  opts?: { from?: string; to?: string },
 ): Promise<Tip[]> {
-  let query = (supabase.from('tips') as unknown as {
-    select: (c: string) => { eq: (a: string, b: unknown) => { eq: (c: string, d: unknown) => { gte?: (col: string, v: string) => unknown; order?: (col: string, o: unknown) => Promise<{ data: Tip[] | null; error: unknown }> } & Promise<{ data: Tip[] | null; error: unknown }> } }
-  }).select('*').eq('business_id', businessId).eq('employee_id', employeeId) as unknown as Promise<{ data: Tip[] | null; error: unknown }>
+  let query = (
+    supabase.from('tips') as unknown as {
+      select: (c: string) => {
+        eq: (
+          a: string,
+          b: unknown,
+        ) => {
+          eq: (
+            c: string,
+            d: unknown,
+          ) => {
+            gte?: (col: string, v: string) => unknown
+            order?: (col: string, o: unknown) => Promise<{ data: Tip[] | null; error: unknown }>
+          } & Promise<{ data: Tip[] | null; error: unknown }>
+        }
+      }
+    }
+  )
+    .select('*')
+    .eq('business_id', businessId)
+    .eq('employee_id', employeeId) as unknown as unknown as Promise<{
+    data: Tip[] | null
+    error: unknown
+  }>
 
   // Simple fetch then filter by date if needed (keeps types simple)
   const { data, error } = await query
@@ -111,11 +163,17 @@ export async function listByEmployee(
 export async function reportTips(
   supabase: SupabaseLike,
   businessId: string,
-  opts?: { from?: string; to?: string; location_id?: string | null }
+  opts?: { from?: string; to?: string; location_id?: string | null },
 ): Promise<{ total: number; byEmployee: { employee_id: string; total: number; count: number }[] }> {
-  const { data, error } = await (supabase.from('tips') as unknown as {
-    select: (c: string) => { eq: (a: string, b: unknown) => Promise<{ data: Tip[] | null; error: unknown }> }
-  }).select('*').eq('business_id', businessId) as unknown as Promise<{ data: Tip[] | null; error: unknown }>
+  const { data, error } = await ((
+    supabase.from('tips') as unknown as {
+      select: (c: string) => {
+        eq: (a: string, b: unknown) => Promise<{ data: Tip[] | null; error: unknown }>
+      }
+    }
+  )
+    .select('*')
+    .eq('business_id', businessId) as unknown as Promise<{ data: Tip[] | null; error: unknown }>)
   if (error) throw error
   let tips = (data ?? []) as Tip[]
   if (opts?.from) tips = tips.filter((t) => t.created_at >= opts.from!)

@@ -1,10 +1,12 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { completeOnboarding } from './actions'
 import { CheckCircle2, ChevronRight, Loader2 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { useTranslations } from 'next-intl'
+import { useState, useEffect, useRef } from 'react'
+
+import { Button } from '@/components/ui/button'
+
+import { completeOnboarding } from './actions'
 
 type Tab = 0 | 1 | 2 | 3 | 4
 type SlugStatus = 'idle' | 'checking' | 'available' | 'taken' | 'invalid'

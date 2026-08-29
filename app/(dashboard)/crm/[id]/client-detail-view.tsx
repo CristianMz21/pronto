@@ -1,15 +1,16 @@
 'use client'
 
-import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
-import { formatCurrency, formatDate, formatInBusinessTimezone } from '@/lib/utils'
-import { useTranslations } from 'next-intl'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Pencil, Trash2, CalendarDays, DollarSign, Clock, UserCheck } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
+import { useState } from 'react'
+
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DatePicker } from '@/components/ui/date-picker'
+import { createClient } from '@/lib/supabase/client'
+import { formatCurrency, formatDate, formatInBusinessTimezone } from '@/lib/utils'
 
 interface Appointment {
   id: string
@@ -51,7 +52,13 @@ interface Props {
   preferredBarber?: { id: string; name: string } | null
   location?: { id: string; name: string } | null
   loyaltyPoints?: number
-  memberships?: { id: string; remaining: number; expires_at: string; status: string; memberships: { name: string } | null }[]
+  memberships?: {
+    id: string
+    remaining: number
+    expires_at: string
+    status: string
+    memberships: { name: string } | null
+  }[]
 }
 
 const statusColors: Record<string, string> = {
@@ -67,18 +74,31 @@ function validatePhone(phone: string): string | null {
   if (!phone) return null
   if (!/^[\d\s+\-()]+$/.test(phone)) return 'Please enter a valid phone number (digits only)'
   const digits = phone.replace(/\D/g, '')
-  if (digits.length < 7 || digits.length > 15) return 'Please enter a valid phone number (digits only)'
+  if (digits.length < 7 || digits.length > 15)
+    return 'Please enter a valid phone number (digits only)'
   return null
 }
 
 function validateBirthday(birthday: string): string | null {
   if (!birthday) return null
   const d = new Date(birthday + 'T00:00:00')
-  if (isNaN(d.getTime()) || d.getFullYear() < 1900 || d > new Date()) return 'Please enter a valid date'
+  if (isNaN(d.getTime()) || d.getFullYear() < 1900 || d > new Date())
+    return 'Please enter a valid date'
   return null
 }
 
-export function ClientDetailView({ client: initial, appointments, currency, timezone, businessId, telegramBotUsername, preferredBarber, location, loyaltyPoints = 0, memberships = [] }: Props) {
+export function ClientDetailView({
+  client: initial,
+  appointments,
+  currency,
+  timezone,
+  businessId,
+  telegramBotUsername,
+  preferredBarber,
+  location,
+  loyaltyPoints = 0,
+  memberships = [],
+}: Props) {
   const supabase = createClient()
   const router = useRouter()
   const t = useTranslations('clientDetail')
@@ -119,16 +139,24 @@ export function ClientDetailView({ client: initial, appointments, currency, time
     }
     setEditErrors({})
     setSaving(true)
-    const tags = form.tags.split(',').map((t) => t.trim()).filter(Boolean)
-    const { data } = await supabase.from('clients').update({
-      name: form.name,
-      phone: form.phone || null,
-      email: form.email || null,
-      birthday: form.birthday || null,
-      notes: form.notes || null,
-      tags,
-      whatsapp_number: form.whatsapp_number || null,
-    }).eq('id', client.id).select().single()
+    const tags = form.tags
+      .split(',')
+      .map((t) => t.trim())
+      .filter(Boolean)
+    const { data } = await supabase
+      .from('clients')
+      .update({
+        name: form.name,
+        phone: form.phone || null,
+        email: form.email || null,
+        birthday: form.birthday || null,
+        notes: form.notes || null,
+        tags,
+        whatsapp_number: form.whatsapp_number || null,
+      })
+      .eq('id', client.id)
+      .select()
+      .single()
 
     if (data) setClient({ ...client, ...data })
     setSaving(false)
@@ -143,10 +171,36 @@ export function ClientDetailView({ client: initial, appointments, currency, time
   }
 
   const stats = [
-    { label: t('stats.totalVisits'), value: String(client.total_visits), icon: CalendarDays, color: 'text-blue-600', bg: 'bg-blue-50' },
-    { label: t('stats.totalSpent'), value: formatCurrency(client.total_spent, currency), icon: DollarSign, color: 'text-green-600', bg: 'bg-green-50' },
-    { label: t('stats.lastVisit'), value: client.last_visit_at ? formatInBusinessTimezone(client.last_visit_at, timezone) : t('stats.never'), icon: Clock, color: 'text-purple-600', bg: 'bg-purple-50' },
-    { label: t('stats.clientSince'), value: formatInBusinessTimezone(client.created_at, timezone), icon: UserCheck, color: 'text-orange-600', bg: 'bg-orange-50' },
+    {
+      label: t('stats.totalVisits'),
+      value: String(client.total_visits),
+      icon: CalendarDays,
+      color: 'text-blue-600',
+      bg: 'bg-blue-50',
+    },
+    {
+      label: t('stats.totalSpent'),
+      value: formatCurrency(client.total_spent, currency),
+      icon: DollarSign,
+      color: 'text-green-600',
+      bg: 'bg-green-50',
+    },
+    {
+      label: t('stats.lastVisit'),
+      value: client.last_visit_at
+        ? formatInBusinessTimezone(client.last_visit_at, timezone)
+        : t('stats.never'),
+      icon: Clock,
+      color: 'text-purple-600',
+      bg: 'bg-purple-50',
+    },
+    {
+      label: t('stats.clientSince'),
+      value: formatInBusinessTimezone(client.created_at, timezone),
+      icon: UserCheck,
+      color: 'text-orange-600',
+      bg: 'bg-orange-50',
+    },
   ]
 
   return (
@@ -169,10 +223,23 @@ export function ClientDetailView({ client: initial, appointments, currency, time
       {/* US5 loyalty/membership chips */}
       {(loyaltyPoints > 0 || memberships.length > 0) && (
         <div className="flex flex-wrap gap-2">
-          {loyaltyPoints > 0 && <Badge variant="outline" className="bg-amber-50 text-amber-800 border-amber-200">⭐ {loyaltyPoints} pts · {formatCurrency(loyaltyPoints * 100, currency)} </Badge>}
+          {loyaltyPoints > 0 && (
+            <Badge variant="outline" className="bg-amber-50 text-amber-800 border-amber-200">
+              ⭐ {loyaltyPoints} pts · {formatCurrency(loyaltyPoints * 100, currency)}{' '}
+            </Badge>
+          )}
           {memberships.map((m) => (
-            <Badge key={m.id} variant="outline" className={m.status === 'active' && m.remaining >0 && new Date(m.expires_at) > new Date() ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-100 text-gray-500'}>
-              👑 {m.memberships?.name ?? m.id.slice(0,8)} · {m.remaining} usos · vence {new Date(m.expires_at).toLocaleDateString('es-CO')}
+            <Badge
+              key={m.id}
+              variant="outline"
+              className={
+                m.status === 'active' && m.remaining > 0 && new Date(m.expires_at) > new Date()
+                  ? 'bg-green-50 text-green-700 border-green-200'
+                  : 'bg-gray-100 text-gray-500'
+              }
+            >
+              👑 {m.memberships?.name ?? m.id.slice(0, 8)} · {m.remaining} usos · vence{' '}
+              {new Date(m.expires_at).toLocaleDateString('es-CO')}
             </Badge>
           ))}
         </div>
@@ -186,22 +253,34 @@ export function ClientDetailView({ client: initial, appointments, currency, time
               {client.name}
               <div className="flex items-center gap-2">
                 {!editing && (
-                  <button onClick={() => setEditing(true)} className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
+                  <button
+                    onClick={() => setEditing(true)}
+                    className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+                  >
                     <Pencil className="w-4 h-4 text-gray-500" />
                   </button>
                 )}
                 {confirmDelete ? (
                   <div className="flex items-center gap-1.5">
                     <span className="text-xs text-gray-500">{t('deleteConfirm')}</span>
-                    <button onClick={deleteClient} className="text-xs px-2 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700">
+                    <button
+                      onClick={deleteClient}
+                      className="text-xs px-2 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                    >
                       {t('deleteButton')}
                     </button>
-                    <button onClick={() => setConfirmDelete(false)} className="text-xs px-2 py-1 border border-gray-200 rounded-lg hover:bg-gray-50">
+                    <button
+                      onClick={() => setConfirmDelete(false)}
+                      className="text-xs px-2 py-1 border border-gray-200 rounded-lg hover:bg-gray-50"
+                    >
                       {t('cancelButton')}
                     </button>
                   </div>
                 ) : (
-                  <button onClick={() => setConfirmDelete(true)} className="p-1.5 hover:bg-red-50 rounded-lg transition-colors">
+                  <button
+                    onClick={() => setConfirmDelete(true)}
+                    className="p-1.5 hover:bg-red-50 rounded-lg transition-colors"
+                  >
                     <Trash2 className="w-4 h-4 text-red-400" />
                   </button>
                 )}
@@ -232,7 +311,9 @@ export function ClientDetailView({ client: initial, appointments, currency, time
                     }}
                     className={`w-full mt-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${editErrors.phone ? 'border-red-400' : 'border-gray-200'}`}
                   />
-                  {editErrors.phone && <p className="text-xs text-red-500 mt-1">{editErrors.phone}</p>}
+                  {editErrors.phone && (
+                    <p className="text-xs text-red-500 mt-1">{editErrors.phone}</p>
+                  )}
                 </div>
                 <div>
                   <label className="text-xs font-medium text-gray-500">{t('fields.email')}</label>
@@ -244,7 +325,9 @@ export function ClientDetailView({ client: initial, appointments, currency, time
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-gray-500">{t('fields.birthday')}</label>
+                  <label className="text-xs font-medium text-gray-500">
+                    {t('fields.birthday')}
+                  </label>
                   <div
                     className="mt-1"
                     onBlur={(e) => {
@@ -262,10 +345,14 @@ export function ClientDetailView({ client: initial, appointments, currency, time
                       }}
                     />
                   </div>
-                  {editErrors.birthday && <p className="text-xs text-red-500 mt-1">{editErrors.birthday}</p>}
+                  {editErrors.birthday && (
+                    <p className="text-xs text-red-500 mt-1">{editErrors.birthday}</p>
+                  )}
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-gray-500">{t('fields.whatsappNumber')}</label>
+                  <label className="text-xs font-medium text-gray-500">
+                    {t('fields.whatsappNumber')}
+                  </label>
                   <input
                     type="tel"
                     value={form.whatsapp_number}
@@ -276,20 +363,28 @@ export function ClientDetailView({ client: initial, appointments, currency, time
                 </div>
                 <div>
                   <label className="text-xs font-medium text-gray-500">{t('fields.tags')}</label>
-                  <input type="text" value={form.tags}
+                  <input
+                    type="text"
+                    value={form.tags}
                     onChange={(e) => setForm((f) => ({ ...f, tags: e.target.value }))}
                     placeholder={t('fields.tagsPlaceholder')}
-                    className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
                 </div>
                 <div>
                   <label className="text-xs font-medium text-gray-500">{t('fields.notes')}</label>
-                  <textarea value={form.notes}
+                  <textarea
+                    value={form.notes}
                     onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-                    rows={3} placeholder={t('fields.notesPlaceholder')}
-                    className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+                    rows={3}
+                    placeholder={t('fields.notesPlaceholder')}
+                    className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  />
                 </div>
                 <div className="flex gap-2 pt-1">
-                  <Button variant="outline" size="sm" onClick={() => setEditing(false)}>{t('cancelButton')}</Button>
+                  <Button variant="outline" size="sm" onClick={() => setEditing(false)}>
+                    {t('cancelButton')}
+                  </Button>
                   <Button size="sm" onClick={save} disabled={saving || !form.name}>
                     {saving ? '…' : t('saveButton')}
                   </Button>
@@ -297,31 +392,39 @@ export function ClientDetailView({ client: initial, appointments, currency, time
 
                 {/* Messenger connection status — read-only, set via bot /link command */}
                 <div className="pt-3 border-t border-gray-100 space-y-1.5">
-                  <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">{t('fields.messengers')}</p>
+                  <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">
+                    {t('fields.messengers')}
+                  </p>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-gray-500">Telegram</span>
-                    {client.telegram_id
-                      ? <span className="text-green-600 font-medium">{t('fields.connected')}</span>
-                      : (
-                        <div className="flex items-center gap-2">
-                          <span className="text-gray-400">{t('fields.notConnected')}</span>
-                          <button
-                            type="button"
-                            onClick={copyTelegramLink}
-                            disabled={!telegramInviteLink}
-                            title={telegramInviteLink ? 'Share this link with the client to connect Telegram notifications' : 'Connect Telegram bot in Settings first'}
-                            className="text-xs px-2 py-0.5 rounded border border-gray-200 text-gray-500 hover:border-blue-400 hover:text-blue-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                          >
-                            {copied ? '✓ Copied' : 'Copy link'}
-                          </button>
-                        </div>
-                      )}
+                    {client.telegram_id ? (
+                      <span className="text-green-600 font-medium">{t('fields.connected')}</span>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-400">{t('fields.notConnected')}</span>
+                        <button
+                          type="button"
+                          onClick={copyTelegramLink}
+                          disabled={!telegramInviteLink}
+                          title={
+                            telegramInviteLink
+                              ? 'Share this link with the client to connect Telegram notifications'
+                              : 'Connect Telegram bot in Settings first'
+                          }
+                          className="text-xs px-2 py-0.5 rounded border border-gray-200 text-gray-500 hover:border-blue-400 hover:text-blue-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          {copied ? '✓ Copied' : 'Copy link'}
+                        </button>
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-gray-500">Viber</span>
-                    {client.viber_user_id
-                      ? <span className="text-green-600 font-medium">{t('fields.connected')}</span>
-                      : <span className="text-gray-400">{t('fields.notConnected')}</span>}
+                    {client.viber_user_id ? (
+                      <span className="text-green-600 font-medium">{t('fields.connected')}</span>
+                    ) : (
+                      <span className="text-gray-400">{t('fields.notConnected')}</span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -330,13 +433,17 @@ export function ClientDetailView({ client: initial, appointments, currency, time
                 {client.phone && (
                   <div className="flex gap-2">
                     <span className="text-gray-400 w-16 shrink-0">{t('fields.phone')}</span>
-                    <a href={`tel:${client.phone}`} className="text-blue-600 hover:underline">{client.phone}</a>
+                    <a href={`tel:${client.phone}`} className="text-blue-600 hover:underline">
+                      {client.phone}
+                    </a>
                   </div>
                 )}
                 {client.email && (
                   <div className="flex gap-2">
                     <span className="text-gray-400 w-16 shrink-0">{t('fields.email')}</span>
-                    <a href={`mailto:${client.email}`} className="text-blue-600 hover:underline">{client.email}</a>
+                    <a href={`mailto:${client.email}`} className="text-blue-600 hover:underline">
+                      {client.email}
+                    </a>
                   </div>
                 )}
                 {client.birthday && (
@@ -348,14 +455,23 @@ export function ClientDetailView({ client: initial, appointments, currency, time
                 {client.tags.length > 0 && (
                   <div className="flex gap-2 flex-wrap pt-1">
                     {client.tags.map((tag) => (
-                      <Badge key={tag} variant="secondary">{tag}</Badge>
+                      <Badge key={tag} variant="secondary">
+                        {tag}
+                      </Badge>
                     ))}
                   </div>
                 )}
                 {client.whatsapp_number && (
                   <div className="flex gap-2">
-                    <span className="text-gray-400 w-16 shrink-0">{t('fields.whatsappNumber')}</span>
-                    <a href={`https://wa.me/${client.whatsapp_number.replace(/^\+/, '').replace(/\s/g, '')}`} target="_blank" rel="noopener noreferrer" className="text-green-600 hover:underline">
+                    <span className="text-gray-400 w-16 shrink-0">
+                      {t('fields.whatsappNumber')}
+                    </span>
+                    <a
+                      href={`https://wa.me/${client.whatsapp_number.replace(/^\+/, '').replace(/\s/g, '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-green-600 hover:underline"
+                    >
                       {client.whatsapp_number}
                     </a>
                   </div>
@@ -372,47 +488,77 @@ export function ClientDetailView({ client: initial, appointments, currency, time
                     <span className="text-gray-700">{preferredBarber.name}</span>
                   </div>
                 )}
-                {client.preferences && typeof client.preferences === 'object' && Object.keys(client.preferences as Record<string, unknown>).length > 0 && (
-                  <div className="flex gap-2">
-                    <span className="text-gray-400 w-16 shrink-0">Prefs</span>
-                    <span className="text-xs bg-gray-50 px-2 py-1 rounded border">{JSON.stringify(client.preferences)}</span>
-                  </div>
-                )}
+                {Boolean(client.preferences) &&
+                  typeof client.preferences === 'object' &&
+                  Object.keys(client.preferences as Record<string, unknown>).length > 0 && (
+                    <div className="flex gap-2">
+                      <span className="text-gray-400 w-16 shrink-0">Prefs</span>
+                      <span className="text-xs bg-gray-50 px-2 py-1 rounded border">
+                        {JSON.stringify(client.preferences)}
+                      </span>
+                    </div>
+                  )}
 
                 {/* Quick actions */}
                 <div className="flex flex-wrap gap-2 pt-2">
-                  <a href={`/booking?clientId=${client.id}`} className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Crear cita</a>
-                  {client.phone && <a href={`https://wa.me/${client.phone.replace(/^\+/, '').replace(/\s/g, '')}`} target="_blank" className="text-xs px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700">WhatsApp</a>}
-                  <a href={`/pos?clientId=${client.id}`} className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-gray-50">Registrar venta</a>
+                  <a
+                    href={`/booking?clientId=${client.id}`}
+                    className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  >
+                    Crear cita
+                  </a>
+                  {client.phone && (
+                    <a
+                      href={`https://wa.me/${client.phone.replace(/^\+/, '').replace(/\s/g, '')}`}
+                      target="_blank"
+                      className="text-xs px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                    >
+                      WhatsApp
+                    </a>
+                  )}
+                  <a
+                    href={`/pos?clientId=${client.id}`}
+                    className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-gray-50"
+                  >
+                    Registrar venta
+                  </a>
                 </div>
 
                 {/* Messenger connection status */}
                 <div className="pt-2 border-t border-gray-100 space-y-1.5">
-                  <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">{t('fields.messengers')}</p>
+                  <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">
+                    {t('fields.messengers')}
+                  </p>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-gray-400">Telegram</span>
-                    {client.telegram_id
-                      ? <span className="text-green-600 font-medium">{t('fields.connected')}</span>
-                      : (
-                        <div className="flex items-center gap-2">
-                          <span className="text-gray-400">{t('fields.notConnected')}</span>
-                          <button
-                            type="button"
-                            onClick={copyTelegramLink}
-                            disabled={!telegramInviteLink}
-                            title={telegramInviteLink ? 'Share this link with the client to connect Telegram notifications' : 'Connect Telegram bot in Settings first'}
-                            className="text-xs px-2 py-0.5 rounded border border-gray-200 text-gray-500 hover:border-blue-400 hover:text-blue-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                          >
-                            {copied ? '✓ Copied' : 'Copy link'}
-                          </button>
-                        </div>
-                      )}
+                    {client.telegram_id ? (
+                      <span className="text-green-600 font-medium">{t('fields.connected')}</span>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-400">{t('fields.notConnected')}</span>
+                        <button
+                          type="button"
+                          onClick={copyTelegramLink}
+                          disabled={!telegramInviteLink}
+                          title={
+                            telegramInviteLink
+                              ? 'Share this link with the client to connect Telegram notifications'
+                              : 'Connect Telegram bot in Settings first'
+                          }
+                          className="text-xs px-2 py-0.5 rounded border border-gray-200 text-gray-500 hover:border-blue-400 hover:text-blue-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          {copied ? '✓ Copied' : 'Copy link'}
+                        </button>
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-gray-400">Viber</span>
-                    {client.viber_user_id
-                      ? <span className="text-green-600 font-medium">{t('fields.connected')}</span>
-                      : <span className="text-gray-400">{t('fields.notConnected')}</span>}
+                    {client.viber_user_id ? (
+                      <span className="text-green-600 font-medium">{t('fields.connected')}</span>
+                    ) : (
+                      <span className="text-gray-400">{t('fields.notConnected')}</span>
+                    )}
                   </div>
                 </div>
 
@@ -437,13 +583,17 @@ export function ClientDetailView({ client: initial, appointments, currency, time
             ) : (
               <div className="space-y-3">
                 {appointments.map((a) => (
-                  <div key={a.id} className="flex items-start justify-between py-2 border-b border-gray-100 last:border-0">
+                  <div
+                    key={a.id}
+                    className="flex items-start justify-between py-2 border-b border-gray-100 last:border-0"
+                  >
                     <div>
                       <div className="text-sm font-medium text-gray-900">
                         {a.services?.name ?? '—'}
                       </div>
                       <div className="text-xs text-gray-500 mt-0.5">
-                        {formatInBusinessTimezone(a.starts_at, timezone)} · {formatInBusinessTimezone(a.starts_at, timezone, 'time')}
+                        {formatInBusinessTimezone(a.starts_at, timezone)} ·{' '}
+                        {formatInBusinessTimezone(a.starts_at, timezone, 'time')}
                         {a.employees?.name && ` · ${a.employees.name}`}
                       </div>
                     </div>
@@ -453,7 +603,9 @@ export function ClientDetailView({ client: initial, appointments, currency, time
                           {formatCurrency(a.price, currency)}
                         </span>
                       )}
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[a.status] ?? 'bg-gray-100 text-gray-500'}`}>
+                      <span
+                        className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[a.status] ?? 'bg-gray-100 text-gray-500'}`}
+                      >
                         {t(`status.${a.status}` as any)}
                       </span>
                     </div>

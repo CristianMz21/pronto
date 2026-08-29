@@ -13,22 +13,29 @@
 
 'use strict'
 
+const fs = require('fs')
+const path = require('path')
+
 const { Client } = require('pg')
-const fs       = require('fs')
-const path     = require('path')
 
 // ── Configuration ────────────────────────────────────────────────────────────
 
-let DATABASE_URL   = process.env.DATABASE_URL
+let DATABASE_URL = process.env.DATABASE_URL
 const MIGRATIONS_DIR = path.join(__dirname, '..', 'supabase', 'migrations')
 
 // Docker without host network: translate 127.0.0.1 / localhost to host.docker.internal
 // when running inside container (/.dockerenv or IS_DOCKER=true) and MIGRATE_SSL=false (local dev).
 // Cloud DATABASE_URL (db.<ref>.supabase.co) is unaffected.
 try {
-  const isDocker = process.env.IS_DOCKER === 'true' || (() => {
-    try { return fs.existsSync('/.dockerenv') } catch { return false }
-  })()
+  const isDocker =
+    process.env.IS_DOCKER === 'true' ||
+    (() => {
+      try {
+        return fs.existsSync('/.dockerenv')
+      } catch {
+        return false
+      }
+    })()
   if (
     DATABASE_URL &&
     process.env.MIGRATE_SSL === 'false' &&
@@ -36,7 +43,10 @@ try {
     (DATABASE_URL.includes('127.0.0.1') || DATABASE_URL.includes('localhost'))
   ) {
     const original = DATABASE_URL
-    DATABASE_URL = DATABASE_URL.replace(/127\.0\.0\.1/g, 'host.docker.internal').replace(/localhost/g, 'host.docker.internal')
+    DATABASE_URL = DATABASE_URL.replace(/127\.0\.0\.1/g, 'host.docker.internal').replace(
+      /localhost/g,
+      'host.docker.internal',
+    )
     console.log(`  ↻ Translated DATABASE_URL for Docker bridge: ${original} → ${DATABASE_URL}`)
   }
 } catch (_) {
@@ -47,7 +57,7 @@ try {
 // If they fail with a "schema not found" or "function not found" error
 // they are skipped with a warning instead of aborting the whole run.
 const OPTIONAL_MIGRATIONS = new Set([
-  '007_cron_jobs.sql',   // requires pg_cron + pg_net (Database → Extensions)
+  '007_cron_jobs.sql', // requires pg_cron + pg_net (Database → Extensions)
 ])
 
 // ── Env-var substitution in SQL ──────────────────────────────────────────────
@@ -70,7 +80,9 @@ async function main() {
   if (!DATABASE_URL) {
     console.error('ERROR: DATABASE_URL is not set.')
     console.error('Add it to your .env file:')
-    console.error('  Supabase Dashboard → Project Settings → Database → Connection string (URI, Session mode)')
+    console.error(
+      '  Supabase Dashboard → Project Settings → Database → Connection string (URI, Session mode)',
+    )
     process.exit(1)
   }
 
@@ -115,7 +127,7 @@ async function main() {
       await pool.end().catch(() => {})
       if (attempt < 5) {
         console.log(`  Retrying in 5 s…`)
-        await new Promise(r => setTimeout(r, 5000))
+        await new Promise((r) => setTimeout(r, 5000))
       }
     }
   }
@@ -133,14 +145,15 @@ async function main() {
 
     // Fetch already-applied migrations
     const { rows } = await pool.query('SELECT filename FROM schema_migrations ORDER BY filename')
-    const applied   = new Set(rows.map(r => r.filename))
+    const applied = new Set(rows.map((r) => r.filename))
 
     // Read migration files sorted by name (001 → 018 …)
-    const files = fs.readdirSync(MIGRATIONS_DIR)
-      .filter(f => f.endsWith('.sql'))
+    const files = fs
+      .readdirSync(MIGRATIONS_DIR)
+      .filter((f) => f.endsWith('.sql'))
       .sort()
 
-    const pending = files.filter(f => !applied.has(f))
+    const pending = files.filter((f) => !applied.has(f))
 
     if (pending.length === 0) {
       console.log('✓ All migrations already applied — nothing to do.')
@@ -155,8 +168,8 @@ async function main() {
       process.stdout.write(`  → ${file} … `)
 
       const filePath = path.join(MIGRATIONS_DIR, file)
-      const rawSql   = fs.readFileSync(filePath, 'utf8')
-      const sql      = interpolate(rawSql)
+      const rawSql = fs.readFileSync(filePath, 'utf8')
+      const sql = interpolate(rawSql)
 
       try {
         await pool.query(sql)
@@ -168,12 +181,16 @@ async function main() {
       } catch (err) {
         const msg = err.message || ''
 
-        if (OPTIONAL_MIGRATIONS.has(file) &&
-            (msg.includes('schema "cron" does not exist') ||
-             msg.includes('function cron.') ||
-             msg.includes('schema "net" does not exist') ||
-             msg.includes('function net.'))) {
-          console.log(`skipped (optional — enable pg_cron / pg_net in Supabase Dashboard → Database → Extensions)`)
+        if (
+          OPTIONAL_MIGRATIONS.has(file) &&
+          (msg.includes('schema "cron" does not exist') ||
+            msg.includes('function cron.') ||
+            msg.includes('schema "net" does not exist') ||
+            msg.includes('function net.'))
+        ) {
+          console.log(
+            `skipped (optional — enable pg_cron / pg_net in Supabase Dashboard → Database → Extensions)`,
+          )
         } else if (msg.includes('already exists')) {
           // Migration was previously applied manually — record it and continue
           await pool.query(
@@ -200,7 +217,7 @@ async function main() {
   }
 }
 
-main().catch(err => {
+main().catch((err) => {
   console.error('Unexpected error:', err.message)
   process.exit(1)
 })

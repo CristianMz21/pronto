@@ -1,5 +1,6 @@
-import Link from 'next/link'
 import { Bricolage_Grotesque, DM_Sans } from 'next/font/google'
+import Link from 'next/link'
+
 import styles from './public-layout.module.css'
 
 const bricolage = Bricolage_Grotesque({
@@ -34,9 +35,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
         </div>
       </nav>
 
-      <main className={styles.main}>
-        {children}
-      </main>
+      <main className={styles.main}>{children}</main>
 
       {/* FOOTER — keep in sync with all other pages
           ES standard: /es/ · /es/precios · /es/para · legal · GitHub

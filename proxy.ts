@@ -1,11 +1,17 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
-import { canAccessRoute, getUserRole, isSuperAdmin } from '@/lib/auth/roles'
+
+import { canAccessRoute, getUserRole, getUserLocationIds, isSuperAdmin } from '@/lib/auth/roles'
 
 function getSupabaseUrlForProxy(): string {
   let url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
-  if (process.env.IS_DOCKER === 'true' && (url.includes('127.0.0.1') || url.includes('localhost'))) {
-    return url.replace(/127\.0\.0\.1/g, 'host.docker.internal').replace(/localhost/g, 'host.docker.internal')
+  if (
+    process.env.IS_DOCKER === 'true' &&
+    (url.includes('127.0.0.1') || url.includes('localhost'))
+  ) {
+    return url
+      .replace(/127\.0\.0\.1/g, 'host.docker.internal')
+      .replace(/localhost/g, 'host.docker.internal')
   }
   return url
 }
@@ -37,10 +43,18 @@ export async function proxy(request: NextRequest) {
 
   const requestHeaders = new Headers(request.headers)
   requestHeaders.set('x-pathname', pathname)
-  // Multi-sede V1: propagate location filter via header for server components (nullable, single-sede default = no filter)
-  // TODO V2: when my_location_ids() is enforced, validate x-location-id against getUserLocationIds() here and return 403 if forbidden
+  // Multi-sede V2: validate x-location-id / ?location against getUserLocationIds() and return 400/403 on invalid
   const locationId = searchParams.get('location') ?? request.headers.get('x-location-id') ?? ''
-  if (locationId) requestHeaders.set('x-location-id', locationId)
+  if (locationId) {
+    const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    if (!uuidRe.test(locationId)) {
+      return NextResponse.json(
+        { error: 'invalid_location', message: 'location must be a valid UUID' },
+        { status: 400 },
+      )
+    }
+    requestHeaders.set('x-location-id', locationId)
+  }
 
   let supabaseResponse = NextResponse.next({ request: { headers: requestHeaders } })
 
@@ -57,11 +71,11 @@ export async function proxy(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
           supabaseResponse = NextResponse.next({ request: { headers: requestHeaders } })
           cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
+            supabaseResponse.cookies.set(name, value, options),
           )
         },
       },
-    }
+    },
   )
 
   // Handle Supabase email confirmation code on root path
@@ -72,14 +86,76 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(callbackUrl)
   }
 
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  // Multi-sede V2: 403 if locationId not in user's allowed set (via getUserLocationIds)
+  if (locationId && user) {
+    try {
+      let businessId: string | null = null
+      const { data: owned } = await supabase
+        .from('businesses')
+        .select('id')
+        .eq('owner_id', user.id)
+        .maybeSingle()
+      if (owned) businessId = (owned as { id: string }).id
+      else {
+        const { data: emp } = await supabase
+          .from('employees')
+          .select('business_id')
+          .eq('user_id', user.id)
+          .eq('is_active', true)
+          .limit(1)
+          .maybeSingle()
+        if (emp) businessId = (emp as { business_id: string }).business_id
+      }
+      if (businessId) {
+        const allowed = await getUserLocationIds(
+          supabase as unknown as { from: (t: string) => unknown },
+          user.id,
+          businessId,
+        )
+        if (allowed && allowed.length > 0 && !allowed.includes(locationId)) {
+          return NextResponse.json(
+            { error: 'forbidden_location', message: 'Location not allowed for this user' },
+            { status: 403 },
+          )
+        }
+        if (allowed === null) {
+          const { data: loc } = await supabase
+            .from('locations')
+            .select('id')
+            .eq('id', locationId)
+            .eq('business_id', businessId)
+            .maybeSingle()
+          if (!loc) {
+            return NextResponse.json(
+              { error: 'forbidden_location', message: 'Location not found in this business' },
+              { status: 403 },
+            )
+          }
+        }
+      }
+    } catch {
+      // fail open – log but do not block on DB errors
+    }
+  }
 
   // Admin invisibility: /admin/* is 404 unless super_admin (no redirect to reveal existence)
   if (pathname.startsWith('/admin')) {
     // Allow the login page itself without super_admin check, but still hide its existence via noindex
     const isAdminLogin = pathname === '/admin/login'
     if (!isAdminLogin) {
-      if (!user || !isSuperAdmin(user as unknown as { email?: string | null; user_metadata?: Record<string, unknown> | null })) {
+      if (
+        !user ||
+        !isSuperAdmin(
+          user as unknown as {
+            email?: string | null
+            user_metadata?: Record<string, unknown> | null
+          },
+        )
+      ) {
         return new Response('Not Found', { status: 404 })
       }
     }
@@ -104,7 +180,10 @@ export async function proxy(request: NextRequest) {
   let resolvedRole: string | null = null
   if (user) {
     try {
-      resolvedRole = await getUserRole(supabase as unknown as { from: (t: string) => unknown }, user.id)
+      resolvedRole = await getUserRole(
+        supabase as unknown as { from: (t: string) => unknown },
+        user.id,
+      )
     } catch {
       resolvedRole = null
     }
@@ -123,7 +202,21 @@ export async function proxy(request: NextRequest) {
 
   // Protected routes — admin panel (single Escudería now, multi-sede ready via locations)
   // Public: /, /escuderia, /book/[slug], /login, /register, /privacy, /terms, /offline, /client/login, /client/register
-  const protectedPaths = ['/dashboard', '/pos', '/caja', '/crm', '/inventory', '/booking', '/settings', '/barberos', '/servicios', '/reportes', '/sucursales', '/membresias', '/promociones']
+  const protectedPaths = [
+    '/dashboard',
+    '/pos',
+    '/caja',
+    '/crm',
+    '/inventory',
+    '/booking',
+    '/settings',
+    '/barberos',
+    '/servicios',
+    '/reportes',
+    '/sucursales',
+    '/membresias',
+    '/promociones',
+  ]
   const isProtected = protectedPaths.some((p) => pathname.startsWith(p))
 
   if (isProtected && !user) {
@@ -134,7 +227,12 @@ export async function proxy(request: NextRequest) {
   }
 
   // RBAC early guard: any role denied via canAccessRoute → 302 /dashboard (barbero blocked from caja/inventory/settings/crm/barberos/etc, staff blocked from reportes/settings)
-  if (user && resolvedRole && isProtected && !canAccessRoute(resolvedRole as unknown as string, pathname)) {
+  if (
+    user &&
+    resolvedRole &&
+    isProtected &&
+    !canAccessRoute(resolvedRole as unknown as string, pathname)
+  ) {
     const dashboardUrl = request.nextUrl.clone()
     dashboardUrl.pathname = '/dashboard'
     return NextResponse.redirect(dashboardUrl)
@@ -164,7 +262,13 @@ export async function proxy(request: NextRequest) {
   if (!request.cookies.get('dashboard_locale')?.value) {
     const acceptLang = request.headers.get('accept-language') ?? ''
     const lang = acceptLang.toLowerCase()
-    const detected = lang.startsWith('pt') ? 'pt' : lang.startsWith('es') ? 'es' : lang.startsWith('it') ? 'it' : null
+    const detected = lang.startsWith('pt')
+      ? 'pt'
+      : lang.startsWith('es')
+        ? 'es'
+        : lang.startsWith('it')
+          ? 'it'
+          : null
     if (detected) {
       supabaseResponse.cookies.set('dashboard_locale', detected, {
         path: '/',
@@ -182,7 +286,5 @@ export async function proxy(request: NextRequest) {
 export default proxy
 
 export const config = {
-  matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
-  ],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
 }

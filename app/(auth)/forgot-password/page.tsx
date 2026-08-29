@@ -1,20 +1,19 @@
-import { requestPasswordReset } from './actions'
 import Link from 'next/link'
+
+import { requestPasswordReset } from './actions'
 import { SubmitButton } from './SubmitButton'
 
-export default async function ForgotPasswordPage(
-  props: {
-    searchParams: Promise<{ sent?: string; email?: string }>
-  }
-) {
-  const searchParams = await props.searchParams;
+export default async function ForgotPasswordPage(props: {
+  searchParams: Promise<{ sent?: string; email?: string }>
+}) {
+  const searchParams = await props.searchParams
   if (searchParams.sent) {
     return (
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
         <h1 className="text-xl font-semibold text-gray-900 mb-3">Check your email</h1>
         <p className="text-sm text-gray-600 mb-6">
-          We sent a password reset link to <strong>{searchParams.email}</strong>.
-          Click it to set a new password.
+          We sent a password reset link to <strong>{searchParams.email}</strong>. Click it to set a
+          new password.
         </p>
         <Link href="/login" className="text-sm text-blue-600 hover:underline">
           ← Back to sign in

@@ -1,8 +1,9 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
 import DOMPurify from 'isomorphic-dompurify'
+import { redirect } from 'next/navigation'
+
+import { createClient } from '@/lib/supabase/server'
 
 function sanitize(s: string): string {
   return DOMPurify.sanitize(s, { ALLOWED_TAGS: [] }).trim()
@@ -17,7 +18,9 @@ export async function completeOnboarding(data: {
   slug?: string
 }) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
   if (!user) redirect('/login')
 

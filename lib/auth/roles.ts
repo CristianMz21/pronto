@@ -90,11 +90,21 @@ export function isPrivileged(role: CanonicalRole | string | null | undefined): b
   return role === 'owner' || role === 'admin'
 }
 
-export function isSuperAdmin(user: { email?: string | null; user_metadata?: Record<string, unknown> | null } | null | undefined): boolean {
+export function isSuperAdmin(
+  user:
+    | { email?: string | null; user_metadata?: Record<string, unknown> | null }
+    | null
+    | undefined,
+): boolean {
   if (!user) return false
-  const metaRole = (user.user_metadata as Record<string, unknown> | undefined)?.['role'] as string | undefined
+  const metaRole = (user.user_metadata as Record<string, unknown> | undefined)?.['role'] as
+    | string
+    | undefined
   if (metaRole && metaRole.toLowerCase() === 'super_admin') return true
-  const superAdmins = (process.env.SUPER_ADMINS ?? '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean)
+  const superAdmins = (process.env.SUPER_ADMINS ?? '')
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean)
   if (user.email && superAdmins.includes(user.email.toLowerCase())) return true
   return false
 }
@@ -106,7 +116,7 @@ export function isSuperAdmin(user: { email?: string | null; user_metadata?: Reco
  */
 export function canAccessRoute(
   role: CanonicalRole | string | null | undefined,
-  pathname: string
+  pathname: string,
 ): boolean {
   if (!role) return false
 
@@ -117,9 +127,7 @@ export function canAccessRoute(
 
   if (role === 'barbero') {
     // Only explicitly allowed prefixes for barbero
-    return BARBERO_ALLOWED_PREFIXES.some(
-      (p) => pathname === p || pathname.startsWith(p + '/')
-    )
+    return BARBERO_ALLOWED_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + '/'))
   }
 
   if (role === 'staff') {
@@ -130,7 +138,8 @@ export function canAccessRoute(
       pathname.startsWith('/membresias') ||
       pathname.startsWith('/promociones') ||
       pathname.startsWith('/settings')
-    ) return false
+    )
+      return false
     return true
   }
 
@@ -161,7 +170,7 @@ function normalizeRole(raw: string | null | undefined): CanonicalRole | null {
 export async function getUserRole(
   supabase: { from: (table: string) => any },
   userId: string,
-  businessId?: string | null
+  businessId?: string | null,
 ): Promise<CanonicalRole | null> {
   if (!userId) return null
 
@@ -213,7 +222,7 @@ export async function getUserRole(
 export async function getBarberEmployeeId(
   supabase: { from: (table: string) => any },
   userId: string,
-  businessId: string
+  businessId: string,
 ): Promise<string | null> {
   try {
     const { data } = await supabase
@@ -249,24 +258,37 @@ export async function getBarberEmployeeId(
 export async function getUserLocationIds(
   supabase: { from: (table: string) => unknown },
   userId: string,
-  businessId: string
+  businessId: string,
 ): Promise<string[] | null> {
   if (!userId || !businessId) return null
   try {
-    const role = await getUserRole(supabase as unknown as { from: (t: string) => unknown }, userId, businessId)
+    const role = await getUserRole(
+      supabase as unknown as { from: (t: string) => unknown },
+      userId,
+      businessId,
+    )
     // V1: owner/admin/staff/barbero all get full list (no per-location restriction)
     // Future: if role === 'manager' (mapped to admin), check employees.location_id single vs all
     // TODO V2: SELECT id FROM locations WHERE business_id = $1 AND (role in ('owner','admin') OR id IN (SELECT my_location_ids()))
-    const { data } = await (supabase as unknown as {
-      from: (t: string) => { select: (c: string) => { eq: (a: string, b: unknown) => { eq: (c: string, d: unknown) => Promise<{ data: { id: string }[] | null }> } } }
-    })
+    const { data } = await ((
+      supabase as unknown as {
+        from: (t: string) => {
+          select: (c: string) => {
+            eq: (
+              a: string,
+              b: unknown,
+            ) => { eq: (c: string, d: unknown) => Promise<{ data: { id: string }[] | null }> }
+          }
+        }
+      }
+    )
       .from('locations')
       .select('id')
       .eq('business_id', businessId)
-      .eq('is_active', true) as unknown as Promise<{ data: { id: string }[] | null }>
+      .eq('is_active', true) as unknown as Promise<{ data: { id: string }[] | null }>)
 
     if (!data || data.length === 0) return null
-    return data.map((r) => r.id)
+    return data.map((r: { id: string }) => r.id)
   } catch {
     return null
   }

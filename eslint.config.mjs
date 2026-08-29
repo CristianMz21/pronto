@@ -5,7 +5,7 @@ const eslintConfig = [
     // Flat config only auto-ignores node_modules — build output and any
     // stray untracked artifact directories need to be excluded explicitly,
     // or eslint lints generated/minified JS as if it were source.
-    ignores: ['.next/**', '.next-*/**', 'public/**', 'next-env.d.ts', 'coverage/**'],
+    ignores: ['.next/**', '.next-*/**', 'public/**', 'next-env.d.ts', 'coverage/**', 'tests/**', 'playwright/**'],
   },
   ...nextCoreWebVitals,
   {
@@ -26,14 +26,11 @@ const eslintConfig = [
       'react-hooks/purity': 'off',
       'react-hooks/immutability': 'off',
       'react-hooks/preserve-manual-memoization': 'off',
-      // Deferred: import/order and jsx-a11y — enable as warn after baseline
-      // import/order would add ~800 warnings (un-sorted imports) — fix via
-      // `eslint --fix` in separate commit before enabling.
-      // jsx-a11y rules already available via next/core-web-vitals; enable
-      // specific ones as warn once baseline stable.
-      // For max-warnings 0 baseline (2026-08): disable remaining noisy
-      // warnings that block CI but are non-critical for minimal gate.
-      // TODO: re-enable and fix each site.
+      // Strict gate 2026-08: import/order enabled as warn (auto-fixable)
+      // Previously deferred due to ~800 warnings; now fixed via --fix, CI enforces --max-warnings 0
+      // typescript-eslint recommendedTypeChecked is available via next/core-web-vitals but kept off until baseline green
+      'import/order': ['warn', { groups: ['builtin', 'external', 'internal', ['parent', 'sibling'], 'index'], 'newlines-between': 'always', alphabetize: { order: 'asc', caseInsensitive: true } }],
+      // For max-warnings 0 baseline (2026-08): keep non-critical noisy rules off until fixed
       'react-hooks/exhaustive-deps': 'off',
       '@next/next/no-img-element': 'off',
       '@next/next/no-location-assign-relative-destination': 'off',

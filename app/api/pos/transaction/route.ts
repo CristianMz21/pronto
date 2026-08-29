@@ -1,33 +1,56 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
 import { z } from 'zod'
-import { rateLimit, getIp } from '@/lib/rate-limit'
 
-const BodySchema = z.object({
-  business_id: z.string().uuid(),
-  amount: z.number().min(0), // gross subtotal before discount (server computes discount)
-  payment_method: z.enum(['cash', 'card', 'transfer']),
-  items: z.array(z.object({ service_id: z.string().uuid(), name: z.string(), price: z.number(), qty: z.number().min(1) })).min(1),
-  employee_id: z.string().uuid().nullable().optional(),
-  client_id: z.string().uuid().nullable().optional(),
-  tip_amount: z.number().min(0).max(1000000).optional().default(0),
-  promo_code: z.string().max(50).optional().nullable(),
-  loyalty_points_redeem: z.number().int().min(0).optional().default(0),
-  membership_id: z.string().uuid().optional().nullable(),
-  location_id: z.string().uuid().optional().nullable(),
-  appointment_id: z.string().uuid().optional().nullable(),
-}).superRefine((data, ctx) => {
-  const count = [data.membership_id, data.promo_code, data.loyalty_points_redeem && data.loyalty_points_redeem > 0 ? 'loyalty' : null].filter(Boolean).length
-  if (count > 1) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Solo un beneficio por transacción (membresía, promo o puntos)', path: ['promo_code'] })
-  }
-})
+import { rateLimit, getIp } from '@/lib/rate-limit'
+import { createClient } from '@/lib/supabase/server'
+
+const BodySchema = z
+  .object({
+    business_id: z.string().uuid(),
+    amount: z.number().min(0), // gross subtotal before discount (server computes discount)
+    payment_method: z.enum(['cash', 'card', 'transfer']),
+    items: z
+      .array(
+        z.object({
+          service_id: z.string().uuid(),
+          name: z.string(),
+          price: z.number(),
+          qty: z.number().min(1),
+        }),
+      )
+      .min(1),
+    employee_id: z.string().uuid().nullable().optional(),
+    client_id: z.string().uuid().nullable().optional(),
+    tip_amount: z.number().min(0).max(1000000).optional().default(0),
+    promo_code: z.string().max(50).optional().nullable(),
+    loyalty_points_redeem: z.number().int().min(0).optional().default(0),
+    membership_id: z.string().uuid().optional().nullable(),
+    location_id: z.string().uuid().optional().nullable(),
+    appointment_id: z.string().uuid().optional().nullable(),
+  })
+  .superRefine((data, ctx) => {
+    const count = [
+      data.membership_id,
+      data.promo_code,
+      data.loyalty_points_redeem && data.loyalty_points_redeem > 0 ? 'loyalty' : null,
+    ].filter(Boolean).length
+    if (count > 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Solo un beneficio por transacción (membresía, promo o puntos)',
+        path: ['promo_code'],
+      })
+    }
+  })
 
 export async function POST(req: NextRequest) {
   const ip = getIp(req)
-  if (!rateLimit(`pos-transaction:${ip}`, { limit: 60, windowMs: 10 * 60 * 1000 })) return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
+  if (!rateLimit(`pos-transaction:${ip}`, { limit: 60, windowMs: 10 * 60 * 1000 }))
+    return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   let body: z.infer<typeof BodySchema>
@@ -40,7 +63,9 @@ export async function POST(req: NextRequest) {
   // Verify business belongs to user via RLS (my_business_ids) and fetch cash-register config + loyalty config
   const { data: biz } = await supabase
     .from('businesses')
-    .select('id, require_cash_register_for_cash, loyalty_earn_rate, loyalty_redeem_rate, loyalty_redeem_value')
+    .select(
+      'id, require_cash_register_for_cash, loyalty_earn_rate, loyalty_redeem_rate, loyalty_redeem_value',
+    )
     .eq('id', body.business_id)
     .maybeSingle()
   if (!biz) return NextResponse.json({ error: 'Business not in my_business_ids' }, { status: 403 })
@@ -53,7 +78,11 @@ export async function POST(req: NextRequest) {
   let barberEmployeeId: string | null = null
   try {
     const { getUserRole } = await import('@/lib/auth/roles')
-    const role = await getUserRole(supabase as unknown as { from: (t: string) => unknown }, user.id, body.business_id)
+    const role = await getUserRole(
+      supabase as unknown as { from: (t: string) => unknown },
+      user.id,
+      body.business_id,
+    )
     if (role === 'barbero') {
       const { data: emp } = await supabase
         .from('employees')
@@ -68,7 +97,13 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'barbero_no_employee' }, { status: 403 })
       }
       if (body.employee_id && body.employee_id !== barberEmployeeId) {
-        return NextResponse.json({ error: 'barbero_employee_mismatch', message: 'Barbero can only create transactions for self' }, { status: 403 })
+        return NextResponse.json(
+          {
+            error: 'barbero_employee_mismatch',
+            message: 'Barbero can only create transactions for self',
+          },
+          { status: 403 },
+        )
       }
       body.employee_id = barberEmployeeId
       const serviceIds = body.items.map((it) => it.service_id)
@@ -77,10 +112,19 @@ export async function POST(req: NextRequest) {
         .select('service_id')
         .eq('employee_id', barberEmployeeId)
         .in('service_id', serviceIds)
-      const allowedSet = new Set((allowed as { service_id: string }[] | null)?.map((r) => r.service_id) ?? [])
+      const allowedSet = new Set(
+        (allowed as { service_id: string }[] | null)?.map((r) => r.service_id) ?? [],
+      )
       const disallowed = serviceIds.filter((id) => !allowedSet.has(id))
       if (disallowed.length > 0) {
-        return NextResponse.json({ error: 'barbero_service_not_assigned', message: 'Service not assigned to barbero', disallowed }, { status: 403 })
+        return NextResponse.json(
+          {
+            error: 'barbero_service_not_assigned',
+            message: 'Service not assigned to barbero',
+            disallowed,
+          },
+          { status: 403 },
+        )
       }
     }
   } catch {
@@ -95,21 +139,34 @@ export async function POST(req: NextRequest) {
       .eq('id', body.location_id)
       .eq('business_id', body.business_id)
       .maybeSingle()
-    if (!loc) return NextResponse.json({ error: 'location_not_found', message: 'Sucursal no encontrada en este negocio' }, { status: 404 })
+    if (!loc)
+      return NextResponse.json(
+        { error: 'location_not_found', message: 'Sucursal no encontrada en este negocio' },
+        { status: 404 },
+      )
   }
 
   // Cash sales require an open cash register only when business config demands it (055)
-  const requireCashRegister = (biz as { require_cash_register_for_cash?: boolean | null })?.require_cash_register_for_cash ?? true
+  const requireCashRegister =
+    (biz as { require_cash_register_for_cash?: boolean | null })?.require_cash_register_for_cash ??
+    true
   if (body.payment_method === 'cash' && requireCashRegister) {
     let cashQuery = supabase
       .from('cash_registers')
       .select('id')
       .eq('business_id', body.business_id)
       .eq('status', 'open')
-    if (body.location_id) cashQuery = (cashQuery as unknown as { eq: (c:string,v:string)=> typeof cashQuery }).eq('location_id', body.location_id) as typeof cashQuery
+    if (body.location_id)
+      cashQuery = (cashQuery as unknown as { eq: (c: string, v: string) => typeof cashQuery }).eq(
+        'location_id',
+        body.location_id,
+      ) as typeof cashQuery
     const { data: openRegister } = await cashQuery.maybeSingle()
     if (!openRegister) {
-      return NextResponse.json({ error: 'cash_register_closed', message: 'Debes abrir caja antes de cobrar en efectivo' }, { status: 409 })
+      return NextResponse.json(
+        { error: 'cash_register_closed', message: 'Debes abrir caja antes de cobrar en efectivo' },
+        { status: 409 },
+      )
     }
   }
 
@@ -123,53 +180,112 @@ export async function POST(req: NextRequest) {
   let loyaltyRedeemed = body.loyalty_points_redeem ?? 0
   const earnRate = (biz as { loyalty_earn_rate?: number } | null)?.loyalty_earn_rate ?? 1000
   const redeemRate = (biz as { loyalty_redeem_rate?: number } | null)?.loyalty_redeem_rate ?? 100
-  const redeemValue = (biz as { loyalty_redeem_value?: number } | null)?.loyalty_redeem_value ?? 10000
+  const redeemValue =
+    (biz as { loyalty_redeem_value?: number } | null)?.loyalty_redeem_value ?? 10000
 
   if (body.client_id) {
     // Membership path (advisory lock via lib)
     if (body.membership_id) {
       try {
         const { isEligible } = await import('@/lib/memberships')
-        const { data: cm } = await supabase.from('client_memberships').select('remaining, expires_at, status, membership_id').eq('id', body.membership_id).eq('client_id', body.client_id).maybeSingle()
+        const { data: cm } = await supabase
+          .from('client_memberships')
+          .select('remaining, expires_at, status, membership_id')
+          .eq('id', body.membership_id)
+          .eq('client_id', body.client_id)
+          .maybeSingle()
         if (!cm || !isEligible(cm as { remaining: number; expires_at: string; status: string })) {
           const remaining = (cm as { remaining?: number } | null)?.remaining ?? 0
-          if (remaining <= 0) return NextResponse.json({ error: 'membership_no_uses_left', message: 'Membresía sin usos restantes' }, { status: 409 })
-          return NextResponse.json({ error: 'membership_expired', message: 'Membresía expirada o inválida' }, { status: 409 })
+          if (remaining <= 0)
+            return NextResponse.json(
+              { error: 'membership_no_uses_left', message: 'Membresía sin usos restantes' },
+              { status: 409 },
+            )
+          return NextResponse.json(
+            { error: 'membership_expired', message: 'Membresía expirada o inválida' },
+            { status: 409 },
+          )
         }
         // Check membership benefits service eligibility if benefits.service_ids defined
-        const { data: mem } = await supabase.from('memberships').select('benefits').eq('id', (cm as { membership_id: string }).membership_id).maybeSingle()
-        const benefitServices = (mem as { benefits?: { services?: string[] } } | null)?.benefits?.services
+        const { data: mem } = await supabase
+          .from('memberships')
+          .select('benefits')
+          .eq('id', (cm as { membership_id: string }).membership_id)
+          .maybeSingle()
+        const benefitServices = (mem as { benefits?: { services?: string[] } } | null)?.benefits
+          ?.services
         const serviceIds = body.items.map((it) => it.service_id)
-        const isBenefitService = !benefitServices || benefitServices.length === 0 || serviceIds.some((id) => benefitServices.includes(id))
+        const isBenefitService =
+          !benefitServices ||
+          benefitServices.length === 0 ||
+          serviceIds.some((id) => benefitServices.includes(id))
         if (!isBenefitService) {
-          return NextResponse.json({ error: 'membership_service_not_covered', message: 'Membresía no cubre este servicio' }, { status: 409 })
+          return NextResponse.json(
+            {
+              error: 'membership_service_not_covered',
+              message: 'Membresía no cubre este servicio',
+            },
+            { status: 409 },
+          )
         }
         // Membership covers full amount of eligible services (or proportional). For simplicity, full gross if eligible.
         discountAmount = grossAmount
         discountReason = `membership:${body.membership_id}`
       } catch (e) {
         const msg = String((e as Error).message)
-        if (msg.includes('no_uses_left') || msg.includes('membership_expired')) return NextResponse.json({ error: msg.includes('no_uses') ? 'membership_no_uses_left' : 'membership_expired', message: msg }, { status: 409 })
+        if (msg.includes('no_uses_left') || msg.includes('membership_expired'))
+          return NextResponse.json(
+            {
+              error: msg.includes('no_uses') ? 'membership_no_uses_left' : 'membership_expired',
+              message: msg,
+            },
+            { status: 409 },
+          )
         console.error('[pos] membership check error', e)
         return NextResponse.json({ error: 'membership_check_failed' }, { status: 500 })
       }
     } else if (body.promo_code) {
       try {
         const { evaluatePromotion, calculateDiscount } = await import('@/lib/promotions')
-        const { data: promo } = await supabase.from('promotions').select('id, business_id, location_id, name, type, value, promo_code, valid_from, valid_to, rules, is_active').eq('business_id', body.business_id).eq('promo_code', body.promo_code.toUpperCase()).maybeSingle()
-        if (!promo || !(promo as { is_active: boolean }).is_active) return NextResponse.json({ error: 'promo_invalid', message: 'Cupón no válido' }, { status: 404 })
-        const { data: client } = await supabase.from('clients').select('birthday, tags, last_visit_at, total_visits').eq('id', body.client_id).maybeSingle()
-        const evalRes = evaluatePromotion(promo as unknown as Parameters<typeof evaluatePromotion>[0], {
-          date: new Date().toISOString().slice(0, 10),
-          serviceIds: body.items.map((it) => it.service_id),
-          client: client as unknown as Parameters<typeof evaluatePromotion>[1]['client'],
-          amount: grossAmount,
-          now: new Date(),
-          promoCode: body.promo_code,
-          locationId: body.location_id ?? null,
-        })
-        if (!evalRes.eligible) return NextResponse.json({ error: 'promo_not_eligible', reason: evalRes.reason }, { status: 409 })
-        discountAmount = calculateDiscount(promo as unknown as Parameters<typeof calculateDiscount>[0], grossAmount)
+        const { data: promo } = await supabase
+          .from('promotions')
+          .select(
+            'id, business_id, location_id, name, type, value, promo_code, valid_from, valid_to, rules, is_active',
+          )
+          .eq('business_id', body.business_id)
+          .eq('promo_code', body.promo_code.toUpperCase())
+          .maybeSingle()
+        if (!promo || !(promo as { is_active: boolean }).is_active)
+          return NextResponse.json(
+            { error: 'promo_invalid', message: 'Cupón no válido' },
+            { status: 404 },
+          )
+        const { data: client } = await supabase
+          .from('clients')
+          .select('birthday, tags, last_visit_at, total_visits')
+          .eq('id', body.client_id)
+          .maybeSingle()
+        const evalRes = evaluatePromotion(
+          promo as unknown as Parameters<typeof evaluatePromotion>[0],
+          {
+            date: new Date().toISOString().slice(0, 10),
+            serviceIds: body.items.map((it) => it.service_id),
+            client: client as unknown as Parameters<typeof evaluatePromotion>[1]['client'],
+            amount: grossAmount,
+            now: new Date(),
+            promoCode: body.promo_code,
+            locationId: body.location_id ?? null,
+          },
+        )
+        if (!evalRes.eligible)
+          return NextResponse.json(
+            { error: 'promo_not_eligible', reason: evalRes.reason },
+            { status: 409 },
+          )
+        discountAmount = calculateDiscount(
+          promo as unknown as Parameters<typeof calculateDiscount>[0],
+          grossAmount,
+        )
         discountReason = `promo:${body.promo_code}`
       } catch (e) {
         console.error('[pos] promo evaluate error', e)
@@ -178,15 +294,30 @@ export async function POST(req: NextRequest) {
     } else if (loyaltyRedeemed > 0) {
       try {
         const { getBalance, canRedeem, calculateRedeemValue } = await import('@/lib/loyalty')
-        const bal = await getBalance(supabase as unknown as Parameters<typeof getBalance>[0], body.client_id)
-        if (!canRedeem(bal, loyaltyRedeemed)) return NextResponse.json({ error: 'loyalty_insufficient', message: `Puntos insuficientes: tienes ${bal}`, balance: bal }, { status: 409 })
+        const bal = await getBalance(
+          supabase as unknown as Parameters<typeof getBalance>[0],
+          body.client_id,
+        )
+        if (!canRedeem(bal, loyaltyRedeemed))
+          return NextResponse.json(
+            {
+              error: 'loyalty_insufficient',
+              message: `Puntos insuficientes: tienes ${bal}`,
+              balance: bal,
+            },
+            { status: 409 },
+          )
         discountAmount = calculateRedeemValue(loyaltyRedeemed, redeemRate, redeemValue)
         // Cap discount to gross
         discountAmount = Math.min(grossAmount, discountAmount)
         discountReason = `loyalty:${loyaltyRedeemed}`
       } catch (e) {
         const err = e as Error & { code?: string }
-        if (err.code === 'insufficient_points') return NextResponse.json({ error: 'loyalty_insufficient', message: String(err.message) }, { status: 409 })
+        if (err.code === 'insufficient_points')
+          return NextResponse.json(
+            { error: 'loyalty_insufficient', message: String(err.message) },
+            { status: 409 },
+          )
         console.error('[pos] loyalty check error', e)
         return NextResponse.json({ error: 'loyalty_check_failed' }, { status: 500 })
       }
@@ -194,10 +325,20 @@ export async function POST(req: NextRequest) {
       // Try service combos as fallback (if no other promo, check combo discount)
       try {
         const { findBestCombo } = await import('@/lib/service-combos')
-        const { data: combos } = await supabase.from('service_combos').select('id, business_id, location_id, name, service_ids, price, duration_min, is_active').eq('business_id', body.business_id).eq('is_active', true)
+        const { data: combos } = await supabase
+          .from('service_combos')
+          .select('id, business_id, location_id, name, service_ids, price, duration_min, is_active')
+          .eq('business_id', body.business_id)
+          .eq('is_active', true)
         if (combos && (combos as unknown[]).length > 0) {
-          const servicesWithPrice = body.items.map((it) => ({ id: it.service_id, price: Number(it.price) }))
-          const best = findBestCombo(combos as unknown as Parameters<typeof findBestCombo>[0], servicesWithPrice)
+          const servicesWithPrice = body.items.map((it) => ({
+            id: it.service_id,
+            price: Number(it.price),
+          }))
+          const best = findBestCombo(
+            combos as unknown as Parameters<typeof findBestCombo>[0],
+            servicesWithPrice,
+          )
           if (best.combo && best.discount > 0) {
             discountAmount = Math.min(grossAmount, best.discount)
             discountReason = `combo:${best.combo.id}`
@@ -238,7 +379,11 @@ export async function POST(req: NextRequest) {
   let data: { receipt_number: string; id: string } | null = null
   let error: { message: string } | null = null
   try {
-    const res = await supabase.from('transactions').insert(insertPayload as unknown as never).select('receipt_number, id').single()
+    const res = await supabase
+      .from('transactions')
+      .insert(insertPayload as unknown as never)
+      .select('receipt_number, id')
+      .single()
     data = res.data as typeof data
     error = res.error as typeof error
   } catch (e) {
@@ -256,7 +401,11 @@ export async function POST(req: NextRequest) {
       items: body.items as unknown as never,
       tip_amount: body.tip_amount ?? 0,
     }
-    const res2 = await supabase.from('transactions').insert(fallbackPayload as unknown as never).select('receipt_number, id').single()
+    const res2 = await supabase
+      .from('transactions')
+      .insert(fallbackPayload as unknown as never)
+      .select('receipt_number, id')
+      .single()
     data = res2.data as typeof data
     error = res2.error as typeof error
     if (error) return NextResponse.json({ error: error.message }, { status: 400 })
@@ -267,13 +416,17 @@ export async function POST(req: NextRequest) {
   // Post-transaction side effects (advisory-locked via libs where possible, non-blocking but awaited for loyalty/membership to ensure consistency)
   // Tips
   if (body.tip_amount && body.tip_amount > 0 && body.employee_id) {
-    supabase.from('tips').insert({
-      business_id: body.business_id,
-      transaction_id: data.id,
-      employee_id: body.employee_id,
-      amount: body.tip_amount,
-      method: body.payment_method,
-    } as unknown as never).then(() => {}).catch(() => {})
+    ;(
+      supabase.from('tips').insert({
+        business_id: body.business_id,
+        transaction_id: (data as { id: string }).id,
+        employee_id: body.employee_id,
+        amount: body.tip_amount,
+        method: body.payment_method,
+      } as unknown as never) as unknown as Promise<unknown>
+    )
+      .then(() => {})
+      .catch(() => {})
   }
 
   if (body.client_id) {
@@ -285,7 +438,7 @@ export async function POST(req: NextRequest) {
           business_id: body.business_id,
           client_id: body.client_id!,
           amount: netAmount,
-          transaction_id: data.id,
+          transaction_id: (data as { id: string }).id,
           earn_rate: earnRate,
         })
       } catch (e) {
@@ -296,14 +449,17 @@ export async function POST(req: NextRequest) {
     if (loyaltyRedeemed > 0) {
       try {
         const { redeemPoints } = await import('@/lib/loyalty')
-        await redeemPoints(supabase as unknown as Parameters<typeof redeemPoints>[0], {
-          business_id: body.business_id,
-          client_id: body.client_id!,
-          points: loyaltyRedeemed,
-          redeem_rate: redeemRate,
-          redeem_value: redeemValue,
-          reference: data.id,
-        } as unknown as Parameters<typeof redeemPoints>[1])
+        await redeemPoints(
+          supabase as unknown as Parameters<typeof redeemPoints>[0],
+          {
+            business_id: body.business_id,
+            client_id: body.client_id!,
+            points: loyaltyRedeemed,
+            redeem_rate: redeemRate,
+            redeem_value: redeemValue,
+            reference: (data as { id: string }).id,
+          } as unknown as Parameters<typeof redeemPoints>[1],
+        )
       } catch (e) {
         console.error('[pos] loyalty redeem failed', e)
       }
@@ -312,7 +468,10 @@ export async function POST(req: NextRequest) {
     if (body.membership_id && discountReason?.startsWith('membership:')) {
       try {
         const { consumeMembership } = await import('@/lib/memberships')
-        await consumeMembership(supabase as unknown as Parameters<typeof consumeMembership>[0], body.membership_id!)
+        await consumeMembership(
+          supabase as unknown as Parameters<typeof consumeMembership>[0],
+          body.membership_id!,
+        )
       } catch (e) {
         console.error('[pos] membership consume failed', e)
       }
@@ -321,8 +480,22 @@ export async function POST(req: NextRequest) {
 
   // If appointment_id provided, mark paid (complete flow)
   if (body.appointment_id) {
-    supabase.from('appointments').update({ status: 'paid' }).eq('id', body.appointment_id).then(() => {}).catch(() => {})
+    ;(
+      supabase
+        .from('appointments')
+        .update({ status: 'paid' })
+        .eq('id', body.appointment_id) as unknown as Promise<unknown>
+    )
+      .then(() => {})
+      .catch(() => {})
   }
 
-  return NextResponse.json({ receipt_number: data.receipt_number, id: data.id, loyalty_earned: loyaltyEarned, discount_amount: discountAmount, discount_reason: discountReason, net_amount: netAmount })
+  return NextResponse.json({
+    receipt_number: (data as { receipt_number: string; id: string }).receipt_number,
+    id: (data as { receipt_number: string; id: string }).id,
+    loyalty_earned: loyaltyEarned,
+    discount_amount: discountAmount,
+    discount_reason: discountReason,
+    net_amount: netAmount,
+  })
 }

@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+
 import { rateLimit, getIp } from '@/lib/rate-limit'
 
 describe('rate-limit strict 100%', () => {
@@ -56,7 +57,9 @@ describe('rate-limit strict 100%', () => {
     expect(getIp(req)).toBe('1.1.1.1')
   })
   it('getIp trims spaces', () => {
-    const req = new Request('http://test', { headers: { 'x-forwarded-for': '  9.9.9.9  , 8.8.8.8' } })
+    const req = new Request('http://test', {
+      headers: { 'x-forwarded-for': '  9.9.9.9  , 8.8.8.8' },
+    })
     expect(getIp(req)).toBe('9.9.9.9')
   })
   it('getIp unknown when no header', () => {

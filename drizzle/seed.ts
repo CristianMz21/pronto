@@ -1,4 +1,5 @@
-import { db } from '@/lib/db'
+import { eq } from 'drizzle-orm'
+
 import {
   businesses,
   locations,
@@ -8,7 +9,7 @@ import {
   employeeServices,
   businessSettings,
 } from '@/drizzle/schema'
-import { eq } from 'drizzle-orm'
+import { db } from '@/lib/db'
 
 const ESCUDERIA_ID = '17c1a2b5-5d3b-4d84-bbb1-d361077d4c95'
 const OWNER_ID = 'b8f773b2-11e7-40d0-8f52-929b480d42b8'

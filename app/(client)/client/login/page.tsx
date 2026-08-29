@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import { getTranslations } from 'next-intl/server'
+
 import { PasswordInput } from '@/components/ui/password-input'
+
 import { loginClient } from './actions'
 
 export default async function ClientLoginPage(props: {
@@ -24,19 +26,32 @@ export default async function ClientLoginPage(props: {
       <form action={loginClient} className="space-y-4">
         <input type="hidden" name="redirect" value={redirect} />
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="email">Correo electrónico</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="email">
+            Correo electrónico
+          </label>
           <input
-            id="email" name="email" type="email" required autoComplete="email"
+            id="email"
+            name="email"
+            type="email"
+            required
+            autoComplete="email"
             className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             placeholder={t('emailPlaceholder')}
           />
         </div>
         <div>
           <PasswordInput
-            id="password" name="password" label={t('passwordLabel')} placeholder={t('passwordPlaceholder')} required autoComplete="current-password"
+            id="password"
+            name="password"
+            label={t('passwordLabel')}
+            placeholder={t('passwordPlaceholder')}
+            required
+            autoComplete="current-password"
           />
           <div className="text-right mt-1">
-            <Link href="/forgot-password" className="text-xs text-blue-600 hover:underline">¿Olvidaste tu contraseña?</Link>
+            <Link href="/forgot-password" className="text-xs text-blue-600 hover:underline">
+              ¿Olvidaste tu contraseña?
+            </Link>
           </div>
         </div>
         <button
@@ -48,7 +63,13 @@ export default async function ClientLoginPage(props: {
       </form>
 
       <p className="text-sm text-gray-500 text-center mt-6">
-        ¿No tenés cuenta? <Link href={`/client/register?redirect=${encodeURIComponent(redirect)}`} className="text-blue-600 hover:underline">Crear cuenta</Link>
+        ¿No tenés cuenta?{' '}
+        <Link
+          href={`/client/register?redirect=${encodeURIComponent(redirect)}`}
+          className="text-blue-600 hover:underline"
+        >
+          Crear cuenta
+        </Link>
       </p>
     </div>
   )

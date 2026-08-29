@@ -1,12 +1,11 @@
-import { updatePassword } from './actions'
 import { PasswordInput } from '@/components/ui/password-input'
 
-export default async function ResetPasswordPage(
-  props: {
-    searchParams: Promise<{ error?: string }>
-  }
-) {
-  const searchParams = await props.searchParams;
+import { updatePassword } from './actions'
+
+export default async function ResetPasswordPage(props: {
+  searchParams: Promise<{ error?: string }>
+}) {
+  const searchParams = await props.searchParams
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
       <h1 className="text-xl font-semibold text-gray-900 mb-6">Set new password</h1>

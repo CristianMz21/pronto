@@ -1,5 +1,5 @@
-import type { Appointment, CreateAppointmentProps } from '@/src/domain/entities/Appointment'
 import type { ClientRepository } from '@/src/application/ports/ClientRepository'
+import type { Appointment, CreateAppointmentProps } from '@/src/domain/entities/Appointment'
 
 export interface AppointmentRepository {
   create(props: CreateAppointmentProps): Promise<Appointment>
@@ -13,7 +13,9 @@ export class CreateAppointmentUseCase {
     private readonly clientRepo: ClientRepository,
   ) {}
 
-  async execute(props: CreateAppointmentProps & { businessTimezone: string; minAdvanceMinutes: number }): Promise<Appointment> {
+  async execute(
+    props: CreateAppointmentProps & { businessTimezone: string; minAdvanceMinutes: number },
+  ): Promise<Appointment> {
     // Business rule: no past
     if (props.startsAt <= new Date()) {
       throw new Error('in_past: cannot book in the past')

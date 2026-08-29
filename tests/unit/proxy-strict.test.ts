@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { NextRequest, NextResponse } from 'next/server'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 // Mock @supabase/ssr
 const mockGetUser = vi.fn()
@@ -7,19 +7,29 @@ const mockGetAll = vi.fn(() => [])
 const mockSetAll = vi.fn()
 vi.mock('@supabase/ssr', () => ({
   createServerClient: vi.fn(() => ({
-    auth: { getUser: mockGetUser }
-  }))
+    auth: { getUser: mockGetUser },
+  })),
 }))
 
 import { proxy } from '@/proxy'
 
-function makeRequest(url: string, opts: { host?: string, cookies?: Record<string,string>, headers?: Record<string,string>, method?: string } = {}) {
+function makeRequest(
+  url: string,
+  opts: {
+    host?: string
+    cookies?: Record<string, string>
+    headers?: Record<string, string>
+    method?: string
+  } = {},
+) {
   const headers = new Headers(opts.headers)
   if (opts.host) headers.set('host', opts.host)
-  if (opts.headers) Object.entries(opts.headers).forEach(([k,v])=>headers.set(k,v))
+  if (opts.headers) Object.entries(opts.headers).forEach(([k, v]) => headers.set(k, v))
   const req = new NextRequest(new URL(url, 'http://localhost'), { headers } as any)
   // Mock cookies via defineProperty (NextRequest cookies is getter)
-  const cookieMap = new Map(Object.entries(opts.cookies ?? {}).map(([k,v]) => [k, { name: k, value: v } as any]))
+  const cookieMap = new Map(
+    Object.entries(opts.cookies ?? {}).map(([k, v]) => [k, { name: k, value: v } as any]),
+  )
   const cookieObj = {
     getAll: () => Array.from(cookieMap.values()),
     get: (name: string) => cookieMap.get(name),
@@ -50,7 +60,11 @@ describe('proxy strict 100%', () => {
     const req = makeRequest('http://localhost/book', { host: 'mybiz.trypronto.app' })
     const res = await proxy(req)
     // Should be rewrite (NextResponse.rewrite returns 200 with x-middleware-rewrite)
-    expect(res.headers.get('x-middleware-rewrite') || res.headers.get('x-middleware-request-pathname') || res.status).toBeDefined()
+    expect(
+      res.headers.get('x-middleware-rewrite') ||
+        res.headers.get('x-middleware-request-pathname') ||
+        res.status,
+    ).toBeDefined()
     // Check that pathname rewritten: via NextResponse.rewrite, we can check header
     // Next.js rewrite sets x-middleware-rewrite header containing target url
     const rewrite = (res as any).headers.get('x-middleware-rewrite')
@@ -106,7 +120,15 @@ describe('proxy strict 100%', () => {
   })
 
   it('redirects protected path without user to /login', async () => {
-    const protecteds = ['/dashboard','/pos','/caja','/crm','/inventory','/booking','/settings']
+    const protecteds = [
+      '/dashboard',
+      '/pos',
+      '/caja',
+      '/crm',
+      '/inventory',
+      '/booking',
+      '/settings',
+    ]
     for (const p of protecteds) {
       const req = makeRequest(`http://localhost${p}`)
       mockGetUser.mockResolvedValue({ data: { user: null } })
@@ -125,7 +147,7 @@ describe('proxy strict 100%', () => {
   })
 
   it('does not redirect public paths without user', async () => {
-    const pubs = ['/','/login','/register','/book/demo','/escuderia']
+    const pubs = ['/', '/login', '/register', '/book/demo', '/escuderia']
     for (const p of pubs) {
       const req = makeRequest(`http://localhost${p}`)
       mockGetUser.mockResolvedValue({ data: { user: null } })
@@ -139,7 +161,7 @@ describe('proxy strict 100%', () => {
   })
 
   it('redirect authenticated away from /login and /register', async () => {
-    for (const p of ['/login','/register']) {
+    for (const p of ['/login', '/register']) {
       const req = makeRequest(`http://localhost${p}`)
       mockGetUser.mockResolvedValue({ data: { user: { id: 'uid', email: 'a@b.com' } } })
       const res = await proxy(req)
@@ -153,7 +175,13 @@ describe('proxy strict 100%', () => {
   })
 
   it('locale detection pt/es/it', async () => {
-    const cases: [string,string][] = [['pt-BR','pt'],['es-CO','es'],['it-IT','it'],['es','es'],['pt','pt']]
+    const cases: [string, string][] = [
+      ['pt-BR', 'pt'],
+      ['es-CO', 'es'],
+      ['it-IT', 'it'],
+      ['es', 'es'],
+      ['pt', 'pt'],
+    ]
     for (const [accept, expected] of cases) {
       const req = makeRequest('http://localhost/', { headers: { 'accept-language': accept } })
       mockGetUser.mockResolvedValue({ data: { user: null } })
@@ -172,7 +200,10 @@ describe('proxy strict 100%', () => {
   })
 
   it('does not set locale if cookie already exists', async () => {
-    const req = makeRequest('http://localhost/', { cookies: { dashboard_locale: 'es' }, headers: { 'accept-language': 'pt-BR' } })
+    const req = makeRequest('http://localhost/', {
+      cookies: { dashboard_locale: 'es' },
+      headers: { 'accept-language': 'pt-BR' },
+    })
     mockGetUser.mockResolvedValue({ data: { user: null } })
     const res = await proxy(req)
     // Should not overwrite; but our proxy checks cookie existence via request.cookies.get
@@ -192,7 +223,11 @@ describe('proxy strict 100%', () => {
     expect(res).toBeDefined() // should not throw
     // underlying createServerClient should be called with host.docker.internal
     const { createServerClient } = await import('@supabase/ssr')
-    expect(createServerClient).toHaveBeenCalledWith(expect.stringContaining('host.docker.internal'), expect.any(String), expect.any(Object))
+    expect(createServerClient).toHaveBeenCalledWith(
+      expect.stringContaining('host.docker.internal'),
+      expect.any(String),
+      expect.any(Object),
+    )
   })
 
   it('localhost translation also', async () => {

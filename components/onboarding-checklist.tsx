@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
+import { useEffect, useState } from 'react'
+
+import { createClient } from '@/lib/supabase/client'
 
 const DISMISSED_KEY = 'pronto_onboarding_dismissed'
 const COMPLETE_KEY = 'pronto_onboarding_complete'
@@ -83,9 +84,18 @@ export function OnboardingChecklist({ businessId, enabledModules }: Props) {
     }
 
     Promise.all([
-      supabase.from('services').select('id', { count: 'exact', head: true }).eq('business_id', businessId),
-      supabase.from('clients').select('id', { count: 'exact', head: true }).eq('business_id', businessId),
-      supabase.from('appointments').select('id', { count: 'exact', head: true }).eq('business_id', businessId),
+      supabase
+        .from('services')
+        .select('id', { count: 'exact', head: true })
+        .eq('business_id', businessId),
+      supabase
+        .from('clients')
+        .select('id', { count: 'exact', head: true })
+        .eq('business_id', businessId),
+      supabase
+        .from('appointments')
+        .select('id', { count: 'exact', head: true })
+        .eq('business_id', businessId),
       supabase
         .from('businesses')
         .select('telegram_bot_token, viber_bot_token, owner_whatsapp, smtp_host')
@@ -219,7 +229,9 @@ export function OnboardingChecklist({ businessId, enabledModules }: Props) {
       ) : (
         <>
           <h3 className="font-semibold text-gray-900 text-base pr-8">{t('title')}</h3>
-          <p className="text-sm text-gray-500 mt-0.5">{t('progress', { done: completeCount, total: totalCount })}</p>
+          <p className="text-sm text-gray-500 mt-0.5">
+            {t('progress', { done: completeCount, total: totalCount })}
+          </p>
 
           <div className="mt-3 h-1.5 bg-gray-100 rounded-full overflow-hidden">
             <div
@@ -233,8 +245,19 @@ export function OnboardingChecklist({ businessId, enabledModules }: Props) {
               <li key={item.key} className="flex items-start gap-3">
                 {item.done ? (
                   <span className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center shrink-0 mt-0.5">
-                    <svg className="w-3 h-3 text-green-600" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-                      <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <svg
+                      className="w-3 h-3 text-green-600"
+                      viewBox="0 0 12 12"
+                      fill="none"
+                      aria-hidden="true"
+                    >
+                      <path
+                        d="M2 6l3 3 5-5"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
                     </svg>
                   </span>
                 ) : (
@@ -242,7 +265,9 @@ export function OnboardingChecklist({ businessId, enabledModules }: Props) {
                 )}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-3">
-                    <span className={`text-sm text-gray-900 ${item.done ? 'opacity-50' : 'font-semibold'}`}>
+                    <span
+                      className={`text-sm text-gray-900 ${item.done ? 'opacity-50' : 'font-semibold'}`}
+                    >
                       {item.label}
                     </span>
                     {!item.done && item.action && (

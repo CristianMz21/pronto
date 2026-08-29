@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
 import { Bell } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 
 interface HeaderProps {
   title: string

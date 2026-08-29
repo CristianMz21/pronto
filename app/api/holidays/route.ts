@@ -1,9 +1,10 @@
+import DOMPurify from 'isomorphic-dompurify'
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
+
+import { rateLimit, getIp } from '@/lib/rate-limit'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
-import { z } from 'zod'
-import DOMPurify from 'isomorphic-dompurify'
-import { rateLimit, getIp } from '@/lib/rate-limit'
 
 function sanitize(s: string): string {
   return DOMPurify.sanitize(s, { ALLOWED_TAGS: [] }).trim()
@@ -22,13 +23,29 @@ const PatchSchema = z.object({
   reason: z.string().max(200).nullable().optional(),
   is_open: z.boolean().optional(),
   location_id: z.string().uuid().nullable().optional().or(z.literal('')),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
 })
 
-async function resolveBusinessId(supabase: Awaited<ReturnType<typeof createClient>>, userId: string): Promise<string | null> {
-  const { data: owned } = await supabase.from('businesses').select('id').eq('owner_id', userId).maybeSingle()
+async function resolveBusinessId(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+): Promise<string | null> {
+  const { data: owned } = await supabase
+    .from('businesses')
+    .select('id')
+    .eq('owner_id', userId)
+    .maybeSingle()
   if (owned) return (owned as { id: string }).id
-  const { data: emp } = await supabase.from('employees').select('business_id').eq('user_id', userId).eq('is_active', true).limit(1).maybeSingle()
+  const { data: emp } = await supabase
+    .from('employees')
+    .select('business_id')
+    .eq('user_id', userId)
+    .eq('is_active', true)
+    .limit(1)
+    .maybeSingle()
   if (emp) return (emp as { business_id: string }).business_id
   return null
 }
@@ -45,7 +62,9 @@ export async function GET(req: NextRequest) {
   // But we still enforce tenant if no business_id provided via auth
   let businessId = businessIdParam
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
   if (!businessId) {
     if (!user) return NextResponse.json({ error: 'business_id_required' }, { status: 400 })
@@ -55,7 +74,11 @@ export async function GET(req: NextRequest) {
 
   // Use service client for public read to bypass RLS for anon booking, but filter by business_id
   const service = createServiceClient()
-  let query = service.from('holidays').select('id, business_id, location_id, date, reason, is_open, created_at').eq('business_id', businessId).order('date', { ascending: true })
+  let query = service
+    .from('holidays')
+    .select('id, business_id, location_id, date, reason, is_open, created_at')
+    .eq('business_id', businessId)
+    .order('date', { ascending: true })
 
   if (locationId) {
     // Return holidays for that location + business-wide (location_id null)
@@ -85,7 +108,9 @@ export async function POST(req: NextRequest) {
   }
 
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 
   let raw: unknown
@@ -97,7 +122,10 @@ export async function POST(req: NextRequest) {
 
   const parsed = CreateSchema.safeParse(raw)
   if (!parsed.success) {
-    return NextResponse.json({ error: 'validation_failed', details: parsed.error.flatten().fieldErrors }, { status: 422 })
+    return NextResponse.json(
+      { error: 'validation_failed', details: parsed.error.flatten().fieldErrors },
+      { status: 422 },
+    )
   }
 
   let businessId = parsed.data.business_id ?? null
@@ -106,9 +134,20 @@ export async function POST(req: NextRequest) {
     if (!businessId) return NextResponse.json({ error: 'not_found' }, { status: 404 })
   } else {
     // Verify user has access to that business_id
-    const { data: ownedCheck } = await supabase.from('businesses').select('id').eq('id', businessId).eq('owner_id', user.id).maybeSingle()
+    const { data: ownedCheck } = await supabase
+      .from('businesses')
+      .select('id')
+      .eq('id', businessId)
+      .eq('owner_id', user.id)
+      .maybeSingle()
     if (!ownedCheck) {
-      const { data: empCheck } = await supabase.from('employees').select('id').eq('user_id', user.id).eq('business_id', businessId).eq('is_active', true).maybeSingle()
+      const { data: empCheck } = await supabase
+        .from('employees')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('business_id', businessId)
+        .eq('is_active', true)
+        .maybeSingle()
       if (!empCheck) return NextResponse.json({ error: 'forbidden' }, { status: 403 })
     }
   }
@@ -116,7 +155,12 @@ export async function POST(req: NextRequest) {
   // Validate location belongs to business if provided
   const locationId = parsed.data.location_id || null
   if (locationId) {
-    const { data: loc } = await supabase.from('locations').select('id').eq('id', locationId).eq('business_id', businessId).maybeSingle()
+    const { data: loc } = await supabase
+      .from('locations')
+      .select('id')
+      .eq('id', locationId)
+      .eq('business_id', businessId)
+      .maybeSingle()
     if (!loc) return NextResponse.json({ error: 'location_not_found' }, { status: 404 })
   }
 
@@ -128,11 +172,22 @@ export async function POST(req: NextRequest) {
     is_open: parsed.data.is_open ?? false,
   }
 
-  const { data, error } = await supabase.from('holidays').insert(payload as unknown as never).select('id, business_id, location_id, date, reason, is_open').single()
+  const { data, error } = await supabase
+    .from('holidays')
+    .insert(payload as unknown as never)
+    .select('id, business_id, location_id, date, reason, is_open')
+    .single()
   if (error) {
     const msg = String(error.message ?? '')
-    if (msg.includes('duplicate') || msg.includes('unique') || (error as { code?: string }).code === '23505') {
-      return NextResponse.json({ error: 'holiday_duplicate', message: 'Ya existe un festivo para esa fecha y sede' }, { status: 409 })
+    if (
+      msg.includes('duplicate') ||
+      msg.includes('unique') ||
+      (error as { code?: string }).code === '23505'
+    ) {
+      return NextResponse.json(
+        { error: 'holiday_duplicate', message: 'Ya existe un festivo para esa fecha y sede' },
+        { status: 409 },
+      )
     }
     return NextResponse.json({ error: msg || 'insert_failed' }, { status: 500 })
   }
@@ -142,7 +197,9 @@ export async function POST(req: NextRequest) {
 // PATCH /api/holidays — update
 export async function PATCH(req: NextRequest) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 
   let raw: unknown
@@ -152,22 +209,33 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'invalid_json' }, { status: 400 })
   }
   const parsed = PatchSchema.safeParse(raw)
-  if (!parsed.success) return NextResponse.json({ error: 'validation_failed', details: parsed.error.flatten().fieldErrors }, { status: 422 })
+  if (!parsed.success)
+    return NextResponse.json(
+      { error: 'validation_failed', details: parsed.error.flatten().fieldErrors },
+      { status: 422 },
+    )
 
   const businessId = await resolveBusinessId(supabase, user.id)
   if (!businessId) return NextResponse.json({ error: 'not_found' }, { status: 404 })
 
   const patch: Record<string, unknown> = {}
-  if (parsed.data.reason !== undefined) patch.reason = parsed.data.reason ? sanitize(parsed.data.reason) : null
+  if (parsed.data.reason !== undefined)
+    patch.reason = parsed.data.reason ? sanitize(parsed.data.reason) : null
   if (parsed.data.is_open !== undefined) patch.is_open = parsed.data.is_open
   if (parsed.data.location_id !== undefined) patch.location_id = parsed.data.location_id || null
   if (parsed.data.date !== undefined) patch.date = parsed.data.date
 
-  if (Object.keys(patch).length === 0) return NextResponse.json({ error: 'no_changes' }, { status: 400 })
+  if (Object.keys(patch).length === 0)
+    return NextResponse.json({ error: 'no_changes' }, { status: 400 })
 
   // Verify location if changing
   if (patch.location_id) {
-    const { data: loc } = await supabase.from('locations').select('id').eq('id', patch.location_id as string).eq('business_id', businessId).maybeSingle()
+    const { data: loc } = await supabase
+      .from('locations')
+      .select('id')
+      .eq('id', patch.location_id as string)
+      .eq('business_id', businessId)
+      .maybeSingle()
     if (!loc) return NextResponse.json({ error: 'location_not_found' }, { status: 404 })
   }
 
@@ -181,7 +249,8 @@ export async function PATCH(req: NextRequest) {
 
   if (error) {
     const msg = String(error.message ?? '')
-    if (msg.includes('duplicate') || msg.includes('unique')) return NextResponse.json({ error: 'holiday_duplicate' }, { status: 409 })
+    if (msg.includes('duplicate') || msg.includes('unique'))
+      return NextResponse.json({ error: 'holiday_duplicate' }, { status: 409 })
     return NextResponse.json({ error: msg }, { status: 500 })
   }
   return NextResponse.json(data)
@@ -190,7 +259,9 @@ export async function PATCH(req: NextRequest) {
 // DELETE /api/holidays?id=xxx
 export async function DELETE(req: NextRequest) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 
   const url = new URL(req.url)
@@ -200,7 +271,11 @@ export async function DELETE(req: NextRequest) {
   const businessId = await resolveBusinessId(supabase, user.id)
   if (!businessId) return NextResponse.json({ error: 'not_found' }, { status: 404 })
 
-  const { error } = await supabase.from('holidays').delete().eq('id', id).eq('business_id', businessId)
+  const { error } = await supabase
+    .from('holidays')
+    .delete()
+    .eq('id', id)
+    .eq('business_id', businessId)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true })
 }

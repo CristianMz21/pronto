@@ -1,7 +1,8 @@
 import type { Metadata } from 'next'
+import { Bricolage_Grotesque, DM_Sans } from 'next/font/google'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { Bricolage_Grotesque, DM_Sans } from 'next/font/google'
+
 import styles from '../landing.module.css'
 
 const bricolage = Bricolage_Grotesque({
@@ -194,8 +195,8 @@ export default function EsPage() {
             por tus propios clientes
           </h1>
           <p className={styles.heroDesc}>
-            POS · CRM · Reservas · Inventario · Notificaciones omnicanal — para cualquier negocio
-            de servicios. En tu servidor o en la nube, tú eliges.
+            POS · CRM · Reservas · Inventario · Notificaciones omnicanal — para cualquier negocio de
+            servicios. En tu servidor o en la nube, tú eliges.
           </p>
         </section>
 
@@ -216,17 +217,24 @@ export default function EsPage() {
             <span className={`${styles.bizTag} ${styles.bt5}`}>Clínicas dentales</span>
             <span className={`${styles.bizTag} ${styles.bt6}`}>Gimnasios</span>
             <span className={`${styles.bizTag} ${styles.bt7}`}>Masajes y spa</span>
-            <span className={`${styles.bizTag} ${styles.bt8}`}>Y cualquier otro negocio de servicios</span>
+            <span className={`${styles.bizTag} ${styles.bt8}`}>
+              Y cualquier otro negocio de servicios
+            </span>
           </div>
           <div className={styles.cardsWrap}>
             <div className={styles.featGrid}>
               <div className={styles.featCard}>
                 <h4>POS / Caja</h4>
-                <p>Completa una venta en 3 clics. Efectivo, tarjeta, transferencia. Funciona sin internet.</p>
+                <p>
+                  Completa una venta en 3 clics. Efectivo, tarjeta, transferencia. Funciona sin
+                  internet.
+                </p>
               </div>
               <div className={styles.featCard}>
                 <h4>CRM</h4>
-                <p>Historial completo del cliente: visitas, gastos, etiquetas, cumpleaños, notas.</p>
+                <p>
+                  Historial completo del cliente: visitas, gastos, etiquetas, cumpleaños, notas.
+                </p>
               </div>
               <div className={styles.featCard}>
                 <h4>Inventario</h4>
@@ -234,15 +242,21 @@ export default function EsPage() {
               </div>
               <div className={styles.featCard}>
                 <h4>Calendario de citas</h4>
-                <p>Vista semanal con drag &amp; drop. Sin reservas dobles a nivel de base de datos.</p>
+                <p>
+                  Vista semanal con drag &amp; drop. Sin reservas dobles a nivel de base de datos.
+                </p>
               </div>
               <div className={styles.featCard}>
                 <h4>Reservas en línea</h4>
-                <p>Página pública: el cliente reserva con solo su nombre y teléfono. Sin registro.</p>
+                <p>
+                  Página pública: el cliente reserva con solo su nombre y teléfono. Sin registro.
+                </p>
               </div>
               <div className={styles.featCard}>
                 <h4>PWA</h4>
-                <p>Se instala en cualquier dispositivo desde el navegador. Funciona sin conexión.</p>
+                <p>
+                  Se instala en cualquier dispositivo desde el navegador. Funciona sin conexión.
+                </p>
               </div>
             </div>
           </div>
@@ -252,7 +266,10 @@ export default function EsPage() {
         <section className={`${styles.sec} ${styles.secWarm}`}>
           <div className={styles.secHead}>
             <h2>Diseñado para negocios de servicios</h2>
-            <p>Reemplaza Excel, recordatorios manuales y plataformas costosas que se quedan con tus clientes.</p>
+            <p>
+              Reemplaza Excel, recordatorios manuales y plataformas costosas que se quedan con tus
+              clientes.
+            </p>
           </div>
           <div className={styles.cardsWrap}>
             <div className={styles.painGrid}>
@@ -274,7 +291,9 @@ export default function EsPage() {
                 <div className={styles.painFromLabel}>De</div>
                 <div className={styles.painFromText}>La plataforma se queda con el 20%</div>
                 <div className={styles.painArrow}>↓</div>
-                <div className={styles.painTo}>Los clientes reservan directo contigo — 0% de comisión</div>
+                <div className={styles.painTo}>
+                  Los clientes reservan directo contigo — 0% de comisión
+                </div>
               </div>
               <div className={styles.painCard}>
                 <div className={styles.painFromLabel}>De</div>
@@ -290,9 +309,13 @@ export default function EsPage() {
               </div>
               <div className={styles.painCard}>
                 <div className={styles.painFromLabel}>De</div>
-                <div className={styles.painFromText}>Datos de clientes atrapados en otra plataforma</div>
+                <div className={styles.painFromText}>
+                  Datos de clientes atrapados en otra plataforma
+                </div>
                 <div className={styles.painArrow}>↓</div>
-                <div className={styles.painTo}>Self-hosted: los datos viven en tu propio servidor</div>
+                <div className={styles.painTo}>
+                  Self-hosted: los datos viven en tu propio servidor
+                </div>
               </div>
             </div>
           </div>
@@ -409,8 +432,8 @@ export default function EsPage() {
                 <div className={styles.pathPoint}>
                   <div className={styles.pathPointDot}></div>
                   <div className={styles.pathPointText}>
-                    <strong>Cualquier infraestructura</strong> — VPS Linux, Windows, macOS. Mínimo
-                    1 GB de RAM
+                    <strong>Cualquier infraestructura</strong> — VPS Linux, Windows, macOS. Mínimo 1
+                    GB de RAM
                   </div>
                 </div>
               </div>
@@ -569,7 +592,9 @@ export default function EsPage() {
             </div>
           </div>
           <div className={styles.faqItem}>
-            <div className={styles.faqQ}>¿Los clientes necesitan crear una cuenta para reservar?</div>
+            <div className={styles.faqQ}>
+              ¿Los clientes necesitan crear una cuenta para reservar?
+            </div>
             <div className={styles.faqA}>
               No. La página de reservas solo pide nombre y teléfono. Sin registro, sin contraseña,
               sin aplicación que descargar.
@@ -602,9 +627,9 @@ export default function EsPage() {
           <div className={styles.faqItem}>
             <div className={styles.faqQ}>¿Para qué tipo de negocios sirve Pronto?</div>
             <div className={styles.faqA}>
-              Para cualquier negocio de servicios: salones de belleza, barberías, talleres de
-              autos, cafeterías, clínicas dentales, gimnasios, spas, estudios de tatuajes y
-              cualquier otro negocio donde los clientes reserven citas o paguen por servicios.
+              Para cualquier negocio de servicios: salones de belleza, barberías, talleres de autos,
+              cafeterías, clínicas dentales, gimnasios, spas, estudios de tatuajes y cualquier otro
+              negocio donde los clientes reserven citas o paguen por servicios.
             </div>
           </div>
         </div>
@@ -626,11 +651,7 @@ export default function EsPage() {
           <Link href="/terms">Términos</Link>
           <Link href="/privacy">Privacidad</Link>
           <Link href="/refund">Reembolsos</Link>
-          <a
-            href="https://github.com/SGrappelli/pronto"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
+          <a href="https://github.com/SGrappelli/pronto" target="_blank" rel="noopener noreferrer">
             GitHub
           </a>
         </div>

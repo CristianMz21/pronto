@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
+
 import {
   computeEffectiveHours,
   checkSlotWithinHours,
@@ -13,9 +14,18 @@ vi.mock('@/lib/db', () => ({
   db: {
     query: {
       businessHours: {
-        findMany: vi.fn().mockResolvedValue([
-          { dayOfWeek: 1, isOpen: true, openTime: '09:00', closeTime: '19:00', breakStart: null, breakEnd: null },
-        ]),
+        findMany: vi
+          .fn()
+          .mockResolvedValue([
+            {
+              dayOfWeek: 1,
+              isOpen: true,
+              openTime: '09:00',
+              closeTime: '19:00',
+              breakStart: null,
+              breakEnd: null,
+            },
+          ]),
       },
     },
   },
@@ -30,7 +40,16 @@ describe('booking-availability — lib/booking-availability.ts', () => {
   })
 
   it('computeEffectiveHours rellena días faltantes con default', () => {
-    const partial: DayHours[] = [{ day_of_week: 1, is_open: true, open_time: '08:00', close_time: '18:00', break_start: null, break_end: null }]
+    const partial: DayHours[] = [
+      {
+        day_of_week: 1,
+        is_open: true,
+        open_time: '08:00',
+        close_time: '18:00',
+        break_start: null,
+        break_end: null,
+      },
+    ]
     const eff = computeEffectiveHours(partial)
     expect(eff).toHaveLength(7)
     expect(eff.find((h) => h.day_of_week === 1)?.open_time).toBe('08:00')
@@ -38,20 +57,41 @@ describe('booking-availability — lib/booking-availability.ts', () => {
   })
 
   it('checkSlotWithinHours ok dentro de horario', () => {
-    const day: DayHours = { day_of_week: 1, is_open: true, open_time: '09:00', close_time: '19:00', break_start: null, break_end: null }
+    const day: DayHours = {
+      day_of_week: 1,
+      is_open: true,
+      open_time: '09:00',
+      close_time: '19:00',
+      break_start: null,
+      break_end: null,
+    }
     expect(checkSlotWithinHours(day, '10:00', 45)).toEqual({ ok: true })
     expect(checkSlotWithinHours(day, '09:00', 60)).toEqual({ ok: true })
     expect(checkSlotWithinHours(day, '18:00', 60)).toEqual({ ok: true })
   })
 
   it('outside_hours si excede close_time', () => {
-    const day: DayHours = { day_of_week: 1, is_open: true, open_time: '09:00', close_time: '19:00', break_start: null, break_end: null }
+    const day: DayHours = {
+      day_of_week: 1,
+      is_open: true,
+      open_time: '09:00',
+      close_time: '19:00',
+      break_start: null,
+      break_end: null,
+    }
     expect(checkSlotWithinHours(day, '18:30', 60)).toEqual({ ok: false, reason: 'outside_hours' })
     expect(checkSlotWithinHours(day, '08:30', 30)).toEqual({ ok: false, reason: 'outside_hours' })
   })
 
   it('break si cae en ventana de descanso', () => {
-    const day: DayHours = { day_of_week: 1, is_open: true, open_time: '09:00', close_time: '19:00', break_start: '13:00', break_end: '14:00' }
+    const day: DayHours = {
+      day_of_week: 1,
+      is_open: true,
+      open_time: '09:00',
+      close_time: '19:00',
+      break_start: '13:00',
+      break_end: '14:00',
+    }
     expect(checkSlotWithinHours(day, '13:30', 30)).toEqual({ ok: false, reason: 'break' })
     expect(checkSlotWithinHours(day, '12:45', 30)).toEqual({ ok: false, reason: 'break' }) // 12:45+30=13:15 overlap
     expect(checkSlotWithinHours(day, '14:00', 30)).toEqual({ ok: true }) // termina justo antes de break, empieza después
@@ -59,7 +99,14 @@ describe('booking-availability — lib/booking-availability.ts', () => {
   })
 
   it('closed si is_open false o undefined', () => {
-    const dayClosed: DayHours = { day_of_week: 0, is_open: false, open_time: '09:00', close_time: '19:00', break_start: null, break_end: null }
+    const dayClosed: DayHours = {
+      day_of_week: 0,
+      is_open: false,
+      open_time: '09:00',
+      close_time: '19:00',
+      break_start: null,
+      break_end: null,
+    }
     expect(checkSlotWithinHours(dayClosed, '10:00', 60)).toEqual({ ok: false, reason: 'closed' })
     expect(checkSlotWithinHours(undefined, '10:00', 60)).toEqual({ ok: false, reason: 'closed' })
   })
@@ -74,8 +121,22 @@ describe('booking-availability — lib/booking-availability.ts', () => {
   it('Drizzle businessHours rows map correctly to DayHours for computeEffectiveHours', async () => {
     // Simulate Drizzle camelCase rows as returned by db.query.businessHours.findMany
     const drizzleRows = [
-      { dayOfWeek: 1, isOpen: true, openTime: '08:00', closeTime: '18:00', breakStart: null, breakEnd: null },
-      { dayOfWeek: 2, isOpen: true, openTime: '09:00', closeTime: '19:00', breakStart: '13:00', breakEnd: '14:00' },
+      {
+        dayOfWeek: 1,
+        isOpen: true,
+        openTime: '08:00',
+        closeTime: '18:00',
+        breakStart: null,
+        breakEnd: null,
+      },
+      {
+        dayOfWeek: 2,
+        isOpen: true,
+        openTime: '09:00',
+        closeTime: '19:00',
+        breakStart: '13:00',
+        breakEnd: '14:00',
+      },
     ]
     const dayHours: DayHours[] = drizzleRows.map((r) => ({
       day_of_week: r.dayOfWeek,

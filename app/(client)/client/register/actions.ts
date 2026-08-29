@@ -1,7 +1,8 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+
+import { createClient } from '@/lib/supabase/server'
 
 export async function registerClient(formData: FormData) {
   const supabase = await createClient()
@@ -12,7 +13,9 @@ export async function registerClient(formData: FormData) {
   const redirectTo = (formData.get('redirect') as string) || '/client/dashboard'
 
   if (!name) {
-    redirect(`/client/register?error=${encodeURIComponent('El nombre es obligatorio')}&redirect=${encodeURIComponent(redirectTo)}`)
+    redirect(
+      `/client/register?error=${encodeURIComponent('El nombre es obligatorio')}&redirect=${encodeURIComponent(redirectTo)}`,
+    )
   }
 
   const { data, error } = await supabase.auth.signUp({
@@ -25,7 +28,9 @@ export async function registerClient(formData: FormData) {
   })
 
   if (error || !data.user) {
-    redirect(`/client/register?error=${encodeURIComponent(error?.message ?? 'Error al crear cuenta')}&redirect=${encodeURIComponent(redirectTo)}`)
+    redirect(
+      `/client/register?error=${encodeURIComponent(error?.message ?? 'Error al crear cuenta')}&redirect=${encodeURIComponent(redirectTo)}`,
+    )
   }
 
   // Selfhosted: auto-login if no session

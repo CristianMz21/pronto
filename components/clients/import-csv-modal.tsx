@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
-import { Button } from '@/components/ui/button'
 import { X, Upload, CheckCircle, AlertCircle } from 'lucide-react'
+import { useState, useRef, useCallback } from 'react'
+
+import { Button } from '@/components/ui/button'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -25,12 +26,20 @@ interface Props {
 // ─── Platform instructions ────────────────────────────────────────────────────
 
 const PLATFORMS = [
-  { id: 'fresha',   label: 'Fresha',    hint: 'Clients → Options (top right) → Export → CSV' },
-  { id: 'vagaro',   label: 'Vagaro',    hint: 'More → Reports → Customers → Action → Export Excel, then save as CSV' },
-  { id: 'booksy',   label: 'Booksy',    hint: 'Customers → More Options → Export → CSV' },
-  { id: 'mindbody', label: 'Mindbody',  hint: 'Reports → Clients → Mailing Lists → Export → CSV' },
-  { id: 'square',   label: 'Square',    hint: 'Customers → Customer Directory → Export' },
-  { id: 'other',    label: 'Other',     hint: 'Export your client list as CSV with columns: name, phone, email' },
+  { id: 'fresha', label: 'Fresha', hint: 'Clients → Options (top right) → Export → CSV' },
+  {
+    id: 'vagaro',
+    label: 'Vagaro',
+    hint: 'More → Reports → Customers → Action → Export Excel, then save as CSV',
+  },
+  { id: 'booksy', label: 'Booksy', hint: 'Customers → More Options → Export → CSV' },
+  { id: 'mindbody', label: 'Mindbody', hint: 'Reports → Clients → Mailing Lists → Export → CSV' },
+  { id: 'square', label: 'Square', hint: 'Customers → Customer Directory → Export' },
+  {
+    id: 'other',
+    label: 'Other',
+    hint: 'Export your client list as CSV with columns: name, phone, email',
+  },
 ] as const
 
 // ─── CSV parser (no external libraries) ─────────────────────────────────────
@@ -109,7 +118,12 @@ function parseCSV(text: string): string[][] {
 
 // ─── Column detection ─────────────────────────────────────────────────────────
 
-function detectColumns(headers: string[]): { name: number; phone: number; email: number; notes: number } {
+function detectColumns(headers: string[]): {
+  name: number
+  phone: number
+  email: number
+  notes: number
+} {
   const idx = (keywords: string[]) => {
     for (const kw of keywords) {
       const i = headers.findIndex((h) => h.toLowerCase().includes(kw.toLowerCase()))
@@ -119,7 +133,7 @@ function detectColumns(headers: string[]): { name: number; phone: number; email:
   }
 
   return {
-    name:  idx(['name', 'full name', 'client name', 'customer name', 'contact name', 'first name']),
+    name: idx(['name', 'full name', 'client name', 'customer name', 'contact name', 'first name']),
     phone: idx(['phone', 'mobile', 'cell', 'telephone', 'tel', 'number']),
     email: idx(['email', 'e-mail', 'mail']),
     notes: idx(['notes', 'note', 'comments', 'comment', 'memo']),
@@ -128,7 +142,7 @@ function detectColumns(headers: string[]): { name: number; phone: number; email:
 
 function rowsToClients(rows: string[][], colMap: ReturnType<typeof detectColumns>): ParsedRow[] {
   return rows.map((row) => ({
-    name:  colMap.name  >= 0 ? (row[colMap.name]  ?? '') : '',
+    name: colMap.name >= 0 ? (row[colMap.name] ?? '') : '',
     phone: colMap.phone >= 0 ? (row[colMap.phone] ?? '') : '',
     email: colMap.email >= 0 ? (row[colMap.email] ?? '') : '',
     notes: colMap.notes >= 0 ? (row[colMap.notes] ?? '') : '',
@@ -138,17 +152,17 @@ function rowsToClients(rows: string[][], colMap: ReturnType<typeof detectColumns
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function ImportCsvModal({ open, onClose, onImported }: Props) {
-  const [step, setStep]               = useState<Step>('platform')
-  const [platform, setPlatform]       = useState<string | null>(null)
-  const [dragging, setDragging]       = useState(false)
-  const [parsedRows, setParsedRows]   = useState<ParsedRow[]>([])
-  const [colMap, setColMap]           = useState<ReturnType<typeof detectColumns> | null>(null)
-  const [headers, setHeaders]         = useState<string[]>([])
-  const [rowCount, setRowCount]       = useState(0)
+  const [step, setStep] = useState<Step>('platform')
+  const [platform, setPlatform] = useState<string | null>(null)
+  const [dragging, setDragging] = useState(false)
+  const [parsedRows, setParsedRows] = useState<ParsedRow[]>([])
+  const [colMap, setColMap] = useState<ReturnType<typeof detectColumns> | null>(null)
+  const [headers, setHeaders] = useState<string[]>([])
+  const [rowCount, setRowCount] = useState(0)
   const [noPhoneWarn, setNoPhoneWarn] = useState(false)
-  const [loading, setLoading]         = useState(false)
+  const [loading, setLoading] = useState(false)
   const [resultImported, setResultImported] = useState(0)
-  const [resultSkipped, setResultSkipped]   = useState(0)
+  const [resultSkipped, setResultSkipped] = useState(0)
   const [importError, setImportError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -217,7 +231,7 @@ export function ImportCsvModal({ open, onClose, onImported }: Props) {
 
       if (res.status === 402) {
         setImportError(
-          `You've reached the ${data.limit}-client limit on the Free plan. Upgrade to Starter to import unlimited clients.`
+          `You've reached the ${data.limit}-client limit on the Free plan. Upgrade to Starter to import unlimited clients.`,
         )
         setLoading(false)
         return
@@ -243,18 +257,24 @@ export function ImportCsvModal({ open, onClose, onImported }: Props) {
   const preview = parsedRows.slice(0, 5)
 
   return (
-    <Dialog.Root open={open} onOpenChange={(o) => { if (!o) handleClose() }}>
+    <Dialog.Root
+      open={open}
+      onOpenChange={(o) => {
+        if (!o) handleClose()
+      }}
+    >
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/50 z-40" />
-        <Dialog.Content
-          className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6 focus:outline-none"
-        >
+        <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6 focus:outline-none">
           {/* Header */}
           <div className="flex items-center justify-between mb-5">
             <Dialog.Title className="text-lg font-semibold text-gray-900">
               Import clients from CSV
             </Dialog.Title>
-            <button onClick={handleClose} className="text-gray-400 hover:text-gray-600 transition-colors">
+            <button
+              onClick={handleClose}
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+            >
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -271,9 +291,10 @@ export function ImportCsvModal({ open, onClose, onImported }: Props) {
                     key={p.id}
                     onClick={() => setPlatform(p.id)}
                     className={`border rounded-lg py-2 px-3 text-sm font-medium transition-colors
-                      ${platform === p.id
-                        ? 'border-blue-600 bg-blue-50 text-blue-700'
-                        : 'border-gray-200 text-gray-700 hover:border-gray-300'
+                      ${
+                        platform === p.id
+                          ? 'border-blue-600 bg-blue-50 text-blue-700'
+                          : 'border-gray-200 text-gray-700 hover:border-gray-300'
                       }`}
                   >
                     {p.label}
@@ -290,7 +311,10 @@ export function ImportCsvModal({ open, onClose, onImported }: Props) {
 
               {/* Drop zone */}
               <div
-                onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
+                onDragOver={(e) => {
+                  e.preventDefault()
+                  setDragging(true)
+                }}
                 onDragLeave={() => setDragging(false)}
                 onDrop={handleDrop}
                 onClick={() => fileInputRef.current?.click()}
@@ -298,7 +322,9 @@ export function ImportCsvModal({ open, onClose, onImported }: Props) {
                   ${dragging ? 'border-blue-400 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}
               >
                 <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                <p className="text-sm font-medium text-gray-700">Drop CSV file here or click to browse</p>
+                <p className="text-sm font-medium text-gray-700">
+                  Drop CSV file here or click to browse
+                </p>
                 <p className="text-xs text-gray-400 mt-1">Supports .csv files</p>
                 <input
                   ref={fileInputRef}
@@ -327,7 +353,10 @@ export function ImportCsvModal({ open, onClose, onImported }: Props) {
                   {rowCount} row{rowCount !== 1 ? 's' : ''} found
                 </span>
                 <button
-                  onClick={() => { setStep('platform'); fileInputRef.current?.click() }}
+                  onClick={() => {
+                    setStep('platform')
+                    fileInputRef.current?.click()
+                  }}
                   className="ml-auto text-xs text-blue-600 hover:underline"
                 >
                   Change file
@@ -336,7 +365,8 @@ export function ImportCsvModal({ open, onClose, onImported }: Props) {
 
               {noPhoneWarn && (
                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-3 text-sm text-amber-800">
-                  ⚠ No phone column detected. Clients will be imported without phone numbers (no deduplication).
+                  ⚠ No phone column detected. Clients will be imported without phone numbers (no
+                  deduplication).
                 </div>
               )}
 
@@ -346,9 +376,11 @@ export function ImportCsvModal({ open, onClose, onImported }: Props) {
                   <span
                     key={field}
                     className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full font-medium
-                      ${colMap[field] >= 0
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-gray-100 text-gray-400'}`}
+                      ${
+                        colMap[field] >= 0
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-gray-100 text-gray-400'
+                      }`}
                   >
                     {colMap[field] >= 0 ? '✓' : '—'} {field}
                     {colMap[field] >= 0 && (
@@ -371,9 +403,15 @@ export function ImportCsvModal({ open, onClose, onImported }: Props) {
                   <tbody>
                     {preview.map((row, i) => (
                       <tr key={i} className="border-b border-gray-100 last:border-0">
-                        <td className="px-3 py-2 text-gray-900 max-w-[150px] truncate">{row.name || <span className="text-gray-300">—</span>}</td>
-                        <td className="px-3 py-2 text-gray-600 max-w-[120px] truncate">{row.phone || <span className="text-gray-300">—</span>}</td>
-                        <td className="px-3 py-2 text-gray-600 max-w-[140px] truncate">{row.email || <span className="text-gray-300">—</span>}</td>
+                        <td className="px-3 py-2 text-gray-900 max-w-[150px] truncate">
+                          {row.name || <span className="text-gray-300">—</span>}
+                        </td>
+                        <td className="px-3 py-2 text-gray-600 max-w-[120px] truncate">
+                          {row.phone || <span className="text-gray-300">—</span>}
+                        </td>
+                        <td className="px-3 py-2 text-gray-600 max-w-[140px] truncate">
+                          {row.email || <span className="text-gray-300">—</span>}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -396,11 +434,7 @@ export function ImportCsvModal({ open, onClose, onImported }: Props) {
                 <Button variant="outline" size="sm" onClick={() => setStep('platform')}>
                   Back
                 </Button>
-                <Button
-                  size="sm"
-                  onClick={handleImport}
-                  disabled={loading || rowCount === 0}
-                >
+                <Button size="sm" onClick={handleImport} disabled={loading || rowCount === 0}>
                   {loading ? 'Importing…' : `Import ${rowCount} client${rowCount !== 1 ? 's' : ''}`}
                 </Button>
               </div>
@@ -413,8 +447,8 @@ export function ImportCsvModal({ open, onClose, onImported }: Props) {
               <CheckCircle className="w-12 h-12 text-green-600 mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-gray-900 mb-2">Import complete</h3>
               <p className="text-gray-600 mb-1">
-                <span className="font-semibold text-green-700">{resultImported}</span>{' '}
-                client{resultImported !== 1 ? 's' : ''} imported
+                <span className="font-semibold text-green-700">{resultImported}</span> client
+                {resultImported !== 1 ? 's' : ''} imported
               </p>
               {resultSkipped > 0 && (
                 <p className="text-sm text-gray-400 mb-4">

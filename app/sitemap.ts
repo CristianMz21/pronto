@@ -1,6 +1,7 @@
-import type { MetadataRoute } from 'next'
 import fs from 'fs'
 import path from 'path'
+
+import type { MetadataRoute } from 'next'
 
 const BASE_URL = 'https://trypronto.app'
 
@@ -9,9 +10,15 @@ const EXCLUDED_FS_SEGMENTS = ['(dashboard)', '(admin)', 'api']
 
 // URL route prefixes to exclude
 const EXCLUDED_ROUTE_PREFIXES = [
-  '/api', '/dashboard', '/settings', '/admin',
-  '/check-email', '/offline', '/onboarding',
-  '/forgot-password', '/reset-password',
+  '/api',
+  '/dashboard',
+  '/settings',
+  '/admin',
+  '/check-email',
+  '/offline',
+  '/onboarding',
+  '/forgot-password',
+  '/reset-password',
   '/client',
 ]
 
@@ -56,12 +63,12 @@ function fileToRoute(filePath: string, appDir: string): string | null {
 
 function isExcludedByPath(filePath: string): boolean {
   const parts = filePath.split(path.sep)
-  return EXCLUDED_FS_SEGMENTS.some(seg => parts.includes(seg))
+  return EXCLUDED_FS_SEGMENTS.some((seg) => parts.includes(seg))
 }
 
 function isExcludedByRoute(route: string): boolean {
   return EXCLUDED_ROUTE_PREFIXES.some(
-    prefix => route === prefix || route.startsWith(prefix + '/')
+    (prefix) => route === prefix || route.startsWith(prefix + '/'),
   )
 }
 
@@ -70,8 +77,9 @@ function hasNoIndex(filePath: string): boolean {
   try {
     const src = fs.readFileSync(filePath, 'utf-8')
     // Match: robots: 'noindex' | robots: "noindex" | index: false (inside robots block)
-    return /robots\s*:\s*['"]noindex['"]/i.test(src) ||
-      /robots\s*:\s*\{[^}]*index\s*:\s*false/.test(src)
+    return (
+      /robots\s*:\s*['"]noindex['"]/i.test(src) || /robots\s*:\s*\{[^}]*index\s*:\s*false/.test(src)
+    )
   } catch {
     return false
   }
@@ -85,14 +93,16 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const appDir = path.join(process.cwd(), 'app')
 
   return walkPages(appDir)
-    .filter(f => !isExcludedByPath(f))
-    .map(f => ({ file: f, route: fileToRoute(f, appDir) }))
+    .filter((f) => !isExcludedByPath(f))
+    .map((f) => ({ file: f, route: fileToRoute(f, appDir) }))
     .filter((item): item is { file: string; route: string } => item.route !== null)
     .filter(({ route }) => !isExcludedByRoute(route))
     .filter(({ file }) => !hasNoIndex(file))
     .map(({ route }) => ({
       url: `${BASE_URL}${route}`,
-      changeFrequency: (['/', '/es', '/es/para'].includes(route) ? 'weekly' : 'monthly') as MetadataRoute.Sitemap[number]['changeFrequency'],
+      changeFrequency: (['/', '/es', '/es/para'].includes(route)
+        ? 'weekly'
+        : 'monthly') as MetadataRoute.Sitemap[number]['changeFrequency'],
       priority: getPriority(route),
       lastModified: new Date(),
     }))

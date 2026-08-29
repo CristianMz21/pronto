@@ -1,5 +1,6 @@
-import { cache } from 'react'
 import { headers } from 'next/headers'
+import { cache } from 'react'
+
 import { createClient } from '@/lib/supabase/server'
 
 export type AuthUser = { id: string; email: string | null }
@@ -23,6 +24,8 @@ export const getAuthUser = cache(async (): Promise<AuthUser | null> => {
   }
 
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
   return user ? { id: user.id, email: user.email ?? null } : null
 })

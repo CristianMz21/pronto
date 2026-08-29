@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+
 import { evaluatePromotion, calculateDiscount } from '@/lib/promotions'
 
 const basePromo = {
@@ -20,13 +21,25 @@ describe('promotions.evaluate', () => {
     expect(evaluatePromotion(basePromo, { amount: 50000 }).eligible).toBe(true)
   })
   it('inactive not eligible', () => {
-    expect(evaluatePromotion({ ...basePromo, is_active: false }, { amount: 50000 }).eligible).toBe(false)
+    expect(evaluatePromotion({ ...basePromo, is_active: false }, { amount: 50000 }).eligible).toBe(
+      false,
+    )
   })
   it('expired not eligible', () => {
-    expect(evaluatePromotion({ ...basePromo, valid_to: new Date(Date.now() - 1000).toISOString() }, { amount: 50000 }).eligible).toBe(false)
+    expect(
+      evaluatePromotion(
+        { ...basePromo, valid_to: new Date(Date.now() - 1000).toISOString() },
+        { amount: 50000 },
+      ).eligible,
+    ).toBe(false)
   })
   it('not yet started not eligible', () => {
-    expect(evaluatePromotion({ ...basePromo, valid_from: new Date(Date.now() + 86400000).toISOString() }, { amount: 50000 }).eligible).toBe(false)
+    expect(
+      evaluatePromotion(
+        { ...basePromo, valid_from: new Date(Date.now() + 86400000).toISOString() },
+        { amount: 50000 },
+      ).eligible,
+    ).toBe(false)
   })
   it('day_of_week mismatch not eligible', () => {
     const p = { ...basePromo, rules: { day_of_week: [1] } } // Monday
@@ -41,7 +54,8 @@ describe('promotions.evaluate', () => {
   })
   it('client_segment birthday', () => {
     const now = new Date()
-    const bd = new Date(now); bd.setDate(now.getDate() + 3)
+    const bd = new Date(now)
+    bd.setDate(now.getDate() + 3)
     const iso = bd.toISOString().slice(0, 10)
     const p = { ...basePromo, rules: { client_segment: 'birthday' as const } }
     expect(evaluatePromotion(p, { client: { birthday: iso } }).eligible).toBe(true)

@@ -1,7 +1,8 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+
+import { createClient } from '@/lib/supabase/server'
 
 export async function loginClient(formData: FormData) {
   const supabase = await createClient()
@@ -11,7 +12,9 @@ export async function loginClient(formData: FormData) {
 
   const { error } = await supabase.auth.signInWithPassword({ email, password })
   if (error) {
-    redirect(`/client/login?error=${encodeURIComponent('Correo o contraseña incorrectos')}&redirect=${encodeURIComponent(redirectTo)}`)
+    redirect(
+      `/client/login?error=${encodeURIComponent('Correo o contraseña incorrectos')}&redirect=${encodeURIComponent(redirectTo)}`,
+    )
   }
 
   redirect(redirectTo)

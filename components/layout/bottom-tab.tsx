@@ -1,10 +1,11 @@
 'use client'
 
+import { LayoutDashboard, CalendarDays, ShoppingCart, Users, Package, Settings } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, CalendarDays, ShoppingCart, Users, Package, Settings } from 'lucide-react'
-import { cn } from '@/lib/utils'
+
 import { canAccessRoute, type CanonicalRole } from '@/lib/auth/roles'
+import { cn } from '@/lib/utils'
 
 const ITEMS = [
   { href: '/dashboard', label: 'Inicio', icon: LayoutDashboard },
@@ -33,7 +34,7 @@ export function BottomTab({ role }: { role?: CanonicalRole | null }) {
               href={href}
               className={cn(
                 'flex flex-col items-center gap-0.5 rounded-lg px-3 py-1.5 text-[10px] font-medium transition-colors',
-                active ? 'text-green-700 bg-green-50' : 'text-gray-500 hover:text-gray-700'
+                active ? 'text-green-700 bg-green-50' : 'text-gray-500 hover:text-gray-700',
               )}
             >
               <Icon className={cn('h-5 w-5', active ? 'text-green-600' : 'text-gray-400')} />
@@ -46,10 +47,17 @@ export function BottomTab({ role }: { role?: CanonicalRole | null }) {
             href="/settings"
             className={cn(
               'flex flex-col items-center gap-0.5 rounded-lg px-3 py-1.5 text-[10px] font-medium transition-colors',
-              pathname.startsWith('/settings') ? 'text-green-700 bg-green-50' : 'text-gray-500 hover:text-gray-700'
+              pathname.startsWith('/settings')
+                ? 'text-green-700 bg-green-50'
+                : 'text-gray-500 hover:text-gray-700',
             )}
           >
-            <Settings className={cn('h-5 w-5', pathname.startsWith('/settings') ? 'text-green-600' : 'text-gray-400')} />
+            <Settings
+              className={cn(
+                'h-5 w-5',
+                pathname.startsWith('/settings') ? 'text-green-600' : 'text-gray-400',
+              )}
+            />
             Ajustes
           </Link>
         )}

@@ -1,25 +1,46 @@
 import { describe, it, expect } from 'vitest'
+
 import { isEligible } from '@/lib/memberships'
 
 describe('memberships.isEligible', () => {
   it('active with remaining and future expiry is eligible', () => {
-    const cm = { remaining: 2, expires_at: new Date(Date.now() + 86400000).toISOString(), status: 'active' }
+    const cm = {
+      remaining: 2,
+      expires_at: new Date(Date.now() + 86400000).toISOString(),
+      status: 'active',
+    }
     expect(isEligible(cm)).toBe(true)
   })
   it('remaining 0 not eligible', () => {
-    const cm = { remaining: 0, expires_at: new Date(Date.now() + 86400000).toISOString(), status: 'active' }
+    const cm = {
+      remaining: 0,
+      expires_at: new Date(Date.now() + 86400000).toISOString(),
+      status: 'active',
+    }
     expect(isEligible(cm)).toBe(false)
   })
   it('expired not eligible', () => {
-    const cm = { remaining: 1, expires_at: new Date(Date.now() - 1000).toISOString(), status: 'active' }
+    const cm = {
+      remaining: 1,
+      expires_at: new Date(Date.now() - 1000).toISOString(),
+      status: 'active',
+    }
     expect(isEligible(cm)).toBe(false)
   })
   it('cancelled not eligible', () => {
-    const cm = { remaining: 5, expires_at: new Date(Date.now() + 86400000).toISOString(), status: 'cancelled' }
+    const cm = {
+      remaining: 5,
+      expires_at: new Date(Date.now() + 86400000).toISOString(),
+      status: 'cancelled',
+    }
     expect(isEligible(cm)).toBe(false)
   })
   it('expired status not eligible', () => {
-    const cm = { remaining: 5, expires_at: new Date(Date.now() + 86400000).toISOString(), status: 'expired' }
+    const cm = {
+      remaining: 5,
+      expires_at: new Date(Date.now() + 86400000).toISOString(),
+      status: 'expired',
+    }
     expect(isEligible(cm)).toBe(false)
   })
   it('custom now param works', () => {

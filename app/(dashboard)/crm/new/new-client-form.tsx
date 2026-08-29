@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import { DatePicker } from '@/components/ui/date-picker'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
+import { useState } from 'react'
+
+import { DatePicker } from '@/components/ui/date-picker'
+import { createClient } from '@/lib/supabase/client'
 
 interface Props {
   businessId: string
@@ -14,14 +15,16 @@ function validatePhone(phone: string): string | null {
   if (!phone) return null
   if (!/^[\d\s+\-()]+$/.test(phone)) return 'Please enter a valid phone number (digits only)'
   const digits = phone.replace(/\D/g, '')
-  if (digits.length < 7 || digits.length > 15) return 'Please enter a valid phone number (digits only)'
+  if (digits.length < 7 || digits.length > 15)
+    return 'Please enter a valid phone number (digits only)'
   return null
 }
 
 function validateBirthday(birthday: string): string | null {
   if (!birthday) return null
   const d = new Date(birthday + 'T00:00:00')
-  if (isNaN(d.getTime()) || d.getFullYear() < 1900 || d > new Date()) return 'Please enter a valid date'
+  if (isNaN(d.getTime()) || d.getFullYear() < 1900 || d > new Date())
+    return 'Please enter a valid date'
   return null
 }
 
@@ -63,18 +66,27 @@ export function NewClientForm({ businessId }: Props) {
     }
 
     setSaving(true)
-    const tags = form.tags ? form.tags.split(',').map((t) => t.trim()).filter(Boolean) : []
+    const tags = form.tags
+      ? form.tags
+          .split(',')
+          .map((t) => t.trim())
+          .filter(Boolean)
+      : []
 
-    const { data: client } = await supabase.from('clients').insert({
-      business_id: businessId,
-      name: form.name.trim(),
-      phone: form.phone || null,
-      email: form.email || null,
-      whatsapp_number: form.whatsapp_number || null,
-      birthday: form.birthday || null,
-      notes: form.notes || null,
-      tags,
-    }).select('id').single()
+    const { data: client } = await supabase
+      .from('clients')
+      .insert({
+        business_id: businessId,
+        name: form.name.trim(),
+        phone: form.phone || null,
+        email: form.email || null,
+        whatsapp_number: form.whatsapp_number || null,
+        birthday: form.birthday || null,
+        notes: form.notes || null,
+        tags,
+      })
+      .select('id')
+      .single()
 
     setSaving(false)
     // Hard navigate to bypass Next.js router cache so /crm list always shows fresh data
@@ -120,7 +132,9 @@ export function NewClientForm({ businessId }: Props) {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">{t('fields.whatsapp')}</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          {t('fields.whatsapp')}
+        </label>
         <input
           type="tel"
           value={form.whatsapp_number}
@@ -131,7 +145,9 @@ export function NewClientForm({ businessId }: Props) {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">{t('fields.birthday')}</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          {t('fields.birthday')}
+        </label>
         <div
           onBlur={(e) => {
             if (!e.currentTarget.contains(e.relatedTarget as Node)) blurBirthday()

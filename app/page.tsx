@@ -1,7 +1,8 @@
 import type { Metadata } from 'next'
+import { Bricolage_Grotesque, DM_Sans } from 'next/font/google'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { Bricolage_Grotesque, DM_Sans } from 'next/font/google'
+
 import styles from './landing.module.css'
 
 const bricolage = Bricolage_Grotesque({
@@ -218,7 +219,9 @@ export default function RootPage() {
               </div>
               <div className={styles.featCard}>
                 <h4>Online booking</h4>
-                <p>Public page — clients book with just a name &amp; phone. No registration required.</p>
+                <p>
+                  Public page — clients book with just a name &amp; phone. No registration required.
+                </p>
               </div>
               <div className={styles.featCard}>
                 <h4>PWA</h4>
@@ -235,46 +238,46 @@ export default function RootPage() {
             <p>Replacing Excel, manual reminders, and expensive platforms that own your clients.</p>
           </div>
           <div className={styles.cardsWrap}>
-          <div className={styles.painGrid}>
-            <div className={styles.painCard}>
-              <div className={styles.painFromLabel}>From</div>
-              <div className={styles.painFromText}>Excel spreadsheets</div>
-              <div className={styles.painArrow}>↓</div>
-              <div className={styles.painTo}>CRM + POS in one interface</div>
-            </div>
-            <div className={styles.painCard}>
-              <div className={styles.painFromLabel}>From</div>
-              <div className={styles.painFromText}>Manual reminders</div>
-              <div className={styles.painArrow}>↓</div>
-              <div className={styles.painTo}>
-                Auto-notifications via Telegram, WhatsApp, Viber, Email
+            <div className={styles.painGrid}>
+              <div className={styles.painCard}>
+                <div className={styles.painFromLabel}>From</div>
+                <div className={styles.painFromText}>Excel spreadsheets</div>
+                <div className={styles.painArrow}>↓</div>
+                <div className={styles.painTo}>CRM + POS in one interface</div>
+              </div>
+              <div className={styles.painCard}>
+                <div className={styles.painFromLabel}>From</div>
+                <div className={styles.painFromText}>Manual reminders</div>
+                <div className={styles.painArrow}>↓</div>
+                <div className={styles.painTo}>
+                  Auto-notifications via Telegram, WhatsApp, Viber, Email
+                </div>
+              </div>
+              <div className={styles.painCard}>
+                <div className={styles.painFromLabel}>From</div>
+                <div className={styles.painFromText}>Platform takes 20%</div>
+                <div className={styles.painArrow}>↓</div>
+                <div className={styles.painTo}>Clients book directly — 0% commission</div>
+              </div>
+              <div className={styles.painCard}>
+                <div className={styles.painFromLabel}>From</div>
+                <div className={styles.painFromText}>ERPNext too complex</div>
+                <div className={styles.painArrow}>↓</div>
+                <div className={styles.painTo}>UI anyone can learn in 10 minutes</div>
+              </div>
+              <div className={styles.painCard}>
+                <div className={styles.painFromLabel}>From</div>
+                <div className={styles.painFromText}>No analytics</div>
+                <div className={styles.painArrow}>↓</div>
+                <div className={styles.painTo}>Revenue dashboard, LTV, top services</div>
+              </div>
+              <div className={styles.painCard}>
+                <div className={styles.painFromLabel}>From</div>
+                <div className={styles.painFromText}>Client data locked in platform</div>
+                <div className={styles.painArrow}>↓</div>
+                <div className={styles.painTo}>Self-hosted: data stays on your server</div>
               </div>
             </div>
-            <div className={styles.painCard}>
-              <div className={styles.painFromLabel}>From</div>
-              <div className={styles.painFromText}>Platform takes 20%</div>
-              <div className={styles.painArrow}>↓</div>
-              <div className={styles.painTo}>Clients book directly — 0% commission</div>
-            </div>
-            <div className={styles.painCard}>
-              <div className={styles.painFromLabel}>From</div>
-              <div className={styles.painFromText}>ERPNext too complex</div>
-              <div className={styles.painArrow}>↓</div>
-              <div className={styles.painTo}>UI anyone can learn in 10 minutes</div>
-            </div>
-            <div className={styles.painCard}>
-              <div className={styles.painFromLabel}>From</div>
-              <div className={styles.painFromText}>No analytics</div>
-              <div className={styles.painArrow}>↓</div>
-              <div className={styles.painTo}>Revenue dashboard, LTV, top services</div>
-            </div>
-            <div className={styles.painCard}>
-              <div className={styles.painFromLabel}>From</div>
-              <div className={styles.painFromText}>Client data locked in platform</div>
-              <div className={styles.painArrow}>↓</div>
-              <div className={styles.painTo}>Self-hosted: data stays on your server</div>
-            </div>
-          </div>
           </div>
         </section>
 
@@ -594,11 +597,7 @@ export default function RootPage() {
           <Link href="/terms">Terms</Link>
           <Link href="/privacy">Privacy</Link>
           <Link href="/refund">Refund policy</Link>
-          <a
-            href="https://github.com/SGrappelli/pronto"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
+          <a href="https://github.com/SGrappelli/pronto" target="_blank" rel="noopener noreferrer">
             GitHub
           </a>
         </div>

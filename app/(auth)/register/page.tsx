@@ -1,18 +1,16 @@
-import { register } from './actions'
 import Link from 'next/link'
 import { getTranslations } from 'next-intl/server'
+
 import { PasswordInput } from '@/components/ui/password-input'
 
-export default async function RegisterPage(
-  props: {
-    searchParams: Promise<{ error?: string }>
-  }
-) {
+import { register } from './actions'
+
+export default async function RegisterPage(props: { searchParams: Promise<{ error?: string }> }) {
   if (process.env.ALLOW_PUBLIC_REGISTER === 'false') {
     const { redirect } = await import('next/navigation')
     redirect('/apply')
   }
-  const searchParams = await props.searchParams;
+  const searchParams = await props.searchParams
   const t = await getTranslations('auth.register')
 
   return (
@@ -32,7 +30,10 @@ export default async function RegisterPage(
             {t('businessNameLabel')}
           </label>
           <input
-            id="business_name" name="business_name" type="text" required
+            id="business_name"
+            name="business_name"
+            type="text"
+            required
             className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             placeholder={t('businessNamePlaceholder')}
           />
@@ -42,7 +43,11 @@ export default async function RegisterPage(
             {t('emailLabel')}
           </label>
           <input
-            id="email" name="email" type="email" required autoComplete="email"
+            id="email"
+            name="email"
+            type="email"
+            required
+            autoComplete="email"
             className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             placeholder={t('emailPlaceholder')}
           />
@@ -66,7 +71,9 @@ export default async function RegisterPage(
 
       <p className="text-sm text-gray-500 text-center mt-4">
         {t('alreadyHaveAccount')}{' '}
-        <Link href="/login" className="text-blue-600 hover:underline">{t('signIn')}</Link>
+        <Link href="/login" className="text-blue-600 hover:underline">
+          {t('signIn')}
+        </Link>
       </p>
     </div>
   )

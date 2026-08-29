@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { useTranslations } from 'next-intl'
 import { ShoppingBag, Download } from 'lucide-react'
+import { useTranslations } from 'next-intl'
+import { useState, useEffect, useCallback } from 'react'
+
 import { DatePicker } from '@/components/ui/date-picker'
 
 type Period = 'today' | '7d' | '30d'
@@ -44,8 +45,16 @@ function fmtDate(iso: string) {
   // Hydration-safe: explicit America/Bogota timezone ensures server (UTC) and client (America/Bogota)
   // render the same string. Without timeZone, toLocaleDateString uses the runtime's local zone,
   // causing UTC vs America/Bogota mismatch (React #418).
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/Bogota' }) +
-    ', ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Bogota' })
+  return (
+    d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/Bogota' }) +
+    ', ' +
+    d.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      timeZone: 'America/Bogota',
+    })
+  )
 }
 
 export function SalesTab() {
@@ -126,7 +135,10 @@ export function SalesTab() {
           {PERIODS.map((p) => (
             <button
               key={p}
-              onClick={() => { clearCustomRange(); setPeriod(p) }}
+              onClick={() => {
+                clearCustomRange()
+                setPeriod(p)
+              }}
               className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                 period === p && !activeRange
                   ? 'bg-white text-gray-900 shadow-sm'
@@ -186,7 +198,10 @@ export function SalesTab() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {loading ? (
           Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="bg-white rounded-xl border border-gray-100 p-4 h-20 animate-pulse" />
+            <div
+              key={i}
+              className="bg-white rounded-xl border border-gray-100 p-4 h-20 animate-pulse"
+            />
           ))
         ) : (
           <>
@@ -194,7 +209,9 @@ export function SalesTab() {
               <div className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-1">
                 {t('sales.revenue')}
               </div>
-              <div className="text-2xl font-bold text-gray-900">{fmt(data?.revenue ?? 0, currency)}</div>
+              <div className="text-2xl font-bold text-gray-900">
+                {fmt(data?.revenue ?? 0, currency)}
+              </div>
             </div>
             <div className="bg-white rounded-xl border border-gray-100 p-4">
               <div className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-1">
@@ -244,7 +261,9 @@ export function SalesTab() {
                   <tr key={i} className="border-b border-gray-50 last:border-0">
                     <td className="py-2 text-gray-900">{item.name}</td>
                     <td className="py-2 text-right text-gray-600">{item.qty}</td>
-                    <td className="py-2 text-right font-medium text-gray-900">{fmt(item.revenue, currency)}</td>
+                    <td className="py-2 text-right font-medium text-gray-900">
+                      {fmt(item.revenue, currency)}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -269,7 +288,9 @@ export function SalesTab() {
                 <thead>
                   <tr className="text-left text-xs text-gray-400 border-b border-gray-50">
                     <th className="pb-2 font-medium">{t('sales.colDate')}</th>
-                    <th className="pb-2 font-medium hidden sm:table-cell">{t('sales.colReceipt')}</th>
+                    <th className="pb-2 font-medium hidden sm:table-cell">
+                      {t('sales.colReceipt')}
+                    </th>
                     <th className="pb-2 font-medium">{t('sales.colItems')}</th>
                     <th className="pb-2 font-medium text-right">{t('sales.colTotal')}</th>
                   </tr>
@@ -277,10 +298,18 @@ export function SalesTab() {
                 <tbody>
                   {data!.recentSales.map((sale, i) => (
                     <tr key={i} className="border-b border-gray-50 last:border-0">
-                      <td className="py-2 text-gray-500 whitespace-nowrap pr-3">{fmtDate(sale.date)}</td>
-                      <td className="py-2 text-gray-400 text-xs hidden sm:table-cell pr-3">{sale.receipt}</td>
-                      <td className="py-2 text-gray-700 max-w-[180px] truncate">{sale.linesSummary}</td>
-                      <td className="py-2 text-right font-medium text-gray-900 whitespace-nowrap">{fmt(sale.total, currency)}</td>
+                      <td className="py-2 text-gray-500 whitespace-nowrap pr-3">
+                        {fmtDate(sale.date)}
+                      </td>
+                      <td className="py-2 text-gray-400 text-xs hidden sm:table-cell pr-3">
+                        {sale.receipt}
+                      </td>
+                      <td className="py-2 text-gray-700 max-w-[180px] truncate">
+                        {sale.linesSummary}
+                      </td>
+                      <td className="py-2 text-right font-medium text-gray-900 whitespace-nowrap">
+                        {fmt(sale.total, currency)}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

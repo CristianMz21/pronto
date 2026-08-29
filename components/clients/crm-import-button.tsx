@@ -1,10 +1,12 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
-import { ImportCsvModal } from './import-csv-modal'
 import { Upload } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { useState } from 'react'
+
+import { Button } from '@/components/ui/button'
+
+import { ImportCsvModal } from './import-csv-modal'
 
 export function CrmImportButton() {
   const [open, setOpen] = useState(false)
@@ -20,11 +22,7 @@ export function CrmImportButton() {
         <Upload className="w-4 h-4 mr-1" />
         Import CSV
       </Button>
-      <ImportCsvModal
-        open={open}
-        onClose={() => setOpen(false)}
-        onImported={handleImported}
-      />
+      <ImportCsvModal open={open} onClose={() => setOpen(false)} onImported={handleImported} />
     </>
   )
 }

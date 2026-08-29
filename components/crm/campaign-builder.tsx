@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Button } from '@/components/ui/button'
 import { Loader2, Send, Eye } from 'lucide-react'
+import { useState, useEffect } from 'react'
+
+import { Button } from '@/components/ui/button'
 
 type Segment = 'inactive_30' | 'inactive_42' | 'inactive_60' | 'birthday_7' | 'vip' | 'new' | 'all'
 type Channel = 'whatsapp' | 'email' | 'telegram'
@@ -32,7 +33,9 @@ export function CampaignBuilder({ initialLocationId, onCreated }: Props) {
   const [name, setName] = useState('')
   const [segment, setSegment] = useState<Segment>('inactive_42')
   const [channel, setChannel] = useState<Channel>('whatsapp')
-  const [template, setTemplate] = useState('Hola {{name}} 👋 te extrañamos en {{business}}. ¡Tenemos 20% esta semana! Reserva aquí: {{business}}')
+  const [template, setTemplate] = useState(
+    'Hola {{name}} 👋 te extrañamos en {{business}}. ¡Tenemos 20% esta semana! Reserva aquí: {{business}}',
+  )
   const [locationId, setLocationId] = useState<string | null>(initialLocationId ?? null)
   const [count, setCount] = useState<number | null>(null)
   const [loadingCount, setLoadingCount] = useState(false)
@@ -40,7 +43,11 @@ export function CampaignBuilder({ initialLocationId, onCreated }: Props) {
   const [sending, setSending] = useState(false)
   const [createdId, setCreatedId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [previewSent, setPreviewSent] = useState<{ sent: number; failed: number; stub: boolean } | null>(null)
+  const [previewSent, setPreviewSent] = useState<{
+    sent: number
+    failed: number
+    stub: boolean
+  } | null>(null)
 
   const previewUrl = `/api/crm/segments?segment=${segment}${locationId ? `&location_id=${locationId}` : ''}`
 
@@ -71,7 +78,9 @@ export function CampaignBuilder({ initialLocationId, onCreated }: Props) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: name || `Campaña ${SEGMENT_LABELS[segment]} — ${new Date().toLocaleDateString('es-CO')}`,
+          name:
+            name ||
+            `Campaña ${SEGMENT_LABELS[segment]} — ${new Date().toLocaleDateString('es-CO')}`,
           segment,
           channel,
           template,
@@ -111,7 +120,9 @@ export function CampaignBuilder({ initialLocationId, onCreated }: Props) {
     }
   }
 
-  const interpolated = template.replaceAll('{{name}}', 'Carlos').replaceAll('{{business}}', 'Escudería')
+  const interpolated = template
+    .replaceAll('{{name}}', 'Carlos')
+    .replaceAll('{{business}}', 'Escudería')
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
@@ -136,19 +147,40 @@ export function CampaignBuilder({ initialLocationId, onCreated }: Props) {
             className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
           >
             {Object.entries(SEGMENT_LABELS).map(([k, v]) => (
-              <option key={k} value={k}>{v}</option>
+              <option key={k} value={k}>
+                {v}
+              </option>
             ))}
           </select>
           <div className="text-xs text-gray-400 mt-1 flex items-center gap-2">
-            {loadingCount ? <><Loader2 className="w-3 h-3 animate-spin" /> calculando…</> : <span>{count !== null ? `${count} destinatarios` : '—'}</span>}
-            <a href={previewUrl} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">ver preview</a>
+            {loadingCount ? (
+              <>
+                <Loader2 className="w-3 h-3 animate-spin" /> calculando…
+              </>
+            ) : (
+              <span>{count !== null ? `${count} destinatarios` : '—'}</span>
+            )}
+            <a
+              href={previewUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="text-blue-600 hover:underline"
+            >
+              ver preview
+            </a>
           </div>
         </div>
         <div>
           <label className="text-xs font-medium text-gray-500">Canal</label>
-          <select value={channel} onChange={(e) => setChannel(e.target.value as Channel)} className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white">
+          <select
+            value={channel}
+            onChange={(e) => setChannel(e.target.value as Channel)}
+            className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
+          >
             {Object.entries(CHANNEL_LABELS).map(([k, v]) => (
-              <option key={k} value={k}>{v}</option>
+              <option key={k} value={k}>
+                {v}
+              </option>
             ))}
           </select>
         </div>
@@ -164,7 +196,9 @@ export function CampaignBuilder({ initialLocationId, onCreated }: Props) {
       </div>
 
       <div>
-        <label className="text-xs font-medium text-gray-500">Plantilla (usa {'{{name}}'} y {'{{business}}'})</label>
+        <label className="text-xs font-medium text-gray-500">
+          Plantilla (usa {'{{name}}'} y {'{{business}}'})
+        </label>
         <textarea
           value={template}
           onChange={(e) => setTemplate(e.target.value)}
@@ -178,7 +212,11 @@ export function CampaignBuilder({ initialLocationId, onCreated }: Props) {
         </div>
       </div>
 
-      {error && <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</div>}
+      {error && (
+        <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+          {error}
+        </div>
+      )}
 
       {!createdId ? (
         <Button onClick={create} disabled={saving || !template.trim()} className="w-full">
@@ -187,15 +225,31 @@ export function CampaignBuilder({ initialLocationId, onCreated }: Props) {
         </Button>
       ) : (
         <div className="space-y-3">
-          <div className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">Campaña creada: {createdId}</div>
+          <div className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+            Campaña creada: {createdId}
+          </div>
           <Button onClick={send} disabled={sending} variant="default" className="w-full">
-            {sending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
+            {sending ? (
+              <Loader2 className="w-4 h-4 animate-spin mr-2" />
+            ) : (
+              <Send className="w-4 h-4 mr-2" />
+            )}
             Enviar ahora
           </Button>
           {previewSent && (
             <div className="text-sm bg-gray-50 border rounded-lg px-3 py-2">
-              <div>Enviados: {previewSent.sent}, fallidos: {previewSent.failed}{previewSent.stub ? ' (stub — sin credenciales Meta)' : ''}</div>
-              <a href={`/api/campaigns/${createdId}/stats`} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline text-xs">Ver stats JSON</a>
+              <div>
+                Enviados: {previewSent.sent}, fallidos: {previewSent.failed}
+                {previewSent.stub ? ' (stub — sin credenciales Meta)' : ''}
+              </div>
+              <a
+                href={`/api/campaigns/${createdId}/stats`}
+                target="_blank"
+                rel="noreferrer"
+                className="text-blue-600 hover:underline text-xs"
+              >
+                Ver stats JSON
+              </a>
             </div>
           )}
         </div>

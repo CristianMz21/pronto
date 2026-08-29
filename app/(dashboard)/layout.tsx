@@ -1,16 +1,13 @@
-import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
-import { Sidebar } from '@/components/layout/sidebar'
-import { BottomTab } from '@/components/layout/bottom-tab'
-import { getAuthUser } from '@/lib/auth-user'
-import { canAccessRoute, getUserRole, type CanonicalRole } from '@/lib/auth/roles'
+import { redirect } from 'next/navigation'
 
-export default async function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+import { BottomTab } from '@/components/layout/bottom-tab'
+import { Sidebar } from '@/components/layout/sidebar'
+import { canAccessRoute, getUserRole, type CanonicalRole } from '@/lib/auth/roles'
+import { getAuthUser } from '@/lib/auth-user'
+import { createClient } from '@/lib/supabase/server'
+
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
   const user = await getAuthUser()
 
@@ -40,7 +37,12 @@ export default async function DashboardLayout({
       .limit(1)
       .maybeSingle()
     if (empBiz?.businesses) {
-      const b = empBiz.businesses as unknown as { id: string; name: string; slug: string; plan: string }
+      const b = empBiz.businesses as unknown as {
+        id: string
+        name: string
+        slug: string
+        plan: string
+      }
       business = b
     }
   }
@@ -52,7 +54,11 @@ export default async function DashboardLayout({
   const headerRole = headersListForRole.get('x-user-role') as CanonicalRole | null
   let role: CanonicalRole | null = null
   try {
-    role = await getUserRole(supabase as unknown as { from: (t: string) => unknown }, user.id, business.id)
+    role = await getUserRole(
+      supabase as unknown as { from: (t: string) => unknown },
+      user.id,
+      business.id,
+    )
   } catch {
     role = null
   }

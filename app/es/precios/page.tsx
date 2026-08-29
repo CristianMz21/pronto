@@ -1,8 +1,9 @@
+import { Check, Minus } from 'lucide-react'
 import { Metadata } from 'next'
+import { Bricolage_Grotesque, DM_Sans } from 'next/font/google'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { Bricolage_Grotesque, DM_Sans } from 'next/font/google'
-import { Check, Minus } from 'lucide-react'
+
 import { PricingCards } from './PricingCards'
 import styles from '../../(public)/public-layout.module.css'
 
@@ -142,45 +143,51 @@ const breadcrumbJsonLd = {
 }
 
 const planColumns = [
-  { name: 'Gratis',   highlight: false },
-  { name: 'Starter',  highlight: false },
-  { name: 'Pro',      highlight: true  },
-  { name: 'Agency',   highlight: false },
+  { name: 'Gratis', highlight: false },
+  { name: 'Starter', highlight: false },
+  { name: 'Pro', highlight: true },
+  { name: 'Agency', highlight: false },
 ]
 
 type FeatureValue = boolean | string
 
 const features: { label: string; values: FeatureValue[]; section?: string }[] = [
   // Limits
-  { label: 'Empleados',                           values: ['1', '3', '10', 'Ilimitado'],    section: 'Límites' },
-  { label: 'Clientes',                            values: ['100', '1 000', 'Ilimitado', 'Ilimitado'] },
-  { label: 'Transacciones POS / mes',             values: ['20', 'Ilimitado', 'Ilimitado', 'Ilimitado'] },
-  { label: 'Citas / mes',                         values: ['10', 'Ilimitado', 'Ilimitado', 'Ilimitado'] },
+  { label: 'Empleados', values: ['1', '3', '10', 'Ilimitado'], section: 'Límites' },
+  { label: 'Clientes', values: ['100', '1 000', 'Ilimitado', 'Ilimitado'] },
+  { label: 'Transacciones POS / mes', values: ['20', 'Ilimitado', 'Ilimitado', 'Ilimitado'] },
+  { label: 'Citas / mes', values: ['10', 'Ilimitado', 'Ilimitado', 'Ilimitado'] },
   // Features
-  { label: 'Gestión de inventario',               values: [true, true, true, true],         section: 'Funciones' },
-  { label: 'CRM e historial de clientes',         values: [false, true, true, true] },
-  { label: 'Página de reservas online',           values: [false, true, true, true] },
-  { label: 'Panel de analíticas avanzado',        values: [false, false, true, true] },
-  { label: 'Programa de fidelización',            values: [false, false, true, true] },
-  { label: 'Dominio personalizado',               values: [false, false, true, true] },
-  { label: 'Varias ubicaciones',                  values: [false, false, false, true] },
-  { label: 'Modo white-label',                    values: [false, false, false, true] },
-  { label: 'Acceso a API',                        values: [false, false, false, true] },
+  { label: 'Gestión de inventario', values: [true, true, true, true], section: 'Funciones' },
+  { label: 'CRM e historial de clientes', values: [false, true, true, true] },
+  { label: 'Página de reservas online', values: [false, true, true, true] },
+  { label: 'Panel de analíticas avanzado', values: [false, false, true, true] },
+  { label: 'Programa de fidelización', values: [false, false, true, true] },
+  { label: 'Dominio personalizado', values: [false, false, true, true] },
+  { label: 'Varias ubicaciones', values: [false, false, false, true] },
+  { label: 'Modo white-label', values: [false, false, false, true] },
+  { label: 'Acceso a API', values: [false, false, false, true] },
   // Notifications
-  { label: 'Notificaciones por Email',            values: [true, true, true, true],         section: 'Notificaciones' },
-  { label: 'Notificaciones Telegram y WhatsApp',  values: [false, true, true, true] },
-  { label: 'Notificaciones por Viber',            values: [false, false, true, true] },
+  {
+    label: 'Notificaciones por Email',
+    values: [true, true, true, true],
+    section: 'Notificaciones',
+  },
+  { label: 'Notificaciones Telegram y WhatsApp', values: [false, true, true, true] },
+  { label: 'Notificaciones por Viber', values: [false, false, true, true] },
   // Support
-  { label: 'Soporte por Email',                   values: [true, true, true, true],         section: 'Soporte' },
-  { label: 'Soporte prioritario',                 values: [false, false, true, true] },
-  { label: 'Soporte dedicado y SLA',              values: [false, false, false, true] },
+  { label: 'Soporte por Email', values: [true, true, true, true], section: 'Soporte' },
+  { label: 'Soporte prioritario', values: [false, false, true, true] },
+  { label: 'Soporte dedicado y SLA', values: [false, false, false, true] },
 ]
 
 function FeatureCell({ value }: { value: FeatureValue }) {
   if (typeof value === 'boolean') {
-    return value
-      ? <Check className="w-5 h-5 text-blue-600 mx-auto" />
-      : <Minus className="w-4 h-4 text-gray-300 mx-auto" />
+    return value ? (
+      <Check className="w-5 h-5 text-blue-600 mx-auto" />
+    ) : (
+      <Minus className="w-4 h-4 text-gray-300 mx-auto" />
+    )
   }
   return <span className="text-sm font-medium text-gray-700">{value}</span>
 }
@@ -192,8 +199,14 @@ export default function EsPreciosPage() {
 
   return (
     <div className={`${styles.page} ${bricolage.variable} ${dmSans.variable}`}>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
 
       <nav className={styles.nav}>
         <Link href="/es/" className={styles.navBrand}>
@@ -224,7 +237,10 @@ export default function EsPreciosPage() {
               </p>
               <h1
                 className="text-4xl font-bold text-gray-900 mb-4"
-                style={{ fontFamily: "var(--font-bricolage, 'Bricolage Grotesque'), sans-serif", letterSpacing: '-0.5px' }}
+                style={{
+                  fontFamily: "var(--font-bricolage, 'Bricolage Grotesque'), sans-serif",
+                  letterSpacing: '-0.5px',
+                }}
               >
                 Empieza gratis. Crece cuando quieras.
               </h1>
@@ -243,7 +259,9 @@ export default function EsPreciosPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-200 bg-gray-50">
-                    <th className="text-left px-6 py-4 font-semibold text-gray-700 w-1/3">Función</th>
+                    <th className="text-left px-6 py-4 font-semibold text-gray-700 w-1/3">
+                      Función
+                    </th>
                     {planColumns.map((plan) => (
                       <th
                         key={plan.name}
@@ -260,8 +278,14 @@ export default function EsPreciosPage() {
                   {features.map((feature, i) => (
                     <>
                       {feature.section && (
-                        <tr key={`section-${feature.section}`} className="bg-gray-100 border-t border-gray-200">
-                          <td colSpan={5} className="px-6 py-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                        <tr
+                          key={`section-${feature.section}`}
+                          className="bg-gray-100 border-t border-gray-200"
+                        >
+                          <td
+                            colSpan={5}
+                            className="px-6 py-2 text-xs font-semibold uppercase tracking-wider text-gray-500"
+                          >
                             {feature.section}
                           </td>
                         </tr>
@@ -284,8 +308,7 @@ export default function EsPreciosPage() {
             </div>
 
             <p className="text-center text-sm text-gray-500 mt-10">
-              Todos los precios en USD. Facturación mensual.{' '}
-              ¿Tienes preguntas?{' '}
+              Todos los precios en USD. Facturación mensual. ¿Tienes preguntas?{' '}
               <a href="mailto:hello@trypronto.app" className="text-blue-600 hover:underline">
                 Escríbenos
               </a>
@@ -296,7 +319,10 @@ export default function EsPreciosPage() {
             <div className="mt-20 max-w-3xl mx-auto">
               <h2
                 className="text-2xl font-bold text-gray-900 mb-8 text-center"
-                style={{ fontFamily: "var(--font-bricolage, 'Bricolage Grotesque'), sans-serif", letterSpacing: '-0.5px' }}
+                style={{
+                  fontFamily: "var(--font-bricolage, 'Bricolage Grotesque'), sans-serif",
+                  letterSpacing: '-0.5px',
+                }}
               >
                 Preguntas frecuentes sobre los precios
               </h2>
@@ -338,7 +364,9 @@ export default function EsPreciosPage() {
                   <div key={q} className="py-5">
                     <h3
                       className="text-base font-semibold text-gray-900 mb-2"
-                      style={{ fontFamily: "var(--font-bricolage, 'Bricolage Grotesque'), sans-serif" }}
+                      style={{
+                        fontFamily: "var(--font-bricolage, 'Bricolage Grotesque'), sans-serif",
+                      }}
                     >
                       {q}
                     </h3>
@@ -352,7 +380,10 @@ export default function EsPreciosPage() {
             <div className="mt-20 text-center bg-gray-50 rounded-2xl px-8 py-14 border border-gray-200">
               <h2
                 className="text-2xl font-bold text-gray-900 mb-3"
-                style={{ fontFamily: "var(--font-bricolage, 'Bricolage Grotesque'), sans-serif", letterSpacing: '-0.5px' }}
+                style={{
+                  fontFamily: "var(--font-bricolage, 'Bricolage Grotesque'), sans-serif",
+                  letterSpacing: '-0.5px',
+                }}
               >
                 Empieza a gestionar tu negocio gratis hoy
               </h2>

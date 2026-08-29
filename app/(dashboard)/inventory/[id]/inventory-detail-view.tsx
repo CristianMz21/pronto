@@ -1,16 +1,18 @@
 'use client'
 
-import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
-import { formatCurrency, formatInBusinessTimezone } from '@/lib/utils'
-import { useTranslations } from 'next-intl'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Pencil, Trash2 } from 'lucide-react'
-import { UnitSelect } from '../unit-select'
+import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
+import { useState } from 'react'
+
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { createClient } from '@/lib/supabase/client'
+import { formatCurrency, formatInBusinessTimezone } from '@/lib/utils'
+
 import { CategoryCombobox } from '../category-combobox'
+import { UnitSelect } from '../unit-select'
 
 interface Movement {
   id: string
@@ -41,7 +43,14 @@ interface Props {
   categories: string[]
 }
 
-export function InventoryDetailView({ item: initial, movements: initialMovements, currency, timezone, businessId, categories }: Props) {
+export function InventoryDetailView({
+  item: initial,
+  movements: initialMovements,
+  currency,
+  timezone,
+  businessId,
+  categories,
+}: Props) {
   const supabase = createClient()
   const router = useRouter()
   const t = useTranslations('inventoryDetail')
@@ -60,7 +69,11 @@ export function InventoryDetailView({ item: initial, movements: initialMovements
   const [saving, setSaving] = useState(false)
   const [skuError, setSkuError] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
-  const [movForm, setMovForm] = useState({ type: 'in' as 'in' | 'out' | 'adjustment', quantity: '', note: '' })
+  const [movForm, setMovForm] = useState({
+    type: 'in' as 'in' | 'out' | 'adjustment',
+    quantity: '',
+    note: '',
+  })
   const [movSaving, setMovSaving] = useState(false)
 
   const isLow = item.quantity <= item.low_stock_threshold
@@ -106,20 +119,25 @@ export function InventoryDetailView({ item: initial, movements: initialMovements
     setMovSaving(true)
 
     const qty = Number(movForm.quantity)
-    const { data: mov } = await supabase.from('inventory_movements').insert({
-      business_id: businessId,
-      item_id: item.id,
-      type: movForm.type,
-      quantity: qty,
-      note: movForm.note || null,
-    }).select().single()
+    const { data: mov } = await supabase
+      .from('inventory_movements')
+      .insert({
+        business_id: businessId,
+        item_id: item.id,
+        type: movForm.type,
+        quantity: qty,
+        note: movForm.note || null,
+      })
+      .select()
+      .single()
 
     if (mov) {
-      const newQty = movForm.type === 'adjustment'
-        ? qty
-        : movForm.type === 'in'
-          ? item.quantity + qty
-          : Math.max(0, item.quantity - qty)
+      const newQty =
+        movForm.type === 'adjustment'
+          ? qty
+          : movForm.type === 'in'
+            ? item.quantity + qty
+            : Math.max(0, item.quantity - qty)
 
       // Persist new quantity to DB
       await supabase.from('inventory_items').update({ quantity: newQty }).eq('id', item.id)
@@ -134,7 +152,9 @@ export function InventoryDetailView({ item: initial, movements: initialMovements
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ itemId: item.id }),
-        }).catch(() => {/* non-critical */})
+        }).catch(() => {
+          /* non-critical */
+        })
       }
     }
     setMovSaving(false)
@@ -162,28 +182,42 @@ export function InventoryDetailView({ item: initial, movements: initialMovements
             <CardTitle className="flex items-center justify-between text-base">
               <span className="flex items-center gap-2">
                 {item.name}
-                {isLow
-                  ? <Badge variant="warning">Low stock</Badge>
-                  : <Badge variant="success">OK</Badge>}
+                {isLow ? (
+                  <Badge variant="warning">Low stock</Badge>
+                ) : (
+                  <Badge variant="success">OK</Badge>
+                )}
               </span>
               <div className="flex items-center gap-1">
                 {!editing && (
-                  <button onClick={() => setEditing(true)} className="p-1.5 hover:bg-gray-100 rounded-lg">
+                  <button
+                    onClick={() => setEditing(true)}
+                    className="p-1.5 hover:bg-gray-100 rounded-lg"
+                  >
                     <Pencil className="w-4 h-4 text-gray-500" />
                   </button>
                 )}
                 {confirmDelete ? (
                   <div className="flex items-center gap-1.5">
                     <span className="text-xs text-gray-500">{t('deleteConfirm')}</span>
-                    <button onClick={deleteItem} className="text-xs px-2 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700">
+                    <button
+                      onClick={deleteItem}
+                      className="text-xs px-2 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                    >
                       {t('deleteButton')}
                     </button>
-                    <button onClick={() => setConfirmDelete(false)} className="text-xs px-2 py-1 border border-gray-200 rounded-lg hover:bg-gray-50">
+                    <button
+                      onClick={() => setConfirmDelete(false)}
+                      className="text-xs px-2 py-1 border border-gray-200 rounded-lg hover:bg-gray-50"
+                    >
                       {t('cancelButton')}
                     </button>
                   </div>
                 ) : (
-                  <button onClick={() => setConfirmDelete(true)} className="p-1.5 hover:bg-red-50 rounded-lg">
+                  <button
+                    onClick={() => setConfirmDelete(true)}
+                    className="p-1.5 hover:bg-red-50 rounded-lg"
+                  >
                     <Trash2 className="w-4 h-4 text-red-400" />
                   </button>
                 )}
@@ -195,22 +229,35 @@ export function InventoryDetailView({ item: initial, movements: initialMovements
               <div className="space-y-3">
                 <div>
                   <label className="text-xs font-medium text-gray-500">{t('fields.name')}</label>
-                  <input type="text" value={form.name}
+                  <input
+                    type="text"
+                    value={form.name}
                     onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                    className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
                 </div>
                 <div>
                   <label className="text-xs font-medium text-gray-500">{t('fields.sku')}</label>
-                  <input type="text" value={form.sku}
-                    onChange={(e) => { setForm((f) => ({ ...f, sku: e.target.value })); skuError && setSkuError('') }}
+                  <input
+                    type="text"
+                    value={form.sku}
+                    onChange={(e) => {
+                      setForm((f) => ({ ...f, sku: e.target.value }))
+                      skuError && setSkuError('')
+                    }}
                     className={`w-full mt-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ${
-                      skuError ? 'border-red-400 focus:ring-red-400' : 'border-gray-200 focus:ring-blue-500'
-                    }`} />
+                      skuError
+                        ? 'border-red-400 focus:ring-red-400'
+                        : 'border-gray-200 focus:ring-blue-500'
+                    }`}
+                  />
                   {skuError && <p className="mt-1 text-xs text-red-500">{skuError}</p>}
                 </div>
 
                 <div>
-                  <label className="text-xs font-medium text-gray-500">{t('fields.category')}</label>
+                  <label className="text-xs font-medium text-gray-500">
+                    {t('fields.category')}
+                  </label>
                   <div className="mt-1">
                     <CategoryCombobox
                       value={form.category}
@@ -230,43 +277,72 @@ export function InventoryDetailView({ item: initial, movements: initialMovements
                   </div>
                 </div>
 
-                {([
-                  { key: 'cost_price', label: t('fields.costPrice'), type: 'number' },
-                  { key: 'sell_price', label: t('fields.sellPrice'), type: 'number' },
-                  { key: 'low_stock_threshold', label: t('fields.lowStockThreshold'), type: 'number' },
-                ] as { key: keyof typeof form; label: string; type: string }[]).map(({ key, label, type }) => (
+                {(
+                  [
+                    { key: 'cost_price', label: t('fields.costPrice'), type: 'number' },
+                    { key: 'sell_price', label: t('fields.sellPrice'), type: 'number' },
+                    {
+                      key: 'low_stock_threshold',
+                      label: t('fields.lowStockThreshold'),
+                      type: 'number',
+                    },
+                  ] as { key: keyof typeof form; label: string; type: string }[]
+                ).map(({ key, label, type }) => (
                   <div key={key}>
                     <label className="text-xs font-medium text-gray-500">{label}</label>
-                    <input type={type} value={form[key]}
+                    <input
+                      type={type}
+                      value={form[key]}
                       onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
-                      className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
                   </div>
                 ))}
                 <div className="flex gap-2 pt-1">
-                  <Button variant="outline" size="sm" onClick={() => setEditing(false)}>{t('cancelButton')}</Button>
-                  <Button size="sm" onClick={saveItem} disabled={saving}>{saving ? '…' : t('saveButton')}</Button>
+                  <Button variant="outline" size="sm" onClick={() => setEditing(false)}>
+                    {t('cancelButton')}
+                  </Button>
+                  <Button size="sm" onClick={saveItem} disabled={saving}>
+                    {saving ? '…' : t('saveButton')}
+                  </Button>
                 </div>
               </div>
             ) : (
               <div className="space-y-2 text-sm">
                 <div className="flex items-center justify-between py-3 border-b border-gray-100">
                   <span className="text-gray-400">{t('stock.current')}</span>
-                  <span className={`text-2xl font-bold ${isLow ? 'text-red-600' : 'text-gray-900'}`}>
-                    {item.quantity} <span className="text-sm font-normal text-gray-500">{item.unit}</span>
+                  <span
+                    className={`text-2xl font-bold ${isLow ? 'text-red-600' : 'text-gray-900'}`}
+                  >
+                    {item.quantity}{' '}
+                    <span className="text-sm font-normal text-gray-500">{item.unit}</span>
                   </span>
                 </div>
                 {[
                   { label: t('fields.sku'), value: item.sku },
                   { label: t('fields.category'), value: item.category },
-                  { label: t('fields.costPrice'), value: item.cost_price != null ? formatCurrency(item.cost_price, currency) : null },
-                  { label: t('fields.sellPrice'), value: item.sell_price != null ? formatCurrency(item.sell_price, currency) : null },
-                  { label: t('fields.lowStockThreshold'), value: `${item.low_stock_threshold} ${item.unit}` },
-                ].filter((r) => r.value).map((row) => (
-                  <div key={row.label} className="flex gap-2 justify-between">
-                    <span className="text-gray-400">{row.label}</span>
-                    <span className="text-gray-700 font-medium">{row.value}</span>
-                  </div>
-                ))}
+                  {
+                    label: t('fields.costPrice'),
+                    value:
+                      item.cost_price != null ? formatCurrency(item.cost_price, currency) : null,
+                  },
+                  {
+                    label: t('fields.sellPrice'),
+                    value:
+                      item.sell_price != null ? formatCurrency(item.sell_price, currency) : null,
+                  },
+                  {
+                    label: t('fields.lowStockThreshold'),
+                    value: `${item.low_stock_threshold} ${item.unit}`,
+                  },
+                ]
+                  .filter((r) => r.value)
+                  .map((row) => (
+                    <div key={row.label} className="flex gap-2 justify-between">
+                      <span className="text-gray-400">{row.label}</span>
+                      <span className="text-gray-700 font-medium">{row.value}</span>
+                    </div>
+                  ))}
               </div>
             )}
           </CardContent>
@@ -283,30 +359,50 @@ export function InventoryDetailView({ item: initial, movements: initialMovements
                 <label className="text-xs font-medium text-gray-500">{t('stock.type')}</label>
                 <div className="grid grid-cols-3 gap-2 mt-1">
                   {(['in', 'out', 'adjustment'] as const).map((tp) => (
-                    <button key={tp} onClick={() => setMovForm((f) => ({ ...f, type: tp }))}
+                    <button
+                      key={tp}
+                      onClick={() => setMovForm((f) => ({ ...f, type: tp }))}
                       className={`py-2 rounded-lg text-xs font-medium border transition-colors ${
-                        movForm.type === tp ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-200 text-gray-600 hover:bg-gray-50'
-                      }`}>
-                      {tp === 'in' ? t('stock.typeIn') : tp === 'out' ? t('stock.typeOut') : t('stock.typeAdjustment')}
+                        movForm.type === tp
+                          ? 'bg-blue-600 text-white border-blue-600'
+                          : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      {tp === 'in'
+                        ? t('stock.typeIn')
+                        : tp === 'out'
+                          ? t('stock.typeOut')
+                          : t('stock.typeAdjustment')}
                     </button>
                   ))}
                 </div>
               </div>
               <div>
                 <label className="text-xs font-medium text-gray-500">{t('stock.quantity')}</label>
-                <input type="number" min={0} value={movForm.quantity}
+                <input
+                  type="number"
+                  min={0}
+                  value={movForm.quantity}
                   onChange={(e) => setMovForm((f) => ({ ...f, quantity: e.target.value }))}
                   className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="0" />
+                  placeholder="0"
+                />
               </div>
               <div>
                 <label className="text-xs font-medium text-gray-500">{t('stock.note')}</label>
-                <input type="text" value={movForm.note}
+                <input
+                  type="text"
+                  value={movForm.note}
                   onChange={(e) => setMovForm((f) => ({ ...f, note: e.target.value }))}
                   placeholder={t('stock.notePlaceholder')}
-                  className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
               </div>
-              <Button className="w-full" onClick={addMovement} disabled={movSaving || !movForm.quantity}>
+              <Button
+                className="w-full"
+                onClick={addMovement}
+                disabled={movSaving || !movForm.quantity}
+              >
                 {movSaving ? t('stock.saving') : t('stock.save')}
               </Button>
             </div>
@@ -329,7 +425,9 @@ export function InventoryDetailView({ item: initial, movements: initialMovements
                   <th className="text-left py-2 font-medium">{t('movements.table.date')}</th>
                   <th className="text-left py-2 font-medium">{t('movements.table.type')}</th>
                   <th className="text-right py-2 font-medium">{t('movements.table.quantity')}</th>
-                  <th className="text-left py-2 font-medium hidden sm:table-cell">{t('movements.table.note')}</th>
+                  <th className="text-left py-2 font-medium hidden sm:table-cell">
+                    {t('movements.table.note')}
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -337,7 +435,9 @@ export function InventoryDetailView({ item: initial, movements: initialMovements
                   <tr key={m.id} className="border-b border-gray-100 last:border-0">
                     <td className="py-2 pr-4 text-gray-500">
                       <div>{formatInBusinessTimezone(m.created_at, timezone)}</div>
-                      <div className="text-xs">{formatInBusinessTimezone(m.created_at, timezone, 'time')}</div>
+                      <div className="text-xs">
+                        {formatInBusinessTimezone(m.created_at, timezone, 'time')}
+                      </div>
                     </td>
                     <td className="py-2 pr-4">
                       <span className={`font-medium capitalize ${movTypeColor[m.type]}`}>
@@ -345,9 +445,12 @@ export function InventoryDetailView({ item: initial, movements: initialMovements
                       </span>
                     </td>
                     <td className={`py-2 text-right font-semibold ${movTypeColor[m.type]}`}>
-                      {m.type === 'out' ? '−' : m.type === 'in' ? '+' : '='}{m.quantity} {item.unit}
+                      {m.type === 'out' ? '−' : m.type === 'in' ? '+' : '='}
+                      {m.quantity} {item.unit}
                     </td>
-                    <td className="py-2 pl-4 text-gray-500 hidden sm:table-cell">{m.note ?? '—'}</td>
+                    <td className="py-2 pl-4 text-gray-500 hidden sm:table-cell">
+                      {m.note ?? '—'}
+                    </td>
                   </tr>
                 ))}
               </tbody>

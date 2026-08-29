@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { calculateEarnPoints, calculateRedeemValue, canRedeem, insufficientCheck } from '@/lib/loyalty'
+
+import {
+  calculateEarnPoints,
+  calculateRedeemValue,
+  canRedeem,
+  insufficientCheck,
+} from '@/lib/loyalty'
 
 describe('loyalty', () => {
   it('earn 1pt per 1k COP', () => {

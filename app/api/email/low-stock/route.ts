@@ -1,15 +1,28 @@
-import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { createClient as createServerClient } from '@/lib/supabase/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
+
 import { sendLowStockAlert } from '@/lib/email'
+import { rateLimit, getIp } from '@/lib/rate-limit'
+import { createClient as createServerClient } from '@/lib/supabase/server'
 import { sendTelegramMessage, tplLowStock } from '@/lib/telegram'
 import { sendViberMessage, tplLowStock as viberTplLowStock } from '@/lib/viber'
 import { sendWhatsAppMessage, tplLowStock as waTplLowStock } from '@/lib/whatsapp'
 
 export async function POST(req: NextRequest) {
+  const _ipPOST = getIp(req as unknown as Request)
+  if (!rateLimit(`low-stock-route:post:${_ipPOST}`, { limit: 60, windowMs: 10 * 60 * 1000 }))
+    return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
+  {
+    const _b = z.object({}).passthrough().safeParse({})
+    if (!_b.success) return NextResponse.json({ error: 'validation_failed' }, { status: 422 })
+  }
+
   // Verify the caller is an authenticated user who owns the business for this item.
   const sessionClient = await createServerClient()
-  const { data: { user } } = await sessionClient.auth.getUser()
+  const {
+    data: { user },
+  } = await sessionClient.auth.getUser()
   if (!user) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
@@ -18,7 +31,10 @@ export async function POST(req: NextRequest) {
     const { itemId } = await req.json()
     if (!itemId) return NextResponse.json({ error: 'missing itemId' }, { status: 400 })
 
-    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    )
 
     const { data: item } = await supabase
       .from('inventory_items')
@@ -57,7 +73,9 @@ export async function POST(req: NextRequest) {
     // FIX: include owner_id so we can fall back to auth email when businesses.email is null
     const { data: biz } = await supabase
       .from('businesses')
-      .select('owner_id, name, email, telegram_bot_token, telegram_chat_id, viber_bot_token, viber_chat_id, owner_whatsapp')
+      .select(
+        'owner_id, name, email, telegram_bot_token, telegram_chat_id, viber_bot_token, viber_chat_id, owner_whatsapp',
+      )
       .eq('id', item.business_id)
       .single()
 
@@ -71,7 +89,7 @@ export async function POST(req: NextRequest) {
           quantity: item.quantity,
           unit: item.unit,
           threshold: item.low_stock_threshold,
-        })
+        }),
       )
     }
 
@@ -85,7 +103,7 @@ export async function POST(req: NextRequest) {
           quantity: item.quantity,
           unit: item.unit,
           threshold: item.low_stock_threshold,
-        })
+        }),
       )
     }
 
@@ -98,7 +116,7 @@ export async function POST(req: NextRequest) {
           quantity: item.quantity,
           unit: item.unit,
           threshold: item.low_stock_threshold,
-        })
+        }),
       )
     }
 
@@ -117,12 +135,14 @@ export async function POST(req: NextRequest) {
     await sendLowStockAlert({
       to: recipientEmail,
       businessName: biz!.name,
-      items: [{
-        name: item.name,
-        quantity: item.quantity,
-        unit: item.unit,
-        threshold: item.low_stock_threshold,
-      }],
+      items: [
+        {
+          name: item.name,
+          quantity: item.quantity,
+          unit: item.unit,
+          threshold: item.low_stock_threshold,
+        },
+      ],
     })
 
     // Record AFTER successful send so a failed send remains retryable

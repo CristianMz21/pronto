@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+
 import { canEnqueue, isExpired, isWaiting, WAITLIST_EXPIRE_MIN } from '@/lib/waitlist'
 
 describe('waitlist helpers', () => {

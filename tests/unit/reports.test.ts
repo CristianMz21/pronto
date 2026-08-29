@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+
 import { calcAvgTicket, getTopBarbers, newVsReturning } from '@/lib/reports'
 
 describe('reports helpers', () => {
@@ -22,7 +23,12 @@ describe('reports helpers', () => {
     expect(top[1].count).toBe(2)
   })
   it('newVsReturning counts <3 as new', () => {
-    const stats = [{ id: '1', total_visits: 1 }, { id: '2', total_visits: 5 }, { id: '3', total_visits: 2 }, { id: '4', total_visits: 10 }]
+    const stats = [
+      { id: '1', total_visits: 1 },
+      { id: '2', total_visits: 5 },
+      { id: '3', total_visits: 2 },
+      { id: '4', total_visits: 10 },
+    ]
     const { newCount, returningCount } = newVsReturning(stats)
     expect(newCount).toBe(2)
     expect(returningCount).toBe(2)

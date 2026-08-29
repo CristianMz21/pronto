@@ -1,9 +1,10 @@
-import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { z } from 'zod'
 import DOMPurify from 'isomorphic-dompurify'
-import { rateLimit, getIp } from '@/lib/rate-limit'
+import { NextResponse } from 'next/server'
+import { z } from 'zod'
+
 import { formatLocationSlug } from '@/lib/locations'
+import { rateLimit, getIp } from '@/lib/rate-limit'
+import { createClient } from '@/lib/supabase/server'
 
 function sanitize(s: string): string {
   return DOMPurify.sanitize(s, { ALLOWED_TAGS: [] }).trim()
@@ -19,9 +20,13 @@ const CreateSchema = z.object({
 
 async function resolveBusinessId(
   supabase: Awaited<ReturnType<typeof createClient>>,
-  userId: string
+  userId: string,
 ): Promise<string | null> {
-  const { data: owned } = await supabase.from('businesses').select('id').eq('owner_id', userId).maybeSingle()
+  const { data: owned } = await supabase
+    .from('businesses')
+    .select('id')
+    .eq('owner_id', userId)
+    .maybeSingle()
   if (owned) return (owned as { id: string }).id
   const { data: emp } = await supabase
     .from('employees')
@@ -78,18 +83,25 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json(
       { error: 'validation_failed', details: parsed.error.flatten().fieldErrors },
-      { status: 422 }
+      { status: 422 },
     )
   }
 
   const slug = formatLocationSlug(parsed.data.slug || parsed.data.name)
-  if (!slug) return NextResponse.json({ error: 'validation_failed', details: { slug: ['invalid slug'] } }, { status: 422 })
+  if (!slug)
+    return NextResponse.json(
+      { error: 'validation_failed', details: { slug: ['invalid slug'] } },
+      { status: 422 },
+    )
 
   // Validate slug format: only lowercase alphanum + hyphen
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
     return NextResponse.json(
-      { error: 'validation_failed', details: { slug: ['slug must be lowercase alphanumeric with hyphens'] } },
-      { status: 422 }
+      {
+        error: 'validation_failed',
+        details: { slug: ['slug must be lowercase alphanumeric with hyphens'] },
+      },
+      { status: 422 },
     )
   }
 
@@ -102,14 +114,18 @@ export async function POST(request: Request) {
     is_active: parsed.data.is_active ?? true,
   }
 
-  const { data, error } = await supabase.from('locations').insert(payload as unknown as never).select('id, slug').single()
+  const { data, error } = await supabase
+    .from('locations')
+    .insert(payload as unknown as never)
+    .select('id, slug')
+    .single()
   if (error) {
     const msg = String(error.message ?? '')
     const code = (error as { code?: string }).code ?? ''
     if (code === '23505' || msg.includes('duplicate') || msg.includes('unique')) {
       return NextResponse.json(
         { error: 'slug_taken', message: 'Ya existe una sucursal con ese slug en este negocio' },
-        { status: 409 }
+        { status: 409 },
       )
     }
     return NextResponse.json({ error: msg || 'insert_failed' }, { status: 500 })

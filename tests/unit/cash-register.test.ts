@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NextRequest } from 'next/server'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }))
 
@@ -17,21 +17,49 @@ function makeChain(result: any) {
   c.then = p.then.bind(p)
   c.catch = p.catch.bind(p)
   if ((p as any).finally) c.finally = (p as any).finally.bind(p)
-  const methods = ['select','insert','update','upsert','delete','eq','neq','or','in','single','maybeSingle','order','limit','range','ilike','gte','lte','gt','lt']
-  methods.forEach(m => { c[m] = vi.fn((..._args: any[]) => c) })
+  const methods = [
+    'select',
+    'insert',
+    'update',
+    'upsert',
+    'delete',
+    'eq',
+    'neq',
+    'or',
+    'in',
+    'single',
+    'maybeSingle',
+    'order',
+    'limit',
+    'range',
+    'ilike',
+    'gte',
+    'lte',
+    'gt',
+    'lt',
+  ]
+  methods.forEach((m) => {
+    c[m] = vi.fn((..._args: any[]) => c)
+  })
   return c
 }
 
-function setupPos(opts:{
-  user?: any | null,
-  biz?: any | null,
-  openRegister?: any | null,
-  txInsert?: { data:any, error:any } | null,
-} = {}) {
+function setupPos(
+  opts: {
+    user?: any | null
+    biz?: any | null
+    openRegister?: any | null
+    txInsert?: { data: any; error: any } | null
+  } = {},
+) {
   const user = opts.user !== undefined ? opts.user : { id: USER_ID }
-  const bizData = opts.biz !== undefined ? opts.biz : { id: BIZ_ID, require_cash_register_for_cash: true }
+  const bizData =
+    opts.biz !== undefined ? opts.biz : { id: BIZ_ID, require_cash_register_for_cash: true }
   const openRegister = opts.openRegister !== undefined ? opts.openRegister : { id: REG_ID }
-  const txInsert = opts.txInsert !== undefined ? opts.txInsert : { data: { id: 'tx-1', receipt_number: 'R001' }, error: null }
+  const txInsert =
+    opts.txInsert !== undefined
+      ? opts.txInsert
+      : { data: { id: 'tx-1', receipt_number: 'R001' }, error: null }
 
   const bizChain = makeChain({ data: bizData, error: null })
   const openChain = makeChain({ data: openRegister, error: null })
@@ -61,53 +89,120 @@ function txReq(body: any) {
 }
 
 describe('cash-register — configurable require_cash_register_for_cash (055)', () => {
-  beforeEach(() => { vi.clearAllMocks() })
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
 
   it('cash with require true and no register => 409', async () => {
     setupPos({ biz: { id: BIZ_ID, require_cash_register_for_cash: true }, openRegister: null })
-    const res = await POST(txReq({ business_id: BIZ_ID, amount: 100, payment_method: 'cash', items: [{ service_id: SVC_ID, name: 'Cut', price: 100, qty: 1 }] }))
+    const res = await POST(
+      txReq({
+        business_id: BIZ_ID,
+        amount: 100,
+        payment_method: 'cash',
+        items: [{ service_id: SVC_ID, name: 'Cut', price: 100, qty: 1 }],
+      }),
+    )
     expect(res.status).toBe(409)
     expect((await res.json()).error).toBe('cash_register_closed')
   })
 
   it('cash with require true and open register => 200', async () => {
-    setupPos({ biz: { id: BIZ_ID, require_cash_register_for_cash: true }, openRegister: { id: REG_ID } })
-    const res = await POST(txReq({ business_id: BIZ_ID, amount: 100, payment_method: 'cash', items: [{ service_id: SVC_ID, name: 'Cut', price: 100, qty: 1 }] }))
+    setupPos({
+      biz: { id: BIZ_ID, require_cash_register_for_cash: true },
+      openRegister: { id: REG_ID },
+    })
+    const res = await POST(
+      txReq({
+        business_id: BIZ_ID,
+        amount: 100,
+        payment_method: 'cash',
+        items: [{ service_id: SVC_ID, name: 'Cut', price: 100, qty: 1 }],
+      }),
+    )
     expect(res.status).toBe(200)
     expect((await res.json()).receipt_number).toBe('R001')
   })
 
   it('cash with require false and NO register => 200 (configurable allowed)', async () => {
     setupPos({ biz: { id: BIZ_ID, require_cash_register_for_cash: false }, openRegister: null })
-    const res = await POST(txReq({ business_id: BIZ_ID, amount: 100, payment_method: 'cash', items: [{ service_id: SVC_ID, name: 'Cut', price: 100, qty: 1 }] }))
+    const res = await POST(
+      txReq({
+        business_id: BIZ_ID,
+        amount: 100,
+        payment_method: 'cash',
+        items: [{ service_id: SVC_ID, name: 'Cut', price: 100, qty: 1 }],
+      }),
+    )
     expect(res.status).toBe(200)
   })
 
   it('cash with require false and open register => 200', async () => {
-    setupPos({ biz: { id: BIZ_ID, require_cash_register_for_cash: false }, openRegister: { id: REG_ID } })
-    const res = await POST(txReq({ business_id: BIZ_ID, amount: 50, payment_method: 'cash', items: [{ service_id: SVC_ID, name: 'X', price: 50, qty: 1 }] }))
+    setupPos({
+      biz: { id: BIZ_ID, require_cash_register_for_cash: false },
+      openRegister: { id: REG_ID },
+    })
+    const res = await POST(
+      txReq({
+        business_id: BIZ_ID,
+        amount: 50,
+        payment_method: 'cash',
+        items: [{ service_id: SVC_ID, name: 'X', price: 50, qty: 1 }],
+      }),
+    )
     expect(res.status).toBe(200)
   })
 
   it('cash with require null/undefined defaults to true => 409 when closed', async () => {
-    setupPos({ biz: { id: BIZ_ID, require_cash_register_for_cash: null } as any, openRegister: null })
-    const res = await POST(txReq({ business_id: BIZ_ID, amount: 100, payment_method: 'cash', items: [{ service_id: SVC_ID, name: 'C', price: 100, qty: 1 }] }))
+    setupPos({
+      biz: { id: BIZ_ID, require_cash_register_for_cash: null } as any,
+      openRegister: null,
+    })
+    const res = await POST(
+      txReq({
+        business_id: BIZ_ID,
+        amount: 100,
+        payment_method: 'cash',
+        items: [{ service_id: SVC_ID, name: 'C', price: 100, qty: 1 }],
+      }),
+    )
     expect(res.status).toBe(409)
 
     setupPos({ biz: { id: BIZ_ID } as any, openRegister: null }) // undefined fallback
-    const res2 = await POST(txReq({ business_id: BIZ_ID, amount: 100, payment_method: 'cash', items: [{ service_id: SVC_ID, name: 'C', price: 100, qty: 1 }] }))
+    const res2 = await POST(
+      txReq({
+        business_id: BIZ_ID,
+        amount: 100,
+        payment_method: 'cash',
+        items: [{ service_id: SVC_ID, name: 'C', price: 100, qty: 1 }],
+      }),
+    )
     expect(res2.status).toBe(409)
   })
 
   it('card never requires register even when require true and closed', async () => {
     setupPos({ biz: { id: BIZ_ID, require_cash_register_for_cash: true }, openRegister: null })
-    const res = await POST(txReq({ business_id: BIZ_ID, amount: 100, payment_method: 'card', items: [{ service_id: SVC_ID, name: 'C', price: 100, qty: 1 }] }))
+    const res = await POST(
+      txReq({
+        business_id: BIZ_ID,
+        amount: 100,
+        payment_method: 'card',
+        items: [{ service_id: SVC_ID, name: 'C', price: 100, qty: 1 }],
+      }),
+    )
     expect(res.status).toBe(200)
   })
 
   it('transfer never requires register', async () => {
     setupPos({ biz: { id: BIZ_ID, require_cash_register_for_cash: true }, openRegister: null })
-    const res = await POST(txReq({ business_id: BIZ_ID, amount: 100, payment_method: 'transfer', items: [{ service_id: SVC_ID, name: 'C', price: 100, qty: 1 }] }))
+    const res = await POST(
+      txReq({
+        business_id: BIZ_ID,
+        amount: 100,
+        payment_method: 'transfer',
+        items: [{ service_id: SVC_ID, name: 'C', price: 100, qty: 1 }],
+      }),
+    )
     expect(res.status).toBe(200)
   })
 
@@ -116,7 +211,12 @@ describe('cash-register — configurable require_cash_register_for_cash (055)', 
     // We already test API. For UI, we verify the POSTerminal prop defaults to true (existing behavior) and respects false.
     // Import component prop type via setupPos with require false allowing cash -> ensures API respects config.
     setupPos({ biz: { id: BIZ_ID, require_cash_register_for_cash: false }, openRegister: null })
-    const req = txReq({ business_id: BIZ_ID, amount: 10, payment_method: 'cash', items: [{ service_id: SVC_ID, name: 'C', price: 10, qty: 1 }] })
+    const req = txReq({
+      business_id: BIZ_ID,
+      amount: 10,
+      payment_method: 'cash',
+      items: [{ service_id: SVC_ID, name: 'C', price: 10, qty: 1 }],
+    })
     const res = await POST(req)
     expect(res.status).toBe(200)
     // If UI passed requireCashRegister=false, it would not set checkoutError and not disable button.
@@ -124,20 +224,45 @@ describe('cash-register — configurable require_cash_register_for_cash (055)', 
   })
 
   it('unauthorized still 401 regardless of config', async () => {
-    setupPos({ user: null, biz: { id: BIZ_ID, require_cash_register_for_cash: false }, openRegister: null })
-    const res = await POST(txReq({ business_id: BIZ_ID, amount: 10, payment_method: 'cash', items: [{ service_id: SVC_ID, name: 'C', price: 10, qty: 1 }] }))
+    setupPos({
+      user: null,
+      biz: { id: BIZ_ID, require_cash_register_for_cash: false },
+      openRegister: null,
+    })
+    const res = await POST(
+      txReq({
+        business_id: BIZ_ID,
+        amount: 10,
+        payment_method: 'cash',
+        items: [{ service_id: SVC_ID, name: 'C', price: 10, qty: 1 }],
+      }),
+    )
     expect(res.status).toBe(401)
   })
 
   it('business not in my_business_ids => 403 regardless', async () => {
     setupPos({ biz: null, openRegister: { id: REG_ID } })
-    const res = await POST(txReq({ business_id: BIZ_ID, amount: 10, payment_method: 'cash', items: [{ service_id: SVC_ID, name: 'C', price: 10, qty: 1 }] }))
+    const res = await POST(
+      txReq({
+        business_id: BIZ_ID,
+        amount: 10,
+        payment_method: 'cash',
+        items: [{ service_id: SVC_ID, name: 'C', price: 10, qty: 1 }],
+      }),
+    )
     expect(res.status).toBe(403)
   })
 
   it('amount <=0 still 400 before register check', async () => {
     setupPos({ biz: { id: BIZ_ID, require_cash_register_for_cash: false }, openRegister: null })
-    const res = await POST(txReq({ business_id: BIZ_ID, amount: 0, payment_method: 'cash', items: [{ service_id: SVC_ID, name: 'C', price: 10, qty: 1 }] }))
+    const res = await POST(
+      txReq({
+        business_id: BIZ_ID,
+        amount: 0,
+        payment_method: 'cash',
+        items: [{ service_id: SVC_ID, name: 'C', price: 10, qty: 1 }],
+      }),
+    )
     expect(res.status).toBe(400)
     expect((await res.json()).error).toBe('Amount must be >0')
   })

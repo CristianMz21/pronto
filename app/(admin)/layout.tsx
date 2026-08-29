@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+
 import { isSuperAdmin } from '@/lib/auth/roles'
+import { createClient } from '@/lib/supabase/server'
 
 export const metadata = {
   robots: { index: false, follow: false },
@@ -8,8 +9,15 @@ export const metadata = {
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user || !isSuperAdmin(user as unknown as { email?: string | null; user_metadata?: Record<string, unknown> | null })) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (
+    !user ||
+    !isSuperAdmin(
+      user as unknown as { email?: string | null; user_metadata?: Record<string, unknown> | null },
+    )
+  ) {
     notFound()
   }
   return (

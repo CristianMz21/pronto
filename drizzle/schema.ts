@@ -1,5 +1,5 @@
-import { pgTable, index, foreignKey, pgPolicy, check, uuid, timestamp, text, unique, boolean, integer, jsonb, numeric, uniqueIndex, date, smallint, primaryKey, pgView, pgMaterializedView, pgSequence } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
+import { pgTable, index, foreignKey, pgPolicy, check, uuid, timestamp, text, unique, boolean, integer, jsonb, numeric, uniqueIndex, date, smallint, primaryKey, pgView, pgMaterializedView, pgSequence } from "drizzle-orm/pg-core"
 
 
 export const receiptSeq = pgSequence("receipt_seq", {  startWith: "1000", increment: "1", minValue: "1", maxValue: "9223372036854775807", cache: "1", cycle: false })

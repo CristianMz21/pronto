@@ -1,5 +1,7 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import fs from 'fs'
+
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+
 import { getSupabaseUrl, getDatabaseUrl } from '@/lib/supabase/getUrl'
 
 describe('supabase getUrl strict 100%', () => {
@@ -42,7 +44,9 @@ describe('supabase getUrl strict 100%', () => {
     it('fs.existsSync throws -> ignore', () => {
       process.env.NEXT_PUBLIC_SUPABASE_URL = 'http://127.0.0.1:54321'
       delete process.env.IS_DOCKER
-      vi.spyOn(fs, 'existsSync').mockImplementation(() => { throw new Error('fs err') })
+      vi.spyOn(fs, 'existsSync').mockImplementation(() => {
+        throw new Error('fs err')
+      })
       // Should not throw, returns original url
       expect(getSupabaseUrl()).toBe('http://127.0.0.1:54321')
     })

@@ -1,13 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
 import { z } from 'zod'
+
 import { rateLimit, getIp } from '@/lib/rate-limit'
+import { createClient } from '@/lib/supabase/server'
 import { TipSchema, isValidTipAmount, reportTips } from '@/lib/tips'
 
-async function resolveBusinessId(supabase: Awaited<ReturnType<typeof createClient>>, userId: string): Promise<string | null> {
-  const { data: owned } = await supabase.from('businesses').select('id').eq('owner_id', userId).maybeSingle()
+async function resolveBusinessId(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+): Promise<string | null> {
+  const { data: owned } = await supabase
+    .from('businesses')
+    .select('id')
+    .eq('owner_id', userId)
+    .maybeSingle()
   if (owned) return (owned as { id: string }).id
-  const { data: emp } = await supabase.from('employees').select('business_id').eq('user_id', userId).eq('is_active', true).limit(1).maybeSingle()
+  const { data: emp } = await supabase
+    .from('employees')
+    .select('business_id')
+    .eq('user_id', userId)
+    .eq('is_active', true)
+    .limit(1)
+    .maybeSingle()
   if (emp) return (emp as { business_id: string }).business_id
   return null
 }
@@ -15,7 +29,9 @@ async function resolveBusinessId(supabase: Awaited<ReturnType<typeof createClien
 // GET /api/tips?employee_id=...&from=...&to=...
 export async function GET(req: NextRequest) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 
   const url = new URL(req.url)
@@ -28,7 +44,11 @@ export async function GET(req: NextRequest) {
   if (!businessId) return NextResponse.json({ error: 'not_found' }, { status: 404 })
 
   try {
-    const report = await reportTips(supabase as unknown as Parameters<typeof reportTips>[0], businessId, { from: from ?? undefined, to: to ?? undefined })
+    const report = await reportTips(
+      supabase as unknown as Parameters<typeof reportTips>[0],
+      businessId,
+      { from: from ?? undefined, to: to ?? undefined },
+    )
     if (employeeId) {
       const filtered = report.byEmployee.filter((r) => r.employee_id === employeeId)
       const total = filtered.reduce((s, r) => s + r.total, 0)
@@ -43,10 +63,13 @@ export async function GET(req: NextRequest) {
 // POST /api/tips — create tip
 export async function POST(req: NextRequest) {
   const ip = getIp(req)
-  if (!rateLimit(`tips:${ip}`, { limit: 60, windowMs: 10 * 60 * 1000 })) return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
+  if (!rateLimit(`tips:${ip}`, { limit: 60, windowMs: 10 * 60 * 1000 }))
+    return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
 
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 
   let raw: unknown
@@ -57,20 +80,40 @@ export async function POST(req: NextRequest) {
   }
 
   const parsed = TipSchema.safeParse(raw)
-  if (!parsed.success) return NextResponse.json({ error: 'validation_failed', details: parsed.error.flatten().fieldErrors }, { status: 422 })
+  if (!parsed.success)
+    return NextResponse.json(
+      { error: 'validation_failed', details: parsed.error.flatten().fieldErrors },
+      { status: 422 },
+    )
 
   const businessId = await resolveBusinessId(supabase, user.id)
   if (!businessId) return NextResponse.json({ error: 'not_found' }, { status: 404 })
   if (parsed.data.business_id !== businessId) {
-    const { data: ownedCheck } = await supabase.from('businesses').select('id').eq('id', parsed.data.business_id).eq('owner_id', user.id).maybeSingle()
+    const { data: ownedCheck } = await supabase
+      .from('businesses')
+      .select('id')
+      .eq('id', parsed.data.business_id)
+      .eq('owner_id', user.id)
+      .maybeSingle()
     if (!ownedCheck) {
-      const { data: empCheck } = await supabase.from('employees').select('id').eq('user_id', user.id).eq('business_id', parsed.data.business_id).eq('is_active', true).maybeSingle()
+      const { data: empCheck } = await supabase
+        .from('employees')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('business_id', parsed.data.business_id)
+        .eq('is_active', true)
+        .maybeSingle()
       if (!empCheck) return NextResponse.json({ error: 'forbidden' }, { status: 403 })
     }
   }
 
   // Validate transaction belongs to business and get amount for tip guard
-  const { data: tx } = await supabase.from('transactions').select('id, amount, business_id').eq('id', parsed.data.transaction_id).eq('business_id', parsed.data.business_id).maybeSingle()
+  const { data: tx } = await supabase
+    .from('transactions')
+    .select('id, amount, business_id')
+    .eq('id', parsed.data.transaction_id)
+    .eq('business_id', parsed.data.business_id)
+    .maybeSingle()
   if (!tx) return NextResponse.json({ error: 'transaction_not_found' }, { status: 404 })
 
   // Check isManager for override
@@ -79,7 +122,9 @@ export async function POST(req: NextRequest) {
     return false // simplified; actual check via lib would allow 50% guard to be bypassed if manager_override passed; here we just validate without override
   })()
 
-  const check = isValidTipAmount(parsed.data.amount, Number((tx as { amount: number }).amount), { isManager })
+  const check = isValidTipAmount(parsed.data.amount, Number((tx as { amount: number }).amount), {
+    isManager,
+  })
   if (!check.ok) return NextResponse.json({ error: check.reason }, { status: 422 })
 
   const { createTip } = await import('@/lib/tips')

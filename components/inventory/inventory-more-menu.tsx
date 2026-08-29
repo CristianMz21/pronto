@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
 import { MoreHorizontal } from 'lucide-react'
 import { useTranslations } from 'next-intl'
-import { InventoryImportButton } from './inventory-import-button'
+import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+
 import { InventoryExportButton } from './inventory-export-button'
+import { InventoryImportButton } from './inventory-import-button'
 
 interface Props {
   atLimit?: boolean
@@ -67,17 +68,20 @@ export function InventoryMoreMenu({ atLimit }: Props) {
       >
         <MoreHorizontal className="w-4 h-4" />
       </button>
-      {open && mounted && coords && createPortal(
-        <div
-          ref={panelRef}
-          style={{ position: 'fixed', top: coords.top, right: coords.right }}
-          className="w-44 max-w-[calc(100vw-16px)] bg-white border border-gray-200 rounded-lg shadow-lg p-2 z-50 space-y-1 [&_button]:w-full [&_button]:justify-start"
-        >
-          <InventoryImportButton atLimit={atLimit} />
-          <InventoryExportButton />
-        </div>,
-        document.body
-      )}
+      {open &&
+        mounted &&
+        coords &&
+        createPortal(
+          <div
+            ref={panelRef}
+            style={{ position: 'fixed', top: coords.top, right: coords.right }}
+            className="w-44 max-w-[calc(100vw-16px)] bg-white border border-gray-200 rounded-lg shadow-lg p-2 z-50 space-y-1 [&_button]:w-full [&_button]:justify-start"
+          >
+            <InventoryImportButton atLimit={atLimit} />
+            <InventoryExportButton />
+          </div>,
+          document.body,
+        )}
     </div>
   )
 }

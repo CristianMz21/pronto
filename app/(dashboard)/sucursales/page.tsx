@@ -1,9 +1,10 @@
-import { createClient } from '@/lib/supabase/server'
-import { createServiceClient } from '@/lib/supabase/service'
+import { redirect } from 'next/navigation'
+
 import { Header } from '@/components/layout/header'
 import { SucursalesClient } from '@/components/sucursales/sucursales-client'
 import { getAuthUser } from '@/lib/auth-user'
-import { redirect } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 
 export default async function SucursalesPage() {
   const supabase = await createClient()
@@ -46,7 +47,7 @@ export default async function SucursalesPage() {
   // Uses service client to bypass RLS if needed, idempotent.
   const ESCUDERIA_DEFAULT_ID = '11111111-1111-1111-1111-111111111111'
   const hasCentro = (locations ?? []).some(
-    (l) => l.id === ESCUDERIA_DEFAULT_ID || l.slug === 'centro'
+    (l) => l.id === ESCUDERIA_DEFAULT_ID || l.slug === 'centro',
   )
   if (!hasCentro && business.slug === 'escuderia') {
     try {
@@ -76,16 +77,14 @@ export default async function SucursalesPage() {
         const msg = String(insErr.message ?? '')
         if (!msg.includes('duplicate') && !msg.includes('unique')) {
           // For other errors, try without explicit id (let DB generate)
-          await svc
-            .from('locations')
-            .insert({
-              business_id: business.id,
-              name: 'Escudería Centro',
-              slug: 'centro',
-              address: addr,
-              phone: phone,
-              is_active: true,
-            } as unknown as never)
+          await svc.from('locations').insert({
+            business_id: business.id,
+            name: 'Escudería Centro',
+            slug: 'centro',
+            address: addr,
+            phone: phone,
+            is_active: true,
+          } as unknown as never)
         }
       }
       // Re-fetch after seed
@@ -107,7 +106,15 @@ export default async function SucursalesPage() {
         <SucursalesClient
           locations={
             (locations as unknown as
-              | { id: string; name: string; slug: string; address?: string | null; phone?: string | null; is_active: boolean; created_at?: string }[]
+              | {
+                  id: string
+                  name: string
+                  slug: string
+                  address?: string | null
+                  phone?: string | null
+                  is_active: boolean
+                  created_at?: string
+                }[]
               | null) ?? []
           }
         />

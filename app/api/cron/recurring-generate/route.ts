@@ -1,7 +1,20 @@
-import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 
+import { rateLimit, getIp } from '@/lib/rate-limit'
 export async function GET(req: NextRequest) {
+  const _ipGET = getIp(req as unknown as Request)
+  if (!rateLimit(`recurring-generate-route:get:${_ipGET}`, { limit: 60, windowMs: 10 * 60 * 1000 }))
+    return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
+  {
+    const _parsed = z
+      .object({})
+      .passthrough()
+      .safeParse(Object.fromEntries(new URL(req.url).searchParams))
+    if (!_parsed.success) return NextResponse.json({ error: 'validation_failed' }, { status: 422 })
+  }
+
   const authHeader = req.headers.get('authorization') ?? ''
   const secret = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null
   if (!secret || secret !== process.env.CRON_SECRET) {
@@ -10,7 +23,7 @@ export async function GET(req: NextRequest) {
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
   )
 
   const now = new Date()
@@ -49,7 +62,10 @@ export async function GET(req: NextRequest) {
         .limit(1)
         .maybeSingle()
       if (nextAppt) {
-        await supabase.from('recurring_appointments').update({ next_at: (nextAppt as { starts_at: string }).starts_at }).eq('id', series.id)
+        await supabase
+          .from('recurring_appointments')
+          .update({ next_at: (nextAppt as { starts_at: string }).starts_at })
+          .eq('id', series.id)
       }
     }
   }
@@ -58,5 +74,15 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const _ipPOST = getIp(req as unknown as Request)
+  if (
+    !rateLimit(`recurring-generate-route:post:${_ipPOST}`, { limit: 60, windowMs: 10 * 60 * 1000 })
+  )
+    return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
+  {
+    const _b = z.object({}).passthrough().safeParse({})
+    if (!_b.success) return NextResponse.json({ error: 'validation_failed' }, { status: 422 })
+  }
+
   return GET(req)
 }

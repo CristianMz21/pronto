@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { Button } from '@/components/ui/button'
 import { Bell, Check, X, Clock, RefreshCw } from 'lucide-react'
+import { useEffect, useState } from 'react'
+
+import { Button } from '@/components/ui/button'
 
 interface WaitlistEntry {
   id: string
@@ -27,7 +28,9 @@ interface Props {
 
 export function WaitlistPanel({ businessId, locationId }: Props) {
   const [entries, setEntries] = useState<WaitlistEntry[]>([])
-  const [status, setStatus] = useState<'waiting' | 'notified' | 'converted' | 'expired' | 'all'>('waiting')
+  const [status, setStatus] = useState<'waiting' | 'notified' | 'converted' | 'expired' | 'all'>(
+    'waiting',
+  )
   const [loading, setLoading] = useState(true)
   const [actionId, setActionId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -36,10 +39,17 @@ export function WaitlistPanel({ businessId, locationId }: Props) {
     setLoading(true)
     setError(null)
     try {
-      const params = new URLSearchParams({ business_id: businessId, status: status === 'all' ? 'waiting' : status, limit: '50' })
+      const params = new URLSearchParams({
+        business_id: businessId,
+        status: status === 'all' ? 'waiting' : status,
+        limit: '50',
+      })
       if (locationId) params.set('location_id', locationId)
       // When status=all we actually fetch waiting and notified separately then merge? For simplicity fetch waiting and allow toggle
-      const url = status === 'all' ? `/api/waitlist?business_id=${businessId}&limit=50` : `/api/waitlist?${params.toString()}`
+      const url =
+        status === 'all'
+          ? `/api/waitlist?business_id=${businessId}&limit=50`
+          : `/api/waitlist?${params.toString()}`
       const res = await fetch(url)
       if (!res.ok) throw new Error(await res.text())
       const data = (await res.json()) as WaitlistEntry[]
@@ -62,7 +72,11 @@ export function WaitlistPanel({ businessId, locationId }: Props) {
       const res = await fetch('/api/waitlist', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'notify', business_id: businessId, location_id: locationId ?? null }),
+        body: JSON.stringify({
+          action: 'notify',
+          business_id: businessId,
+          location_id: locationId ?? null,
+        }),
       })
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
@@ -127,7 +141,11 @@ export function WaitlistPanel({ businessId, locationId }: Props) {
 
   function formatDate(iso: string, tz = 'America/Bogota') {
     try {
-      return new Intl.DateTimeFormat('es-CO', { timeZone: tz, dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso))
+      return new Intl.DateTimeFormat('es-CO', {
+        timeZone: tz,
+        dateStyle: 'medium',
+        timeStyle: 'short',
+      }).format(new Date(iso))
     } catch {
       return new Date(iso).toLocaleString()
     }
@@ -139,40 +157,73 @@ export function WaitlistPanel({ businessId, locationId }: Props) {
         <div className="flex items-center gap-2">
           <Clock className="w-4 h-4 text-gray-700" />
           <h3 className="text-sm font-semibold text-gray-900">Lista de espera</h3>
-          <span className="text-xs text-gray-400 hidden sm:inline">waiting → notified (30m) → converted/expired</span>
+          <span className="text-xs text-gray-400 hidden sm:inline">
+            waiting → notified (30m) → converted/expired
+          </span>
         </div>
         <div className="flex items-center gap-1">
-          <select value={status} onChange={(e) => setStatus(e.target.value as typeof status)} className="border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <select
+            value={status}
+            onChange={(e) => setStatus(e.target.value as typeof status)}
+            className="border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
             <option value="waiting">En espera</option>
             <option value="notified">Notificados</option>
             <option value="converted">Convertidos</option>
             <option value="expired">Expirados</option>
             <option value="all">Todos</option>
           </select>
-          <Button variant="outline" size="sm" onClick={load} disabled={loading} className="h-7 px-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={load}
+            disabled={loading}
+            className="h-7 px-2"
+          >
             <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
           </Button>
         </div>
       </div>
 
       <div className="flex flex-wrap gap-2 px-4 py-2 border-b border-gray-100 bg-gray-50">
-        <Button size="sm" variant="outline" onClick={notifyNext} disabled={!!actionId} className="h-7 text-xs gap-1">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={notifyNext}
+          disabled={!!actionId}
+          className="h-7 text-xs gap-1"
+        >
           <Bell className="w-3 h-3" /> Notificar siguiente
         </Button>
-        <Button size="sm" variant="ghost" onClick={expireStale} disabled={!!actionId} className="h-7 text-xs">
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={expireStale}
+          disabled={!!actionId}
+          className="h-7 text-xs"
+        >
           Expirar &gt;30m
         </Button>
-        <span className="text-xs text-gray-400 self-center ml-2">Al cancelar una cita, el primero en espera es notificado automáticamente.</span>
+        <span className="text-xs text-gray-400 self-center ml-2">
+          Al cancelar una cita, el primero en espera es notificado automáticamente.
+        </span>
       </div>
 
-      {error && <div className="mx-4 mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{error}</div>}
+      {error && (
+        <div className="mx-4 mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+          {error}
+        </div>
+      )}
 
       {loading ? (
         <div className="p-6 text-center text-sm text-gray-500">Cargando…</div>
       ) : entries.length === 0 ? (
         <div className="p-8 text-center text-sm text-gray-500">
-          <div className="mx-auto mb-2 w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center"><Clock className="w-4 h-4 text-gray-400" /></div>
-          Sin entradas en <strong>{status}</strong>. Cuando un slot esté lleno, el cliente puede unirse a la espera.
+          <div className="mx-auto mb-2 w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+            <Clock className="w-4 h-4 text-gray-400" />
+          </div>
+          Sin entradas en <strong>{status}</strong>. Cuando un slot esté lleno, el cliente puede
+          unirse a la espera.
         </div>
       ) : (
         <div className="overflow-x-auto">
@@ -190,16 +241,31 @@ export function WaitlistPanel({ businessId, locationId }: Props) {
               {entries.map((e) => (
                 <tr key={e.id} className="border-b last:border-0 hover:bg-gray-50">
                   <td className="px-3 py-2">
-                    <div className="font-medium text-gray-900">{e.clients?.name ?? e.client_id.slice(0, 8)}</div>
-                    <div className="text-xs text-gray-500">{e.clients?.phone ?? e.clients?.email ?? ''}</div>
+                    <div className="font-medium text-gray-900">
+                      {e.clients?.name ?? e.client_id.slice(0, 8)}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {e.clients?.phone ?? e.clients?.email ?? ''}
+                    </div>
                   </td>
-                  <td className="px-3 py-2 text-gray-700 whitespace-nowrap">{formatDate(e.desired_at)}</td>
-                  <td className="px-3 py-2 text-gray-600 hidden sm:table-cell">{e.services?.name ?? '—'}{e.employees?.name ? ` · ${e.employees.name}` : ''}</td>
+                  <td className="px-3 py-2 text-gray-700 whitespace-nowrap">
+                    {formatDate(e.desired_at)}
+                  </td>
+                  <td className="px-3 py-2 text-gray-600 hidden sm:table-cell">
+                    {e.services?.name ?? '—'}
+                    {e.employees?.name ? ` · ${e.employees.name}` : ''}
+                  </td>
                   <td className="px-3 py-2">
-                    <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium border ${e.status === 'waiting' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' : e.status === 'notified' ? 'bg-blue-50 text-blue-700 border-blue-200' : e.status === 'converted' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-50 text-gray-600 border-gray-200'}`}>
+                    <span
+                      className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium border ${e.status === 'waiting' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' : e.status === 'notified' ? 'bg-blue-50 text-blue-700 border-blue-200' : e.status === 'converted' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-50 text-gray-600 border-gray-200'}`}
+                    >
                       {e.status}
                     </span>
-                    {e.notified_at && <div className="text-[10px] text-gray-400 mt-0.5">notif: {formatDate(e.notified_at)}</div>}
+                    {e.notified_at && (
+                      <div className="text-[10px] text-gray-400 mt-0.5">
+                        notif: {formatDate(e.notified_at)}
+                      </div>
+                    )}
                   </td>
                   <td className="px-3 py-2 text-right">
                     <div className="flex justify-end gap-1">
@@ -212,11 +278,17 @@ export function WaitlistPanel({ businessId, locationId }: Props) {
                           <Check className="w-3 h-3" /> Convertir
                         </button>
                       )}
-                      {e.status !== 'converted' && e.status !== 'cancelled' && e.status !== 'expired' && (
-                        <button onClick={() => cancel(e.id)} disabled={!!actionId} className="p-1.5 hover:bg-red-50 rounded text-red-400 hover:text-red-600">
-                          <X className="w-4 h-4" />
-                        </button>
-                      )}
+                      {e.status !== 'converted' &&
+                        e.status !== 'cancelled' &&
+                        e.status !== 'expired' && (
+                          <button
+                            onClick={() => cancel(e.id)}
+                            disabled={!!actionId}
+                            className="p-1.5 hover:bg-red-50 rounded text-red-400 hover:text-red-600"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        )}
                     </div>
                   </td>
                 </tr>
@@ -226,7 +298,9 @@ export function WaitlistPanel({ businessId, locationId }: Props) {
         </div>
       )}
       <div className="px-4 py-2 bg-gray-50 border-t text-[11px] text-gray-500">
-        <strong>Flujo:</strong> slot lleno → enqueue → al cancelar <code>PATCH /api/appointments/[id] {"{ status: 'cancelled' }"}</code> notifica al primero → cliente confirma en 30m → convert.
+        <strong>Flujo:</strong> slot lleno → enqueue → al cancelar{' '}
+        <code>PATCH /api/appointments/[id] {"{ status: 'cancelled' }"}</code> notifica al primero →
+        cliente confirma en 30m → convert.
       </div>
     </div>
   )

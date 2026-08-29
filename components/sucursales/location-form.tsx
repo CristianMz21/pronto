@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useState } from 'react'
+
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatLocationSlug } from '@/lib/locations'
@@ -88,7 +89,9 @@ export function LocationForm({
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 overflow-auto">
       <Card className="w-full max-w-lg max-h-[90vh] overflow-auto">
         <CardHeader>
-          <CardTitle className="text-base">{location ? 'Editar sucursal' : 'Nueva sucursal'}</CardTitle>
+          <CardTitle className="text-base">
+            {location ? 'Editar sucursal' : 'Nueva sucursal'}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-3">
@@ -111,7 +114,9 @@ export function LocationForm({
                 className="w-full mt-1 border rounded-lg px-3 py-2 text-sm font-mono"
                 placeholder="centro"
               />
-              <p className="text-[11px] text-gray-400 mt-1">Usado en URLs. Solo letras, números y guiones.</p>
+              <p className="text-[11px] text-gray-400 mt-1">
+                Usado en URLs. Solo letras, números y guiones.
+              </p>
             </div>
             <div>
               <label className="text-xs text-gray-500">Dirección</label>

@@ -1,11 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { z } from 'zod'
 import DOMPurify from 'isomorphic-dompurify'
+import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
+
 import { rateLimit, getIp } from '@/lib/rate-limit'
+import { createClient } from '@/lib/supabase/server'
 
 const ImportRowSchema = z.object({
-  name:  z.string().max(100).optional(),
+  name: z.string().max(100).optional(),
   phone: z.string().max(50).optional(),
   email: z.string().max(100).optional(),
   notes: z.string().max(1000).optional(),
@@ -25,7 +26,10 @@ export async function POST(req: NextRequest) {
 
   // ── Auth ──────────────────────────────────────────────────────────────────
   const supabase = await createClient()
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser()
   if (authError || !user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -50,13 +54,16 @@ export async function POST(req: NextRequest) {
   }
   const parsed = BodySchema.safeParse(rawBody)
   if (!parsed.success) {
-    return NextResponse.json({ error: 'validation_failed', details: parsed.error.flatten().fieldErrors }, { status: 422 })
+    return NextResponse.json(
+      { error: 'validation_failed', details: parsed.error.flatten().fieldErrors },
+      { status: 422 },
+    )
   }
   const rawRows = parsed.data.clients ?? []
 
   // ── Sanitize rows (DomPurify + trim) ─────────────────────────────────────
   const sanitized = rawRows.map((row) => ({
-    name:  sanitize(row.name  ?? '', 100),
+    name: sanitize(row.name ?? '', 100),
     phone: sanitize(row.phone ?? '', 50),
     email: sanitize(row.email ?? '', 100),
     notes: sanitize(row.notes ?? '', 1000),
@@ -73,21 +80,21 @@ export async function POST(req: NextRequest) {
   // Rows without a phone get inserted as new clients (no dedup key).
   // Rows with a phone dedup against (business_id, phone).
 
-  const withPhone    = validRows.filter((r) => r.phone.length > 0)
+  const withPhone = validRows.filter((r) => r.phone.length > 0)
   const withoutPhone = validRows.filter((r) => r.phone.length === 0)
 
   let imported = 0
-  let skipped  = rawRows.length - validRows.length // rows dropped due to empty name
+  let skipped = rawRows.length - validRows.length // rows dropped due to empty name
 
   // Rows with phone — upsert with conflict target
   if (withPhone.length > 0) {
     const rows = withPhone.map((r) => ({
       business_id: business.id,
-      name:        r.name,
-      phone:       r.phone || null,
-      email:       r.email || null,
-      notes:       r.notes || null,
-      tags:        [] as string[],
+      name: r.name,
+      phone: r.phone || null,
+      email: r.email || null,
+      notes: r.notes || null,
+      tags: [] as string[],
     }))
 
     const { data, error } = await supabase
@@ -104,24 +111,21 @@ export async function POST(req: NextRequest) {
     }
 
     imported += data?.length ?? 0
-    skipped  += withPhone.length - (data?.length ?? 0)
+    skipped += withPhone.length - (data?.length ?? 0)
   }
 
   // Rows without phone — plain insert (no dedup possible)
   if (withoutPhone.length > 0) {
     const rows = withoutPhone.map((r) => ({
       business_id: business.id,
-      name:        r.name,
-      phone:       null,
-      email:       r.email || null,
-      notes:       r.notes || null,
-      tags:        [] as string[],
+      name: r.name,
+      phone: null,
+      email: r.email || null,
+      notes: r.notes || null,
+      tags: [] as string[],
     }))
 
-    const { data, error } = await supabase
-      .from('clients')
-      .insert(rows)
-      .select('id')
+    const { data, error } = await supabase.from('clients').insert(rows).select('id')
 
     if (error) {
       console.error('[import] insert error (no phone):', error.message)
