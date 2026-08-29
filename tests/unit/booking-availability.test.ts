@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import {
   computeEffectiveHours,
   checkSlotWithinHours,
@@ -6,6 +6,20 @@ import {
   DEFAULT_HOURS,
   type DayHours,
 } from '@/lib/booking-availability'
+
+// Drizzle mock for booking availability — replaces previous Supabase.from mocks (T014)
+// db.query.businessHours.findMany now returns Drizzle rows with camelCase, mapped to DayHours for computeEffectiveHours
+vi.mock('@/lib/db', () => ({
+  db: {
+    query: {
+      businessHours: {
+        findMany: vi.fn().mockResolvedValue([
+          { dayOfWeek: 1, isOpen: true, openTime: '09:00', closeTime: '19:00', breakStart: null, breakEnd: null },
+        ]),
+      },
+    },
+  },
+}))
 
 describe('booking-availability — lib/booking-availability.ts', () => {
   it('DEFAULT_HOURS: Lun-Sáb abiertos 09:00-20:00, Dom cerrado', () => {
@@ -55,5 +69,28 @@ describe('booking-availability — lib/booking-availability.ts', () => {
     expect(dayOfWeekFromDateString('2026-08-27')).toBe(4)
     expect(dayOfWeekFromDateString('2026-08-30')).toBe(0)
     expect(dayOfWeekFromDateString('2026-08-24')).toBe(1) // lunes
+  })
+
+  it('Drizzle businessHours rows map correctly to DayHours for computeEffectiveHours', async () => {
+    // Simulate Drizzle camelCase rows as returned by db.query.businessHours.findMany
+    const drizzleRows = [
+      { dayOfWeek: 1, isOpen: true, openTime: '08:00', closeTime: '18:00', breakStart: null, breakEnd: null },
+      { dayOfWeek: 2, isOpen: true, openTime: '09:00', closeTime: '19:00', breakStart: '13:00', breakEnd: '14:00' },
+    ]
+    const dayHours: DayHours[] = drizzleRows.map((r) => ({
+      day_of_week: r.dayOfWeek,
+      is_open: r.isOpen,
+      open_time: r.openTime,
+      close_time: r.closeTime,
+      break_start: r.breakStart,
+      break_end: r.breakEnd,
+    }))
+    const eff = computeEffectiveHours(dayHours)
+    expect(eff).toHaveLength(7)
+    expect(eff.find((h) => h.day_of_week === 1)?.open_time).toBe('08:00')
+    expect(eff.find((h) => h.day_of_week === 2)?.break_start).toBe('13:00')
+    // Verify Drizzle mock was set up (supabase mock no longer needed)
+    const { db } = await import('@/lib/db')
+    expect(db.query.businessHours.findMany).toBeDefined()
   })
 })

@@ -1,14 +1,14 @@
 import { relations } from "drizzle-orm/relations";
-import { businesses, employeeUnavailability, usersInAuth, employees, locations, campaigns, businessSettings, businessIntegrations, clients, cashRegisters, inventoryMovements, inventoryItems, holidays, services, serviceCategories, appointments, transactions, tips, memberships, clientMemberships, promotions, notificationLog, loyaltyAccounts, loyaltyMovements, businessHours, cashMovements, commissions, waitlist, transactionItems, recurringAppointments, employeeServices, campaignRecipients, clientTags, tags } from "./schema";
+import { businesses, employeeUnavailability, users, employees, locations, campaigns, businessSettings, businessIntegrations, clients, cashRegisters, inventoryMovements, inventoryItems, holidays, services, serviceCategories, appointments, transactions, tips, memberships, clientMemberships, promotions, notificationLog, loyaltyAccounts, loyaltyMovements, businessHours, cashMovements, commissions, waitlist, transactionItems, recurringAppointments, employeeServices, campaignRecipients, clientTags, tags, serviceCombos, barbershopApplications } from "./schema";
 
 export const employeeUnavailabilityRelations = relations(employeeUnavailability, ({one}) => ({
 	business: one(businesses, {
 		fields: [employeeUnavailability.businessId],
 		references: [businesses.id]
 	}),
-	usersInAuth: one(usersInAuth, {
+	users: one(users, {
 		fields: [employeeUnavailability.createdBy],
-		references: [usersInAuth.id]
+		references: [users.id]
 	}),
 	employee: one(employees, {
 		fields: [employeeUnavailability.employeeId],
@@ -19,9 +19,9 @@ export const employeeUnavailabilityRelations = relations(employeeUnavailability,
 export const businessesRelations = relations(businesses, ({one, many}) => ({
 	employeeUnavailabilities: many(employeeUnavailability),
 	locations: many(locations),
-	usersInAuth: one(usersInAuth, {
+	users: one(users, {
 		fields: [businesses.ownerId],
-		references: [usersInAuth.id]
+		references: [users.id]
 	}),
 	campaigns: many(campaigns),
 	businessSettings: many(businessSettings),
@@ -48,9 +48,10 @@ export const businessesRelations = relations(businesses, ({one, many}) => ({
 	waitlists: many(waitlist),
 	appointments: many(appointments),
 	recurringAppointments: many(recurringAppointments),
+	serviceCombos: many(serviceCombos),
 }));
 
-export const usersInAuthRelations = relations(usersInAuth, ({many}) => ({
+export const usersRelations = relations(users, ({many}) => ({
 	employeeUnavailabilities: many(employeeUnavailability),
 	businesses: many(businesses),
 	clients: many(clients),
@@ -70,9 +71,9 @@ export const employeesRelations = relations(employees, ({one, many}) => ({
 		fields: [employees.locationId],
 		references: [locations.id]
 	}),
-	usersInAuth: one(usersInAuth, {
+	users: one(users, {
 		fields: [employees.userId],
-		references: [usersInAuth.id]
+		references: [users.id]
 	}),
 	transactions: many(transactions),
 	tips: many(tips),
@@ -138,9 +139,13 @@ export const clientsRelations = relations(clients, ({one, many}) => ({
 		fields: [clients.businessId],
 		references: [businesses.id]
 	}),
-	usersInAuth: one(usersInAuth, {
+	users: one(users, {
 		fields: [clients.userId],
-		references: [usersInAuth.id]
+		references: [users.id]
+	}),
+	location: one(locations, {
+		fields: [clients.locationId],
+		references: [locations.id]
 	}),
 	transactions: many(transactions),
 	clientMemberships: many(clientMemberships),
@@ -162,9 +167,9 @@ export const cashRegistersRelations = relations(cashRegisters, ({one, many}) => 
 		fields: [cashRegisters.locationId],
 		references: [locations.id]
 	}),
-	usersInAuth: one(usersInAuth, {
+	users: one(users, {
 		fields: [cashRegisters.openedBy],
-		references: [usersInAuth.id]
+		references: [users.id]
 	}),
 	cashMovements: many(cashMovements),
 }));
@@ -174,9 +179,9 @@ export const inventoryMovementsRelations = relations(inventoryMovements, ({one})
 		fields: [inventoryMovements.businessId],
 		references: [businesses.id]
 	}),
-	usersInAuth: one(usersInAuth, {
+	users: one(users, {
 		fields: [inventoryMovements.createdBy],
-		references: [usersInAuth.id]
+		references: [users.id]
 	}),
 	location_fromLocationId: one(locations, {
 		fields: [inventoryMovements.fromLocationId],
@@ -390,9 +395,9 @@ export const cashMovementsRelations = relations(cashMovements, ({one}) => ({
 		fields: [cashMovements.businessId],
 		references: [businesses.id]
 	}),
-	usersInAuth: one(usersInAuth, {
+	users: one(users, {
 		fields: [cashMovements.createdBy],
-		references: [usersInAuth.id]
+		references: [users.id]
 	}),
 	cashRegister: one(cashRegisters, {
 		fields: [cashMovements.registerId],
@@ -512,4 +517,26 @@ export const clientTagsRelations = relations(clientTags, ({one}) => ({
 
 export const tagsRelations = relations(tags, ({many}) => ({
 	clientTags: many(clientTags),
+}));
+
+export const serviceCombosRelations = relations(serviceCombos, ({one}) => ({
+	business: one(businesses, {
+		fields: [serviceCombos.businessId],
+		references: [businesses.id]
+	}),
+	location: one(locations, {
+		fields: [serviceCombos.locationId],
+		references: [locations.id]
+	}),
+}));
+
+export const businessHoursRelationsWithLocation = relations(businessHours, ({one}) => ({
+	business: one(businesses, {
+		fields: [businessHours.businessId],
+		references: [businesses.id]
+	}),
+	location: one(locations, {
+		fields: [businessHours.locationId],
+		references: [locations.id]
+	}),
 }));
