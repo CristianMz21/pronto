@@ -19,6 +19,9 @@ export const ROLE_PERMISSIONS: Record<CanonicalRole, Record<string, boolean>> = 
     '/crm': true,
     '/inventory': true,
     '/settings': true,
+    '/barberos': true,
+    '/servicios': true,
+    '/reportes': true,
   },
   admin: {
     '/dashboard': true,
@@ -28,6 +31,9 @@ export const ROLE_PERMISSIONS: Record<CanonicalRole, Record<string, boolean>> = 
     '/crm': true,
     '/inventory': true,
     '/settings': true,
+    '/barberos': true,
+    '/servicios': true,
+    '/reportes': true,
   },
   staff: {
     '/dashboard': true,
@@ -36,7 +42,10 @@ export const ROLE_PERMISSIONS: Record<CanonicalRole, Record<string, boolean>> = 
     '/caja': true,
     '/crm': true,
     '/inventory': true,
-    '/settings': true,
+    '/settings': false,
+    '/barberos': true,
+    '/servicios': true,
+    '/reportes': false,
   },
   barbero: {
     '/dashboard': true,
@@ -46,6 +55,9 @@ export const ROLE_PERMISSIONS: Record<CanonicalRole, Record<string, boolean>> = 
     '/crm': false,
     '/inventory': false,
     '/settings': false,
+    '/barberos': false,
+    '/servicios': false,
+    '/reportes': false,
   },
 }
 
@@ -82,8 +94,20 @@ export function canAccessRoute(
     )
   }
 
-  // owner, admin, staff: allow all dashboard routes
-  if (role === 'owner' || role === 'admin' || role === 'staff') {
+  if (role === 'staff') {
+    // Receptionist: no reportes, no settings, no sucursales/membresias/promociones
+    if (
+      pathname.startsWith('/reportes') ||
+      pathname.startsWith('/sucursales') ||
+      pathname.startsWith('/membresias') ||
+      pathname.startsWith('/promociones') ||
+      pathname.startsWith('/settings')
+    ) return false
+    return true
+  }
+
+  // owner, admin: allow all dashboard routes
+  if (role === 'owner' || role === 'admin') {
     return true
   }
 

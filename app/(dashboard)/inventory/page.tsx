@@ -80,9 +80,9 @@ export default async function InventoryPage(
         />
         {(locations?.length ?? 0) > 1 && (
           <div className="mt-4 flex gap-2 text-xs">
-            <a href="/inventory" className={`px-3 py-1 rounded-full border ${!searchParams.location ? 'bg-gray-900 text-white' : 'bg-white'}`}>Todas</a>
+            <Link href="/inventory" className={`px-3 py-1 rounded-full border ${!searchParams.location ? 'bg-gray-900 text-white' : 'bg-white'}`}>Todas</Link>
             {locations!.map((l) => (
-              <a key={l.id} href={`/inventory?location=${l.id}`} className={`px-3 py-1 rounded-full border ${searchParams.location === l.id ? 'bg-gray-900 text-white' : 'bg-white'}`}>{l.name}</a>
+              <Link key={l.id} href={`/inventory?location=${l.id}`} className={`px-3 py-1 rounded-full border ${searchParams.location === l.id ? 'bg-gray-900 text-white' : 'bg-white'}`}>{l.name}</Link>
             ))}
           </div>
         )}

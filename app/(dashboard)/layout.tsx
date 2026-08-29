@@ -58,9 +58,9 @@ export default async function DashboardLayout({
   // If header mismatches DB, trust DB (proxy is early but layout is authoritative second gate)
   const effectiveRole: CanonicalRole | null = role ?? (headerRole as CanonicalRole | null)
 
-  // Second gate: barbero cannot access denied prefixes even if proxy was bypassed
+  // Second gate: any role denied via canAccessRoute is redirected even if proxy was bypassed
   const pathnameForGuard = headersListForRole.get('x-pathname') ?? ''
-  if (effectiveRole === 'barbero' && pathnameForGuard && !canAccessRoute(effectiveRole, pathnameForGuard)) {
+  if (effectiveRole && pathnameForGuard && !canAccessRoute(effectiveRole, pathnameForGuard)) {
     redirect('/dashboard')
   }
 

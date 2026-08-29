@@ -4,6 +4,7 @@ import { BookingCalendar } from './booking-calendar'
 import { getAuthUser } from '@/lib/auth-user'
 import { DEFAULT_LEAD_MINUTES } from '@/lib/booking-availability'
 import { getUserRole } from '@/lib/auth/roles'
+import Link from 'next/link'
 
 export default async function BookingPage(props: { searchParams: Promise<{ location?: string }> }) {
   const searchParams = await props.searchParams
@@ -140,9 +141,9 @@ export default async function BookingPage(props: { searchParams: Promise<{ locat
       <Header title="Booking" />
       {(locations?.length ?? 0) > 1 && !isBarbero && (
         <div className="px-6 pt-3 flex gap-2 text-xs">
-          <a href="/booking" className={`px-3 py-1 rounded-full border ${!selectedLocation ? 'bg-gray-900 text-white' : 'bg-white'}`}>Todas</a>
+          <Link href="/booking" className={`px-3 py-1 rounded-full border ${!selectedLocation ? 'bg-gray-900 text-white' : 'bg-white'}`}>Todas</Link>
           {locations!.map((l) => (
-            <a key={l.id} href={`/booking?location=${l.id}`} className={`px-3 py-1 rounded-full border ${selectedLocation === l.id ? 'bg-gray-900 text-white' : 'bg-white'}`}>{l.name}</a>
+            <Link key={l.id} href={`/booking?location=${l.id}`} className={`px-3 py-1 rounded-full border ${selectedLocation === l.id ? 'bg-gray-900 text-white' : 'bg-white'}`}>{l.name}</Link>
           ))}
         </div>
       )}

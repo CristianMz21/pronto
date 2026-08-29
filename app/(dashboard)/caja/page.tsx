@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { Header } from '@/components/layout/header'
 import { getAuthUser } from '@/lib/auth-user'
 import { CajaView } from './caja-view'
+import Link from 'next/link'
 
 export default async function CajaPage(props: { searchParams: Promise<{ location?: string }> }) {
   const searchParams = await props.searchParams
@@ -59,9 +60,9 @@ export default async function CajaPage(props: { searchParams: Promise<{ location
       <Header title="Caja" />
       {(locations?.length ?? 0) > 1 && (
         <div className="px-6 pt-4 flex gap-2 text-xs">
-          <a href="/caja" className={`px-3 py-1 rounded-full border ${!searchParams.location ? 'bg-gray-900 text-white' : 'bg-white'}`}>Todas</a>
+          <Link href="/caja" className={`px-3 py-1 rounded-full border ${!searchParams.location ? 'bg-gray-900 text-white' : 'bg-white'}`}>Todas</Link>
           {locations!.map((l) => (
-            <a key={l.id} href={`/caja?location=${l.id}`} className={`px-3 py-1 rounded-full border ${searchParams.location === l.id ? 'bg-gray-900 text-white' : 'bg-white'}`}>{l.name}</a>
+            <Link key={l.id} href={`/caja?location=${l.id}`} className={`px-3 py-1 rounded-full border ${searchParams.location === l.id ? 'bg-gray-900 text-white' : 'bg-white'}`}>{l.name}</Link>
           ))}
         </div>
       )}
