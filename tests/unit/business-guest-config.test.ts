@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }))
 vi.mock('@/lib/supabase/service', () => ({ createServiceClient: vi.fn() }))
@@ -283,7 +283,7 @@ describe('business-guest-config — /api/book guest guard (057)', () => {
     }
     // Setup will have clientLinked = null (no previous link), clientByContact = [guestRecord]
     // The second branch should trigger update
-    const svc = setup({
+    const _svc = setup({
       user: { id: USER_ID, email: 'test@example.com' },
       biz: {
         id: BIZ_ID,

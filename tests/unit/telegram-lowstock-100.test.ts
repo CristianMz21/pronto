@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@supabase/supabase-js', () => ({ createClient: vi.fn() }))
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }))
@@ -238,7 +238,7 @@ describe('telegram lowstock 100', () => {
       })),
     } as any)
     vi.mocked(getTelegramBotInfo).mockResolvedValueOnce({ ok: false } as any)
-    let { POST } = await import('@/app/api/telegram/set-webhook/route')
+    const { POST } = await import('@/app/api/telegram/set-webhook/route')
     process.env.NEXT_PUBLIC_APP_URL = 'https://example.com'
     let req = new NextRequest('http://localhost/api/telegram/set-webhook', {
       method: 'POST',

@@ -1,5 +1,14 @@
 export type AppointmentId = string
-export type AppointmentStatus = 'pending' | 'scheduled' | 'confirmed' | 'checked_in' | 'in_service' | 'completed' | 'cancelled' | 'no_show' | 'paid'
+export type AppointmentStatus =
+  | 'pending'
+  | 'scheduled'
+  | 'confirmed'
+  | 'checked_in'
+  | 'in_service'
+  | 'completed'
+  | 'cancelled'
+  | 'no_show'
+  | 'paid'
 export type AppointmentSource = 'manual' | 'online' | 'telegram' | 'viber'
 
 export interface Appointment {

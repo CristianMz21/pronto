@@ -1,8 +1,8 @@
 'use client'
 
-import { Wallet, ArrowUpCircle, ArrowDownCircle, Lock, Unlock } from 'lucide-react'
+import { ArrowDownCircle, ArrowUpCircle, Lock, Unlock, Wallet } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'

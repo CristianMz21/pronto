@@ -55,7 +55,7 @@ export function checkSlotWithinHours(
   time: string,
   durationMin: number,
 ): { ok: true } | { ok: false; reason: SlotUnavailableReason } {
-  if (!dayHours || !dayHours.is_open) return { ok: false, reason: 'closed' }
+  if (!dayHours?.is_open) return { ok: false, reason: 'closed' }
 
   const toMin = (hhmm: string) => {
     const [h, m] = hhmm.split(':').map(Number)
@@ -144,7 +144,7 @@ export function parseDateTimeInTz(date: string, time: string, timezone: string):
     second: 'numeric',
     hour12: false,
   }).formatToParts(noonUtc)
-  const get = (type: string) => parseInt(parts.find((p) => p.type === type)?.value ?? '0')
+  const get = (type: string) => parseInt(parts.find((p) => p.type === type)?.value ?? '0', 10)
   const localNoonMs = Date.UTC(
     get('year'),
     get('month') - 1,
@@ -217,8 +217,8 @@ export function nowMinutesInBusinessTz(timezone: string, now: Date = new Date())
     minute: '2-digit',
     hour12: false,
   }).formatToParts(now)
-  const h = parseInt(parts.find((p) => p.type === 'hour')?.value ?? '0')
-  const m = parseInt(parts.find((p) => p.type === 'minute')?.value ?? '0')
+  const h = parseInt(parts.find((p) => p.type === 'hour')?.value ?? '0', 10)
+  const m = parseInt(parts.find((p) => p.type === 'minute')?.value ?? '0', 10)
   return (h % 24) * 60 + m
 }
 

@@ -1,11 +1,11 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import {
-  computeEffectiveHours,
   checkSlotWithinHours,
-  dayOfWeekFromDateString,
-  DEFAULT_HOURS,
+  computeEffectiveHours,
   type DayHours,
+  DEFAULT_HOURS,
+  dayOfWeekFromDateString,
 } from '@/lib/booking-availability'
 
 // Drizzle mock for booking availability — replaces previous Supabase.from mocks (T014)
@@ -14,18 +14,16 @@ vi.mock('@/lib/db', () => ({
   db: {
     query: {
       businessHours: {
-        findMany: vi
-          .fn()
-          .mockResolvedValue([
-            {
-              dayOfWeek: 1,
-              isOpen: true,
-              openTime: '09:00',
-              closeTime: '19:00',
-              breakStart: null,
-              breakEnd: null,
-            },
-          ]),
+        findMany: vi.fn().mockResolvedValue([
+          {
+            dayOfWeek: 1,
+            isOpen: true,
+            openTime: '09:00',
+            closeTime: '19:00',
+            breakStart: null,
+            breakEnd: null,
+          },
+        ]),
       },
     },
   },

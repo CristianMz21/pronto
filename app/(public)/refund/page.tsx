@@ -1,4 +1,4 @@
-import { Metadata } from 'next'
+import type { Metadata } from 'next'
 import Link from 'next/link'
 
 export const metadata: Metadata = {
@@ -14,7 +14,6 @@ export default function RefundPage() {
         <p className="text-sm text-gray-500 mb-10">Last updated: April 17, 2026</p>
 
         <div className="space-y-8 text-gray-700 leading-relaxed">
-
           <section>
             <h2 className="text-xl font-semibold text-gray-900 mb-3">Overview</h2>
             <p>
@@ -66,7 +65,9 @@ export default function RefundPage() {
 
           <section>
             <h2 className="text-xl font-semibold text-gray-900 mb-3">Exceptions</h2>
-            <p className="mb-3">We may issue refunds outside of this policy at our sole discretion in cases such as:</p>
+            <p className="mb-3">
+              We may issue refunds outside of this policy at our sole discretion in cases such as:
+            </p>
             <ul className="list-disc pl-6 space-y-1.5">
               <li>Duplicate charges caused by a technical error on our end.</li>
               <li>Charges made after a cancellation that was confirmed by us.</li>
@@ -76,9 +77,7 @@ export default function RefundPage() {
 
           <section>
             <h2 className="text-xl font-semibold text-gray-900 mb-3">Free Plan</h2>
-            <p>
-              The Free plan involves no payment, so no refunds are applicable.
-            </p>
+            <p>The Free plan involves no payment, so no refunds are applicable.</p>
           </section>
 
           <section>
@@ -93,17 +92,17 @@ export default function RefundPage() {
                 with the subject line <strong>&ldquo;Refund Request&rdquo;</strong>.
               </li>
               <li>
-                Include the email address associated with your account and the approximate date
-                of the charge.
+                Include the email address associated with your account and the approximate date of
+                the charge.
               </li>
               <li>
-                We will confirm eligibility and initiate the refund through Paddle within
-                3 business days.
+                We will confirm eligibility and initiate the refund through Paddle within 3 business
+                days.
               </li>
             </ol>
             <p className="mt-4 text-sm text-gray-500">
-              Refund requests submitted after the eligible window will not be approved except
-              in exceptional circumstances.
+              Refund requests submitted after the eligible window will not be approved except in
+              exceptional circumstances.
             </p>
           </section>
 
@@ -132,11 +131,13 @@ export default function RefundPage() {
               </p>
               <p>
                 See also our{' '}
-                <Link href="/terms" className="text-blue-600 hover:underline">Terms of Service</Link>.
+                <Link href="/terms" className="text-blue-600 hover:underline">
+                  Terms of Service
+                </Link>
+                .
               </p>
             </div>
           </section>
-
         </div>
       </div>
     </div>

@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { rateLimit, getIp } from '@/lib/rate-limit'
+import { getIp, rateLimit } from '@/lib/rate-limit'
 
 describe('rate-limit strict 100%', () => {
   beforeEach(() => {

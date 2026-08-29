@@ -60,7 +60,7 @@ export function isEligible(
   if (cm.status !== 'active') return false
   if (cm.remaining <= 0) return false
   const exp = new Date(cm.expires_at)
-  if (isNaN(exp.getTime())) return false
+  if (Number.isNaN(exp.getTime())) return false
   return exp.getTime() > now.getTime()
 }
 
@@ -91,7 +91,7 @@ export async function purchaseMembership(
 ): Promise<ClientMembership> {
   const parsed = PurchaseSchema.safeParse(params)
   if (!parsed.success)
-    throw new Error('validation_failed: ' + JSON.stringify(parsed.error.flatten().fieldErrors))
+    throw new Error(`validation_failed: ${JSON.stringify(parsed.error.flatten().fieldErrors)}`)
 
   const { business_id, client_id, membership_id } = parsed.data
 
@@ -147,7 +147,7 @@ export async function purchaseMembership(
 
   if (error || !data)
     throw Object.assign(
-      new Error('purchase_failed: ' + String((error as { message?: string })?.message ?? error)),
+      new Error(`purchase_failed: ${String((error as { message?: string })?.message ?? error)}`),
       { code: 'purchase_failed' },
     )
   return data as ClientMembership

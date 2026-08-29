@@ -1,12 +1,22 @@
-import tseslint from 'typescript-eslint'
 import nextCoreWebVitals from 'eslint-config-next/core-web-vitals'
 import security from 'eslint-plugin-security'
 import sonarjs from 'eslint-plugin-sonarjs'
 import unusedImports from 'eslint-plugin-unused-imports'
+import tseslint from 'typescript-eslint'
 
 const eslintConfig = tseslint.config(
   {
-    ignores: ['.next/**', '.next-*/**', 'public/**', 'next-env.d.ts', 'coverage/**', 'tests/**', 'playwright/**', 'drizzle/**', 'lib/supabase/database.types.ts'],
+    ignores: [
+      '.next/**',
+      '.next-*/**',
+      'public/**',
+      'next-env.d.ts',
+      'coverage/**',
+      'tests/**',
+      'playwright/**',
+      'drizzle/**',
+      'lib/supabase/database.types.ts',
+    ],
   },
   ...nextCoreWebVitals,
   ...tseslint.configs.recommendedTypeChecked,
@@ -21,7 +31,6 @@ const eslintConfig = tseslint.config(
       'sonarjs/pseudo-random': 'off',
       'security/detect-object-injection': 'off',
       'sonarjs/cognitive-complexity': 'off',
-      'sonarjs/no-ignored-exceptions': 'off',
       'security/detect-non-literal-fs-filename': 'off',
       'sonarjs/super-linear-regex': 'off',
       'sonarjs/void-use': 'off',
@@ -43,7 +52,15 @@ const eslintConfig = tseslint.config(
     languageOptions: {
       parserOptions: {
         projectService: {
-          allowDefaultProject: ['*.js', '*.mjs', '*.cjs', 'commitlint.config.js', 'next.config.js', 'postcss.config.js', 'scripts/*.js'],
+          allowDefaultProject: [
+            '*.js',
+            '*.mjs',
+            '*.cjs',
+            'commitlint.config.js',
+            'next.config.js',
+            'postcss.config.js',
+            'scripts/*.js',
+          ],
         },
         tsconfigRootDir: import.meta.dirname,
       },
@@ -54,7 +71,14 @@ const eslintConfig = tseslint.config(
     rules: {
       'no-console': 'error',
       'no-debugger': 'error',
-      'import/order': ['error', { groups: ['builtin', 'external', 'internal', ['parent', 'sibling'], 'index'], 'newlines-between': 'always', alphabetize: { order: 'asc', caseInsensitive: true } }],
+      'import/order': [
+        'error',
+        {
+          groups: ['builtin', 'external', 'internal', ['parent', 'sibling'], 'index'],
+          'newlines-between': 'always',
+          alphabetize: { order: 'asc', caseInsensitive: true },
+        },
+      ],
       'jsx-a11y/alt-text': 'error',
       'jsx-a11y/aria-props': 'error',
       'jsx-a11y/aria-proptypes': 'error',
@@ -62,7 +86,17 @@ const eslintConfig = tseslint.config(
       'jsx-a11y/role-has-required-aria-props': 'error',
       'jsx-a11y/role-supports-aria-props': 'error',
       'unused-imports/no-unused-imports': 'error',
-      'unused-imports/no-unused-vars': ['error', { vars: 'all', varsIgnorePattern: '^_', args: 'after-used', argsIgnorePattern: '^_', caughtErrors: 'all', caughtErrorsIgnorePattern: '^_' }],
+      'unused-imports/no-unused-vars': [
+        'error',
+        {
+          vars: 'all',
+          varsIgnorePattern: '^_',
+          args: 'after-used',
+          argsIgnorePattern: '^_',
+          caughtErrors: 'all',
+          caughtErrorsIgnorePattern: '^_',
+        },
+      ],
       '@typescript-eslint/no-explicit-any': 'error',
       'react-hooks/exhaustive-deps': 'error',
       // Disable noisy for PR1 feasibility
@@ -115,7 +149,6 @@ const eslintConfig = tseslint.config(
       '@typescript-eslint/use-unknown-in-catch-callback-variable': 'off',
       'sonarjs/no-all-duplicated-branches': 'off',
       'sonarjs/prefer-single-boolean-return': 'off',
-      '@typescript-eslint/no-duplicate-type-constituents': 'off',
       'sonarjs/no-redundant-assignments': 'off',
       'sonarjs/pseudo-random': 'off',
       '@typescript-eslint/no-unnecessary-type-parameters': 'off',

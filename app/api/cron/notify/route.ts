@@ -18,43 +18,44 @@
  */
 
 import { createClient } from '@supabase/supabase-js'
-import { NextRequest, NextResponse } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 
 import {
-  sendReminder,
-  sendThankYou,
-  sendReactivation,
-  sendBirthday,
   formatEmailDate,
   formatEmailTime,
+  sendBirthday,
+  sendReactivation,
+  sendReminder,
+  sendThankYou,
 } from '@/lib/email'
-import { rateLimit, getIp } from '@/lib/rate-limit'
+import { getIp, rateLimit } from '@/lib/rate-limit'
 import {
   sendTelegramMessage,
-  tplThankYou,
-  tplReactivation as tgTplReactivation,
   tplBirthday as tgTplBirthday,
+  tplBirthdayClient as tgTplBirthdayClient,
+  tplReactivation as tgTplReactivation,
+  tplReactivationClient as tgTplReactivationClient,
   tplReminderClient as tgTplReminderClient,
   tplThankYouClient as tgTplThankYouClient,
-  tplReactivationClient as tgTplReactivationClient,
-  tplBirthdayClient as tgTplBirthdayClient,
+  tplThankYou,
 } from '@/lib/telegram'
 import {
   sendViberMessage,
-  tplThankYou as viberTplThankYou,
-  tplReminderClient as viberTplReminderClient,
-  tplThankYouClient as viberTplThankYouClient,
-  tplReactivation as viberTplReactivation,
   tplBirthday as viberTplBirthday,
+  tplReactivation as viberTplReactivation,
+  tplReminderClient as viberTplReminderClient,
+  tplThankYou as viberTplThankYou,
+  tplThankYouClient as viberTplThankYouClient,
 } from '@/lib/viber'
 import {
   sendWhatsAppMessage,
+  tplBirthday as waTplBirthday,
+  tplReactivation as waTplReactivation,
   tplReminder as waTplReminder,
   tplThankYou as waTplThankYou,
-  tplReactivation as waTplReactivation,
-  tplBirthday as waTplBirthday,
 } from '@/lib/whatsapp'
+
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
 
 export async function GET(req: NextRequest) {

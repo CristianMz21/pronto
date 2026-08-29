@@ -10,7 +10,13 @@ interface Props {
 
 // Native <datalist>-based combobox — autocomplete from existing categories,
 // still allows typing any new value.
-export function CategoryCombobox({ value, onChange, categories, placeholder = 'e.g. Hair care', className = '' }: Props) {
+export function CategoryCombobox({
+  value,
+  onChange,
+  categories,
+  placeholder = 'e.g. Hair care',
+  className = '',
+}: Props) {
   const listId = 'inventory-categories-list'
 
   return (

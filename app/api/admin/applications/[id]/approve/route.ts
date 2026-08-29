@@ -1,7 +1,7 @@
-import { randomUUID } from 'crypto'
+import { randomUUID } from 'node:crypto'
 
 import { createClient as createAdminClient } from '@supabase/supabase-js'
-import { NextRequest, NextResponse } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 
 import { isSuperAdmin } from '@/lib/auth/roles'
 import { getSupabaseUrl } from '@/lib/supabase/getUrl'

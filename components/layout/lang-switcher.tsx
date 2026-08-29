@@ -33,6 +33,7 @@ export function LangSwitcher() {
       <Globe className="w-3.5 h-3.5 text-white/30 shrink-0 mr-0.5" />
       {LOCALES.map(({ code, label }) => (
         <button
+          type="button"
           key={code}
           onClick={() => switchLocale(code)}
           disabled={loading}

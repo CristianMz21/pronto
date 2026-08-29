@@ -75,29 +75,29 @@ export function isPromotionActive(promo: Promotion, now: Date = new Date()): boo
   if (!promo.is_active) return false
   const from = promo.valid_from ? new Date(promo.valid_from) : null
   const to = promo.valid_to ? new Date(promo.valid_to) : null
-  if (from && !isNaN(from.getTime()) && now.getTime() < from.getTime()) return false
-  if (to && !isNaN(to.getTime()) && now.getTime() > to.getTime()) return false
+  if (from && !Number.isNaN(from.getTime()) && now.getTime() < from.getTime()) return false
+  if (to && !Number.isNaN(to.getTime()) && now.getTime() > to.getTime()) return false
   return true
 }
 
 function matchesDayOfWeek(rules: Promotion['rules'], ctxDate?: string): boolean {
   if (!rules?.day_of_week || rules.day_of_week.length === 0) return true
   if (!ctxDate) return false // rule requires date but none given => no match
-  const dow = new Date(ctxDate + 'T12:00:00Z').getUTCDay()
-  if (isNaN(dow)) return false
+  const dow = new Date(`${ctxDate}T12:00:00Z`).getUTCDay()
+  if (Number.isNaN(dow)) return false
   return rules.day_of_week.includes(dow)
 }
 
 function matchesServiceIds(rules: Promotion['rules'], serviceIds?: string[]): boolean {
   if (!rules?.service_ids || rules.service_ids.length === 0) return true
   if (!serviceIds || serviceIds.length === 0) return false
-  return serviceIds.some((id) => rules.service_ids!.includes(id))
+  return serviceIds.some((id) => rules.service_ids?.includes(id))
 }
 
 function inDaysFromNow(dateStr: string, days: number, now: Date): boolean {
   if (!dateStr) return false
-  const d = new Date(dateStr + 'T00:00:00')
-  if (isNaN(d.getTime())) return false
+  const d = new Date(`${dateStr}T00:00:00`)
+  if (Number.isNaN(d.getTime())) return false
   const thisYear = now.getFullYear()
   const bThisYear = new Date(thisYear, d.getMonth(), d.getDate())
   const diff = Math.ceil((bThisYear.getTime() - now.getTime()) / 86400000)

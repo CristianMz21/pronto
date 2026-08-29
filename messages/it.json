@@ -436,15 +436,7 @@
     "calendar": {
       "today": "Oggi",
       "publicPage": "Pagina di prenotazione pubblica",
-      "days": [
-        "Lun",
-        "Mar",
-        "Mer",
-        "Gio",
-        "Ven",
-        "Sab",
-        "Dom"
-      ],
+      "days": ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"],
       "colorLegend": "Legenda colori",
       "teamColors": "Colori del team",
       "noTeamMembers": "Ancora nessun membro del team",
@@ -534,15 +526,7 @@
     },
     "workingHours": {
       "heading": "Orari di lavoro",
-      "dayNames": [
-        "Dom",
-        "Lun",
-        "Mar",
-        "Mer",
-        "Gio",
-        "Ven",
-        "Sab"
-      ],
+      "dayNames": ["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"],
       "from": "Da",
       "to": "A",
       "closed": "Chiuso",
@@ -601,7 +585,7 @@
     },
     "services": {
       "empty": "Ancora nessun servizio",
-          "table": {
+      "table": {
         "name": "Nome",
         "category": "Categoria",
         "price": "Prezzo",
@@ -936,15 +920,7 @@
       "Novembre",
       "Dicembre"
     ],
-    "days": [
-      "Lun",
-      "Mar",
-      "Mer",
-      "Gio",
-      "Ven",
-      "Sab",
-      "Dom"
-    ]
+    "days": ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"]
   },
   "feedback": {
     "heading": "Condividi il tuo feedback",
@@ -1124,11 +1100,7 @@
       "starter": {
         "name": "Starter",
         "price": "$19/mese",
-        "features": [
-          "5 dipendenti",
-          "Clienti illimitati",
-          "Prenotazioni illimitate"
-        ]
+        "features": ["5 dipendenti", "Clienti illimitati", "Prenotazioni illimitate"]
       },
       "pro": {
         "name": "Pro",
@@ -1144,17 +1116,12 @@
       "agency": {
         "name": "Agency",
         "price": "$79/mese",
-        "features": [
-          "Dipendenti illimitati",
-          "Sedi multiple",
-          "White-label",
-          "Accesso API"
-        ]
+        "features": ["Dipendenti illimitati", "Sedi multiple", "White-label", "Accesso API"]
       }
     }
   },
   "newClient": {
-      "title": "Nuovo cliente",
+    "title": "Nuovo cliente",
     "backToClients": "← Clienti",
     "fields": {
       "name": "Nome completo *",

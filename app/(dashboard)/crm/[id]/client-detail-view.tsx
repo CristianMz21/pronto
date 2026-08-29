@@ -1,6 +1,6 @@
 'use client'
 
-import { Pencil, Trash2, CalendarDays, DollarSign, Clock, UserCheck } from 'lucide-react'
+import { CalendarDays, Clock, DollarSign, Pencil, Trash2, UserCheck } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { useState } from 'react'
@@ -81,8 +81,8 @@ function validatePhone(phone: string): string | null {
 
 function validateBirthday(birthday: string): string | null {
   if (!birthday) return null
-  const d = new Date(birthday + 'T00:00:00')
-  if (isNaN(d.getTime()) || d.getFullYear() < 1900 || d > new Date())
+  const d = new Date(`${birthday}T00:00:00`)
+  if (Number.isNaN(d.getTime()) || d.getFullYear() < 1900 || d > new Date())
     return 'Please enter a valid date'
   return null
 }
@@ -258,6 +258,7 @@ export function ClientDetailView({
               <div className="flex items-center gap-2">
                 {!editing && (
                   <button
+                    type="button"
                     onClick={() => setEditing(true)}
                     className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
                   >
@@ -268,12 +269,14 @@ export function ClientDetailView({
                   <div className="flex items-center gap-1.5">
                     <span className="text-xs text-gray-500">{t('deleteConfirm')}</span>
                     <button
+                      type="button"
                       onClick={deleteClient}
                       className="text-xs px-2 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700"
                     >
                       {t('deleteButton')}
                     </button>
                     <button
+                      type="button"
                       onClick={() => setConfirmDelete(false)}
                       className="text-xs px-2 py-1 border border-gray-200 rounded-lg hover:bg-gray-50"
                     >
@@ -282,6 +285,7 @@ export function ClientDetailView({
                   </div>
                 ) : (
                   <button
+                    type="button"
                     onClick={() => setConfirmDelete(true)}
                     className="p-1.5 hover:bg-red-50 rounded-lg transition-colors"
                   >
@@ -519,6 +523,7 @@ export function ClientDetailView({
                       href={`https://wa.me/${client.phone.replace(/^\+/, '').replace(/\s/g, '')}`}
                       target="_blank"
                       className="text-xs px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                      rel="noopener"
                     >
                       WhatsApp
                     </a>

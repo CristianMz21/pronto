@@ -1,4 +1,4 @@
-import { Users, Package, CalendarDays, TrendingUp, ArrowUpRight } from 'lucide-react'
+import { ArrowUpRight, CalendarDays, Package, TrendingUp, Users } from 'lucide-react'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
@@ -38,7 +38,7 @@ export default async function DashboardPage(props: {
   const { data: ownedBiz } = await supabase
     .from('businesses')
     .select('id, name, currency, timezone, onboarding_completed, enabled_modules')
-    .eq('owner_id', user!.id)
+    .eq('owner_id', user?.id)
     .maybeSingle()
   if (ownedBiz)
     business = ownedBiz as unknown as {
@@ -55,7 +55,7 @@ export default async function DashboardPage(props: {
       .select(
         'business_id, businesses!inner(id, name, currency, timezone, onboarding_completed, enabled_modules)',
       )
-      .eq('user_id', user!.id)
+      .eq('user_id', user?.id)
       .eq('is_active', true)
       .limit(1)
       .maybeSingle()
@@ -317,7 +317,7 @@ export default async function DashboardPage(props: {
             >
               Todas sucursales
             </Link>
-            {(locations as unknown as Array<{ id: string; name: string }>)!.map(
+            {(locations as unknown as Array<{ id: string; name: string }>)?.map(
               (l: { id: string; name: string }) => (
                 <Link
                   key={l.id}

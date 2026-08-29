@@ -1,6 +1,7 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
 import { getSupabaseUrl } from '@/lib/supabase/getUrl'
+
 describe('getUrl', () => {
   it('a', () => {
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'http://127.0.0.1:54321'

@@ -123,7 +123,7 @@ export function validateRRule(
  */
 export function generateOccurrences(opts: GenerateOpts): Date[] {
   const { rrule, dtstart, until, countLimit = 52 } = opts
-  if (isNaN(dtstart.getTime()))
+  if (Number.isNaN(dtstart.getTime()))
     throw Object.assign(new Error('invalid_dtstart'), { code: 'invalid_dtstart' })
 
   const validated = validateRRule(rrule, dtstart, until ?? null)
@@ -218,7 +218,7 @@ export async function createSeries(
   } else {
     throw Object.assign(new Error('dtstart or date+time required'), { code: 'dtstart_required' })
   }
-  if (isNaN(dtstart.getTime()))
+  if (Number.isNaN(dtstart.getTime()))
     throw Object.assign(new Error('invalid_dtstart'), { code: 'invalid_dtstart' })
 
   // Validate RRULE
@@ -374,7 +374,7 @@ export async function createSeries(
     }).formatToParts(utcDate)
     const hh = timeParts.find((p) => p.type === 'hour')?.value ?? '00'
     const mm = timeParts.find((p) => p.type === 'minute')?.value ?? '00'
-    return { date, time: `${String(parseInt(hh) % 24).padStart(2, '0')}:${mm}` }
+    return { date, time: `${String(parseInt(hh, 10) % 24).padStart(2, '0')}:${mm}` }
   }
 
   for (let idx = 0; idx < allStarts.length; idx++) {
@@ -535,7 +535,6 @@ export async function createSeries(
         starts_at: startsAt.toISOString(),
         reason: String((e as Error).message ?? 'insert_failed').slice(0, 80),
       })
-      continue
     }
   }
 

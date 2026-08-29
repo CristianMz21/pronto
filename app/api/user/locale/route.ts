@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
-import { rateLimit, getIp } from '@/lib/rate-limit'
+import { getIp, rateLimit } from '@/lib/rate-limit'
+
 const SUPPORTED = ['en', 'es', 'it', 'pt'] as const
 
 export async function POST(request: Request) {

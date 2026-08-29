@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 // mock react cache to bypass memoization for deterministic tests
 vi.mock('react', async () => {
@@ -8,9 +8,8 @@ vi.mock('react', async () => {
 vi.mock('next/headers', () => ({ headers: vi.fn() }))
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }))
 
-import { getAuthUser } from '@/lib/auth-user'
-
 import { headers } from 'next/headers'
+import { getAuthUser } from '@/lib/auth-user'
 
 import { createClient } from '@/lib/supabase/server'
 

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@/lib/mailer', () => ({
   sendMail: vi.fn().mockResolvedValue({ id: 'mock-id' }),
@@ -6,15 +6,16 @@ vi.mock('@/lib/mailer', () => ({
     n ? `${n} <test@pronto.app>` : 'Pronto <noreply@trypronto.app>',
   ),
 }))
+
 import {
-  sendBookingConfirmation,
-  sendReminder,
-  sendThankYou,
-  sendReactivation,
-  sendBirthday,
-  sendLowStockAlert,
   formatEmailDate,
   formatEmailTime,
+  sendBirthday,
+  sendBookingConfirmation,
+  sendLowStockAlert,
+  sendReactivation,
+  sendReminder,
+  sendThankYou,
 } from '@/lib/email'
 import { sendMail } from '@/lib/mailer'
 

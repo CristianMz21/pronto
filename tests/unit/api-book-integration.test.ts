@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@/lib/supabase/service', () => ({ createServiceClient: vi.fn() }))
 vi.mock('@/lib/rate-limit', () => ({ rateLimit: vi.fn(), getIp: vi.fn() }))
@@ -8,7 +8,7 @@ vi.mock('isomorphic-dompurify', () => ({
 }))
 
 import { POST } from '@/app/api/book/route'
-import { rateLimit, getIp } from '@/lib/rate-limit'
+import { getIp, rateLimit } from '@/lib/rate-limit'
 import { createServiceClient } from '@/lib/supabase/service'
 
 const BIZ_ID = 'aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa'
@@ -42,7 +42,7 @@ function makeChain(result: any) {
     'lt',
   ]
   methods.forEach((m) => {
-    c[m] = vi.fn((...a: any[]) => c)
+    c[m] = vi.fn((..._a: any[]) => c)
   })
   return c
 }
@@ -78,7 +78,7 @@ function setupBook(opts: BookMockOpts = {}) {
   const clientsSelectChain = makeChain({ data: matches, error: null })
   const clientsInsertChain = makeChain(clientInsert as any)
   const apptChain = makeChain(appt as any)
-  const clientsUpdateChain = makeChain({ data: null, error: null })
+  const _clientsUpdateChain = makeChain({ data: null, error: null })
 
   let clientsIdx = 0
   const from = vi.fn((table: string) => {

@@ -1,6 +1,6 @@
 'use client'
 
-import { Plus, Pencil, Trash2, Tag, Calendar } from 'lucide-react'
+import { Calendar, Pencil, Plus, Tag, Trash2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
@@ -266,7 +266,11 @@ export function PromocionesClient({
       {testResult && (
         <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm">
           {testResult}{' '}
-          <button onClick={() => setTestResult(null)} className="ml-2 text-blue-600 underline">
+          <button
+            type="button"
+            onClick={() => setTestResult(null)}
+            className="ml-2 text-blue-600 underline"
+          >
             cerrar
           </button>
         </div>

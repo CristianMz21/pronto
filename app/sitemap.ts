@@ -1,5 +1,5 @@
-import fs from 'fs'
-import path from 'path'
+import fs from 'node:fs'
+import path from 'node:path'
 
 import type { MetadataRoute } from 'next'
 
@@ -58,7 +58,7 @@ function fileToRoute(filePath: string, appDir: string): string | null {
     routeSegments.push(seg)
   }
 
-  return '/' + routeSegments.join('/')
+  return `/${routeSegments.join('/')}`
 }
 
 function isExcludedByPath(filePath: string): boolean {
@@ -68,7 +68,7 @@ function isExcludedByPath(filePath: string): boolean {
 
 function isExcludedByRoute(route: string): boolean {
   return EXCLUDED_ROUTE_PREFIXES.some(
-    (prefix) => route === prefix || route.startsWith(prefix + '/'),
+    (prefix) => route === prefix || route.startsWith(`${prefix}/`),
   )
 }
 

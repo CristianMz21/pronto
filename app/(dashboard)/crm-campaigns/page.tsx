@@ -90,7 +90,7 @@ export default async function CrmCampaignsPage(props: {
             >
               Todas
             </Link>
-            {locations!.map((l) => (
+            {locations?.map((l) => (
               <Link
                 key={l.id}
                 href={`/crm-campaigns?location=${l.id}`}
@@ -120,7 +120,7 @@ export default async function CrmCampaignsPage(props: {
                   No hay campañas aún. Creá la primera desde el panel izquierdo.
                 </div>
               ) : (
-                campaigns!.map((c) => (
+                campaigns?.map((c) => (
                   <div key={c.id} className="p-4 flex items-start justify-between gap-4">
                     <div className="min-w-0 flex-1">
                       <div className="font-medium text-gray-900 truncate">{c.name}</div>

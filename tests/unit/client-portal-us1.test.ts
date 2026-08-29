@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@/lib/supabase/service', () => ({ createServiceClient: vi.fn() }))
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }))
@@ -229,11 +229,11 @@ describe('US1 — book integration: Zod, DomPurify, rateLimit, slot_taken vs no_
       error: null,
     })
     const bhChain = makeChain({ data: allOpen, error: null })
-    let capturedName: string | null = null
+    const _capturedName: string | null = null
     const clientsSelectChain = makeChain({ data: [], error: null })
     const clientsInsertChain = makeChain({ data: { id: 'client-x' }, error: null } as any)
     // intercept insert to capture sanitized name
-    const origFromClients = (table: string) => {
+    const _origFromClients = (table: string) => {
       if (table === 'clients') {
         // first call is select, second is insert — capture from insert call's data would need to inspect vi mock
         return clientsSelectChain

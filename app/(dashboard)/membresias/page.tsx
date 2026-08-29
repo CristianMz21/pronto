@@ -44,7 +44,7 @@ export default async function MembresiasPage(props: {
       'location_id',
       selectedLocation,
     ) as typeof memQuery
-  let clientMemQuery = supabase
+  const clientMemQuery = supabase
     .from('client_memberships')
     .select('id, client_id, membership_id, starts_at, expires_at, remaining, status, clients(name)')
     .eq('business_id', businessId)
@@ -79,7 +79,7 @@ export default async function MembresiasPage(props: {
           >
             Todas
           </Link>
-          {locations!.map((l) => (
+          {locations?.map((l) => (
             <Link
               key={l.id}
               href={`/membresias?location=${l.id}`}

@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 
-import { SEGMENTS, filterClientsBySegment } from '@/lib/campaigns'
-import { rateLimit, getIp } from '@/lib/rate-limit'
+import { filterClientsBySegment, SEGMENTS } from '@/lib/campaigns'
+import { getIp, rateLimit } from '@/lib/rate-limit'
 import { createClient } from '@/lib/supabase/server'
 
 const QuerySchema = z.object({
@@ -33,8 +33,8 @@ async function resolveBusinessId(
 
 function _inDaysFromNow(dateStr: string, days: number, now: Date): boolean {
   if (!dateStr) return false
-  const d = new Date(dateStr + 'T00:00:00')
-  if (isNaN(d.getTime())) return false
+  const d = new Date(`${dateStr}T00:00:00`)
+  if (Number.isNaN(d.getTime())) return false
   const thisYear = now.getFullYear()
   const bThisYear = new Date(thisYear, d.getMonth(), d.getDate())
   const diff = Math.ceil((bThisYear.getTime() - now.getTime()) / 86400000)

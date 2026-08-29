@@ -5,12 +5,12 @@
  * Вызывается из Settings → Notifications когда пользователь нажимает "Connect".
  */
 
-import { NextRequest, NextResponse } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 
-import { rateLimit, getIp } from '@/lib/rate-limit'
+import { getIp, rateLimit } from '@/lib/rate-limit'
 import { createClient } from '@/lib/supabase/server'
-import { setTelegramWebhook, getTelegramBotInfo } from '@/lib/telegram'
+import { getTelegramBotInfo, setTelegramWebhook } from '@/lib/telegram'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? ''
 

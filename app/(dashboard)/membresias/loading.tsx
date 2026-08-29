@@ -1,4 +1,4 @@
-import { Skeleton, GridSkeleton } from '@/components/ui/skeleton'
+import { GridSkeleton, Skeleton } from '@/components/ui/skeleton'
 
 export default function Loading() {
   return (

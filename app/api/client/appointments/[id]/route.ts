@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 
 import {
+  DEFAULT_LEAD_MINUTES,
   isPastInTz,
   isTooSoonInTz,
   parseDateTimeInTz,
-  DEFAULT_LEAD_MINUTES,
 } from '@/lib/booking-availability'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'

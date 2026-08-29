@@ -215,6 +215,7 @@ export function OnboardingChecklist({ businessId, enabledModules }: Props) {
   return (
     <div className="bg-white border border-gray-200 rounded-xl p-5 relative">
       <button
+        type="button"
         onClick={dismiss}
         className="absolute top-3 right-4 text-gray-400 hover:text-gray-600 text-xl leading-none"
         aria-label="Dismiss checklist"

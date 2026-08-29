@@ -1,19 +1,18 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import {
-  parseDateTimeInTz,
+  checkSlotWithinHours,
+  computeEffectiveHours,
+  type DayHours,
+  dayOfWeekFromDateString,
+  getDayOfWeekInTz,
+  isDayClosed,
   isPastInTz,
   isTooSoonInTz,
   isTooSoonMinutes,
-  checkSlotWithinHours,
-  dayOfWeekFromDateString,
-  computeEffectiveHours,
-  isDayClosed,
-  todayInBusinessTz,
   nowMinutesInBusinessTz,
-  getDayOfWeekInTz,
-  DEFAULT_HOURS,
-  type DayHours,
+  parseDateTimeInTz,
+  todayInBusinessTz,
 } from '@/lib/booking-availability'
 
 // ---------------------------------------------------------------------------
@@ -57,7 +56,7 @@ describe('booking-lead-time — parseDateTimeInTz', () => {
     // Midnight EST is 05:30Z before transition, but noon reference ensures offset calc uses same day's noon (already DST)
     // The key is it does not throw and returns a Date
     expect(d).toBeInstanceOf(Date)
-    expect(isNaN(d.getTime())).toBe(false)
+    expect(Number.isNaN(d.getTime())).toBe(false)
   })
 
   it('handles 00:00 and 23:59 boundaries', () => {

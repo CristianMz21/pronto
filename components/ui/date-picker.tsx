@@ -1,8 +1,8 @@
 'use client'
 
-import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react'
+import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useTranslations } from 'next-intl'
-import { useState, useRef, useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 interface DatePickerProps {
   value: string // YYYY-MM-DD
@@ -19,8 +19,8 @@ interface DatePickerProps {
 
 function parseDate(val: string): Date | null {
   if (!val || val.length < 10) return null
-  const d = new Date(val + 'T00:00:00')
-  return isNaN(d.getTime()) ? null : d
+  const d = new Date(`${val}T00:00:00`)
+  return Number.isNaN(d.getTime()) ? null : d
 }
 
 export function DatePicker({

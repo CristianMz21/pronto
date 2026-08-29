@@ -15,7 +15,7 @@ const BASE = 'https://chatapi.viber.com/pa'
 export async function sendViberMessage(
   token: string,
   userId: string,
-  text: string
+  text: string,
 ): Promise<boolean> {
   try {
     const res = await fetch(`${BASE}/send_message`, {
@@ -50,7 +50,7 @@ export async function sendViberMessage(
 
 export async function setViberWebhook(
   token: string,
-  webhookUrl: string
+  webhookUrl: string,
 ): Promise<{ ok: boolean; description?: string }> {
   try {
     const res = await fetch(`${BASE}/set_webhook`, {
@@ -78,7 +78,7 @@ export async function setViberWebhook(
 // ─── Получить информацию о боте (для проверки токена) ─────────────────────────
 
 export async function getViberBotInfo(
-  token: string
+  token: string,
 ): Promise<{ ok: boolean; name?: string; uri?: string }> {
   try {
     const res = await fetch(`${BASE}/get_account_info`, {
@@ -154,10 +154,7 @@ export function tplLowStock(opts: {
   ].join('\n')
 }
 
-export function tplThankYou(opts: {
-  clientName: string
-  serviceName: string
-}): string {
+export function tplThankYou(opts: { clientName: string; serviceName: string }): string {
   return [
     `✅ Visit completed`,
     ``,

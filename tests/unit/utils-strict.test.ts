@@ -1,14 +1,14 @@
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
 import {
   cn,
   formatCurrency,
   formatDate,
-  formatTime,
-  uses12HourClock,
   formatInBusinessTimezone,
-  slugify,
+  formatTime,
   getTenantSlug,
+  slugify,
+  uses12HourClock,
 } from '@/lib/utils'
 
 describe('utils strict 100%', () => {

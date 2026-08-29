@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mockSendMail = vi.fn()
 const mockCreateTransport = vi.fn(() => ({ sendMail: mockSendMail }))
@@ -7,7 +7,7 @@ const mockResendSend = vi.fn()
 
 // Must be hoisted before vi.mock calls
 vi.mock('nodemailer', () => ({
-  default: { createTransport: (...args: any[]) => mockCreateTransport(...args) }
+  default: { createTransport: (...args: any[]) => mockCreateTransport(...args) },
 }))
 
 vi.mock('resend', () => ({
@@ -16,7 +16,7 @@ vi.mock('resend', () => ({
     constructor(_key: string) {
       this.emails = { send: mockResendSend }
     }
-  }
+  },
 }))
 
 describe('mailer strict 100%', () => {
@@ -73,9 +73,16 @@ describe('mailer strict 100%', () => {
     delete process.env.RESEND_API_KEY
     mockSendMail.mockResolvedValue({ messageId: '<123@test>' })
     const { sendMail } = await import('@/lib/mailer')
-    const r = await sendMail({ from: 'a@test.com', to: 'b@test.com', subject: 'Hi', html: '<p>hi</p>' })
+    const r = await sendMail({
+      from: 'a@test.com',
+      to: 'b@test.com',
+      subject: 'Hi',
+      html: '<p>hi</p>',
+    })
     expect(r.id).toBe('<123@test>')
-    expect(mockCreateTransport).toHaveBeenCalledWith(expect.objectContaining({ host: 'smtp.test.com' }))
+    expect(mockCreateTransport).toHaveBeenCalledWith(
+      expect.objectContaining({ host: 'smtp.test.com' }),
+    )
   })
 
   it('sendMail SMTP with custom port 465 secure true and auth', async () => {
@@ -88,7 +95,9 @@ describe('mailer strict 100%', () => {
     const { sendMail } = await import('@/lib/mailer')
     const r = await sendMail({ from: 'a@test.com', to: 'b@test.com', subject: 'Hi', html: '' })
     expect(r.id).toBe('id465')
-    expect(mockCreateTransport).toHaveBeenCalledWith(expect.objectContaining({ port: 465, secure: true, auth: { user: 'user', pass: 'pass' } }))
+    expect(mockCreateTransport).toHaveBeenCalledWith(
+      expect.objectContaining({ port: 465, secure: true, auth: { user: 'user', pass: 'pass' } }),
+    )
     delete process.env.SMTP_PORT
     delete process.env.SMTP_USER
   })

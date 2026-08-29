@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
-import { evaluatePromotion, calculateDiscount } from '@/lib/promotions'
+import { calculateDiscount, evaluatePromotion } from '@/lib/promotions'
 
 const basePromo = {
   id: 'p1',

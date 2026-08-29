@@ -1,7 +1,7 @@
 'use client'
 
-import { Loader2, Send, Eye } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { Eye, Loader2, Send } from 'lucide-react'
+import { useEffect, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 

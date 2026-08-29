@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 
-import { rateLimit, getIp } from '@/lib/rate-limit'
+import { getIp, rateLimit } from '@/lib/rate-limit'
 import { createClient } from '@/lib/supabase/server'
 
 const BodySchema = z
@@ -177,7 +177,7 @@ export async function POST(req: NextRequest) {
   let discountAmount = 0
   let discountReason: string | null = null
   let loyaltyEarned = 0
-  let loyaltyRedeemed = body.loyalty_points_redeem ?? 0
+  const loyaltyRedeemed = body.loyalty_points_redeem ?? 0
   const earnRate = (biz as { loyalty_earn_rate?: number } | null)?.loyalty_earn_rate ?? 1000
   const redeemRate = (biz as { loyalty_redeem_rate?: number } | null)?.loyalty_redeem_rate ?? 100
   const redeemValue =

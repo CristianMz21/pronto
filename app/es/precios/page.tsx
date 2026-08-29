@@ -1,5 +1,6 @@
+// biome-ignore assist/source/organizeImports: import order conflicts with eslint import/order, keep eslint order
 import { Check, Minus } from 'lucide-react'
-import { Metadata } from 'next'
+import type { Metadata } from 'next'
 import { Bricolage_Grotesque, DM_Sans } from 'next/font/google'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'

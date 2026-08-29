@@ -5,7 +5,7 @@
  * Транспорт (Resend / SMTP) определяется в lib/mailer.ts через env-переменные.
  */
 
-import { sendMail, getFromAddress } from './mailer'
+import { getFromAddress, sendMail } from './mailer'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
 

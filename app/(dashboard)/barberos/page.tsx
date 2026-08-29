@@ -68,7 +68,7 @@ export default async function BarberosPage(props: {
           >
             Todas
           </Link>
-          {locations!.map((l) => (
+          {locations?.map((l) => (
             <Link
               key={l.id}
               href={`/barberos?location=${l.id}`}

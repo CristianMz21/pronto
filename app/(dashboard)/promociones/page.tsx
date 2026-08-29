@@ -68,7 +68,7 @@ export default async function PromocionesPage(props: {
           >
             Todas
           </Link>
-          {locations!.map((l) => (
+          {locations?.map((l) => (
             <Link
               key={l.id}
               href={`/promociones?location=${l.id}`}

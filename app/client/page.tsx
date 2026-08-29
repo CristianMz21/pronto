@@ -156,8 +156,8 @@ export default async function ClientPortalPage(props: {
         ) : (
           <div className="space-y-4">
             <div className="bg-white rounded-xl border p-5">
-              <h2 className="font-medium text-gray-900">{renderClient!.name}</h2>
-              <p className="text-sm text-gray-500">{renderClient!.phone ?? '—'}</p>
+              <h2 className="font-medium text-gray-900">{renderClient?.name}</h2>
+              <p className="text-sm text-gray-500">{renderClient?.phone ?? '—'}</p>
             </div>
 
             <div className="bg-white rounded-xl border p-5">
@@ -221,7 +221,7 @@ export default async function ClientPortalPage(props: {
               Reservar con beneficios →
             </Link>
             <a
-              href={`/client?phone=${encodeURIComponent(renderClient!.phone ?? '')}`}
+              href={`/client?phone=${encodeURIComponent(renderClient?.phone ?? '')}`}
               className="block text-center text-xs text-gray-500 underline"
             >
               Actualizar

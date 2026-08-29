@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 
-import { rateLimit, getIp } from '@/lib/rate-limit'
+import { getIp, rateLimit } from '@/lib/rate-limit'
 import { createClient } from '@/lib/supabase/server'
+
 type Period = 'today' | '7d' | '30d'
 
 function getPeriodStart(period: Period): Date {
@@ -74,8 +75,8 @@ export async function GET(req: NextRequest) {
   let endIso: string | null = null
 
   if (fromParam && toParam) {
-    startIso = new Date(fromParam + 'T00:00:00').toISOString()
-    const toEnd = new Date(toParam + 'T00:00:00')
+    startIso = new Date(`${fromParam}T00:00:00`).toISOString()
+    const toEnd = new Date(`${toParam}T00:00:00`)
     toEnd.setDate(toEnd.getDate() + 1)
     endIso = toEnd.toISOString()
   } else {

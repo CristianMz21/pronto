@@ -1,25 +1,25 @@
 'use client'
 
 import {
-  Plus,
-  Pencil,
-  Trash2,
-  Check,
-  Loader2,
-  CheckCircle2,
   AlertCircle,
-  Users,
+  Check,
+  CheckCircle2,
   Eye,
   EyeOff,
+  Loader2,
+  Pencil,
+  Plus,
   Settings,
+  Trash2,
+  Users,
 } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { useState, useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { MODULES, ModuleKey } from '@/lib/modules'
+import { MODULES, type ModuleKey } from '@/lib/modules'
 import { createClient } from '@/lib/supabase/client'
 
 import { HolidaysSection } from './holidays-section'
@@ -700,6 +700,7 @@ export function SettingsTabs({
       <div className="flex flex-nowrap overflow-x-auto sm:flex-wrap sm:overflow-x-visible gap-1 bg-gray-100 p-1 rounded-lg mb-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         {tabs.map((tb) => (
           <button
+            type="button"
             key={tb.key}
             onClick={() => setTab(tb.key)}
             className={`shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${tab === tb.key ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
@@ -857,6 +858,7 @@ export function SettingsTabs({
                     />
                   </div>
                   <button
+                    type="button"
                     onClick={removeLogo}
                     disabled={logoUploading}
                     className="text-sm text-red-500 hover:text-red-700 font-medium disabled:opacity-50"
@@ -1138,12 +1140,14 @@ export function SettingsTabs({
                               {t('services.deleteConfirm')}
                             </span>
                             <button
+                              type="button"
                               onClick={() => deleteService(s.id)}
                               className="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600"
                             >
                               {t('services.deleteYes')}
                             </button>
                             <button
+                              type="button"
                               onClick={() => setConfirmDeleteSvcId(null)}
                               className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50"
                             >
@@ -1153,6 +1157,7 @@ export function SettingsTabs({
                         ) : (
                           <div className="flex justify-end gap-1">
                             <button
+                              type="button"
                               onClick={() => {
                                 setSvcForm(s)
                                 setEditingSvc(s.id)
@@ -1162,6 +1167,7 @@ export function SettingsTabs({
                               <Pencil className="w-3.5 h-3.5 text-gray-500" />
                             </button>
                             <button
+                              type="button"
                               onClick={() => setConfirmDeleteSvcId(s.id)}
                               className="p-1.5 hover:bg-red-50 rounded"
                             >
@@ -1287,12 +1293,14 @@ export function SettingsTabs({
                               {t('employees.deleteConfirm')}
                             </span>
                             <button
+                              type="button"
                               onClick={() => deleteEmployee(e.id)}
                               className="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600"
                             >
                               {t('employees.deleteYes')}
                             </button>
                             <button
+                              type="button"
                               onClick={() => setConfirmDeleteEmpId(null)}
                               className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50"
                             >
@@ -1302,6 +1310,7 @@ export function SettingsTabs({
                         ) : (
                           <div className="flex justify-end gap-1">
                             <button
+                              type="button"
                               onClick={() => {
                                 setEmpForm(e)
                                 setEditingEmp(e.id)
@@ -1311,6 +1320,7 @@ export function SettingsTabs({
                               <Pencil className="w-3.5 h-3.5 text-gray-500" />
                             </button>
                             <button
+                              type="button"
                               onClick={() => setConfirmDeleteEmpId(e.id)}
                               className="p-1.5 hover:bg-red-50 rounded"
                             >
@@ -1439,7 +1449,7 @@ export function SettingsTabs({
                       type="number"
                       value={biz.smtp_port ?? 587}
                       onChange={(e) =>
-                        setBiz((b) => ({ ...b, smtp_port: parseInt(e.target.value) || 587 }))
+                        setBiz((b) => ({ ...b, smtp_port: parseInt(e.target.value, 10) || 587 }))
                       }
                       className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
@@ -1878,6 +1888,7 @@ export function SettingsTabs({
                   { labelKey: 'modules.presets.all' as const, modules: DEFAULT_MODULES },
                 ].map((preset) => (
                   <button
+                    type="button"
                     key={preset.labelKey}
                     onClick={() => setEnabledModules(preset.modules)}
                     className="text-sm px-3 py-1.5 rounded-lg border border-gray-200 hover:border-blue-400 hover:text-blue-700 transition-colors"
@@ -1902,6 +1913,7 @@ export function SettingsTabs({
                         </p>
                       </div>
                       <button
+                        type="button"
                         onClick={() => {
                           if (on) {
                             setConfirmModule(key)
@@ -1923,12 +1935,14 @@ export function SettingsTabs({
                         </p>
                         <div className="flex gap-2 shrink-0">
                           <button
+                            type="button"
                             onClick={() => setConfirmModule(null)}
                             className="text-xs px-3 py-1.5 rounded-md border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-colors"
                           >
                             {t('modules.cancelButton')}
                           </button>
                           <button
+                            type="button"
                             onClick={() => {
                               setEnabledModules((prev) => prev.filter((m) => m !== key))
                               setConfirmModule(null)
@@ -1946,6 +1960,7 @@ export function SettingsTabs({
             </div>
 
             <button
+              type="button"
               onClick={async () => {
                 setModulesSaving(true)
                 setModulesSaved(false)

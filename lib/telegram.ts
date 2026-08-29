@@ -11,7 +11,7 @@ export async function sendTelegramMessage(
   token: string,
   chatId: string,
   text: string,
-  parseMode: 'HTML' | 'Markdown' = 'HTML'
+  parseMode: 'HTML' | 'Markdown' = 'HTML',
 ): Promise<boolean> {
   try {
     const res = await fetch(`${BASE}${token}/sendMessage`, {
@@ -40,7 +40,7 @@ export async function sendTelegramMessage(
 
 export async function setTelegramWebhook(
   token: string,
-  webhookUrl: string
+  webhookUrl: string,
 ): Promise<{ ok: boolean; description?: string }> {
   try {
     const res = await fetch(`${BASE}${token}/setWebhook`, {
@@ -57,7 +57,7 @@ export async function setTelegramWebhook(
 // ─── Получить информацию о боте ───────────────────────────────────────────────
 
 export async function getTelegramBotInfo(
-  token: string
+  token: string,
 ): Promise<{ ok: boolean; result?: { username: string; first_name: string } }> {
   try {
     const res = await fetch(`${BASE}${token}/getMe`)
@@ -133,10 +133,7 @@ export function tplLowStock(opts: {
   ].join('\n')
 }
 
-export function tplThankYou(opts: {
-  clientName: string
-  serviceName: string
-}): string {
+export function tplThankYou(opts: { clientName: string; serviceName: string }): string {
   return [
     `✅ <b>Visit completed</b>`,
     ``,
@@ -146,9 +143,7 @@ export function tplThankYou(opts: {
   ].join('\n')
 }
 
-export function tplReactivation(opts: {
-  clientName: string
-}): string {
+export function tplReactivation(opts: { clientName: string }): string {
   return [
     `📤 <b>Reactivation sent</b>`,
     ``,
@@ -157,9 +152,7 @@ export function tplReactivation(opts: {
   ].join('\n')
 }
 
-export function tplBirthday(opts: {
-  clientName: string
-}): string {
+export function tplBirthday(opts: { clientName: string }): string {
   return [
     `🎂 <b>Birthday message sent</b>`,
     ``,

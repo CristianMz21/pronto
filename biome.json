@@ -10,12 +10,12 @@
     "includes": [
       "**",
       "!**/.next",
-      "!**/.next-*/**",
+      "!**/.next-*",
       "!**/node_modules",
       "!**/coverage",
       "!**/public/sw.js",
       "!**/public/workbox-*.js",
-      "!**/drizzle/**",
+      "!**/drizzle",
       "!**/lib/supabase/database.types.ts",
       "!**/package-lock.json",
       "!.git"
@@ -34,6 +34,11 @@
       "trailingCommas": "all"
     }
   },
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
+    }
+  },
   "json": {
     "formatter": {
       "trailingCommas": "none"
@@ -45,9 +50,75 @@
       "formatter": {
         "trailingCommas": "none"
       }
+    },
+    {
+      "includes": ["tests/**"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noExplicitAny": "off",
+            "noThenProperty": "off",
+            "useIterableCallbackReturn": "off",
+            "noArrayIndexKey": "off"
+          },
+          "style": {
+            "noNonNullAssertion": "off"
+          },
+          "correctness": {
+            "noUnusedVariables": "off",
+            "noUnusedImports": "off"
+          },
+          "a11y": {
+            "noLabelWithoutControl": "off",
+            "useButtonType": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["**/*.test.{ts,tsx}", "**/*.spec.{ts,tsx}"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noExplicitAny": "off",
+            "noThenProperty": "off",
+            "useIterableCallbackReturn": "off"
+          }
+        }
+      }
     }
   ],
   "linter": {
-    "enabled": false
+    "enabled": true,
+    "rules": {
+      "preset": "recommended",
+      "a11y": {
+        "noLabelWithoutControl": "off",
+        "noStaticElementInteractions": "off",
+        "useKeyWithClickEvents": "off",
+        "useValidAnchor": "off"
+      },
+      "complexity": {
+        "noBannedTypes": "off"
+      },
+      "correctness": {
+        "useExhaustiveDependencies": "off"
+      },
+      "performance": {
+        "noImgElement": "off"
+      },
+      "security": {
+        "noDangerouslySetInnerHtml": "off"
+      },
+      "style": {
+        "noNonNullAssertion": "off"
+      },
+      "suspicious": {
+        "noArrayIndexKey": "off",
+        "noUnknownAtRules": "off",
+        "useIterableCallbackReturn": "off",
+        "noNonNullAssertedOptionalChain": "off"
+      }
+    }
   }
 }

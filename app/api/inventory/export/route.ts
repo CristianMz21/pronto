@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 // SECURITY: xlsx@0.18.5 has GHSA-4r6h-8v6p-xvw6 (Prototype Pollution) + GHSA-5pgg-2g8v-p4x9 (ReDoS)
 // — no fix available upstream. Kept because export is server-only, no user-supplied workbook parsing,
 // and output is trusted json_to_sheet. Mitigation: never call XLSX.read on untrusted input.
@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import * as XLSX from 'xlsx'
 import { z } from 'zod'
 
-import { rateLimit, getIp } from '@/lib/rate-limit'
+import { getIp, rateLimit } from '@/lib/rate-limit'
 import { createClient } from '@/lib/supabase/server'
 export async function GET(_req: NextRequest) {
   const _ipGET = getIp(_req as unknown as Request)

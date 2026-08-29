@@ -104,8 +104,8 @@ export function filterClientsBySegment(
       return last ? (now.getTime() - new Date(last).getTime()) / 86400000 >= 60 : true
     if (segment === 'birthday_7') {
       if (!bd) return false
-      const d = new Date(bd + 'T00:00:00')
-      if (isNaN(d.getTime())) return false
+      const d = new Date(`${bd}T00:00:00`)
+      if (Number.isNaN(d.getTime())) return false
       const thisYear = now.getFullYear()
       const bThisYear = new Date(thisYear, d.getMonth(), d.getDate())
       const diff = Math.ceil((bThisYear.getTime() - now.getTime()) / 86400000)
@@ -139,9 +139,7 @@ type _InsertBuilder = {
   insert: (data: unknown) => {
     select: (...a: unknown[]) => { single: () => Promise<{ data: unknown; error: unknown }> }
   }
-  update: (
-    data: unknown,
-  ) => QueryBuilder & {
+  update: (data: unknown) => QueryBuilder & {
     eq: (
       c: string,
       v: unknown,
@@ -196,10 +194,6 @@ async function fetchSegmentClients(
           col: string,
           val: unknown,
         ) => {
-          order: (col: string) => {
-            limit: (n: number) => Promise<{ data: unknown[] | null; error: unknown }>
-          }
-        } & {
           order: (col: string) => {
             limit: (n: number) => Promise<{ data: unknown[] | null; error: unknown }>
           }

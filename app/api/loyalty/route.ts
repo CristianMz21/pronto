@@ -2,14 +2,14 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
 import {
-  getBalance,
-  earnPoints,
-  redeemPoints,
   calculateRedeemValue,
   DEFAULT_REDEEM_RATE,
   DEFAULT_REDEEM_VALUE,
+  earnPoints,
+  getBalance,
+  redeemPoints,
 } from '@/lib/loyalty'
-import { rateLimit, getIp } from '@/lib/rate-limit'
+import { getIp, rateLimit } from '@/lib/rate-limit'
 import { createClient } from '@/lib/supabase/server'
 
 const QuerySchema = z.object({

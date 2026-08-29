@@ -23,7 +23,10 @@ export const MODULES = {
 
 export type ModuleKey = keyof typeof MODULES
 
-export function isModuleEnabled(enabledModules: string[] | null | undefined, module: string): boolean {
+export function isModuleEnabled(
+  enabledModules: string[] | null | undefined,
+  module: string,
+): boolean {
   if (!Array.isArray(enabledModules) || typeof module !== 'string') return false
   return enabledModules.includes(module as ModuleKey)
 }

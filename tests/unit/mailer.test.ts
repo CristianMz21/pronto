@@ -1,6 +1,7 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
-import { sanitizeBusinessName, getFromAddress } from '@/lib/mailer'
+import { getFromAddress, sanitizeBusinessName } from '@/lib/mailer'
+
 describe('mailer comprehensive', () => {
   it('sanitize strips', () => {
     expect(sanitizeBusinessName('<b>John</b>')).toBe('John')

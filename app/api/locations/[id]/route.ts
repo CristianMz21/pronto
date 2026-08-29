@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
 import { formatLocationSlug } from '@/lib/locations'
-import { rateLimit, getIp } from '@/lib/rate-limit'
+import { getIp, rateLimit } from '@/lib/rate-limit'
 import { createClient } from '@/lib/supabase/server'
 
 function sanitize(s: string): string {
@@ -191,7 +191,7 @@ export async function DELETE(request: Request, props: { params: Promise<{ id: st
   return NextResponse.json({ ok: true, soft_deleted: true })
 }
 // @ts-expect-error - tsc strict fix
-export async function GET(request: Request, props: { params: Promise<{ id: string }> }) {
+export async function GET(_request: Request, props: { params: Promise<{ id: string }> }) {
   const supabase = await createClient()
   const {
     data: { user },

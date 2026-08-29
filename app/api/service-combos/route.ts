@@ -1,7 +1,7 @@
 import DOMPurify from 'isomorphic-dompurify'
 import { NextResponse } from 'next/server'
 
-import { rateLimit, getIp } from '@/lib/rate-limit'
+import { getIp, rateLimit } from '@/lib/rate-limit'
 import { ServiceComboSchema } from '@/lib/service-combos'
 import { createClient } from '@/lib/supabase/server'
 

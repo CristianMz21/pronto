@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@supabase/supabase-js', () => ({ createClient: vi.fn() }))
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }))
@@ -55,7 +55,7 @@ vi.mock('isomorphic-dompurify', () => ({
 }))
 vi.mock('@/lib/rate-limit', () => ({ rateLimit: vi.fn(() => true), getIp: vi.fn(() => '1.1.1.1') }))
 
-function chain(data: any, extra: any = {}) {
+function _chain(data: any, extra: any = {}) {
   const c: any = { ...extra }
   const methods = [
     'select',
@@ -214,7 +214,7 @@ describe('massive final coverage', () => {
         return { select: vi.fn(() => ({})) } as any
       }),
     } as any)
-    let { POST } = await import('@/app/api/email/confirm/route')
+    const { POST } = await import('@/app/api/email/confirm/route')
     let req = new NextRequest('http://localhost/api/email/confirm', {
       method: 'POST',
       headers: { authorization: 'Bearer s3cret' },
@@ -809,7 +809,7 @@ describe('massive final coverage', () => {
       low_stock_threshold: 10,
       business: { ...biz },
     } as any
-    const itemOk = {
+    const _itemOk = {
       id: 'i2',
       business_id: 'b1',
       name: 'Ok',
@@ -881,7 +881,7 @@ describe('massive final coverage', () => {
         break_end: null,
       },
     ]
-    const businessHoursOpen = [
+    const _businessHoursOpen = [
       {
         day_of_week: new Date().getDay(),
         is_open: true,
@@ -954,7 +954,7 @@ describe('massive final coverage', () => {
     // Use a date that maps to monday (1) closed -> pick next monday date
     const tomorrow = new Date(Date.now() + 24 * 3600 * 1000)
     const dateStr = tomorrow.toISOString().slice(0, 10)
-    let req = new NextRequest('http://localhost/api/book', {
+    const req = new NextRequest('http://localhost/api/book', {
       method: 'POST',
       body: JSON.stringify({
         businessId: '11111111-1111-1111-1111-111111111111',
@@ -965,7 +965,7 @@ describe('massive final coverage', () => {
         phone: '+123',
       }),
     } as any)
-    let res = await POST(req as any)
+    const res = await POST(req as any)
     // either closed or outside_hours or success depending on dow, but should not crash
     expect([200, 400]).toContain(res.status)
   })

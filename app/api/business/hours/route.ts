@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 
-import { rateLimit, getIp } from '@/lib/rate-limit'
+import { getIp, rateLimit } from '@/lib/rate-limit'
 import { createClient } from '@/lib/supabase/server'
 
 const DayHoursSchema = z.object({
@@ -146,11 +146,11 @@ export async function PUT(req: NextRequest) {
   }))
 
   // Upsert: business_id + location_id + day_of_week
-  const { error } = await supabase
-    .from('business_hours')
-    .upsert(rows, { onConflict: 'business_id,location_id,day_of_week' } as unknown as {
-      onConflict: string
-    })
+  const { error } = await supabase.from('business_hours').upsert(rows, {
+    onConflict: 'business_id,location_id,day_of_week',
+  } as unknown as {
+    onConflict: string
+  })
   // Fallback if constraint not yet satisfied (location_id null handling)
   if (error) {
     // Try delete + insert for that location

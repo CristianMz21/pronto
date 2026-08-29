@@ -1,16 +1,17 @@
 import { createClient as createAdminClient } from '@supabase/supabase-js'
-import { NextRequest, NextResponse } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 
-import { sendBookingConfirmation, formatEmailDate, formatEmailTime } from '@/lib/email'
+import { formatEmailDate, formatEmailTime, sendBookingConfirmation } from '@/lib/email'
 import { buildGCalUrlFromISO } from '@/lib/gcal'
-import { rateLimit, getIp } from '@/lib/rate-limit'
+import { getIp, rateLimit } from '@/lib/rate-limit'
 import { sendTelegramMessage, tplNewBooking } from '@/lib/telegram'
 import { sendViberMessage, tplNewBooking as viberTplNewBooking } from '@/lib/viber'
 import {
   sendWhatsAppMessage,
   tplBookingConfirmation as waTplBookingConfirmation,
 } from '@/lib/whatsapp'
+
 // Telegram confirmation template for client
 function tplConfirmClient(opts: {
   clientName: string

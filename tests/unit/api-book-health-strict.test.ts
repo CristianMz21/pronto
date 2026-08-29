@@ -1,6 +1,6 @@
 import fc from 'fast-check'
 import { NextRequest } from 'next/server'
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Strict mocks required by spec
 vi.mock('@/lib/supabase/service', () => ({ createServiceClient: vi.fn() }))
@@ -14,7 +14,7 @@ import { POST as BookPOST } from '@/app/api/book/route'
 import { PATCH as ModulesPATCH } from '@/app/api/business/modules/route'
 import { GET as CheckSlugGET } from '@/app/api/check-slug/route'
 import { GET as HealthGET } from '@/app/api/health/route'
-import { rateLimit, getIp } from '@/lib/rate-limit'
+import { getIp, rateLimit } from '@/lib/rate-limit'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 
@@ -1336,7 +1336,7 @@ describe('api-book-health-strict', () => {
       expect(typeof j.timestamp).toBe('string')
       // ISO parsing
       const d = new Date(j.timestamp)
-      expect(isNaN(d.getTime())).toBe(false)
+      expect(Number.isNaN(d.getTime())).toBe(false)
       expect(j.timestamp).toBe(d.toISOString())
       // no auth required: createClient not called
       expect(createClient).not.toHaveBeenCalled()

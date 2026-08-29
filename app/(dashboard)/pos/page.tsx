@@ -35,7 +35,7 @@ export default async function POSPage(props: { searchParams: Promise<SearchParam
   const { data: owned } = await supabase
     .from('businesses')
     .select('id, currency, timezone, require_cash_register_for_cash, slug')
-    .eq('owner_id', user!.id)
+    .eq('owner_id', user?.id)
     .maybeSingle()
 
   if (owned) {
@@ -52,7 +52,7 @@ export default async function POSPage(props: { searchParams: Promise<SearchParam
       .select(
         'business_id, businesses!inner(id, currency, timezone, require_cash_register_for_cash, slug)',
       )
-      .eq('user_id', user!.id)
+      .eq('user_id', user?.id)
       .eq('is_active', true)
       .limit(1)
       .maybeSingle()
@@ -81,7 +81,7 @@ export default async function POSPage(props: { searchParams: Promise<SearchParam
   try {
     role = await getUserRole(
       supabase as unknown as { from: (t: string) => unknown },
-      user!.id,
+      user?.id,
       biz.id,
     )
   } catch {
@@ -94,7 +94,7 @@ export default async function POSPage(props: { searchParams: Promise<SearchParam
     const { data: emp } = await supabase
       .from('employees')
       .select('id')
-      .eq('user_id', user!.id)
+      .eq('user_id', user?.id)
       .eq('business_id', biz.id)
       .eq('is_active', true)
       .limit(1)
@@ -239,7 +239,7 @@ export default async function POSPage(props: { searchParams: Promise<SearchParam
             >
               Todas
             </Link>
-            {(locations as unknown as Array<{ id: string; name: string }>)!.map(
+            {(locations as unknown as Array<{ id: string; name: string }>)?.map(
               (l: { id: string; name: string }) => (
                 <Link
                   key={l.id}

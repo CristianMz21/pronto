@@ -1,7 +1,9 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('@/lib/rate-limit', () => ({ rateLimit: () => false, getIp: () => '1.1.1.1' }))
+
 import { POST } from '@/app/api/book/route'
+
 describe('book', () => {
   it('rate limited', async () => {
     const r = await POST({

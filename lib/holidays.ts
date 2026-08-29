@@ -20,7 +20,7 @@ export function getHolidaysForDate(date: string, holidays: Holiday[]): Holiday[]
 export function isHolidayForLocation(
   date: string,
   locationId: string | null | undefined,
-  holidays: Holiday[]
+  holidays: Holiday[],
 ): boolean {
   if (!holidays || holidays.length === 0) return false
   return holidays.some((h) => {

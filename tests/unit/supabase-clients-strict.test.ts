@@ -1,17 +1,20 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('@supabase/ssr', () => ({
   createBrowserClient: vi.fn(() => ({ from: () => ({}) })),
-  createServerClient: vi.fn(() => ({ auth: { getUser: async () => ({ data: { user: null } }) }, from: () => ({}) }))
+  createServerClient: vi.fn(() => ({
+    auth: { getUser: async () => ({ data: { user: null } }) },
+    from: () => ({}),
+  })),
 }))
 vi.mock('@supabase/supabase-js', () => ({
-  createClient: vi.fn(() => ({ from: () => ({ select: () => ({}) }), auth: {} }))
+  createClient: vi.fn(() => ({ from: () => ({ select: () => ({}) }), auth: {} })),
 }))
 vi.mock('next/headers', () => ({
   cookies: vi.fn(async () => ({
     getAll: () => [{ name: 'a', value: '1' }],
-    set: vi.fn()
-  }))
+    set: vi.fn(),
+  })),
 }))
 
 describe('supabase clients strict', () => {
@@ -44,11 +47,13 @@ describe('supabase clients strict', () => {
     const { cookies } = await import('next/headers')
     vi.mocked(cookies).mockResolvedValueOnce({
       getAll: () => [],
-      set: () => { throw new Error('Server Component') }
+      set: () => {
+        throw new Error('Server Component')
+      },
     } as any)
     const c = await mod.createClient()
     // call setAll which should catch
-    const client = c as any
+    const _client = c as any
     // The internal setAll is inside createServerClient options, we need to invoke it via retrieved call
     const { createServerClient } = await import('@supabase/ssr')
     const callArgs = vi.mocked(createServerClient).mock.calls.at(-1) as any
@@ -71,7 +76,10 @@ describe('supabase clients strict', () => {
     const mockFetch = vi.fn().mockResolvedValue({ ok: true } as any)
     global.fetch = mockFetch as any
     await opts.global.fetch('http://test', {})
-    expect(mockFetch).toHaveBeenCalledWith('http://test', expect.objectContaining({ cache: 'no-store' }))
+    expect(mockFetch).toHaveBeenCalledWith(
+      'http://test',
+      expect.objectContaining({ cache: 'no-store' }),
+    )
     global.fetch = origFetch
   })
 })

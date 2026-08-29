@@ -18,19 +18,22 @@ const store = new Map<string, number[]>()
 
 // Clean up stale entries every 10 minutes to avoid memory leaks
 if (typeof setInterval !== 'undefined') {
-  setInterval(() => {
-    const now = Date.now()
-    Array.from(store.entries()).forEach(([key, timestamps]) => {
-      if (timestamps.every((t) => now - t > 60 * 60 * 1000)) {
-        store.delete(key)
-      }
-    })
-  }, 10 * 60 * 1000)
+  setInterval(
+    () => {
+      const now = Date.now()
+      Array.from(store.entries()).forEach(([key, timestamps]) => {
+        if (timestamps.every((t) => now - t > 60 * 60 * 1000)) {
+          store.delete(key)
+        }
+      })
+    },
+    10 * 60 * 1000,
+  )
 }
 
 export function rateLimit(
   key: string,
-  { limit, windowMs }: { limit: number; windowMs: number }
+  { limit, windowMs }: { limit: number; windowMs: number },
 ): boolean {
   const now = Date.now()
   const windowStart = now - windowMs
@@ -45,8 +48,6 @@ export function rateLimit(
 
 /** Extract IP from Next.js request headers (works behind proxies) */
 export function getIp(req: Request): string {
-  const forwarded = req instanceof Request
-    ? req.headers.get('x-forwarded-for')
-    : null
+  const forwarded = req instanceof Request ? req.headers.get('x-forwarded-for') : null
   return (forwarded?.split(',')[0] ?? '').trim() || 'unknown'
 }

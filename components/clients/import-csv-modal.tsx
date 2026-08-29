@@ -1,8 +1,8 @@
 'use client'
 
 import * as Dialog from '@radix-ui/react-dialog'
-import { X, Upload, CheckCircle, AlertCircle } from 'lucide-react'
-import { useState, useRef, useCallback } from 'react'
+import { AlertCircle, CheckCircle, Upload, X } from 'lucide-react'
+import { useCallback, useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 
@@ -274,6 +274,7 @@ export function ImportCsvModal({ open, onClose, onImported }: Props) {
               Import clients from CSV
             </Dialog.Title>
             <button
+              type="button"
               onClick={handleClose}
               className="text-gray-400 hover:text-gray-600 transition-colors"
             >
@@ -290,6 +291,7 @@ export function ImportCsvModal({ open, onClose, onImported }: Props) {
               <div className="grid grid-cols-3 gap-2 mb-4">
                 {PLATFORMS.map((p) => (
                   <button
+                    type="button"
                     key={p.id}
                     onClick={() => setPlatform(p.id)}
                     className={`border rounded-lg py-2 px-3 text-sm font-medium transition-colors
@@ -355,6 +357,7 @@ export function ImportCsvModal({ open, onClose, onImported }: Props) {
                   {rowCount} row{rowCount !== 1 ? 's' : ''} found
                 </span>
                 <button
+                  type="button"
                   onClick={() => {
                     setStep('platform')
                     fileInputRef.current?.click()

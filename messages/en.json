@@ -437,15 +437,7 @@
     "calendar": {
       "today": "Today",
       "publicPage": "Public booking page",
-      "days": [
-        "Mon",
-        "Tue",
-        "Wed",
-        "Thu",
-        "Fri",
-        "Sat",
-        "Sun"
-      ],
+      "days": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
       "colorLegend": "Color legend",
       "teamColors": "Team colors",
       "noTeamMembers": "No team members yet",
@@ -535,15 +527,7 @@
     },
     "workingHours": {
       "heading": "Working Hours",
-      "dayNames": [
-        "Sun",
-        "Mon",
-        "Tue",
-        "Wed",
-        "Thu",
-        "Fri",
-        "Sat"
-      ],
+      "dayNames": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
       "from": "From",
       "to": "To",
       "closed": "Closed",
@@ -938,15 +922,7 @@
       "November",
       "December"
     ],
-    "days": [
-      "Mo",
-      "Tu",
-      "We",
-      "Th",
-      "Fr",
-      "Sa",
-      "Su"
-    ]
+    "days": ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
   },
   "feedback": {
     "heading": "Share your feedback",
@@ -1126,11 +1102,7 @@
       "starter": {
         "name": "Starter",
         "price": "$19/mo",
-        "features": [
-          "5 employees",
-          "Unlimited clients",
-          "Unlimited bookings"
-        ]
+        "features": ["5 employees", "Unlimited clients", "Unlimited bookings"]
       },
       "pro": {
         "name": "Pro",
@@ -1146,12 +1118,7 @@
       "agency": {
         "name": "Agency",
         "price": "$79/mo",
-        "features": [
-          "Unlimited employees",
-          "Multiple locations",
-          "White-label",
-          "API access"
-        ]
+        "features": ["Unlimited employees", "Multiple locations", "White-label", "API access"]
       }
     }
   },

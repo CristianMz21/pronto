@@ -1,11 +1,11 @@
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
 import {
+  checkBookingLimit,
   checkClientLimit,
   checkEmployeeLimit,
-  checkBookingLimit,
-  checkProductLimit,
   checkNotificationChannel,
+  checkProductLimit,
 } from '@/lib/plan-limits'
 
 describe('plan-limits strict 100%', () => {

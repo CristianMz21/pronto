@@ -1,9 +1,9 @@
 'use client'
 
 import * as Dialog from '@radix-ui/react-dialog'
-import { X, Upload, CheckCircle, AlertCircle, Download } from 'lucide-react'
+import { AlertCircle, CheckCircle, Download, Upload, X } from 'lucide-react'
 import { useTranslations } from 'next-intl'
-import { useState, useRef, useCallback } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import * as XLSX from 'xlsx'
 
 import { Button } from '@/components/ui/button'
@@ -150,7 +150,7 @@ function detectColumns(headers: string[]): Record<keyof ParsedRow, number> {
   for (const [field, keywords] of Object.entries(COLUMN_KEYWORDS)) {
     let found = -1
     for (const kw of keywords) {
-      const idx = normalized.findIndex((h) => h === kw.toLowerCase())
+      const idx = normalized.indexOf(kw.toLowerCase())
       if (idx !== -1) {
         found = idx
         break
@@ -335,6 +335,7 @@ export function ImportInventoryModal({ open, onClose, onImported }: Props) {
               Import Products
             </Dialog.Title>
             <button
+              type="button"
               onClick={handleClose}
               className="text-gray-400 hover:text-gray-600 transition-colors"
             >
@@ -385,6 +386,7 @@ export function ImportInventoryModal({ open, onClose, onImported }: Props) {
 
               <p className="text-xs font-medium text-gray-500 mb-2">{t('import.templateHint')}</p>
               <button
+                type="button"
                 onClick={downloadTemplate}
                 className="flex items-center gap-2 w-full border border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-700 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors"
               >
@@ -404,6 +406,7 @@ export function ImportInventoryModal({ open, onClose, onImported }: Props) {
                   {t('import.productsFound', { count: rowCount })}
                 </span>
                 <button
+                  type="button"
                   onClick={() => {
                     setStep('upload')
                     setImportError(null)

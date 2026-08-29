@@ -437,15 +437,7 @@
     "calendar": {
       "today": "Hoje",
       "publicPage": "Página pública de agendamentos",
-      "days": [
-        "Seg",
-        "Ter",
-        "Qua",
-        "Qui",
-        "Sex",
-        "Sáb",
-        "Dom"
-      ],
+      "days": ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"],
       "colorLegend": "Legenda de cores",
       "teamColors": "Cores da equipe",
       "noTeamMembers": "Nenhum membro da equipe ainda",
@@ -535,15 +527,7 @@
     },
     "workingHours": {
       "heading": "Horário de funcionamento",
-      "dayNames": [
-        "Dom",
-        "Seg",
-        "Ter",
-        "Qua",
-        "Qui",
-        "Sex",
-        "Sáb"
-      ],
+      "dayNames": ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"],
       "from": "De",
       "to": "Até",
       "closed": "Fechado",
@@ -937,15 +921,7 @@
       "Novembro",
       "Dezembro"
     ],
-    "days": [
-      "Seg",
-      "Ter",
-      "Qua",
-      "Qui",
-      "Sex",
-      "Sáb",
-      "Dom"
-    ]
+    "days": ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"]
   },
   "feedback": {
     "heading": "Compartilhe sua opinião",
@@ -1125,11 +1101,7 @@
       "starter": {
         "name": "Starter",
         "price": "$19/mês",
-        "features": [
-          "5 funcionários",
-          "Clientes ilimitados",
-          "Agendamentos ilimitados"
-        ]
+        "features": ["5 funcionários", "Clientes ilimitados", "Agendamentos ilimitados"]
       },
       "pro": {
         "name": "Pro",

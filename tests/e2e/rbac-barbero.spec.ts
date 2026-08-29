@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 
 /**
  * E2E: RBAC Barbero Reducido — 005
@@ -8,7 +8,10 @@ import { test, expect } from '@playwright/test'
  */
 
 test.describe('RBAC barbero — proxy + sidebar + barber scope (requires Supabase)', () => {
-  test.skip(!process.env.E2E_SUPABASE, 'Requires Supabase real + seed Escudería (059 RLS). Run with E2E_SUPABASE=1')
+  test.skip(
+    !process.env.E2E_SUPABASE,
+    'Requires Supabase real + seed Escudería (059 RLS). Run with E2E_SUPABASE=1',
+  )
 
   test('barbero → /caja 302 → /dashboard (proxy early guard)', async ({ page }) => {
     // Assuming authenticated as barbero E1 (seed user)

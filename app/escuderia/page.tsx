@@ -1,6 +1,6 @@
 import { Calendar, Clock, History } from 'lucide-react'
 import type { Metadata } from 'next'
-import { Playfair_Display, Montserrat } from 'next/font/google'
+import { Montserrat, Playfair_Display } from 'next/font/google'
 import Link from 'next/link'
 
 import { createClient } from '@/lib/supabase/server'
@@ -574,7 +574,7 @@ export default async function EscuderiaLandingPremium() {
             >
               RESERVAR EXPERIENCIA |{' '}
               {svc.find((s) => s.category === 'combo')
-                ? formatCurrency(Number(svc.find((s) => s.category === 'combo')!.price), currency)
+                ? formatCurrency(Number(svc.find((s) => s.category === 'combo')?.price), currency)
                 : '$45.000'}
             </Link>
           </div>
@@ -623,6 +623,7 @@ export default async function EscuderiaLandingPremium() {
               href={`https://wa.me/${bizPhone.replace(/\D/g, '')}`}
               target="_blank"
               className="hover:text-[#C5A059]"
+              rel="noopener"
             >
               WHATSAPP
             </a>

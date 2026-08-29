@@ -25,7 +25,7 @@ export class CreateAppointmentUseCase {
     // Business rule: lead time
     const leadMs = props.minAdvanceMinutes * 60 * 1000
     if (props.startsAt.getTime() < Date.now() + leadMs) {
-      throw new Error('too_soon: need ' + props.minAdvanceMinutes + ' minutes lead')
+      throw new Error(`too_soon: need ${props.minAdvanceMinutes} minutes lead`)
     }
     return this.appointmentRepo.create(props)
   }

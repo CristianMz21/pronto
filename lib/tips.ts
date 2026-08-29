@@ -86,7 +86,7 @@ export async function createTip(supabase: SupabaseLike, params: TipInput): Promi
 
   if (error || !data)
     throw Object.assign(
-      new Error('tip_create_failed: ' + String((error as { message?: string })?.message ?? error)),
+      new Error(`tip_create_failed: ${String((error as { message?: string })?.message ?? error)}`),
       { code: 'tip_create_failed' },
     )
 
@@ -126,7 +126,7 @@ export async function listByEmployee(
   employeeId: string,
   opts?: { from?: string; to?: string },
 ): Promise<Tip[]> {
-  let query = (
+  const query = (
     supabase.from('tips') as unknown as {
       select: (c: string) => {
         eq: (

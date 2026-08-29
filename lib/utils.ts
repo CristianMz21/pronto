@@ -1,4 +1,4 @@
-import { clsx, type ClassValue } from 'clsx'
+import { type ClassValue, clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 
 export function cn(...inputs: ClassValue[]) {
@@ -29,7 +29,7 @@ export function formatCurrency(amount: number, currency = 'USD', locale?: string
 
 export function formatDate(date: string | Date, locale = 'es-CO'): string {
   const d = new Date(date)
-  if (isNaN(d.getTime())) return 'Invalid Date'
+  if (Number.isNaN(d.getTime())) return 'Invalid Date'
   try {
     return new Intl.DateTimeFormat(locale, {
       year: 'numeric',
@@ -54,7 +54,7 @@ export function uses12HourClock(locale: string): boolean {
 
 export function formatTime(date: string | Date, locale = 'es-CO'): string {
   const d = new Date(date)
-  if (isNaN(d.getTime())) return 'Invalid Date'
+  if (Number.isNaN(d.getTime())) return 'Invalid Date'
   try {
     return new Intl.DateTimeFormat(locale, {
       hour: '2-digit',
@@ -73,7 +73,7 @@ export function formatInBusinessTimezone(
   locale = 'es-CO',
 ): string {
   const d = new Date(date)
-  if (isNaN(d.getTime())) return 'Invalid Date'
+  if (Number.isNaN(d.getTime())) return 'Invalid Date'
   const opts: Intl.DateTimeFormatOptions = { timeZone: timezone }
   if (part === 'date') {
     opts.year = 'numeric'

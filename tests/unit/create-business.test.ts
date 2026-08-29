@@ -1,6 +1,7 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import { insertOwnerAsEmployee } from '@/lib/create-business'
+
 describe('create-business', () => {
   it('a', async () => {
     const insert = vi.fn().mockResolvedValue({ error: null })

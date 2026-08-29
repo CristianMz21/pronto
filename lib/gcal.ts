@@ -15,7 +15,7 @@ export function buildGCalUrl(opts: {
   const _pad2 = (n: number) => String(n).padStart(2, '0')
   void _pad2
   const startStr = `${year}${month}${day}T${hour}${minute}00`
-  const startMins = parseInt(hour!) * 60 + parseInt(minute!)
+  const startMins = parseInt(hour!, 10) * 60 + parseInt(minute!, 10)
   if (!Number.isFinite(startMins) || !Number.isFinite(opts.durationMin)) {
     const endStr = `${year}${month}${day}T${hour}${minute}00`
     return assembleGCalUrl(
@@ -28,11 +28,11 @@ export function buildGCalUrl(opts: {
       opts.address ?? null,
     )
   }
-  const y = parseInt(year!),
-    m = parseInt(month!),
-    d = parseInt(day!),
-    h = parseInt(hour!),
-    min = parseInt(minute!)
+  const y = parseInt(year!, 10),
+    m = parseInt(month!, 10),
+    d = parseInt(day!, 10),
+    h = parseInt(hour!, 10),
+    min = parseInt(minute!, 10)
   if (![y, m, d, h, min].every(Number.isFinite)) {
     const endStr = `${year}${month}${day}T${hour}${minute}00`
     return assembleGCalUrl(
@@ -46,7 +46,7 @@ export function buildGCalUrl(opts: {
     )
   }
   const startDate = new Date(Date.UTC(y, m - 1, d, h, min, 0))
-  if (isNaN(startDate.getTime())) {
+  if (Number.isNaN(startDate.getTime())) {
     const endStr = `${year}${month}${String(d).padStart(2, '0')}T${String(Math.floor((startMins + opts.durationMin) / 60) % 24).padStart(2, '0')}${String((startMins + opts.durationMin) % 60).padStart(2, '0')}00`
     return assembleGCalUrl(
       opts.businessName,
@@ -90,7 +90,7 @@ export function buildGCalUrlFromISO(opts: {
   const toGCalDate = (iso: string, tz: string): string => {
     try {
       const d = new Date(iso)
-      if (isNaN(d.getTime())) return '19700101T000000'
+      if (Number.isNaN(d.getTime())) return '19700101T000000'
       const parts = new Intl.DateTimeFormat('en-US', {
         timeZone: tz,
         year: 'numeric',
@@ -111,11 +111,11 @@ export function buildGCalUrlFromISO(opts: {
 
   const safeDuration = Number.isFinite(opts.durationMin) ? opts.durationMin : 0
   const startDate = new Date(opts.startsAt)
-  const endDate = isNaN(startDate.getTime())
+  const endDate = Number.isNaN(startDate.getTime())
     ? new Date(NaN)
     : new Date(startDate.getTime() + safeDuration * 60_000)
   const startStr = toGCalDate(opts.startsAt, opts.timezone)
-  const endStr = isNaN(endDate.getTime())
+  const endStr = Number.isNaN(endDate.getTime())
     ? '19700101T000000'
     : toGCalDate(endDate.toISOString(), opts.timezone)
 

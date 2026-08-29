@@ -1,12 +1,13 @@
 import DOMPurify from 'isomorphic-dompurify'
-import { NextRequest, NextResponse } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 
 import { parseDateTimeInTz } from '@/lib/booking-availability'
-import { rateLimit, getIp } from '@/lib/rate-limit'
+import { getIp, rateLimit } from '@/lib/rate-limit'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
-import { EnqueueSchema, expireStale, convert } from '@/lib/waitlist'
+import { convert, EnqueueSchema, expireStale } from '@/lib/waitlist'
+
 // @ts-expect-error - tsc strict fix
 function _sanitize(s: string): string {
   return DOMPurify.sanitize(s, { ALLOWED_TAGS: [] }).trim()
@@ -53,7 +54,7 @@ export async function GET(req: NextRequest) {
   const businessIdParam = url.searchParams.get('business_id')
   const locationId = url.searchParams.get('location_id')
   const status = url.searchParams.get('status') || 'waiting'
-  const limit = Math.min(100, Math.max(1, parseInt(url.searchParams.get('limit') ?? '50')))
+  const limit = Math.min(100, Math.max(1, parseInt(url.searchParams.get('limit') ?? '50', 10)))
 
   let businessId = businessIdParam
   if (!businessId) {

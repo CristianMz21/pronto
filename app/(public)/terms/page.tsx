@@ -1,4 +1,4 @@
-import { Metadata } from 'next'
+import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
   title: 'Terms of Service — Pronto',
@@ -13,13 +13,12 @@ export default function TermsPage() {
         <p className="text-sm text-gray-500 mb-10">Last updated: April 17, 2026</p>
 
         <div className="prose prose-gray max-w-none space-y-8 text-gray-700 leading-relaxed">
-
           <section>
             <h2 className="text-xl font-semibold text-gray-900 mb-3">1. Acceptance of Terms</h2>
             <p>
               By accessing or using Pronto (&ldquo;Service&rdquo;), operated by Pronto
-              (&ldquo;Company&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo;, or &ldquo;our&rdquo;),
-              you agree to be bound by these Terms of Service (&ldquo;Terms&rdquo;). If you do not
+              (&ldquo;Company&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo;, or &ldquo;our&rdquo;), you
+              agree to be bound by these Terms of Service (&ldquo;Terms&rdquo;). If you do not
               agree, you may not use the Service.
             </p>
           </section>
@@ -30,8 +29,8 @@ export default function TermsPage() {
               Pronto is a cloud-based business management platform for service-oriented small and
               medium businesses. The Service includes point-of-sale (POS), customer relationship
               management (CRM), inventory management, appointment booking, and omnichannel
-              notification features accessible at{' '}
-              <span className="font-medium">trypronto.app</span> and related subdomains.
+              notification features accessible at <span className="font-medium">trypronto.app</span>{' '}
+              and related subdomains.
             </p>
           </section>
 
@@ -53,9 +52,14 @@ export default function TermsPage() {
             <h2 className="text-xl font-semibold text-gray-900 mb-3">4. User Responsibilities</h2>
             <p>You agree not to:</p>
             <ul className="list-disc pl-6 mt-2 space-y-1.5">
-              <li>Use the Service for any unlawful purpose or in violation of applicable regulations.</li>
+              <li>
+                Use the Service for any unlawful purpose or in violation of applicable regulations.
+              </li>
               <li>Upload or transmit malicious code, spam, or harmful content.</li>
-              <li>Attempt to gain unauthorized access to any part of the Service or its infrastructure.</li>
+              <li>
+                Attempt to gain unauthorized access to any part of the Service or its
+                infrastructure.
+              </li>
               <li>Resell, sublicense, or redistribute the Service without written permission.</li>
               <li>Interfere with or disrupt the integrity or performance of the Service.</li>
               <li>Collect or harvest user data from the Service without authorization.</li>
@@ -69,10 +73,10 @@ export default function TermsPage() {
           <section>
             <h2 className="text-xl font-semibold text-gray-900 mb-3">5. Payment Terms</h2>
             <p>
-              Paid subscriptions are billed through{' '}
-              <span className="font-medium">Paddle</span>, our authorized payment processor and
-              Merchant of Record. By subscribing to a paid plan, you agree to Paddle&rsquo;s terms
-              of service and privacy policy in addition to these Terms.
+              Paid subscriptions are billed through <span className="font-medium">Paddle</span>, our
+              authorized payment processor and Merchant of Record. By subscribing to a paid plan,
+              you agree to Paddle&rsquo;s terms of service and privacy policy in addition to these
+              Terms.
             </p>
             <ul className="list-disc pl-6 mt-3 space-y-1.5">
               <li>
@@ -83,7 +87,10 @@ export default function TermsPage() {
               <li>
                 <span className="font-medium">Annual billing:</span> Charged once per year at a
                 discounted rate. A 14-day refund window applies — see our{' '}
-                <a href="/refund" className="text-blue-600 hover:underline">Refund Policy</a>.
+                <a href="/refund" className="text-blue-600 hover:underline">
+                  Refund Policy
+                </a>
+                .
               </li>
               <li>
                 All prices are in US Dollars (USD) unless otherwise stated. Taxes may be applied by
@@ -100,8 +107,8 @@ export default function TermsPage() {
             <h2 className="text-xl font-semibold text-gray-900 mb-3">6. Free Plan & Trial</h2>
             <p>
               The Free plan is provided as-is without any service level guarantees. We reserve the
-              right to modify Free plan limits or discontinue it with 30 days&rsquo; notice.
-              Paid plan trials, if offered, are subject to the terms stated at the time of signup.
+              right to modify Free plan limits or discontinue it with 30 days&rsquo; notice. Paid
+              plan trials, if offered, are subject to the terms stated at the time of signup.
             </p>
           </section>
 
@@ -109,8 +116,8 @@ export default function TermsPage() {
             <h2 className="text-xl font-semibold text-gray-900 mb-3">7. Intellectual Property</h2>
             <p>
               The Service, including all software, designs, logos, and content created by us,
-              remains our sole property. You retain full ownership of the data you input into
-              the Service. We do not claim any intellectual property rights over your data.
+              remains our sole property. You retain full ownership of the data you input into the
+              Service. We do not claim any intellectual property rights over your data.
             </p>
             <p className="mt-3">
               You grant us a limited, non-exclusive license to process your data solely for the
@@ -122,9 +129,11 @@ export default function TermsPage() {
             <h2 className="text-xl font-semibold text-gray-900 mb-3">8. Data & Privacy</h2>
             <p>
               Your use of the Service is subject to our{' '}
-              <a href="/privacy" className="text-blue-600 hover:underline">Privacy Policy</a>,
-              which is incorporated into these Terms by reference. We take reasonable technical and
-              organizational measures to protect your data.
+              <a href="/privacy" className="text-blue-600 hover:underline">
+                Privacy Policy
+              </a>
+              , which is incorporated into these Terms by reference. We take reasonable technical
+              and organizational measures to protect your data.
             </p>
           </section>
 
@@ -134,13 +143,15 @@ export default function TermsPage() {
               You may cancel your account at any time from the Settings page. We may suspend or
               terminate your account immediately if you violate these Terms, engage in fraudulent
               activity, or fail to pay applicable fees. Upon termination, your right to use the
-              Service ceases. We will retain your data for 30 days after termination, after which
-              it may be permanently deleted.
+              Service ceases. We will retain your data for 30 days after termination, after which it
+              may be permanently deleted.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">10. Limitation of Liability</h2>
+            <h2 className="text-xl font-semibold text-gray-900 mb-3">
+              10. Limitation of Liability
+            </h2>
             <p>
               To the fullest extent permitted by applicable law, the Company and its officers,
               employees, agents, and partners shall not be liable for any indirect, incidental,
@@ -150,39 +161,42 @@ export default function TermsPage() {
             </p>
             <p className="mt-3">
               Our total cumulative liability to you for any claims arising under these Terms shall
-              not exceed the greater of (a) the total fees you paid to us in the 12 months
-              preceding the claim, or (b) $100 USD.
+              not exceed the greater of (a) the total fees you paid to us in the 12 months preceding
+              the claim, or (b) $100 USD.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">11. Disclaimer of Warranties</h2>
+            <h2 className="text-xl font-semibold text-gray-900 mb-3">
+              11. Disclaimer of Warranties
+            </h2>
             <p>
               The Service is provided &ldquo;as is&rdquo; and &ldquo;as available&rdquo; without
               warranties of any kind, either express or implied, including but not limited to
               implied warranties of merchantability, fitness for a particular purpose, and
-              non-infringement. We do not warrant that the Service will be uninterrupted, error-free,
-              or free of viruses or other harmful components.
+              non-infringement. We do not warrant that the Service will be uninterrupted,
+              error-free, or free of viruses or other harmful components.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">12. Governing Law & Disputes</h2>
+            <h2 className="text-xl font-semibold text-gray-900 mb-3">
+              12. Governing Law & Disputes
+            </h2>
             <p>
-              These Terms are governed by and construed in accordance with the laws of the
-              State of Georgia, United States, without regard to its conflict of law provisions.
-              Any disputes arising under these Terms shall be resolved exclusively in the state or
-              federal courts located in Georgia, and you consent to personal jurisdiction in those
-              courts.
+              These Terms are governed by and construed in accordance with the laws of the State of
+              Georgia, United States, without regard to its conflict of law provisions. Any disputes
+              arising under these Terms shall be resolved exclusively in the state or federal courts
+              located in Georgia, and you consent to personal jurisdiction in those courts.
             </p>
           </section>
 
           <section>
             <h2 className="text-xl font-semibold text-gray-900 mb-3">13. Changes to These Terms</h2>
             <p>
-              We may update these Terms from time to time. We will notify you of material changes
-              by email or by posting a notice within the Service. Continued use of the Service
-              after changes take effect constitutes your acceptance of the revised Terms.
+              We may update these Terms from time to time. We will notify you of material changes by
+              email or by posting a notice within the Service. Continued use of the Service after
+              changes take effect constitutes your acceptance of the revised Terms.
             </p>
           </section>
 
@@ -196,7 +210,6 @@ export default function TermsPage() {
               .
             </p>
           </section>
-
         </div>
       </div>
     </div>

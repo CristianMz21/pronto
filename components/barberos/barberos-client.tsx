@@ -1,6 +1,6 @@
 'use client'
 
-import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
@@ -110,7 +110,7 @@ export function BarberosClient({
                     <div>
                       Comisión:{' '}
                       {emp.commission_fixed
-                        ? formatCurrency(Number(emp.commission_fixed), 'COP') + ' fijo'
+                        ? `${formatCurrency(Number(emp.commission_fixed), 'COP')} fijo`
                         : `${emp.commission_rate}%`}
                     </div>
                   )}

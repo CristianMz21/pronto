@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }))
 
@@ -67,7 +67,7 @@ function setupPos(
   const counts: Record<string, number> = {}
   const from = vi.fn((table: string) => {
     counts[table] = counts[table] ?? 0
-    const idx = counts[table]++
+    const _idx = counts[table]++
     if (table === 'businesses') return bizChain
     if (table === 'cash_registers') return openChain
     if (table === 'transactions') return txChain

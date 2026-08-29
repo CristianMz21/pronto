@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@supabase/supabase-js', () => ({ createClient: vi.fn() }))
 vi.mock('@/lib/email', () => ({
@@ -160,8 +160,8 @@ describe('cron 100', () => {
           }
           // Actually we need to handle two different client queries:
           // We'll use a closure counter
-          let clientCall = 0
-          const origNot = c.not
+          const _clientCall = 0
+          const _origNot = c.not
           // Override to track
           return c
         }

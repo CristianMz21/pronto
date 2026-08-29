@@ -64,7 +64,7 @@ export function isExpired(
 ): boolean {
   if (entry.status !== 'notified' || !entry.notified_at) return false
   const notified = new Date(entry.notified_at).getTime()
-  if (isNaN(notified)) return false
+  if (Number.isNaN(notified)) return false
   return now.getTime() - notified > WAITLIST_EXPIRE_MIN * 60_000
 }
 
@@ -76,7 +76,7 @@ export function canEnqueue(
   enabled = true,
 ): { ok: true } | { ok: false; reason: string } {
   const desired = new Date(desiredAt).getTime()
-  if (isNaN(desired)) return { ok: false, reason: 'invalid_date' }
+  if (Number.isNaN(desired)) return { ok: false, reason: 'invalid_date' }
   if (desired <= now.getTime()) return { ok: false, reason: 'in_past' }
   if (enabled && minAdvanceMinutes > 0 && desired < now.getTime() + minAdvanceMinutes * 60_000) {
     return { ok: false, reason: 'too_soon' }
@@ -146,7 +146,7 @@ export async function listWaiting(
   opts?: { location_id?: string | null; limit?: number },
 ): Promise<WaitlistEntry[]> {
   const limit = opts?.limit ?? 50
-  let q = (
+  const q = (
     supabase.from('waitlist') as unknown as {
       select: (c: string) => {
         eq: (

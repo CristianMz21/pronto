@@ -370,7 +370,7 @@ export default async function ReportesPage(props: {
             >
               Todas
             </Link>
-            {locations!.map((l) => (
+            {locations?.map((l) => (
               <Link
                 key={l.id}
                 href={`/reportes?tab=${tab}&range=${range}&location=${l.id}`}

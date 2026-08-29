@@ -1,32 +1,32 @@
 'use client'
 
 import {
-  ShoppingCart,
-  Plus,
-  Minus,
-  Trash2,
-  CheckCircle2,
-  WifiOff,
-  RefreshCw,
-  CloudOff,
   CalendarDays,
+  CheckCircle2,
+  CloudOff,
+  Minus,
+  Plus,
+  RefreshCw,
+  ShoppingCart,
+  Trash2,
+  WifiOff,
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { useState, useEffect, useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import {
+  type CachedClient,
+  type CachedEmployee,
+  type CachedService,
   cacheData,
   getCachedData,
-  queueTransaction,
+  getPendingCount,
   getPendingTransactions,
   markTransactionSynced,
-  getPendingCount,
-  type CachedService,
-  type CachedEmployee,
-  type CachedClient,
+  queueTransaction,
 } from '@/lib/offline-db'
 import { createClient } from '@/lib/supabase/client'
 import { formatCurrency } from '@/lib/utils'
@@ -158,7 +158,7 @@ export function POSTerminal({
         .eq('business_id', businessId)
         .order('name')
         .limit(200)
-      if (data && data.length) setActiveClients(data as Client[])
+      if (data?.length) setActiveClients(data as Client[])
     })().catch(() => {})
   }, [businessId, supabase])
 
@@ -206,16 +206,7 @@ export function POSTerminal({
     } else if (bookingContext.staffId) {
       setSelectedEmployee(bookingContext.staffId)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    bookingContext,
-    currentEmployeeId,
-    initialServices,
-    isBarbero,
-    setSelectedEmployee,
-    currentEmployeeId,
-    currentEmployeeId,
-  ]) // only once on mount
+  }, [bookingContext, currentEmployeeId, initialServices, isBarbero]) // only once on mount
 
   // ─── US5: fetch loyalty & membership when client changes ─────────────────
   useEffect(() => {
@@ -661,12 +652,14 @@ export function POSTerminal({
                 </div>
                 <div className="flex gap-2 mt-3">
                   <button
+                    type="button"
                     onClick={() => setShowSaveModal(false)}
                     className="flex-1 border border-gray-200 rounded-lg py-2 text-sm text-gray-600 hover:bg-gray-50 transition-colors"
                   >
                     Skip
                   </button>
                   <button
+                    type="button"
                     onClick={saveWalkinAsClient}
                     disabled={!saveForm.name.trim() || savingClient}
                     className="flex-1 bg-blue-600 text-white rounded-lg py-2 text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
@@ -713,6 +706,7 @@ export function POSTerminal({
           </span>
           {!syncing && (
             <button
+              type="button"
               onClick={syncQueue}
               className="ml-auto text-blue-600 hover:text-blue-800 font-medium underline"
             >
@@ -736,12 +730,14 @@ export function POSTerminal({
       {/* Mobile tab bar */}
       <div className="md:hidden flex border-b border-gray-200 bg-white sticky top-0 z-10 shrink-0">
         <button
+          type="button"
           onClick={() => setActiveTab('services')}
           className={`flex-1 py-3 text-sm font-medium transition-colors ${activeTab === 'services' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'}`}
         >
           {t('servicesTab')}
         </button>
         <button
+          type="button"
           onClick={() => setActiveTab('cart')}
           className={`flex-1 py-3 text-sm font-medium transition-colors flex items-center justify-center gap-1.5 ${activeTab === 'cart' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'}`}
         >
@@ -770,6 +766,7 @@ export function POSTerminal({
                     .filter((s) => (s.category ?? 'Other') === cat)
                     .map((s) => (
                       <button
+                        type="button"
                         key={s.id}
                         onClick={() => addToCart(s)}
                         className="text-left p-4 bg-white rounded-xl border border-gray-200 hover:border-blue-400 hover:shadow-sm transition-all"
@@ -871,6 +868,7 @@ export function POSTerminal({
                   </div>
                   <div className="flex items-center gap-1">
                     <button
+                      type="button"
                       onClick={() => updateQty(item.service.id, -1)}
                       className="p-1 rounded hover:bg-gray-100"
                     >
@@ -878,12 +876,14 @@ export function POSTerminal({
                     </button>
                     <span className="w-6 text-center text-sm font-medium">{item.qty}</span>
                     <button
+                      type="button"
                       onClick={() => updateQty(item.service.id, 1)}
                       className="p-1 rounded hover:bg-gray-100"
                     >
                       <Plus className="w-3 h-3" />
                     </button>
                     <button
+                      type="button"
                       onClick={() =>
                         setCart((c) => c.filter((i) => i.service.id !== item.service.id))
                       }
@@ -1048,6 +1048,7 @@ export function POSTerminal({
             <div className="grid grid-cols-3 gap-1">
               {(['cash', 'card', 'transfer'] as PaymentMethod[]).map((m) => (
                 <button
+                  type="button"
                   key={m}
                   onClick={() => {
                     setPaymentMethod(m)

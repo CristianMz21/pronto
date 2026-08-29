@@ -1,8 +1,8 @@
 import { createClient as createAdminClient } from '@supabase/supabase-js'
-import { NextRequest, NextResponse } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 
-import { rateLimit, getIp } from '@/lib/rate-limit'
+import { getIp, rateLimit } from '@/lib/rate-limit'
 import { getSupabaseUrl } from '@/lib/supabase/getUrl'
 
 const ApplySchema = z.object({

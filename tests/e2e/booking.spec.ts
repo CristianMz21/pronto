@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 
 // US1 — Cliente: Reserva 24/7 premium 1-click (P1)
 // Independiente: móvil 375px book/escuderia servicio→barbero→fecha→hora→nombre+tel → 201 confirmed
@@ -6,9 +6,14 @@ import { test, expect } from '@playwright/test'
 // Estos tests requieren backend real y se marcan skip en CI sin Supabase, pero quedan como contrato executable.
 
 test.describe('US1 booking E2E — 45s booking flow mobile + cancel/reprogram', () => {
-  test.skip(true, 'Requiere Supabase real y seed Escudería Centro (044). Habilitar con E2E_SUPABASE=1 y docker compose up')
+  test.skip(
+    true,
+    'Requiere Supabase real y seed Escudería Centro (044). Habilitar con E2E_SUPABASE=1 y docker compose up',
+  )
 
-  test('mobile 375px: servicio→barbero→fecha→hora→contacto→confirmar → confirmed', async ({ page }) => {
+  test('mobile 375px: servicio→barbero→fecha→hora→contacto→confirmar → confirmed', async ({
+    page,
+  }) => {
     await page.setViewportSize({ width: 375, height: 812 })
     await page.goto('/book/escuderia')
     await expect(page.locator('text=Reserva en')).toBeVisible({ timeout: 10000 })
@@ -18,10 +23,13 @@ test.describe('US1 booking E2E — 45s booking flow mobile + cancel/reprogram', 
     await serviceCard.click()
     // Step 2: barbero (si hay >1)
     const anyoneBtn = page.locator('button', { hasText: /Cualquiera|Anyone/ })
-    if (await anyoneBtn.count() > 0) await anyoneBtn.first().click()
+    if ((await anyoneBtn.count()) > 0) await anyoneBtn.first().click()
     else {
-      const barberCard = page.locator('button').filter({ hasText: /Andrés|Barbero/ }).first()
-      if (await barberCard.count() > 0) await barberCard.click()
+      const barberCard = page
+        .locator('button')
+        .filter({ hasText: /Andrés|Barbero/ })
+        .first()
+      if ((await barberCard.count()) > 0) await barberCard.click()
     }
     // Step 3: fecha y hora
     const tomorrow = new Date()
@@ -32,10 +40,13 @@ test.describe('US1 booking E2E — 45s booking flow mobile + cancel/reprogram', 
     const dateStr = `${yyyy}-${mm}-${dd}`
     // DatePicker inputs may be hidden; try filling via input if present
     const dateInput = page.locator('input[type="date"]').first()
-    if (await dateInput.count() > 0) await dateInput.fill(dateStr)
+    if ((await dateInput.count()) > 0) await dateInput.fill(dateStr)
     // Wait slots load
     await page.waitForTimeout(800)
-    const slot = page.locator('button').filter({ hasText: /^\d{2}:\d{2}$|AM|PM/ }).first()
+    const slot = page
+      .locator('button')
+      .filter({ hasText: /^\d{2}:\d{2}$|AM|PM/ })
+      .first()
     await expect(slot).toBeVisible({ timeout: 10000 })
     await slot.click()
     const contBtn = page.locator('button', { hasText: /Continuar|Continue/ }).first()
@@ -60,7 +71,9 @@ test.describe('US1 booking E2E — 45s booking flow mobile + cancel/reprogram', 
     await expect(page).toHaveURL(/client\/(login|dashboard)/)
   })
 
-  test('claim por phone/email: guest con mismo phone al registrar → historial vinculado', async ({ page }) => {
+  test('claim por phone/email: guest con mismo phone al registrar → historial vinculado', async ({
+    page,
+  }) => {
     await page.goto('/client/register')
     await expect(page.locator('text=Crear cuenta')).toBeVisible()
   })

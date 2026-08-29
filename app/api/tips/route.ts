@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 
-import { rateLimit, getIp } from '@/lib/rate-limit'
+import { getIp, rateLimit } from '@/lib/rate-limit'
 import { createClient } from '@/lib/supabase/server'
-import { TipSchema, isValidTipAmount, reportTips } from '@/lib/tips'
+import { isValidTipAmount, reportTips, TipSchema } from '@/lib/tips'
 
 async function resolveBusinessId(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
   const from = url.searchParams.get('from')
   const to = url.searchParams.get('to')
 
-  let businessId = businessIdParam ?? (await resolveBusinessId(supabase, user.id))
+  const businessId = businessIdParam ?? (await resolveBusinessId(supabase, user.id))
   if (!businessId) return NextResponse.json({ error: 'not_found' }, { status: 404 })
 
   try {

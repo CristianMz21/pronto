@@ -88,13 +88,14 @@ let localReceiptCounter = 0
 
 /** Save a transaction to the offline queue. Returns the local UUID. */
 export async function queueTransaction(
-  tx: Omit<PendingTransaction, 'id' | 'synced' | 'created_at' | 'local_receipt'>
+  tx: Omit<PendingTransaction, 'id' | 'synced' | 'created_at' | 'local_receipt'>,
 ): Promise<PendingTransaction> {
   const db = await openDB()
   localReceiptCounter++
   const generateId = () => {
     try {
-      if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID()
+      if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+        return crypto.randomUUID()
     } catch {}
     return `fallback-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
   }
@@ -168,7 +169,7 @@ type CacheStore = 'services_cache' | 'employees_cache' | 'clients_cache'
 /** Replace all records in a cache store. */
 export async function cacheData<T extends { id: string }>(
   storeName: CacheStore,
-  items: T[]
+  items: T[],
 ): Promise<void> {
   if (!items.length) return
   const db = await openDB()
