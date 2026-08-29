@@ -140,6 +140,12 @@ export function PublicBookingForm({ business, services, employees, workingHours,
   const [date, setDate] = useState('')
   const [time, setTime] = useState('')
   const [contact, setContact] = useState({ name: '', phone: '', email: '' })
+  // US5 loyalty fields
+  const [promoCode, setPromoCode] = useState('')
+  const [loyaltyPoints, setLoyaltyPoints] = useState('')
+  const [membershipId, setMembershipId] = useState('')
+  const [loyaltyBalance, setLoyaltyBalance] = useState<number | null>(null)
+  const [membershipOptions, setMembershipOptions] = useState<{ id: string; name: string; remaining: number; expires_at: string }[]>([])
   const [saving, setSaving] = useState(false)
   const [slotTakenError, setSlotTakenError] = useState(false)
   const [bookingError, setBookingError] = useState<string | null>(null)
@@ -359,6 +365,9 @@ export function PublicBookingForm({ business, services, employees, workingHours,
           name:  contact.name,
           phone: contact.phone || null,
           email: contact.email || null,
+          promo_code: promoCode.trim() || null,
+          loyalty_redeem_points: loyaltyPoints ? Number(loyaltyPoints) : null,
+          membership_id: membershipId || null,
         }),
       })
 
@@ -366,8 +375,11 @@ export function PublicBookingForm({ business, services, employees, workingHours,
         setSaving(false)
         const body = await res.json().catch(() => null)
         if (body?.error === 'no_staff_available') {
-          // Not a real time conflict — retrying with a different slot won't help.
           setBookingError(t('noStaffAvailable'))
+          return
+        }
+        if (body?.error === 'promo_stack_guard' || body?.error === 'membership_expired' || body?.error === 'no_uses_left' || body?.error === 'promo_not_eligible' || body?.error === 'insufficient_points' || body?.error === 'promo_not_found' || body?.error === 'membership_not_found') {
+          setBookingError(body.message ?? body.error ?? 'Beneficio no válido')
           return
         }
         setSlotTakenError(true)
@@ -440,6 +452,9 @@ export function PublicBookingForm({ business, services, employees, workingHours,
     setDate('')
     setTime('')
     setContact({ name: '', phone: '', email: '' })
+    setPromoCode('')
+    setLoyaltyPoints('')
+    setMembershipId('')
     setAvailableSlots([])
     setClientId(null)
     setClientHasTelegram(false)
@@ -750,6 +765,21 @@ export function PublicBookingForm({ business, services, employees, workingHours,
                 />
               </div>
             ))}
+            {/* US5 loyalty fields */}
+            <div style={{ borderTop: '0.5px solid #E8E0D8', paddingTop: 14, marginTop: 4 }}>
+              <p style={{ fontSize: 12, fontWeight: 600, color: cardText, marginBottom: 8, letterSpacing: '0.05em' }}>BENEFICIOS (opcional · solo uno)</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div>
+                  <label style={{ fontSize: 12, color: cardMuted }}>Cupón promo</label>
+                  <input value={promoCode} onChange={(e) => { setPromoCode(e.target.value.toUpperCase()); if (e.target.value) { setLoyaltyPoints(''); setMembershipId('') } }} placeholder="CUMPLE20" style={{ border: inputBorder, borderRadius: inputRadius, padding: '10px 12px', fontSize: 13, width: '100%', background: inputBg, marginTop: 4 }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 12, color: cardMuted }}>Puntos fidelización (100 pts = $10.000)</label>
+                  <input type="number" min={0} value={loyaltyPoints} onChange={(e) => { setLoyaltyPoints(e.target.value); if (e.target.value) { setPromoCode(''); setMembershipId('') } }} placeholder="0" style={{ border: inputBorder, borderRadius: inputRadius, padding: '10px 12px', fontSize: 13, width: '100%', background: inputBg, marginTop: 4 }} />
+                  {loyaltyBalance !== null && <span style={{ fontSize: 11, color: cardMuted }}>Tienes {loyaltyBalance} pts</span>}
+                </div>
+              </div>
+            </div>
           </div>
 
           {bookingError && (

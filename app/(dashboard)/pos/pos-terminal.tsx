@@ -69,6 +69,15 @@ export function POSTerminal({ businessId, currency, services: initialServices, e
   const [selectedClient, setSelectedClient] = useState('')
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash')
   const [discount, setDiscount] = useState(0)
+  // US5 loyalty state
+  const [loyaltyBalance, setLoyaltyBalance] = useState<number | null>(null)
+  const [membershipOptions, setMembershipOptions] = useState<{ id: string; remaining: number; expires_at: string; membership_id: string; name?: string }[]>([])
+  const [selectedMembership, setSelectedMembership] = useState<string>('')
+  const [promoCode, setPromoCode] = useState('')
+  const [promoDiscount, setPromoDiscount] = useState(0)
+  const [promoError, setPromoError] = useState('')
+  const [loyaltyRedeem, setLoyaltyRedeem] = useState(0)
+  const [tipAmount, setTipAmount] = useState(0)
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [activeTab, setActiveTab] = useState<'services' | 'cart'>('services')
@@ -165,6 +174,22 @@ export function POSTerminal({ businessId, currency, services: initialServices, e
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // only once on mount
 
+  // ─── US5: fetch loyalty & membership when client changes ─────────────────
+  useEffect(() => {
+    if (!selectedClient) { setLoyaltyBalance(null); setMembershipOptions([]); setSelectedMembership(''); setLoyaltyRedeem(0); return }
+    // loyalty balance
+    fetch(`/api/loyalty?client_id=${selectedClient}`).then(async (r) => {
+      if (r.ok) { const j = await r.json(); setLoyaltyBalance(j.points ?? 0) } else setLoyaltyBalance(0)
+    }).catch(() => setLoyaltyBalance(0))
+    // memberships
+    supabase.from('client_memberships').select('id, remaining, expires_at, membership_id, memberships(name)').eq('client_id', selectedClient).eq('status', 'active').then(({ data }) => {
+      const now = Date.now()
+      const opts = (data as { id: string; remaining: number; expires_at: string; membership_id: string; memberships: { name: string } | null }[] | null)?.filter((cm) => cm.remaining > 0 && new Date(cm.expires_at).getTime() > now).map((cm) => ({ id: cm.id, remaining: cm.remaining, expires_at: cm.expires_at, membership_id: cm.membership_id, name: cm.memberships?.name ?? cm.membership_id.slice(0,8) })) ?? []
+      setMembershipOptions(opts)
+      if (opts.length === 1) setSelectedMembership(opts[0].id)
+    })
+  }, [selectedClient])
+
   // ─── On mount: load pending count ──────────────────────────────────────
   useEffect(() => {
     getPendingCount().then(setPendingCount).catch(() => {})
@@ -254,8 +279,41 @@ export function POSTerminal({ businessId, currency, services: initialServices, e
   }
 
   const subtotal = cart.reduce((sum, i) => sum + i.service.price * i.qty, 0)
-  const total = Math.max(0, subtotal - discount)
+  // US5: total with membership/promo/loyalty stacking guard (only one non-manual discount)
+  const promoDerivedDiscount = selectedMembership ? subtotal : promoDiscount > 0 ? promoDiscount : loyaltyRedeem > 0 ? Math.min(subtotal, Math.round((loyaltyRedeem * 100))) : 0
+  const effectiveDiscount = Math.min(subtotal, discount + promoDerivedDiscount)
+  const total = Math.max(0, subtotal - effectiveDiscount)
   const categories = Array.from(new Set(activeServices.map((s) => s.category ?? 'Other')))
+
+  async function evaluatePromo() {
+    if (!promoCode.trim()) { setPromoError('Ingresa código'); return }
+    setPromoError('')
+    try {
+      const res = await fetch('/api/promotions/evaluate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          promo_code: promoCode.trim(),
+          amount: subtotal,
+          service_ids: cart.map((i) => i.service.id),
+          client_id: selectedClient || null,
+          date: new Date().toISOString().slice(0, 10),
+        }),
+      })
+      const j = await res.json()
+      if (res.ok && j.eligible) {
+        setPromoDiscount(j.discount)
+        setPromoError('')
+        setSelectedMembership('')
+        setLoyaltyRedeem(0)
+      } else {
+        setPromoDiscount(0)
+        setPromoError(j.reason ?? j.error ?? 'No elegible')
+      }
+    } catch {
+      setPromoError('Error evaluando promo')
+    }
+  }
 
   // ─── Checkout ─────────────────────────────────────────────────────────────
   // Cash register requirement is configurable per business (055): when requireCashRegister false, cash allowed without caja
@@ -275,6 +333,14 @@ export function POSTerminal({ businessId, currency, services: initialServices, e
       qty: i.qty,
     }))
 
+    // US5: stack guard for checkout (only one benefit)
+    const benefitCount = [selectedMembership, promoCode.trim(), loyaltyRedeem > 0 ? 'loyalty' : null].filter(Boolean).length
+    if (benefitCount > 1) {
+      setCheckoutError('Solo un beneficio por venta (membresía, promo o puntos)')
+      setLoading(false)
+      return
+    }
+
     const effectiveEmployeeId = isBarbero && currentEmployeeId ? currentEmployeeId : (selectedEmployee || null)
     // Guard: barbero cannot submit a transaction with a service not assigned (defense-in-depth, RLS also enforces via app filter)
     if (isBarbero && currentEmployeeId) {
@@ -293,7 +359,7 @@ export function POSTerminal({ businessId, currency, services: initialServices, e
           business_id: businessId,
           client_id: selectedClient || null,
           employee_id: effectiveEmployeeId,
-          amount: total,
+          amount: subtotal,
           payment_method: paymentMethod,
           items,
         })
@@ -309,9 +375,13 @@ export function POSTerminal({ businessId, currency, services: initialServices, e
             business_id: businessId,
             client_id: selectedClient || null,
             employee_id: effectiveEmployeeId,
-            amount: total,
+            amount: subtotal,
             payment_method: paymentMethod,
             items,
+            tip_amount: tipAmount,
+            promo_code: promoCode.trim() || null,
+            loyalty_points_redeem: loyaltyRedeem > 0 ? loyaltyRedeem : 0,
+            membership_id: selectedMembership || null,
           }),
         })
         const json = await res.json().catch(() => ({}))
@@ -349,6 +419,11 @@ export function POSTerminal({ businessId, currency, services: initialServices, e
       setSuccess(true)
       setCart([])
       setDiscount(0)
+      setPromoDiscount(0)
+      setPromoCode('')
+      setLoyaltyRedeem(0)
+      setSelectedMembership('')
+      setTipAmount(0)
       setSelectedClient('')
       setShowBookingBanner(false)
     } catch (err) {
@@ -645,17 +720,65 @@ export function POSTerminal({ businessId, currency, services: initialServices, e
             )}
 
             {cart.length > 0 && (
-              <div>
-                <label className="text-xs font-medium text-gray-500 uppercase">{t('discountLabel')}</label>
-                <input
-                  type="number"
-                  min={0}
-                  max={subtotal}
-                  value={discount || ''}
-                  onChange={(e) => setDiscount(Number(e.target.value))}
-                  className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="0"
-                />
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs font-medium text-gray-500 uppercase">{t('discountLabel')}</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={subtotal}
+                    value={discount || ''}
+                    onChange={(e) => { setDiscount(Number(e.target.value)); if (Number(e.target.value) > 0) { setPromoDiscount(0); setPromoCode(''); setSelectedMembership(''); setLoyaltyRedeem(0) } }}
+                    className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="0"
+                  />
+                </div>
+                {/* US5: Membership selector */}
+                {selectedClient && membershipOptions.length > 0 && (
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 uppercase">Membresía (consume 1 uso)</label>
+                    <select value={selectedMembership} onChange={(e) => { setSelectedMembership(e.target.value); if (e.target.value) { setPromoDiscount(0); setPromoCode(''); setLoyaltyRedeem(0); setDiscount(0) } }} className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm">
+                      <option value="">— Sin membresía —</option>
+                      {membershipOptions.map((m) => (
+                        <option key={m.id} value={m.id}>{m.name} · {m.remaining} usos · vence {new Date(m.expires_at).toLocaleDateString('es-CO')}</option>
+                      ))}
+                    </select>
+                    {selectedMembership && <p className="text-xs text-green-600 mt-1">Se consumirá 1 uso. Descuento {formatCurrency(subtotal, currency)}</p>}
+                  </div>
+                )}
+                {/* US5: Promo code */}
+                <div>
+                  <label className="text-xs font-medium text-gray-500 uppercase">Cupón promo</label>
+                  <div className="flex gap-2 mt-1">
+                    <input value={promoCode} onChange={(e) => setPromoCode(e.target.value.toUpperCase())} placeholder="CUMPLE20" className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+                    <button onClick={evaluatePromo} type="button" className="px-3 py-2 bg-gray-900 text-white rounded-lg text-xs">Validar</button>
+                  </div>
+                  {promoError && <p className="text-xs text-red-600 mt-1">{promoError}</p>}
+                  {promoDiscount > 0 && <p className="text-xs text-green-600 mt-1">Descuento {formatCurrency(promoDiscount, currency)}</p>}
+                </div>
+                {/* US5: Loyalty */}
+                {selectedClient && loyaltyBalance !== null && (
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 uppercase">Puntos fidelización ({loyaltyBalance} pts · {formatCurrency(loyaltyBalance * 100, currency)} valor)</label>
+                    <div className="flex gap-2 mt-1">
+                      <input type="number" min={0} max={loyaltyBalance} value={loyaltyRedeem || ''} onChange={(e) => { const v = Number(e.target.value); setLoyaltyRedeem(v); if (v > 0) { setSelectedMembership(''); setPromoDiscount(0); setPromoCode(''); setDiscount(0) } }} placeholder="0" className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+                      <span className="text-xs text-gray-500 self-center">100 pts = $10.000</span>
+                    </div>
+                    {loyaltyRedeem > 0 && loyaltyBalance !== null && loyaltyRedeem > loyaltyBalance && <p className="text-xs text-red-600">Puntos insuficientes</p>}
+                  </div>
+                )}
+                {/* Tip */}
+                <div>
+                  <label className="text-xs font-medium text-gray-500 uppercase">Propina</label>
+                  <input type="number" min={0} max={subtotal * 0.5} value={tipAmount || ''} onChange={(e) => setTipAmount(Number(e.target.value))} placeholder="0" className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+                </div>
+                {/* Discount breakdown */}
+                {effectiveDiscount > 0 && (
+                  <div className="text-xs bg-green-50 border border-green-200 rounded-lg p-2">
+                    <div className="flex justify-between"><span>Subtotal</span><span>{formatCurrency(subtotal, currency)}</span></div>
+                    <div className="flex justify-between text-green-700"><span>Descuento</span><span>-{formatCurrency(effectiveDiscount, currency)}</span></div>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -678,6 +801,7 @@ export function POSTerminal({ businessId, currency, services: initialServices, e
               <span className="text-sm text-gray-500">{t('totalLabel')}</span>
               <span className="text-xl font-bold text-gray-900">{formatCurrency(total, currency)}</span>
             </div>
+            {tipAmount > 0 && <div className="flex justify-between text-xs text-gray-500"><span>Propina</span><span>{formatCurrency(tipAmount, currency)}</span></div>}
             {paymentMethod === 'cash' && cashRegisterRequired && !hasOpenRegister && (
               <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
                 Debes abrir caja antes de cobrar en efectivo. <a href="/caja" className="font-semibold underline hover:text-amber-900">Ir a Caja</a>
