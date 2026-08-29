@@ -275,7 +275,7 @@ export function ImportInventoryModal({ open, onClose, onImported }: Props) {
 
   function handleFileInput(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
-    if (file) processFile(file)
+    if (file) void processFile(file)
     e.target.value = ''
   }
 
@@ -283,7 +283,7 @@ export function ImportInventoryModal({ open, onClose, onImported }: Props) {
     e.preventDefault()
     setDragging(false)
     const file = e.dataTransfer.files?.[0]
-    if (file) processFile(file)
+    if (file) void processFile(file)
   }
 
   async function handleImport() {

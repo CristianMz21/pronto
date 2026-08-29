@@ -160,7 +160,7 @@ export function POSTerminal({
         .limit(200)
       if (data && data.length) setActiveClients(data as Client[])
     })().catch(() => {})
-  }, [])
+  }, [businessId, supabase])
 
   // ─── Fetch cash register status ────────────────────────────────────────────
   const fetchRegisterStatus = useCallback(async () => {
@@ -175,11 +175,11 @@ export function POSTerminal({
   }, [])
 
   useEffect(() => {
-    fetchRegisterStatus()
+    void fetchRegisterStatus()
   }, [fetchRegisterStatus])
 
   useEffect(() => {
-    if (isOnline) fetchRegisterStatus()
+    if (isOnline) void fetchRegisterStatus()
   }, [isOnline, fetchRegisterStatus])
 
   // ─── On mount: cache POS data to IndexedDB ──────────────────────────────
@@ -206,7 +206,8 @@ export function POSTerminal({
     } else if (bookingContext.staffId) {
       setSelectedEmployee(bookingContext.staffId)
     }
-  }, []) // only once on mount
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookingContext, currentEmployeeId, initialServices, isBarbero, setSelectedEmployee, currentEmployeeId, currentEmployeeId]) // only once on mount
 
   // ─── US5: fetch loyalty & membership when client changes ─────────────────
   useEffect(() => {
@@ -257,7 +258,7 @@ export function POSTerminal({
         setMembershipOptions(opts)
         if (opts.length === 1) setSelectedMembership(opts[0].id)
       })
-  }, [selectedClient])
+  }, [selectedClient, supabase])
 
   // ─── On mount: load pending count ──────────────────────────────────────
   useEffect(() => {
@@ -298,7 +299,7 @@ export function POSTerminal({
         })
         .catch(() => {})
     }
-  }, [isOnline])
+  }, [isOnline, activeServices.length])
 
   // ─── Sync queue when coming back online ──────────────────────────────────
   const syncQueue = useCallback(async () => {
@@ -333,7 +334,7 @@ export function POSTerminal({
       const remaining = await getPendingCount()
       setPendingCount(remaining)
       // Refresh register status after sync (maybe cash transactions changed expected)
-      fetchRegisterStatus()
+      void fetchRegisterStatus()
     } catch {
       setSyncError('Sync failed. Will retry automatically.')
     } finally {
@@ -343,7 +344,7 @@ export function POSTerminal({
 
   useEffect(() => {
     if (isOnline && pendingCount > 0) {
-      syncQueue()
+      void syncQueue()
     }
   }, [isOnline, pendingCount, syncQueue])
 
@@ -509,7 +510,10 @@ export function POSTerminal({
             .update({ status: 'paid' })
             .eq('id', activeBookingId)
             .then(({ error: apptErr }) => {
-              if (apptErr) console.error('[POS] Failed to update booking status:', apptErr)
+              if (apptErr) {
+                // eslint-disable-next-line no-console
+                console.error('[POS] Failed to update booking status:', apptErr)
+              }
             })
         }
 
@@ -532,7 +536,7 @@ export function POSTerminal({
       setSelectedClient('')
       setShowBookingBanner(false)
     } catch (err) {
-      console.error(err)
+      // console.error(err)
       if (!checkoutError) {
         const msg = err instanceof Error ? err.message : 'Error al procesar el pago'
         if (!msg.includes('cash_register_closed')) {

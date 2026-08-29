@@ -63,10 +63,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         user_metadata: { business_name: businessName, requested_plan: plan },
       })
       if (!createErr && created?.user) ownerId = created.user.id
-      else if (createErr) console.warn('[approve] createUser failed', createErr.message)
+      else if (createErr) {
+        // eslint-disable-next-line no-console
+        console.error('[approve] createUser failed', createErr.message)
+      }
     }
-  } catch (e) {
-    console.warn('[approve] auth lookup failed', e)
+  } catch (_e) {
+    // console.warn('[approve] auth lookup failed', e)
   }
 
   if (ownerId) {
@@ -104,7 +107,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       .select('id')
       .single()
     if (bizErr) {
-      console.warn('[approve] business insert failed', bizErr.message)
+      // console.warn('[approve] business insert failed', bizErr.message)
       return NextResponse.json(
         { license_key: licenseKey, warning: bizErr.message },
         { status: 201 },

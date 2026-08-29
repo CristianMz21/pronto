@@ -133,7 +133,7 @@ export default async function TransactionHistoryPage(props: {
               </thead>
               <tbody>
                 {transactions.map((tx) => {
-                  const items = (Array.isArray(tx.items) ? tx.items : []) as any[]
+                  const items = (Array.isArray(tx.items) ? tx.items : []) as unknown[]
                   const firstName: string = items[0]?.name ?? ''
                   const extraCount = items.length - 1
                   const client = tx.clients as { id: string; name: string } | null

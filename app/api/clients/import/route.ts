@@ -106,7 +106,7 @@ export async function POST(req: NextRequest) {
       .select('id')
 
     if (error) {
-      console.error('[import] upsert error (with phone):', error.message)
+      // console.error('[import] upsert error (with phone):', error.message)
       return NextResponse.json({ error: 'Database error' }, { status: 500 })
     }
 
@@ -128,7 +128,7 @@ export async function POST(req: NextRequest) {
     const { data, error } = await supabase.from('clients').insert(rows).select('id')
 
     if (error) {
-      console.error('[import] insert error (no phone):', error.message)
+      // console.error('[import] insert error (no phone):', error.message)
       return NextResponse.json({ error: 'Database error' }, { status: 500 })
     }
 

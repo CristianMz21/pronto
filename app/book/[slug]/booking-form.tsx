@@ -251,8 +251,8 @@ export function PublicBookingForm({
   const [promoCode, setPromoCode] = useState('')
   const [loyaltyPoints, setLoyaltyPoints] = useState('')
   const [membershipId, setMembershipId] = useState('')
-  const [loyaltyBalance, setLoyaltyBalance] = useState<number | null>(null)
-  const [membershipOptions, setMembershipOptions] = useState<
+  const [loyaltyBalance, _setLoyaltyBalance] = useState<number | null>(null)
+  const [_membershipOptions, _setMembershipOptions] = useState<
     { id: string; name: string; remaining: number; expires_at: string }[]
   >([])
   const [saving, setSaving] = useState(false)
@@ -267,7 +267,7 @@ export function PublicBookingForm({
   const [dayClosed, setDayClosed] = useState(false)
   // US7 holidays (picker disable + slot filter)
   const [holidayDates, setHolidayDates] = useState<string[]>([])
-  const [holidaysForLocation, setHolidaysForLocation] = useState<
+  const [_holidaysForLocation, setHolidaysForLocation] = useState<
     { date: string; location_id: string | null; is_open: boolean }[]
   >([])
   const [waitlistJoinLoading, setWaitlistJoinLoading] = useState(false)
@@ -302,6 +302,7 @@ export function PublicBookingForm({
   const leadEnabled = business.booking_lead_time_enabled ?? true
   const allowGuestBookings = business.allow_guest_bookings ?? true
   // Helpers synchronized with business.timezone (not browser local) via lib/booking-availability (no hardcodes)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   function todayInBusinessTz(): string {
     return todayInBusinessTzLib(business.timezone ?? 'UTC', new Date())
   }
@@ -312,7 +313,7 @@ export function PublicBookingForm({
   const [today, setToday] = useState('')
   useEffect(() => {
     setToday(todayInBusinessTz())
-  }, [])
+  }, [todayInBusinessTz])
 
   // US7: fetch holidays for business and respect location_id if multi-sede
   useEffect(() => {
@@ -335,7 +336,7 @@ export function PublicBookingForm({
         setHolidayDates(closed.map((h) => h.date.slice(0, 10)))
       } catch {}
     }
-    fetchHolidays()
+    void fetchHolidays()
     return () => {
       cancelled = true
     }
@@ -462,11 +463,11 @@ export function PublicBookingForm({
         if (!cancelled) setAuthChecked(true)
       }
     }
-    checkAuth()
+    void checkAuth()
     return () => {
       cancelled = true
     }
-  }, [business.id])
+  }, [business.id, supabase])
 
   useEffect(() => {
     if (!date || !selectedService) {
@@ -474,9 +475,10 @@ export function PublicBookingForm({
       setDayClosed(false)
       return
     }
-    loadSlots(date, selectedService, selectedEmployee)
-  }, [date, selectedService, selectedEmployee])
+    void loadSlots(date, selectedService, selectedEmployee)
+  }, [date, selectedService, selectedEmployee, loadSlots])
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   async function loadSlots(selectedDate: string, svc: Service, employeeId: string) {
     setLoadingSlots(true)
     setDayClosed(false)
@@ -658,7 +660,7 @@ export function PublicBookingForm({
         setSlotTakenError(true)
         setTime('')
         setStep('datetime')
-        if (selectedService) loadSlots(date, selectedService, selectedEmployee)
+        if (selectedService) void loadSlots(date, selectedService, selectedEmployee)
         return
       }
 
@@ -1020,7 +1022,7 @@ export function PublicBookingForm({
   function handleDatetimeContinue() {
     if (authUser && contact.name && (contact.phone || contact.email)) {
       // Prefilled and authenticated — skip contact step and submit directly
-      submit()
+      void submit()
     } else if (authUser) {
       // Authenticated but contact not fully prefilled — go to contact (prefilled) for confirmation
       setStep('contact')

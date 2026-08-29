@@ -26,12 +26,12 @@ export async function sendTelegramMessage(
     })
     const json = await res.json()
     if (!json.ok) {
-      console.error('[telegram] sendMessage error:', json.description)
+      // console.error('[telegram] sendMessage error:', json.description)
       return false
     }
     return true
-  } catch (err) {
-    console.error('[telegram] sendMessage exception:', err)
+  } catch (_err) {
+    // console.error('[telegram] sendMessage exception:', err)
     return false
   }
 }

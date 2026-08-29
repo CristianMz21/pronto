@@ -137,7 +137,7 @@ type QueryBuilder = {
   single: () => Promise<{ data: unknown; error: unknown }>
 }
 
-type InsertBuilder = {
+type _InsertBuilder = {
   insert: (data: unknown) => { select: (...a: unknown[]) => { single: () => Promise<{ data: unknown; error: unknown }> } }
   update: (data: unknown) => QueryBuilder & { eq: (c: string, v: unknown) => QueryBuilder & { eq: (c: string, v: unknown) => Promise<{ data: unknown; error: unknown }> } }
 }
@@ -151,7 +151,7 @@ async function fetchSegmentClients(
   locationId?: string | null
 ): Promise<ClientLike[]> {
   // Fetch clients + compute stats from transactions similar to CRM page
-  const s = supabase as unknown as {
+  const _s = supabase as unknown as {
     from: (t: string) => {
       select: (c: string) => {
         eq: (col: string, val: unknown) => {
@@ -531,7 +531,7 @@ export async function attributeRebooking(
   supabase: SupabaseLike,
   params: { clientId: string; businessId: string; campaignId?: string | null }
 ): Promise<void> {
-  const { clientId, businessId, campaignId } = params
+  const { clientId, _businessId, campaignId } = params
   try {
     if (campaignId) {
       // Direct attribution if campaign_id known

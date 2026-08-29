@@ -81,8 +81,8 @@ export async function POST(req: NextRequest) {
       botName: botInfo.name,
       webhookUrl,
     })
-  } catch (err) {
-    console.error('[viber/set-webhook]', err)
+  } catch (_err) {
+    // console.error('[viber/set-webhook]', err)
     return NextResponse.json({ error: 'internal' }, { status: 500 })
   }
 }

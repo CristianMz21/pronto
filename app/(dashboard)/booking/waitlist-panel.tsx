@@ -35,6 +35,7 @@ export function WaitlistPanel({ businessId, locationId }: Props) {
   const [actionId, setActionId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   async function load() {
     setLoading(true)
     setError(null)
@@ -62,8 +63,8 @@ export function WaitlistPanel({ businessId, locationId }: Props) {
   }
 
   useEffect(() => {
-    load()
-  }, [businessId, locationId, status])
+    void load()
+  }, [businessId, locationId, status, load])
 
   async function notifyNext() {
     setActionId('notify')

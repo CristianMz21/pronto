@@ -168,7 +168,7 @@ function normalizeRole(raw: string | null | undefined): CanonicalRole | null {
  * When businessId is omitted, first owned business wins, then first active employee row.
  */
 export async function getUserRole(
-  supabase: { from: (table: string) => any },
+  supabase: { from: (table: string) => unknown },
   userId: string,
   businessId?: string | null,
 ): Promise<CanonicalRole | null> {
@@ -220,7 +220,7 @@ export async function getUserRole(
  * Returns null if not a barber or no active employee row.
  */
 export async function getBarberEmployeeId(
-  supabase: { from: (table: string) => any },
+  supabase: { from: (table: string) => unknown },
   userId: string,
   businessId: string,
 ): Promise<string | null> {
@@ -262,7 +262,7 @@ export async function getUserLocationIds(
 ): Promise<string[] | null> {
   if (!userId || !businessId) return null
   try {
-    const role = await getUserRole(
+    const _role = await getUserRole(
       supabase as unknown as { from: (t: string) => unknown },
       userId,
       businessId,

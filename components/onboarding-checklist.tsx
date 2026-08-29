@@ -83,7 +83,7 @@ export function OnboardingChecklist({ businessId, enabledModules }: Props) {
       return
     }
 
-    Promise.all([
+    void Promise.all([
       supabase
         .from('services')
         .select('id', { count: 'exact', head: true })

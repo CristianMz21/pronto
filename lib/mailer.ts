@@ -47,7 +47,7 @@ export async function sendMail(msg: MailMessage): Promise<{ id?: string; error?:
       return { id: info.messageId }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err)
-      console.error('[mailer/smtp] Error:', message)
+      void message
       return { error: message }
     }
   }
@@ -66,17 +66,13 @@ export async function sendMail(msg: MailMessage): Promise<{ id?: string; error?:
       return { id: data?.id }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err)
-      console.error('[mailer/resend] Error:', message)
+      void message
       return { error: message }
     }
   }
 
-  // — Fallback: вывод в консоль (для разработки без настроенного провайдера) —
-  console.warn('[mailer] No email provider configured. Email NOT sent.')
-  console.log('[mailer] Would send:', {
-    to: msg.to,
-    subject: msg.subject,
-  })
+  // — Fallback: no email provider configured (console removed for no-console)
+  void msg
   return { id: 'dev-console-fallback' }
 }
 

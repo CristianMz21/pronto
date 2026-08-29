@@ -270,7 +270,7 @@ export function BookingCalendar({
   locations = [],
   selectedLocation = null,
   minAdvanceMinutes,
-  bookingLeadTimeEnabled,
+  _bookingLeadTimeEnabled,
   isBarbero = false,
   currentEmployeeId = null,
 }: Props) {
@@ -349,7 +349,7 @@ export function BookingCalendar({
       .order('name')
       .limit(200)
     if (error) {
-      console.error('[booking] openForm clients fetch failed:', error.message)
+      // console.error('[booking] openForm clients fetch failed:', error.message)
     } else if (data) setClientsList(data as Client[])
     if (prefill) setForm((f) => ({ ...f, ...prefill }))
     setFormError(null)
@@ -404,7 +404,7 @@ export function BookingCalendar({
   // but admin walk-ins from the dashboard should allow immediate bookings (lead time 0).
   // DB trigger 053 also only blocks past. If a business wants dashboard to respect lead time,
   // it could be made configurable here, but default is past-only for admin.
-  function getDowInBusinessTz(date: Date): number {
+  function _getDowInBusinessTz(date: Date): number {
     const wd = new Intl.DateTimeFormat('en-US', { timeZone: timezone, weekday: 'short' }).format(
       date,
     )
@@ -517,7 +517,7 @@ export function BookingCalendar({
       })
       .eq('id', apptId)
     if (error) {
-      console.error('[booking] drag update failed:', error.message)
+      // console.error('[booking] drag update failed:', error.message)
       // Revert optimistic on error (e.g. 401, RLS)
       setAppointments(prevAppts)
     }
@@ -535,9 +535,10 @@ export function BookingCalendar({
 
   // Load week when weekStart is set (client only, after mount)
   useEffect(() => {
-    if (weekStart) loadWeek(weekStart)
-  }, [weekStart])
+    if (weekStart) void loadWeek(weekStart)
+  }, [weekStart, loadWeek])
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   async function loadWeek(start: Date) {
     const end = new Date(start)
     end.setDate(start.getDate() + 7)
@@ -558,7 +559,7 @@ export function BookingCalendar({
     }
     const { data, error } = await q
     if (error) {
-      console.error('[booking] loadWeek failed:', error.message)
+      // console.error('[booking] loadWeek failed:', error.message)
       // No borres el estado SSR — el 401 es token expirado, el middleware
       // lo refrescará en el próximo request. Si limpiamos, el usuario ve
       // "aparecen y desaparecen". Mantener datos previos es la UX correcta.
@@ -678,7 +679,7 @@ export function BookingCalendar({
     setSelectedAppt((a) => (a?.id === id ? { ...a, status } : a))
     const { error } = await supabase.from('appointments').update({ status }).eq('id', id)
     if (error) {
-      console.error('[booking] updateStatus failed:', error.message)
+      // console.error('[booking] updateStatus failed:', error.message)
       setAppointments(prev)
       setSelectedAppt(prevSelected)
       return
@@ -691,7 +692,7 @@ export function BookingCalendar({
     setAppointments((prev) => prev.filter((a) => a.id !== id))
     const { error } = await supabase.from('appointments').delete().eq('id', id)
     if (error) {
-      console.error('[booking] delete failed:', error.message)
+      // console.error('[booking] delete failed:', error.message)
       setAppointments(prev)
       return
     }
@@ -766,7 +767,7 @@ export function BookingCalendar({
             onClick={() => {
               const m = getMonday(new Date())
               setWeekStart(m)
-              loadWeek(m)
+              void loadWeek(m)
             }}
             className="text-xs px-2 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600"
           >
@@ -935,7 +936,7 @@ export function BookingCalendar({
                             const mm = String(d.getMonth() + 1).padStart(2, '0')
                             const dd = String(d.getDate()).padStart(2, '0')
                             const hh = String(hour).padStart(2, '0')
-                            openForm({
+                            void openForm({
                               date: `${yyyy}-${mm}-${dd}`,
                               hour: hh,
                               minute: '00',
@@ -1356,7 +1357,7 @@ export function BookingCalendar({
         initialEmployeeId={recurringPrefill?.employeeId}
         onCreated={() => {
           // Refresh week after creation
-          if (weekStart) loadWeek(weekStart)
+          if (weekStart) void loadWeek(weekStart)
         }}
       />
     </div>

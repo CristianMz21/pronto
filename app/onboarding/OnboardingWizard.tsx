@@ -124,7 +124,7 @@ export function OnboardingWizard({ initialSlug, initialName, isSaas, rootDomain 
   useEffect(() => {
     if (!isSaas || !initialSlug) return
     // Trigger the effect above by keeping slug === initialSlug (already set)
-  }, [])
+  }, [initialSlug, isSaas])
 
   const canContinueStep0 = !!bizName.trim() && !!bizType && (!isSaas || slugStatus === 'available')
 

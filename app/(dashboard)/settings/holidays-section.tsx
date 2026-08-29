@@ -48,6 +48,7 @@ export function HolidaysSection({ businessId, locations: initialLocations = [] }
     }
   }, [initialLocations])
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   async function load() {
     setLoading(true)
     setError(null)
@@ -64,8 +65,8 @@ export function HolidaysSection({ businessId, locations: initialLocations = [] }
   }
 
   useEffect(() => {
-    load()
-  }, [businessId])
+    void load()
+  }, [businessId, load])
 
   async function add() {
     if (!form.date) return

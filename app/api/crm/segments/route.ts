@@ -31,7 +31,7 @@ async function resolveBusinessId(
   return null
 }
 
-function inDaysFromNow(dateStr: string, days: number, now: Date): boolean {
+function _inDaysFromNow(dateStr: string, days: number, now: Date): boolean {
   if (!dateStr) return false
   const d = new Date(dateStr + 'T00:00:00')
   if (isNaN(d.getTime())) return false

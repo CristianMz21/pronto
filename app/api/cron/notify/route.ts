@@ -212,8 +212,8 @@ export async function GET(req: NextRequest) {
           employeeName: employee?.name ?? undefined,
           address: biz?.address ?? undefined,
         })
-      } catch (err) {
-        console.error('[cron/notify] sendReminder 24h error:', err)
+      } catch (_err) {
+        // console.error('[cron/notify] sendReminder 24h error:', err)
       }
     }
     results.push(`reminder_24h:${a.id}`)
@@ -336,8 +336,8 @@ export async function GET(req: NextRequest) {
           address: biz?.address ?? undefined,
           isOneHour: true,
         })
-      } catch (err) {
-        console.error('[cron/notify] sendReminder 1h error:', err)
+      } catch (_err) {
+        // console.error('[cron/notify] sendReminder 1h error:', err)
       }
     }
     results.push(`reminder_1h:${a.id}`)

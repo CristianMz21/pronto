@@ -123,13 +123,13 @@ export async function GET(req: NextRequest) {
   for (const tx of txsWithItems) {
     const itemLines = tx.items.filter((it) => !!it.item_id)
     let txItemRevenue = 0
-    let txItemUnits = 0
+    let _txItemUnits = 0
     const lineParts: string[] = []
 
     for (const it of itemLines) {
       const rev = it.price * it.qty
       txItemRevenue += rev
-      txItemUnits += it.qty
+      _txItemUnits += it.qty
       totalRevenue += rev
       totalUnits += it.qty
       lineParts.push(`${it.name} ×${it.qty}`)

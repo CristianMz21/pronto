@@ -83,9 +83,9 @@ export function SalesTab() {
 
   useEffect(() => {
     if (activeRange) {
-      load(period, activeRange)
+      void load(period, activeRange)
     } else {
-      load(period)
+      void load(period)
     }
   }, [period, activeRange, load])
 

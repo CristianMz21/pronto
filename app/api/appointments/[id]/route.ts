@@ -264,8 +264,8 @@ export async function PATCH(request: Request, props: { params: Promise<{ id: str
           }
         } catch {}
       }
-    } catch (e) {
-      console.error('[appointments PATCH] waitlist notifyNext error', e)
+    } catch (_e) {
+      // console.error('[appointments PATCH] waitlist notifyNext error', e)
     }
   }
 

@@ -165,7 +165,7 @@ export async function POST(req: NextRequest) {
     .select('id')
 
   if (insertError) {
-    console.error('[inventory/import] insert error:', insertError.message)
+    // console.error('[inventory/import] insert error:', insertError.message)
     return NextResponse.json({ error: 'Database error' }, { status: 500 })
   }
 
