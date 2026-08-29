@@ -1,0 +1,15 @@
+openapi: 3.0.3
+info: { title: Loyalty (puntos), version: 006 }
+paths:
+  /api/loyalty/earn:
+    post:
+      summary: Earn tras transaction
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [client_id, transaction_id, amount], properties: { client_id: {type: string}, transaction_id: {type: string}, amount: {type: integer}} } } } }
+      responses: {'200': {description: ok, content: {application/json: {schema: {type: object, properties: {points: {type: integer}}}}}}}
+  /api/loyalty/redeem:
+    post:
+      summary: Redeem puntos por descuento
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [client_id, points], properties: { client_id: {type: string}, points: {type: integer}} } } } }
+      responses: {'200': {description: ok}, '409': {description: insufficient_points}}
+  /api/loyalty/{client_id}:
+    get: { summary: Get account + movements, responses: {'200': {description: ok}} }

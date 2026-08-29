@@ -1,0 +1,15 @@
+openapi: 3.0.3
+info: { title: CRM Campaigns, version: 006 }
+paths:
+  /api/campaigns:
+    get: { summary: List, responses: {'200': {description: ok}} }
+    post:
+      summary: Create campaign desde segmento (1-click)
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [name, segment, template], properties: { name: {type: string}, segment: {type: string, enum: [inactive_30,inactive_42,inactive_60,birthday_7,vip,new,all]}, location_id: {type: string, nullable: true}, channel: {type: string, enum: [whatsapp,email,telegram]}, template: {type: string}} } } } }
+      responses: {'201': {description: created}}
+  /api/campaigns/{id}/send:
+    post: { summary: Enqueue notification_log para recipients, responses: {'200': {description: sent}, '409': {description: already_sending}} }
+  /api/campaigns/{id}/stats:
+    get: { summary: stats sent/delivered/rebooked/revenue_attributed, responses: {'200': {description: ok}} }
+  /api/crm/segments:
+    get: { summary: List clientes por segmento (42d etc), parameters: [{name: segment, in: query, required: true, schema: {type: string}}, {name: location_id, in: query, schema: {type: string}}], responses: {'200': {description: ok}} }

@@ -1,0 +1,14 @@
+openapi: 3.0.3
+info: { title: Promotions, version: 006 }
+paths:
+  /api/promotions:
+    get: { summary: List, responses: {'200': {description: ok}} }
+    post:
+      summary: Create promotion
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [name, type, value], properties: { name: {type: string}, type: {type: string, enum: [percent,fixed,combo]}, value: {type: number}, promo_code: {type: string, nullable: true}, location_id: {type: string, nullable: true}, valid_from: {type: string}, valid_to: {type: string, nullable: true}, rules: {type: object}, is_active: {type: boolean}} } } } }
+      responses: {'201': {description: created}}
+  /api/promotions/evaluate:
+    post:
+      summary: Evaluate applicable promotion para (client, service, date, location)
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { client_id: {type: string}, service_id: {type: string}, location_id: {type: string}, promo_code: {type: string}, date: {type: string}} } } } }
+      responses: {'200': {description: ok, content: {application/json: {schema: {type: object, properties: {promotion: {type: object, nullable: true}, discount: {type: number}}}}}}}

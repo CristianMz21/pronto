@@ -1,0 +1,27 @@
+openapi: 3.0.3
+info: { title: Recurring Appointments, version: 006 }
+paths:
+  /api/recurring:
+    post:
+      summary: Crea serie rrule → appointments (validación por ocurrencia)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [service_id, rrule, next_at]
+              properties:
+                service_id: { type: string, format: uuid }
+                employee_id: { type: string, format: uuid, nullable: true }
+                location_id: { type: string, nullable: true }
+                client_id: { type: string, format: uuid }
+                rrule: { type: string, example: "FREQ=WEEKLY;INTERVAL=2;COUNT=6" }
+                next_at: { type: string, format: date-time }
+                until: { type: string, format: date-time, nullable: true }
+      responses:
+        '201': { description: created, content: { application/json: { schema: { type: object, properties: { recurring_id: {type: string}, created: {type: integer}, skipped: {type: integer}, errors: {type: array, items: {type: object}}}} } } }
+  /api/cron/recurring-generate:
+    get:
+      summary: pg_cron/fallback genera next_at vencidos (header x-cron-secret)
+      responses: { '200': {description: ok} }

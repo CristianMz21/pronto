@@ -1,0 +1,12 @@
+openapi: 3.0.3
+info: { title: Waitlist, version: 006 }
+paths:
+  /api/waitlist:
+    post:
+      summary: Enqueue
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [service_id, desired_at, client_id], properties: { business_id: {type: string}, location_id: {type: string, nullable: true}, service_id: {type: string}, employee_id: {type: string, nullable: true}, client_id: {type: string}, desired_at: {type: string, format: date-time}} } } } }
+      responses: { '201': {description: created}, '409': {description: already_waiting}}
+    get:
+      summary: List waiting (admin)
+      parameters: [{name: business_id, in: query, required: true, schema: {type: string}}, {name: location_id, in: query, schema: {type: string}}]
+      responses: { '200': {description: ok} }

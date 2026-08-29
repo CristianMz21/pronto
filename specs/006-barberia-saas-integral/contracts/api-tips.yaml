@@ -1,0 +1,11 @@
+openapi: 3.0.3
+info: { title: Tips (propinas), version: 006 }
+paths:
+  /api/tips:
+    post:
+      summary: Registrar propina (parte de POS o standalone)
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [transaction_id, employee_id, amount], properties: { transaction_id: {type: string}, employee_id: {type: string}, amount: {type: integer}, method: {type: string, enum: [cash,card,transfer,digital]}} } } } }
+      responses: {'201': {description: created}, '400': {description: tip exceeds limit}}
+    get: { summary: List por employee_id + rango, responses: {'200': {description: ok}} }
+  /api/reports/tips:
+    get: { summary: Reporte propinas por barbero/periodo, parameters: [{name: from, in: query},{name: to, in: query},{name: location_id, in: query}], responses: {'200': {description: ok}} }

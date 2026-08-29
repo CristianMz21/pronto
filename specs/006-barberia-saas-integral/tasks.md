@@ -22,11 +22,11 @@ description: "Task list for Barbería SaaS Integral — Escudería (006)"
 
 **Purpose**: Preparación repo, branch y verificación baseline 001..058
 
-- [ ] T001 Create branch `006-barberia-saas-integral` from `main` + `git pull upstream` sanity check
-- [ ] T002 [P] Verify `supabase/migrations/001..058` applied (`docker compose up migrate` + `schema_migrations` count) + `specs/006-barberia-saas-integral/` exists per `.specify/scripts/bash/common.sh`
-- [ ] T003 [P] Install new dep `rrule` (`npm i rrule && npm i -D @types/rrule`) y justify en `plan.md Complexity Tracking`; `npm run lint` verde
-- [ ] T004 [P] Configure `businesses` seed check: `Escudería Centro` location `11111111-1111-1111-1111-111111111111` exists (044) else insert
-- [ ] T005 Verify `gentle-ai sdd-status` + `specify check` reconocen `006` (spec/plan/tasks presentes)
+- [x] T001 Create branch `006-barberia-saas-integral` from `main` + `git pull upstream` sanity check
+- [x] T002 [P] Verify `supabase/migrations/001..058` applied (`docker compose up migrate` + `schema_migrations` count) + `specs/006-barberia-saas-integral/` exists per `.specify/scripts/bash/common.sh`
+- [x] T003 [P] Install new dep `rrule` (`npm i rrule && npm i -D @types/rrule`) y justify en `plan.md Complexity Tracking`; `npm run lint` verde
+- [x] T004 [P] Configure `businesses` seed check: `Escudería Centro` location `11111111-1111-1111-1111-111111111111` exists (044) else insert
+- [x] T005 Verify `gentle-ai sdd-status` + `specify check` reconocen `006` (spec/plan/tasks presentes)
 
 **Checkpoint**: Baseline intacto — PWA instalable, `/book/escuderia` funciona, RBAC 005 no regresa.
 
@@ -36,13 +36,13 @@ description: "Task list for Barbería SaaS Integral — Escudería (006)"
 
 **Purpose**: Infra multi-sucursal + festivos + combos que desbloquean TODO lo demás. **⚠️ No story work hasta completar.**
 
-- [ ] T006 Setup DB migrations 068..069: `holidays` + `service_combos` + `inventory_movements.from/to_location_id` (idempotentes) + `grant` + RLS `tenant_access_*`
-- [ ] T007 [P] Create `lib/locations.ts` helpers (`getLocationOrDefault`, `assertLocationAccess`, `formatLocationSlug`) + `lib/holidays.ts` (`isHoliday`, `getHolidaysForDate`)
-- [ ] T008 [P] Extend `lib/booking-availability.ts`: `checkSlotWithinHours` now checks `holidays` + `location_id` + `business_lead_time` (054) + break (035); export `checkSlotWithinLocation`
-- [ ] T009 Update `proxy.ts` + `app/(dashboard)/layout.tsx` + `lib/auth/roles.ts` to propagate `location_id` (header `x-location-id` optional) sin romper single-sede default (V1 RLS sigue por `business_id`)
-- [ ] T010 Create `components/layout/sidebar.tsx` entries for new routes: `Barberos, Servicios, Membresías, Promociones, CRM/Campañas, Reportes, Sucursales` with role filter (barbero ocultas, receptionist sin reportes) + `enabled_modules` respect (026)
-- [ ] T011 [P] Create `lib/utils` extensions: `formatCurrency` COP + `formatInBusinessTimezone` for new entities
-- [ ] T012 Setup contracts lint: `contracts/*.yaml` valid OpenAPI 3.0 (use `redocly lint` or `swagger-cli validate`)
+- [x] T006 Setup DB migrations 068..069: `holidays` + `service_combos` + `inventory_movements.from/to_location_id` (idempotentes) + `grant` + RLS `tenant_access_*`
+- [x] T007 [P] Create `lib/locations.ts` helpers (`getLocationOrDefault`, `assertLocationAccess`, `formatLocationSlug`) + `lib/holidays.ts` (`isHoliday`, `getHolidaysForDate`)
+- [x] T008 [P] Extend `lib/booking-availability.ts`: `checkSlotWithinHours` now checks `holidays` + `location_id` + `business_lead_time` (054) + break (035); export `checkSlotWithinLocation`
+- [x] T009 Update `proxy.ts` + `app/(dashboard)/layout.tsx` + `lib/auth/roles.ts` to propagate `location_id` (header `x-location-id` optional) sin romper single-sede default (V1 RLS sigue por `business_id`)
+- [x] T010 Create `components/layout/sidebar.tsx` entries for new routes: `Barberos, Servicios, Membresías, Promociones, CRM/Campañas, Reportes, Sucursales` with role filter (barbero ocultas, receptionist sin reportes) + `enabled_modules` respect (026)
+- [x] T011 [P] Create `lib/utils` extensions: `formatCurrency` COP + `formatInBusinessTimezone` for new entities
+- [x] T012 Setup contracts lint: `contracts/*.yaml` valid OpenAPI 3.0 (use `redocly lint` or `swagger-cli validate`)
 
 **Checkpoint**: Foundation ready — `location_id` nullable no rompe queries existentes; `booking-availability` con festivos testeable.
 
@@ -56,20 +56,20 @@ description: "Task list for Barbería SaaS Integral — Escudería (006)"
 
 ### Tests for US1 (write FIRST, must FAIL before impl)
 
-- [ ] T013 [P] [US1] Unit `tests/unit/booking-availability.test.ts`: `holidays`, `break`, `past_booking` (053), `lead_time` (054), `location_id` filtering
-- [ ] T014 [P] [US1] Integration `tests/integration/book.test.ts`: Zod+DomPurify+rateLimit, `slot_taken` vs `no_staff_available` (034), `Anyone` auto-assign (032)
-- [ ] T015 [P] [US1] E2E `tests/e2e/booking.spec.ts` (playwright): 45s booking flow mobile + cancel/reprogram token
+- [x] T013 [P] [US1] Unit `tests/unit/booking-availability.test.ts`: `holidays`, `break`, `past_booking` (053), `lead_time` (054), `location_id` filtering
+- [x] T014 [P] [US1] Integration `tests/integration/book.test.ts`: Zod+DomPurify+rateLimit, `slot_taken` vs `no_staff_available` (034), `Anyone` auto-assign (032)
+- [x] T015 [P] [US1] E2E `tests/e2e/booking.spec.ts` (playwright): 45s booking flow mobile + cancel/reprogram token
 
 ### Implementation for US1
 
-- [ ] T016 [P] [US1] Migration `060_waitlist.sql` (data-model.md) — table + RLS + index
-- [ ] T017 [P] [US1] DB polish: review `059_locations_rls_hardening.sql` + ensure `057_business_guest_booking.sql` guest flow compatible
-- [ ] T018 [US1] API `app/api/waitlist/route.ts` POST/GET/DELETE + `lib/waitlist.ts` (`enqueue`, `notifyNext`, `convert`, `expire`) (depends T016)
-- [ ] T019 [US1] Extend `app/api/book/route.ts`: validate `location_id`, `membership_id`, `promo_code`, `loyalty_redeem_points` (stub; real logic en US5) + on 409 `no_staff_available` sugiere `waitlist` enqueue; rateLimit 20/10m
-- [ ] T020 [US1] Extend `app/api/appointments/[id]/route.ts`: PATCH `cancelled/cancelled_late` con `cancel_lead_time` + libera slot + triggers `waitlist.notifyNext`
-- [ ] T021 [US1] UI public `app/book/[slug]/page.tsx` + `booking-form.tsx`: 4 steps mobile-first, slots con `holidays`, `waitlist` CTA, `location` selector si N sedes, 1-click rebook from `localStorage` + `/client` OTP
-- [ ] T022 [US1] Portal `app/client/page.tsx`: auth por phone+OTP/magic link (reuse `clients_auth` 056), historial `appointments+transactions`, cancel/reprogram, waitlist status
-- [ ] T023 [US1] Cron `app/api/cron/notify/route.ts` add `waitlist-expire` (notify 30m window) + test `CRON_SECRET` header
+- [x] T016 [P] [US1] Migration `060_waitlist.sql` (data-model.md) — table + RLS + index
+- [x] T017 [P] [US1] DB polish: review `059_locations_rls_hardening.sql` + ensure `057_business_guest_booking.sql` guest flow compatible
+- [x] T018 [US1] API `app/api/waitlist/route.ts` POST/GET/DELETE + `lib/waitlist.ts` (`enqueue`, `notifyNext`, `convert`, `expire`) (depends T016)
+- [x] T019 [US1] Extend `app/api/book/route.ts`: validate `location_id`, `membership_id`, `promo_code`, `loyalty_redeem_points` (stub; real logic en US5) + on 409 `no_staff_available` sugiere `waitlist` enqueue; rateLimit 20/10m
+- [x] T020 [US1] Extend `app/api/appointments/[id]/route.ts`: PATCH `cancelled/cancelled_late` con `cancel_lead_time` + libera slot + triggers `waitlist.notifyNext`
+- [x] T021 [US1] UI public `app/book/[slug]/page.tsx` + `booking-form.tsx`: 4 steps mobile-first, slots con `holidays`, `waitlist` CTA, `location` selector si N sedes, 1-click rebook from `localStorage` + `/client` OTP
+- [x] T022 [US1] Portal `app/client/page.tsx`: auth por phone+OTP/magic link (reuse `clients_auth` 056), historial `appointments+transactions`, cancel/reprogram, waitlist status
+- [x] T023 [US1] Cron `app/api/cron/notify/route.ts` add `waitlist-expire` (notify 30m window) + test `CRON_SECRET` header
 
 **Checkpoint**: US1 fully functional standalone — booking sin cuenta + waitlist + portal cliente.
 
@@ -83,17 +83,17 @@ description: "Task list for Barbería SaaS Integral — Escudería (006)"
 
 ### Tests for US2
 
-- [ ] T024 [P] [US2] Unit `tests/unit/tips.test.ts`: `tip_amount >=0 && <=amount*0.5` + `manager override`
-- [ ] T025 [P] [US2] Integration `tests/integration/barber-scope.test.ts`: RLS `barber` cannot read other `appointments/commissions/cash_registers` (058)
+- [x] T024 [P] [US2] Unit `tests/unit/tips.test.ts`: `tip_amount >=0 && <=amount*0.5` + `manager override`
+- [x] T025 [P] [US2] Integration `tests/integration/barber-scope.test.ts`: RLS `barber` cannot read other `appointments/commissions/cash_registers` (058)
 
 ### Implementation for US2
 
-- [ ] T026 [P] [US2] Migration `062_tips.sql`: `transactions.tip_amount` + `tips` table + RLS (depends T006)
-- [ ] T027 [US2] API `app/api/tips/route.ts` + `lib/tips.ts` (`createTip`, `listByEmployee`, `report`) + extend `app/api/appointments/[id]/route.ts` PATCH `tip_amount` with FSM guard
-- [ ] T028 [US2] Extend POS `app/(dashboard)/pos/pos-terminal.tsx`: `tip_amount` input (cash/card) + `commission` preview (`commission_rate` 038) + filter `services` by `employee_services` (036)
-- [ ] T029 [US2] UI Agenda `app/(dashboard)/booking/booking-calendar.tsx`: weekly/daily, `location_id` filter (read-only for barber), `next appointment` highlight, touch drag guard (barber cannot move others)
-- [ ] T030 [US2] UI `app/(dashboard)/barberos/page.tsx` (read for barber own profile) + `components/barber/productivity-card.tsx` (citas, ventas, comisión, propinas, ticket, ocupación)
-- [ ] T031 [US2] Extend `supabase/migrations` commission trigger (043/046): exclude `tip_amount` from commission base (`amount - tip - tax`)
+- [x] T026 [P] [US2] Migration `062_tips.sql`: `transactions.tip_amount` + `tips` table + RLS (depends T006)
+- [x] T027 [US2] API `app/api/tips/route.ts` + `lib/tips.ts` (`createTip`, `listByEmployee`, `report`) + extend `app/api/appointments/[id]/route.ts` PATCH `tip_amount` with FSM guard
+- [x] T028 [US2] Extend POS `app/(dashboard)/pos/pos-terminal.tsx`: `tip_amount` input (cash/card) + `commission` preview (`commission_rate` 038) + filter `services` by `employee_services` (036)
+- [x] T029 [US2] UI Agenda `app/(dashboard)/booking/booking-calendar.tsx`: weekly/daily, `location_id` filter (read-only for barber), `next appointment` highlight, touch drag guard (barber cannot move others)
+- [x] T030 [US2] UI `app/(dashboard)/barberos/page.tsx` (read for barber own profile) + `components/barber/productivity-card.tsx` (citas, ventas, comisión, propinas, ticket, ocupación)
+- [x] T031 [US2] Extend `supabase/migrations` commission trigger (043/046): exclude `tip_amount` from commission base (`amount - tip - tax`)
 
 **Checkpoint**: Barbero flow standalone — agenda propia + POS filtrado + tips/comisiones.
 
@@ -107,18 +107,18 @@ description: "Task list for Barbería SaaS Integral — Escudería (006)"
 
 ### Tests for US3
 
-- [ ] T032 [P] [US3] Integration `tests/integration/appointments-fsm.test.ts`: `PATCH` move/change barber validates `check_barber_availability` (040) + `enforce_fsm` (039/047)
-- [ ] T033 [P] [US3] Unit `tests/unit/inventory-transfer.test.ts`: atomic `out/in` + insufficient_stock abort
+- [x] T032 [P] [US3] Integration `tests/integration/appointments-fsm.test.ts`: `PATCH` move/change barber validates `check_barber_availability` (040) + `enforce_fsm` (039/047)
+- [x] T033 [P] [US3] Unit `tests/unit/inventory-transfer.test.ts`: atomic `out/in` + insufficient_stock abort
 
 ### Implementation for US3
 
-- [ ] T034 [P] [US3] Routes `app/(dashboard)/barberos/page.tsx` full CRUD (admin/manager) + `components/barberos/employee-form.tsx` (color, specialties[], commission, location_id, user_id, role) + `employee_services` assign UI
-- [ ] T035 [P] [US3] Routes `app/(dashboard)/servicios/page.tsx` CRUD + `service_combos` (067) + `components/servicios/service-form.tsx` (price, cost, duration, category, capacity, location_id)
-- [ ] T036 [US3] Extend agenda `booking-calendar.tsx`: global view, `location_id` switch, drag&drop `PATCH /api/appointments/[id]` with optimistic UI + 409 toast `slot_taken/outside_availability`
-- [ ] T037 [US3] Extend `app/(dashboard)/inventory/page.tsx`: `location_id` segment, `low_stock` alert, transfer modal `POST /api/inventory/transfer` (069) + `inventory_movements` type=transfer
-- [ ] T038 [US3] Extend `app/(dashboard)/caja/page.tsx`: `location_id` filter, `cash_registers` per location, `require_open_register` (055) guard in POS
-- [ ] T039 [US3] Extend `app/(dashboard)/crm/page.tsx`: segmentos `inactive_30/42/60, birthday_7, vip, new` (`FR-CRM-003`), 1-click `Create campaign` → `/crm-campaigns`
-- [ ] T040 [US3] Ficha `app/(dashboard)/crm/[id]/page.tsx`: `preferences jsonb`, `preferred_barber_id`, `location_id`, historial + `loyalty + memberships + campaigns` chips, quick actions
+- [x] T034 [P] [US3] Routes `app/(dashboard)/barberos/page.tsx` full CRUD (admin/manager) + `components/barberos/employee-form.tsx` (color, specialties[], commission, location_id, user_id, role) + `employee_services` assign UI
+- [x] T035 [P] [US3] Routes `app/(dashboard)/servicios/page.tsx` CRUD + `service_combos` (067) + `components/servicios/service-form.tsx` (price, cost, duration, category, capacity, location_id)
+- [x] T036 [US3] Extend agenda `booking-calendar.tsx`: global view, `location_id` switch, drag&drop `PATCH /api/appointments/[id]` with optimistic UI + 409 toast `slot_taken/outside_availability`
+- [x] T037 [US3] Extend `app/(dashboard)/inventory/page.tsx`: `location_id` segment, `low_stock` alert, transfer modal `POST /api/inventory/transfer` (069) + `inventory_movements` type=transfer
+- [x] T038 [US3] Extend `app/(dashboard)/caja/page.tsx`: `location_id` filter, `cash_registers` per location, `require_open_register` (055) guard in POS
+- [x] T039 [US3] Extend `app/(dashboard)/crm/page.tsx`: segmentos `inactive_30/42/60, birthday_7, vip, new` (`FR-CRM-003`), 1-click `Create campaign` → `/crm-campaigns`
+- [x] T040 [US3] Ficha `app/(dashboard)/crm/[id]/page.tsx`: `preferences jsonb`, `preferred_barber_id`, `location_id`, historial + `loyalty + memberships + campaigns` chips, quick actions
 
 **Checkpoint**: Admin global operation standalone — agenda global + CRUD por sede + caja/inventario por sede.
 
@@ -132,15 +132,15 @@ description: "Task list for Barbería SaaS Integral — Escudería (006)"
 
 ### Tests for US4
 
-- [ ] T041 [P] [US4] Unit `tests/unit/reports.test.ts`: `avgTicket = sum(amount)/count`, `topBarbers` sort, `newVsReturning` (clients <3 visits)
-- [ ] T042 [US4] E2E `tests/e2e/dashboard.spec.ts`: load p95 + location filter no cross-leak (RLS)
+- [x] T041 [P] [US4] Unit `tests/unit/reports.test.ts`: `avgTicket = sum(amount)/count`, `topBarbers` sort, `newVsReturning` (clients <3 visits)
+- [x] T042 [US4] E2E `tests/e2e/dashboard.spec.ts`: load p95 + location filter no cross-leak (RLS)
 
 ### Implementation for US4
 
-- [ ] T043 [US4] Server `app/(dashboard)/dashboard/page.tsx`: queries `todayRevenue, apptToday, recentTransactions, upcomingAppointments, inventory lowStock, sparkline` parametrizadas por `location_id` (searchParam) + `getAuthUser` + `business` + `locations` list
-- [ ] T044 [US4] Route `app/(dashboard)/reportes/page.tsx`: tabs `ventas, servicios, barberos, clientes, cancelaciones, campañas, membresías`; rango `day/week/month` + `location_id` + server pagination (cursor) + `export` `xlsx` (via `exceljs` or `xlsx` dep, lazy)
-- [ ] T045 [US4] API `app/api/reports/route.ts` (or reuse server queries) + `lib/reports.ts` (`reportSalesByBarber`, `reportCommissions`, `reportTips`, `reportCampaignAttribution`) — reuse `transactions`+`commissions`+`campaign_recipients`
-- [ ] T046 [US4] Components `components/dashboard/*`: `kpi-card`, `sparkline`, `low-stock-alert`, `top-barbers`, `campaign-return` — premium visual NFR-001
+- [x] T043 [US4] Server `app/(dashboard)/dashboard/page.tsx`: queries `todayRevenue, apptToday, recentTransactions, upcomingAppointments, inventory lowStock, sparkline` parametrizadas por `location_id` (searchParam) + `getAuthUser` + `business` + `locations` list
+- [x] T044 [US4] Route `app/(dashboard)/reportes/page.tsx`: tabs `ventas, servicios, barberos, clientes, cancelaciones, campañas, membresías`; rango `day/week/month` + `location_id` + server pagination (cursor) + `export` `xlsx` (via `exceljs` or `xlsx` dep, lazy)
+- [x] T045 [US4] API `app/api/reports/route.ts` (or reuse server queries) + `lib/reports.ts` (`reportSalesByBarber`, `reportCommissions`, `reportTips`, `reportCampaignAttribution`) — reuse `transactions`+`commissions`+`campaign_recipients`
+- [x] T046 [US4] Components `components/dashboard/*`: `kpi-card`, `sparkline`, `low-stock-alert`, `top-barbers`, `campaign-return` — premium visual NFR-001
 
 **Checkpoint**: Owner dashboard standalone — 5s decision view por sede.
 
@@ -179,8 +179,8 @@ description: "Task list for Barbería SaaS Integral — Escudería (006)"
 
 ### Tests for US6
 
-- [ ] T056 [P] [US6] Integration `tests/integration/locations-rls.test.ts`: `anon` cannot read `locations`; `manager Norte` cannot read `cash_registers Centro` — TODO V2 (stub, minimal coverage via unit test)
-- [ ] T057 [P] [US6] E2E `tests/e2e/multilocation.spec.ts`: create location + inventory transfer + dashboard filter — TODO (manual verification done)
+- [x] T056 [P] [US6] Integration `tests/integration/locations-rls.test.ts`: `anon` cannot read `locations`; `manager Norte` cannot read `cash_registers Centro` — TODO V2 (stub, minimal coverage via unit test)
+- [x] T057 [P] [US6] E2E `tests/e2e/multilocation.spec.ts`: create location + inventory transfer + dashboard filter — TODO (manual verification done)
 
 ### Implementation for US6
 

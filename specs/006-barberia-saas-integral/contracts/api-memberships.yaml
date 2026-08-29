@@ -1,0 +1,20 @@
+openapi: 3.0.3
+info: { title: Memberships, version: 006 }
+paths:
+  /api/memberships:
+    get: { summary: List (filter location_id, is_active), responses: {'200': {description: ok}} }
+    post:
+      summary: Create membership (admin)
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [name, price, duration_days], properties: { name: {type: string}, price: {type: integer}, duration_days: {type: integer}, location_id: {type: string, nullable: true}, benefits: {type: object}, is_active: {type: boolean}} } } } }
+      responses: {'201': {description: created}}
+  /api/memberships/{id}/purchase:
+    post:
+      summary: Compra membresía para cliente (POS)
+      parameters: [{name: id, in: path, required: true, schema: {type: string}}]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [client_id, payment_method], properties: { client_id: {type: string}, payment_method: {type: string}, location_id: {type: string}} } } } }
+      responses: {'201': {description: purchased, content: {application/json: {schema: {type: object, properties: {client_membership_id: {type: string}, expires_at: {type: string}}}}}}}
+  /api/memberships/consume:
+    post:
+      summary: Consume 1 uso (booking/POS) con advisory lock
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [client_membership_id], properties: { client_membership_id: {type: string}} } } } }
+      responses: {'200': {description: consumed}, '409': {description: no_uses_left | expired}}

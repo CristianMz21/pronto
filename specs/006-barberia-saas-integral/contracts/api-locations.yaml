@@ -1,0 +1,16 @@
+openapi: 3.0.3
+info: { title: Locations (multi-sucursal), version: 006 }
+paths:
+  /api/locations:
+    get: { summary: List (owner ve todas, manager solo suyas), responses: {'200': {description: ok}} }
+    post:
+      summary: Create location
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [name, slug], properties: { name: {type: string}, slug: {type: string, pattern: "^[a-z0-9-]+$"}, address: {type: string}, phone: {type: string}, is_active: {type: boolean}} } } } }
+      responses: {'201': {description: created}, '409': {description: slug_exists}}
+  /api/locations/{id}:
+    patch: { summary: Update location, responses: {'200': {description: ok}} }
+  /api/inventory/transfer:
+    post:
+      summary: Transferencia atómica inter-sede
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [item_id, from_location_id, to_location_id, quantity], properties: { item_id: {type: string}, from_location_id: {type: string}, to_location_id: {type: string}, quantity: {type: integer, minimum: 1}} } } } }
+      responses: {'200': {description: ok}, '409': {description: insufficient_stock}}

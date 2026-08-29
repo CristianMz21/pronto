@@ -1,0 +1,48 @@
+openapi: 3.0.3
+info:
+  title: Escudería — Booking + Waitlist + Membership/Promo apply
+  version: 006
+paths:
+  /api/book:
+    post:
+      summary: Reserva pública (existente) + waitlist fallback + membership/promo/loyalty apply
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [slug, service_id, starts_at, client]
+              properties:
+                slug: { type: string, example: escuderia }
+                service_id: { type: string, format: uuid }
+                employee_id: { type: string, format: uuid, nullable: true, description: "null = Anyone" }
+                location_id: { type: string, format: uuid, nullable: true }
+                starts_at: { type: string, format: date-time }
+                client: { type: object, required: [name, phone], properties: { name: {type: string}, phone: {type: string}, email: {type: string} } }
+                membership_id: { type: string, format: uuid, nullable: true }
+                promo_code: { type: string, nullable: true }
+                loyalty_redeem_points: { type: integer, nullable: true }
+      responses:
+        '201': { description: created, content: { application/json: { schema: { type: object, properties: { appointment_id: {type: string}, status: {type: string, enum: [confirmed]}} } } } }
+        '409':
+          description: slot_taken | no_staff_available (034) → cliente puede POST /api/waitlist
+          content: { application/json: { schema: { type: object, properties: { error: {type: string}, code: {type: string}} } } }
+        '400': { description: outside_availability | past_booking | invalid_rrule }
+  /api/appointments/{id}:
+    patch:
+      summary: FSM + reprogramación + propina
+      parameters: [{ name: id, in: path, required: true, schema: {type: string}}]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status: { type: string, enum: [scheduled, confirmed, checked-in, in-service, completed, cancelled, cancelled_late, no_show, paid] }
+                starts_at: { type: string, format: date-time }
+                employee_id: { type: string, format: uuid }
+                tip_amount: { type: integer, minimum: 0 }
+      responses:
+        '200': { description: ok }
+        '409': { description: outside_availability | slot_taken | fsm_guard }
