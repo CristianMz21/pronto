@@ -1,8 +1,11 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { reportSalesByBarber } from '@/lib/reports'
+import { rateLimit, getIp } from '@/lib/rate-limit'
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
+  const ip = getIp(request)
+  if (!rateLimit(`reports:${ip}`, { limit: 60, windowMs: 60 * 1000 })) return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
   const { searchParams } = new URL(request.url)
   const range = searchParams.get('range') ?? 'week'
   const location = searchParams.get('location')

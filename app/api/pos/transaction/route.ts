@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { z } from 'zod'
+import { rateLimit, getIp } from '@/lib/rate-limit'
 
 const BodySchema = z.object({
   business_id: z.string().uuid(),
@@ -23,6 +24,8 @@ const BodySchema = z.object({
 })
 
 export async function POST(req: NextRequest) {
+  const ip = getIp(req)
+  if (!rateLimit(`pos-transaction:${ip}`, { limit: 60, windowMs: 10 * 60 * 1000 })) return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -43,9 +46,7 @@ export async function POST(req: NextRequest) {
   if (!biz) return NextResponse.json({ error: 'Business not in my_business_ids' }, { status: 403 })
 
   if (body.amount <= 0 && body.membership_id == null) {
-    // Allow 0 if membership covers full amount, else require >0
-    const gross = body.items.reduce((s, it) => s + Number(it.price) * it.qty, 0)
-    if (gross <= 0) return NextResponse.json({ error: 'Amount must be >0' }, { status: 400 })
+    return NextResponse.json({ error: 'Amount must be >0' }, { status: 400 })
   }
 
   // Barbero guard: enforce employee_id=self and service assignment via employee_services
