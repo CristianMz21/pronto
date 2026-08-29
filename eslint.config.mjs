@@ -1,41 +1,129 @@
+import tseslint from 'typescript-eslint'
 import nextCoreWebVitals from 'eslint-config-next/core-web-vitals'
+import security from 'eslint-plugin-security'
+import sonarjs from 'eslint-plugin-sonarjs'
+import unusedImports from 'eslint-plugin-unused-imports'
 
-const eslintConfig = [
+const eslintConfig = tseslint.config(
   {
-    // Flat config only auto-ignores node_modules — build output and any
-    // stray untracked artifact directories need to be excluded explicitly,
-    // or eslint lints generated/minified JS as if it were source.
-    ignores: ['.next/**', '.next-*/**', 'public/**', 'next-env.d.ts', 'coverage/**', 'tests/**', 'playwright/**'],
+    ignores: ['.next/**', '.next-*/**', 'public/**', 'next-env.d.ts', 'coverage/**', 'tests/**', 'playwright/**', 'drizzle/**', 'lib/supabase/database.types.ts'],
   },
   ...nextCoreWebVitals,
+  ...tseslint.configs.recommendedTypeChecked,
+  ...tseslint.configs.strictTypeChecked,
+  security.configs.recommended,
+  sonarjs.configs.recommended,
   {
-    // eslint-config-next@16 pulls in eslint-plugin-react-hooks@7 (the "React
-    // Compiler" linter), which adds these four rules as errors by default.
-    // They surface pre-existing findings across the app that no previous
-    // version of this config ever checked for — none introduced by the
-    // Next.js 14->16 upgrade.
-    // For minimal free-stack quality gate (2026-08): keep CI green with
-    // max-warnings 0 — downgrade to warn would still count toward
-    // --max-warnings, so we set to off and track remediation separately.
-    // TODO(quality-gates): re-enable as warn and fix cascading setState
-    // in effects (booking-calendar etc.), then flip CI lint to --max-warnings 0
-    // with warnings present. See also TODO for typescript-eslint strict and
-    // import/order + jsx-a11y as warnings once baseline is green.
+    files: ['**/*.js', '**/*.mjs', '**/*.cjs'],
+    extends: [tseslint.configs.disableTypeChecked],
     rules: {
+      '@typescript-eslint/no-require-imports': 'off',
+      'sonarjs/pseudo-random': 'off',
+      'security/detect-object-injection': 'off',
+      'sonarjs/cognitive-complexity': 'off',
+      'sonarjs/no-ignored-exceptions': 'off',
+      'security/detect-non-literal-fs-filename': 'off',
+      'sonarjs/super-linear-regex': 'off',
+      'sonarjs/no-nested-template-literals': 'off',
+      'sonarjs/no-unused-vars': 'off',
+      '@typescript-eslint/no-unused-vars': 'off',
+      'no-console': 'off',
+    },
+  },
+  {
+    files: ['**/*.{ts,tsx,mts,cts}'],
+    languageOptions: {
+      parserOptions: {
+        projectService: {
+          allowDefaultProject: ['*.js', '*.mjs', '*.cjs', 'commitlint.config.js', 'next.config.js', 'postcss.config.js', 'scripts/*.js'],
+        },
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+    plugins: {
+      'unused-imports': unusedImports,
+    },
+    rules: {
+      'no-console': 'error',
+      'no-debugger': 'error',
+      'import/order': ['error', { groups: ['builtin', 'external', 'internal', ['parent', 'sibling'], 'index'], 'newlines-between': 'always', alphabetize: { order: 'asc', caseInsensitive: true } }],
+      'jsx-a11y/alt-text': 'error',
+      'jsx-a11y/aria-props': 'error',
+      'jsx-a11y/aria-proptypes': 'error',
+      'jsx-a11y/aria-unsupported-elements': 'error',
+      'jsx-a11y/role-has-required-aria-props': 'error',
+      'jsx-a11y/role-supports-aria-props': 'error',
+      'unused-imports/no-unused-imports': 'error',
+      'unused-imports/no-unused-vars': ['error', { vars: 'all', varsIgnorePattern: '^_', args: 'after-used', argsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-explicit-any': 'error',
+      'react-hooks/exhaustive-deps': 'error',
+      // Disable noisy for PR1 feasibility
+      '@typescript-eslint/no-unnecessary-type-assertion': 'off',
+      '@typescript-eslint/no-unnecessary-condition': 'off',
+      '@typescript-eslint/no-confusing-void-expression': 'off',
+      '@typescript-eslint/no-unnecessary-type-conversion': 'off',
+      '@typescript-eslint/restrict-template-expressions': 'off',
+      'sonarjs/prefer-read-only-props': 'off',
+      'sonarjs/no-nested-conditional': 'off',
+      'sonarjs/cognitive-complexity': 'off',
+      'sonarjs/no-nested-template-literals': 'off',
+      'sonarjs/no-nested-functions': 'off',
+      'sonarjs/no-duplicate-string': 'off',
+      'sonarjs/no-identical-functions': 'off',
+      'security/detect-object-injection': 'off',
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/no-unsafe-argument': 'off',
+      '@typescript-eslint/no-unsafe-call': 'off',
+      '@typescript-eslint/no-unsafe-return': 'off',
+      '@typescript-eslint/no-unused-vars': 'off',
+      'sonarjs/unused-import': 'off',
+      'sonarjs/no-unused-vars': 'off',
+      // Additional disables for PR1 to keep reviewable
+      '@typescript-eslint/no-misused-promises': 'off',
+      '@typescript-eslint/no-non-null-assertion': 'off',
       'react-hooks/set-state-in-effect': 'off',
       'react-hooks/purity': 'off',
       'react-hooks/immutability': 'off',
       'react-hooks/preserve-manual-memoization': 'off',
-      // Strict gate 2026-08: import/order enabled as warn (auto-fixable)
-      // Previously deferred due to ~800 warnings; now fixed via --fix, CI enforces --max-warnings 0
-      // typescript-eslint recommendedTypeChecked is available via next/core-web-vitals but kept off until baseline green
-      'import/order': ['warn', { groups: ['builtin', 'external', 'internal', ['parent', 'sibling'], 'index'], 'newlines-between': 'always', alphabetize: { order: 'asc', caseInsensitive: true } }],
-      // For max-warnings 0 baseline (2026-08): keep non-critical noisy rules off until fixed
-      'react-hooks/exhaustive-deps': 'off',
+      'sonarjs/deprecation': 'off',
+      'sonarjs/no-dead-store': 'off',
+      'sonarjs/todo-tag': 'off',
+      'sonarjs/redundant-type-aliases': 'off',
+      'sonarjs/use-type-alias': 'off',
+      '@typescript-eslint/no-deprecated': 'off',
+      'sonarjs/no-globals-shadowing': 'off',
+      'sonarjs/no-alphabetical-sort': 'off',
+      'security/detect-unsafe-regex': 'off',
+      'security/detect-non-literal-fs-filename': 'off',
+      'security/detect-possible-timing-attacks': 'off',
+      '@typescript-eslint/prefer-promise-reject-errors': 'off',
+      '@typescript-eslint/only-throw-error': 'off',
+      '@typescript-eslint/require-await': 'off',
+      '@typescript-eslint/no-redundant-type-constituents': 'off',
+      'sonarjs/prefer-regexp-exec': 'off',
+      'sonarjs/no-unenclosed-multiline-block': 'off',
+      'sonarjs/different-types-comparison': 'off',
+      '@typescript-eslint/use-unknown-in-catch-callback-variable': 'off',
+      'sonarjs/no-all-duplicated-branches': 'off',
+      'sonarjs/prefer-single-boolean-return': 'off',
+      '@typescript-eslint/no-duplicate-type-constituents': 'off',
+      'sonarjs/no-redundant-assignments': 'off',
+      'sonarjs/pseudo-random': 'off',
+      '@typescript-eslint/no-unnecessary-type-parameters': 'off',
+      '@typescript-eslint/return-await': 'off',
+      '@typescript-eslint/restrict-plus-operands': 'off',
+      '@typescript-eslint/no-require-imports': 'off',
+      'sonarjs/super-linear-regex': 'off',
+      '@typescript-eslint/no-unnecessary-boolean-literal-compare': 'off',
+      '@typescript-eslint/prefer-reduce-type-parameter': 'off',
+      '@typescript-eslint/no-unused-expressions': 'off',
+      '@typescript-eslint/no-duplicate-type-constituents': 'off',
+      'prefer-const': 'off',
       '@next/next/no-img-element': 'off',
       '@next/next/no-location-assign-relative-destination': 'off',
     },
   },
-]
+)
 
 export default eslintConfig

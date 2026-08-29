@@ -2,7 +2,7 @@
 
 import { CalendarPlus, Loader2 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 
 import { DatePicker } from '@/components/ui/date-picker'
 import {

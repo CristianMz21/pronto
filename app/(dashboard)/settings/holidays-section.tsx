@@ -4,7 +4,6 @@ import { Trash2, CalendarOff, Plus } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
-import { createClient } from '@/lib/supabase/client'
 
 interface Holiday {
   id: string

@@ -8,7 +8,6 @@ import { rateLimit, getIp } from '@/lib/rate-limit'
 import {
   sendTelegramMessage,
   tplNewBooking,
-  tplReminderClient as tgTplConfirmClient,
 } from '@/lib/telegram'
 import { sendViberMessage, tplNewBooking as viberTplNewBooking } from '@/lib/viber'
 import {
