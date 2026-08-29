@@ -86,15 +86,27 @@ export async function POST(req: NextRequest) {
     // fail open for non-barbero
   }
 
+  // Multi-sede: if location_id provided, validate it belongs to business
+  if (body.location_id) {
+    const { data: loc } = await supabase
+      .from('locations')
+      .select('id')
+      .eq('id', body.location_id)
+      .eq('business_id', body.business_id)
+      .maybeSingle()
+    if (!loc) return NextResponse.json({ error: 'location_not_found', message: 'Sucursal no encontrada en este negocio' }, { status: 404 })
+  }
+
   // Cash sales require an open cash register only when business config demands it (055)
   const requireCashRegister = (biz as { require_cash_register_for_cash?: boolean | null })?.require_cash_register_for_cash ?? true
   if (body.payment_method === 'cash' && requireCashRegister) {
-    const { data: openRegister } = await supabase
+    let cashQuery = supabase
       .from('cash_registers')
       .select('id')
       .eq('business_id', body.business_id)
       .eq('status', 'open')
-      .maybeSingle()
+    if (body.location_id) cashQuery = (cashQuery as unknown as { eq: (c:string,v:string)=> typeof cashQuery }).eq('location_id', body.location_id) as typeof cashQuery
+    const { data: openRegister } = await cashQuery.maybeSingle()
     if (!openRegister) {
       return NextResponse.json({ error: 'cash_register_closed', message: 'Debes abrir caja antes de cobrar en efectivo' }, { status: 409 })
     }
@@ -205,6 +217,7 @@ export async function POST(req: NextRequest) {
   // Commission trigger will use net - tip as base (discount already excluded from amount)
   const insertPayload: Record<string, unknown> = {
     business_id: body.business_id,
+    location_id: body.location_id ?? null,
     client_id: body.client_id ?? null,
     employee_id: body.employee_id ?? null,
     amount: netAmount,

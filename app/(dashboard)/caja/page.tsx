@@ -31,7 +31,9 @@ export default async function CajaPage(props: { searchParams: Promise<{ location
   let expected = 0
   let txSum = 0, inSum = 0, outSum = 0
   if (openRegister) {
-    const { data: txs } = await supabase.from('transactions').select('amount').eq('business_id', business.id).eq('payment_method', 'cash').eq('status', 'completed').gte('created_at', openRegister.opened_at)
+    let txQuery = supabase.from('transactions').select('amount, location_id').eq('business_id', business.id).eq('payment_method', 'cash').eq('status', 'completed').gte('created_at', openRegister.opened_at)
+    if (searchParams.location) txQuery = (txQuery as unknown as { eq: (c:string,v:string)=> typeof txQuery }).eq('location_id', searchParams.location) as typeof txQuery
+    const { data: txs } = await txQuery
     const { data: moves } = await supabase.from('cash_movements').select('type, amount').eq('register_id', openRegister.id)
     txSum = (txs ?? []).reduce((s, r) => s + Number(r.amount), 0)
     inSum = (moves ?? []).filter((m) => m.type === 'in').reduce((s, r) => s + Number(r.amount), 0)

@@ -3,8 +3,11 @@ import { Header } from '@/components/layout/header'
 import { BarberosClient } from '@/components/barberos/barberos-client'
 import { getAuthUser } from '@/lib/auth-user'
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 
-export default async function BarberosPage() {
+export default async function BarberosPage(props: { searchParams: Promise<{ location?: string }> }) {
+  const searchParams = await props.searchParams
+  const selectedLocation = searchParams.location ?? null
   const supabase = await createClient()
   const user = await getAuthUser()
   if (!user) redirect('/login')
@@ -18,8 +21,10 @@ export default async function BarberosPage() {
   }
   if (!businessId) redirect('/onboarding')
 
+  let empQuery = supabase.from('employees').select('id, name, phone, email, role, color, specialties, commission_rate, commission_fixed, is_active, location_id, created_at').eq('business_id', businessId).order('name')
+  if (selectedLocation) empQuery = (empQuery as unknown as { eq: (c:string,v:string)=> typeof empQuery }).eq('location_id', selectedLocation) as typeof empQuery
   const [{ data: employees }, { data: services }, { data: locations }] = await Promise.all([
-    supabase.from('employees').select('id, name, phone, email, role, color, specialties, commission_rate, commission_fixed, is_active, location_id, created_at').eq('business_id', businessId).order('name'),
+    empQuery as Promise<{ data: unknown }>,
     supabase.from('services').select('id, name').eq('business_id', businessId).eq('is_active', true).order('name'),
     supabase.from('locations').select('id, name').eq('business_id', businessId).order('name'),
   ])
@@ -27,8 +32,16 @@ export default async function BarberosPage() {
   return (
     <>
       <Header title="Barberos" />
+      {(locations?.length ?? 0) > 1 && (
+        <div className="px-6 pt-3 flex gap-2 text-xs">
+          <Link href="/barberos" className={`px-3 py-1 rounded-full border ${!selectedLocation ? 'bg-gray-900 text-white' : 'bg-white'}`}>Todas</Link>
+          {locations!.map((l) => (
+            <Link key={l.id} href={`/barberos?location=${l.id}`} className={`px-3 py-1 rounded-full border ${selectedLocation === l.id ? 'bg-gray-900 text-white' : 'bg-white'}`}>{l.name}</Link>
+          ))}
+        </div>
+      )}
       <main className="p-6">
-        <BarberosClient employees={employees ?? []} services={services ?? []} locations={locations ?? []} />
+        <BarberosClient employees={(employees as unknown as { id: string; name: string; phone?: string | null; email?: string | null; role: string; color?: string | null; specialties?: string[] | null; commission_rate?: number | null; commission_fixed?: number | null; is_active: boolean; location_id?: string | null; created_at?: string }[] | null) ?? []} services={services ?? []} locations={locations ?? []} />
       </main>
     </>
   )

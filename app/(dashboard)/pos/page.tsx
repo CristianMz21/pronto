@@ -13,6 +13,7 @@ interface SearchParams {
   clientId?: string
   serviceId?: string
   staffId?: string
+  location?: string
 }
 
 export default async function POSPage(props: { searchParams: Promise<SearchParams> }) {
@@ -68,20 +69,28 @@ export default async function POSPage(props: { searchParams: Promise<SearchParam
     barberEmployeeId = (emp as { id: string } | null)?.id ?? null
   }
 
-  // Fetch services/employees/clients with barber filtering
+  const selectedLocation = searchParams.location ?? null
+
+  // Fetch services/employees/clients with barber + location filtering
   let servicesQuery = supabase
     .from('services')
-    .select('id, name, price, duration_min, category')
+    .select('id, name, price, duration_min, category, location_id')
     .eq('business_id', business.id)
     .eq('is_active', true)
     .order('name')
 
   let employeesQuery = supabase
     .from('employees')
-    .select('id, name')
+    .select('id, name, location_id')
     .eq('business_id', business.id)
     .eq('is_active', true)
     .order('name')
+
+  if (selectedLocation) {
+    // Include null location_id (global services/employees) plus matching location
+    servicesQuery = servicesQuery.or(`location_id.eq.${selectedLocation},location_id.is.null`) as typeof servicesQuery
+    employeesQuery = (employeesQuery as unknown as { eq: (c:string,v:string)=> typeof employeesQuery }).eq('location_id', selectedLocation) as typeof employeesQuery
+  }
 
   if (isBarbero && barberEmployeeId) {
     employeesQuery = employeesQuery.eq('id', barberEmployeeId) as typeof employeesQuery
@@ -97,7 +106,14 @@ export default async function POSPage(props: { searchParams: Promise<SearchParam
     }
   }
 
-  const [{ data: services }, { data: employees }, { data: clients }, { data: openRegister }] = await Promise.all([
+  let cashQuery = supabase
+    .from('cash_registers')
+    .select('id')
+    .eq('business_id', business.id)
+    .eq('status', 'open')
+  if (selectedLocation) cashQuery = (cashQuery as unknown as { eq: (c:string,v:string)=> typeof cashQuery }).eq('location_id', selectedLocation) as typeof cashQuery
+
+  const [{ data: services }, { data: employees }, { data: clients }, { data: openRegister }, { data: locations }] = await Promise.all([
     servicesQuery,
     employeesQuery,
     supabase
@@ -106,12 +122,8 @@ export default async function POSPage(props: { searchParams: Promise<SearchParam
       .eq('business_id', business.id)
       .order('name')
       .limit(200),
-    supabase
-      .from('cash_registers')
-      .select('id')
-      .eq('business_id', business.id)
-      .eq('status', 'open')
-      .maybeSingle(),
+    cashQuery.maybeSingle(),
+    supabase.from('locations').select('id, name').eq('business_id', business.id).order('name'),
   ])
 
   // ── Booking context: prefill POS from an appointment ──────────────────────
@@ -157,6 +169,14 @@ export default async function POSPage(props: { searchParams: Promise<SearchParam
           </Link>
         }
       />
+      {(locations?.length ?? 0) > 1 && !isBarbero && (
+        <div className="px-6 pt-3 flex gap-2 text-xs">
+          <Link href="/pos" className={`px-3 py-1 rounded-full border ${!selectedLocation ? 'bg-gray-900 text-white' : 'bg-white'}`}>Todas</Link>
+          {locations!.map((l) => (
+            <Link key={l.id} href={`/pos?location=${l.id}`} className={`px-3 py-1 rounded-full border ${selectedLocation === l.id ? 'bg-gray-900 text-white' : 'bg-white'}`}>{l.name}</Link>
+          ))}
+        </div>
+      )}
       <POSTerminal
         businessId={business.id}
         currency={business.currency}
@@ -168,6 +188,7 @@ export default async function POSPage(props: { searchParams: Promise<SearchParam
         requireCashRegister={business.require_cash_register_for_cash ?? true}
         isBarbero={isBarbero}
         currentEmployeeId={barberEmployeeId}
+        locationId={selectedLocation}
       />
     </>
   )
