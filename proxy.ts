@@ -37,6 +37,8 @@ export async function proxy(request: NextRequest) {
 
   const requestHeaders = new Headers(request.headers)
   requestHeaders.set('x-pathname', pathname)
+  // Multi-sede V1: propagate location filter via header for server components (nullable, single-sede default = no filter)
+  // TODO V2: when my_location_ids() is enforced, validate x-location-id against getUserLocationIds() here and return 403 if forbidden
   const locationId = searchParams.get('location') ?? request.headers.get('x-location-id') ?? ''
   if (locationId) requestHeaders.set('x-location-id', locationId)
 

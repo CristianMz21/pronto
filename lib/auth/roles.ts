@@ -25,6 +25,7 @@ export const ROLE_PERMISSIONS: Record<CanonicalRole, Record<string, boolean>> = 
     '/membresias': true,
     '/promociones': true,
     '/combos': true,
+    '/sucursales': true,
   },
   admin: {
     '/dashboard': true,
@@ -40,6 +41,7 @@ export const ROLE_PERMISSIONS: Record<CanonicalRole, Record<string, boolean>> = 
     '/membresias': true,
     '/promociones': true,
     '/combos': true,
+    '/sucursales': true,
   },
   staff: {
     '/dashboard': true,
@@ -55,6 +57,7 @@ export const ROLE_PERMISSIONS: Record<CanonicalRole, Record<string, boolean>> = 
     '/membresias': false,
     '/promociones': false,
     '/combos': false,
+    '/sucursales': false,
   },
   barbero: {
     '/dashboard': true,
@@ -70,6 +73,7 @@ export const ROLE_PERMISSIONS: Record<CanonicalRole, Record<string, boolean>> = 
     '/membresias': false,
     '/promociones': false,
     '/combos': false,
+    '/sucursales': false,
   },
 }
 
@@ -221,6 +225,45 @@ export async function getBarberEmployeeId(
     const normalized = normalizeRole((data as { role: string }).role)
     if (normalized !== 'barbero') return null
     return (data as { id: string }).id
+  } catch {
+    return null
+  }
+}
+
+/**
+ * V1 stub for per-user location access.
+ * In V1, location scoping is by business_id only (my_business_ids()), so this returns
+ * all active location ids for owner/admin and for staff/barbero as well (no restriction yet).
+ *
+ * TODO (V2): Replace with DB function `my_location_ids()` that returns only the
+ * locations a manager is assigned to (via employees.location_id or a join table).
+ * For V2, manager with single-sede restriction should only see their assigned location,
+ * while owner/admin sees all. Barbero currently sees only self via employee_id but not location.
+ *
+ * Implementation note: returns `null` to mean "no restriction" (allow all) for callers that
+ * interpret empty array as no access. For explicit allow-all we return full list.
+ */
+export async function getUserLocationIds(
+  supabase: { from: (table: string) => unknown },
+  userId: string,
+  businessId: string
+): Promise<string[] | null> {
+  if (!userId || !businessId) return null
+  try {
+    const role = await getUserRole(supabase as unknown as { from: (t: string) => unknown }, userId, businessId)
+    // V1: owner/admin/staff/barbero all get full list (no per-location restriction)
+    // Future: if role === 'manager' (mapped to admin), check employees.location_id single vs all
+    // TODO V2: SELECT id FROM locations WHERE business_id = $1 AND (role in ('owner','admin') OR id IN (SELECT my_location_ids()))
+    const { data } = await (supabase as unknown as {
+      from: (t: string) => { select: (c: string) => { eq: (a: string, b: unknown) => { eq: (c: string, d: unknown) => Promise<{ data: { id: string }[] | null }> } } }
+    })
+      .from('locations')
+      .select('id')
+      .eq('business_id', businessId)
+      .eq('is_active', true) as unknown as Promise<{ data: { id: string }[] | null }>
+
+    if (!data || data.length === 0) return null
+    return data.map((r) => r.id)
   } catch {
     return null
   }
