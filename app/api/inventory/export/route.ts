@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+// SECURITY: xlsx@0.18.5 has GHSA-4r6h-8v6p-xvw6 (Prototype Pollution) + GHSA-5pgg-2g8v-p4x9 (ReDoS)
+// — no fix available upstream. Kept because export is server-only, no user-supplied workbook parsing,
+// and output is trusted json_to_sheet. Mitigation: never call XLSX.read on untrusted input.
+// TODO(strict-audit): migrate to exceljs@4.4+ (actively maintained) when inventory export is refactored —
+// tracked as tech-debt, npm audit --audit-level=high will still flag until then.
 import * as XLSX from 'xlsx'
 
 export async function GET(_req: NextRequest) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { data: business } = await supabase
@@ -17,21 +24,23 @@ export async function GET(_req: NextRequest) {
 
   const { data: items } = await supabase
     .from('inventory_items')
-    .select('name,sku,barcode,category,unit,quantity,low_stock_threshold,cost_price,sell_price,description')
+    .select(
+      'name,sku,barcode,category,unit,quantity,low_stock_threshold,cost_price,sell_price,description',
+    )
     .eq('business_id', business.id)
     .order('name')
 
   const rows = (items ?? []).map((item) => ({
-    'Name':            item.name,
-    'SKU':             item.sku ?? '',
-    'Barcode':         item.barcode ?? '',
-    'Category':        item.category ?? '',
-    'Unit':            item.unit,
-    'Stock':           item.quantity,
+    Name: item.name,
+    SKU: item.sku ?? '',
+    Barcode: item.barcode ?? '',
+    Category: item.category ?? '',
+    Unit: item.unit,
+    Stock: item.quantity,
     'Low stock alert': item.low_stock_threshold,
-    'Cost price':      item.cost_price ?? '',
-    'Sell price':      item.sell_price ?? '',
-    'Description':     item.description ?? '',
+    'Cost price': item.cost_price ?? '',
+    'Sell price': item.sell_price ?? '',
+    Description: item.description ?? '',
   }))
 
   const ws = XLSX.utils.json_to_sheet(rows)
@@ -43,8 +52,8 @@ export async function GET(_req: NextRequest) {
     { wch: 15 },
     { wch: 18 },
     { wch: 20 },
-    { wch: 8  },
-    { wch: 8  },
+    { wch: 8 },
+    { wch: 8 },
     { wch: 15 },
     { wch: 12 },
     { wch: 12 },

@@ -13,18 +13,21 @@ early_access: true
 
 reviews:
   # Profile controls strictness: chill | balanced | assertive
-  profile: chill
+  # 2026-08-29 strict audit: promote to assertive for enterprise review (CoderRabbit installed)
+  profile: assertive
   # High-level summary at top of each review
   high_level_summary: true
   # Generate PR description if missing
   high_level_summary_placeholder: true
   # Allow request-changes workflow (set false to keep as comments only initially)
-  request_changes_workflow: false
+  # Strict audit: enable request_changesWorkflow so CoderRabbit can block on Critical findings
+  request_changes_workflow: true
   # Collapse walkthrough/comments for noise control
   collapse_walkthrough: true
   # Review commit messages / PR title
   review_commit_messages: false
   # Fail PR if issues? Keep false — advisory only until ESLint strict is green
+  # Strict audit TODO: flip to true once tsc is 0 and eslint strict green (currently database.types synced, tsc down to 150)
   fail_commit_status: false
 
 # Knowledge base — let CoderRabbit learn from PRs and store decisions
