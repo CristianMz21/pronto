@@ -21,13 +21,13 @@ export default async function POSPage(props: { searchParams: Promise<SearchParam
 
   const { data: business } = await supabase
     .from('businesses')
-    .select('id, currency, timezone')
+    .select('id, currency, timezone, require_cash_register_for_cash')
     .eq('owner_id', user!.id)
     .maybeSingle()
 
   if (!business) return null
 
-  const [{ data: services }, { data: employees }, { data: clients }] = await Promise.all([
+  const [{ data: services }, { data: employees }, { data: clients }, { data: openRegister }] = await Promise.all([
     supabase
       .from('services')
       .select('id, name, price, duration_min, category')
@@ -46,6 +46,12 @@ export default async function POSPage(props: { searchParams: Promise<SearchParam
       .eq('business_id', business.id)
       .order('name')
       .limit(200),
+    supabase
+      .from('cash_registers')
+      .select('id')
+      .eq('business_id', business.id)
+      .eq('status', 'open')
+      .maybeSingle(),
   ])
 
   // ── Booking context: prefill POS from an appointment ──────────────────────
@@ -98,6 +104,8 @@ export default async function POSPage(props: { searchParams: Promise<SearchParam
         employees={employees ?? []}
         clients={clients ?? []}
         bookingContext={bookingContext}
+        initialHasOpenRegister={!!openRegister}
+        requireCashRegister={business.require_cash_register_for_cash ?? true}
       />
     </>
   )

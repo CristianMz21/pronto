@@ -496,7 +496,8 @@
       "notifications": "Notifications",
       "billing": "Billing",
       "account": "Account",
-      "modules": "Modules"
+      "modules": "Modules",
+      "advanced": "Advanced"
     },
     "billing": {
       "heading": "Current plan",
@@ -778,6 +779,27 @@
           "description": "Telegram, WhatsApp, Viber, Email reminders"
         }
       }
+    },
+    "advanced": {
+      "heading": "Advanced settings",
+      "description": "Only the owner can change these settings.",
+      "bookingHeading": "Bookings — Lead time",
+      "posHeading": "POS — Cash register",
+      "bookingLeadTimeEnabledLabel": "Enable minimum lead time",
+      "bookingLeadTimeEnabledHint": "When enabled, bookings must be made with a minimum advance notice.",
+      "minAdvanceMinutesLabel": "Minimum advance (minutes)",
+      "minAdvanceMinutesHint": "Between 0 and 1440 minutes. Default 30.",
+      "minAdvanceDisabledHint": "Enable lead time to edit this value.",
+      "minAdvanceError": "Must be a value between 0 and 1440",
+      "requireCashRegisterLabel": "Require open cash register for cash payments",
+      "requireCashRegisterHint": "When enabled, cash payments require an open register.",
+      "requireCashRegisterDescription": "Require open cash register to collect cash payments",
+      "saveButton": "Save configuration",
+      "saving": "Saving…",
+      "saved": "Saved ✓",
+      "savedHint": "Configuration saved successfully",
+      "ownerOnly": "Only the owner can configure these settings",
+      "ownerOnlyHint": "Sign in with the owner account to change this configuration."
     }
   },
   "sidebar": {

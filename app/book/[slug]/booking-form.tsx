@@ -7,11 +7,28 @@ import { CalendarPlus, Loader2 } from 'lucide-react'
 import { buildGCalUrl } from '@/lib/gcal'
 import { DatePicker } from '@/components/ui/date-picker'
 import { useTranslations } from 'next-intl'
-import { computeEffectiveHours, type DayHours } from '@/lib/booking-availability'
+import {
+  computeEffectiveHours,
+  type DayHours,
+  todayInBusinessTz as todayInBusinessTzLib,
+  nowMinutesInBusinessTz as nowMinutesInBusinessTzLib,
+  isTooSoonMinutes,
+  DEFAULT_LEAD_MINUTES,
+} from '@/lib/booking-availability'
 
 interface Service { id: string; name: string; description: string | null; price: number; duration_min: number; category: string | null; capacity: number }
 interface Employee { id: string; name: string }
-interface Business { id: string; name: string; currency: string; slug: string; timezone: string | null; address?: string | null }
+interface Business {
+  id: string
+  name: string
+  currency: string
+  slug: string
+  timezone: string | null
+  address?: string | null
+  min_advance_minutes?: number | null
+  booking_lead_time_enabled?: boolean | null
+  allow_guest_bookings?: boolean | null
+}
 
 interface Props {
   business: Business
@@ -109,6 +126,8 @@ function CtaButton({ label, onClick, disabled, theme }: { label: string; onClick
 export function PublicBookingForm({ business, services, employees, workingHours, telegramBotUsername, viberBotUri, initialServiceId, initialEmployeeId, theme = 'default' }: Props) {
   const supabase = createClient()
   const t = useTranslations('publicBooking')
+  const [authUser, setAuthUser] = useState<{ id: string; email?: string | null } | null>(null)
+  const [authChecked, setAuthChecked] = useState(false)
 
   const hasEmployeeStep = employees.length > 1
   const isEsc = theme === 'escuderia'
@@ -135,11 +154,63 @@ export function PublicBookingForm({ business, services, employees, workingHours,
   const effectiveHours: DayHours[] = computeEffectiveHours(workingHours)
 
   const closedWeekdays = effectiveHours.filter((h) => !h.is_open).map((h) => h.day_of_week)
-  // Hydration-safe: server UTC date may differ from client local date (especially near midnight
-  // or when server is UTC and client is America/Bogota). Use deterministic fallback '' for
-  // initial render (both server and client), then hydrate real today after mount.
+  // Configurable lead time (054) — defaults keep previous behavior when DB column missing
+  const minAdvance = business.min_advance_minutes ?? DEFAULT_LEAD_MINUTES
+  const leadEnabled = business.booking_lead_time_enabled ?? true
+  const allowGuestBookings = business.allow_guest_bookings ?? true
+  // Helpers synchronized with business.timezone (not browser local) via lib/booking-availability (no hardcodes)
+  function todayInBusinessTz(): string {
+    return todayInBusinessTzLib(business.timezone ?? 'UTC', new Date())
+  }
+  function nowMinutesInBusinessTz(): number {
+    return nowMinutesInBusinessTzLib(business.timezone ?? 'UTC', new Date())
+  }
+  // Hydration-safe: server UTC date may differ from client business TZ date. Use '' fallback then hydrate.
   const [today, setToday] = useState('')
-  useEffect(() => { setToday(new Date().toISOString().slice(0, 10)) }, [])
+  useEffect(() => { setToday(todayInBusinessTz()) }, [])
+
+  // Detect logged-in client for guest guard (057)
+  useEffect(() => {
+    let cancelled = false
+    async function checkAuth() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (cancelled) return
+        if (user) {
+          setAuthUser({ id: user.id, email: user.email })
+          // Prefill contact from auth + linked client record
+          const { data: linkedClient } = await supabase
+            .from('clients')
+            .select('name, phone, email')
+            .eq('business_id', business.id)
+            .eq('user_id', user.id)
+            .maybeSingle()
+          if (cancelled) return
+          if (linkedClient) {
+            setContact((prev) => ({
+              name: linkedClient.name ?? prev.name ?? (user.user_metadata as Record<string, unknown>)?.name as string ?? user.email?.split('@')[0] ?? '',
+              phone: linkedClient.phone ?? prev.phone ?? (user.phone ?? ''),
+              email: linkedClient.email ?? prev.email ?? user.email ?? '',
+            }))
+          } else {
+            setContact((prev) => ({
+              name: prev.name || ((user.user_metadata as Record<string, unknown>)?.name as string) || user.email?.split('@')[0] || '',
+              phone: prev.phone || (user.phone ?? ''),
+              email: prev.email || user.email || '',
+            }))
+          }
+        } else {
+          setAuthUser(null)
+        }
+      } catch {
+        setAuthUser(null)
+      } finally {
+        if (!cancelled) setAuthChecked(true)
+      }
+    }
+    checkAuth()
+    return () => { cancelled = true }
+  }, [business.id])
 
   useEffect(() => {
     if (!date || !selectedService) {
@@ -182,11 +253,13 @@ export function PublicBookingForm({ business, services, employees, workingHours,
     }
 
     if (selectedDate === today) {
-      const now = new Date()
-      const nowMin = now.getHours() * 60 + now.getMinutes() + 30
+      const nowMin = nowMinutesInBusinessTz()
       slots = slots.filter((slot) => {
         const [sh, sm] = slot.split(':').map(Number)
-        return sh * 60 + sm > nowMin
+        const slotMin = sh * 60 + sm
+        if (slotMin <= nowMin) return false
+        if (isTooSoonMinutes(slotMin, nowMin, minAdvance, leadEnabled)) return false
+        return true
       })
     }
 
@@ -251,6 +324,24 @@ export function PublicBookingForm({ business, services, employees, workingHours,
       setBookingError('Please enter a valid email address (e.g. name@example.com).')
       return
     }
+    // Past / lead-time validation synchronized with /api/book (business timezone)
+    if (date < today) {
+      setBookingError('No se puede reservar en el pasado. Elegí una fecha futura.')
+      return
+    }
+    if (date === today) {
+      const nowMin = nowMinutesInBusinessTz()
+      const [sh, sm] = time.split(':').map(Number)
+      const slotMin = sh * 60 + sm
+      if (slotMin <= nowMin) {
+        setBookingError('No se puede reservar en el pasado. Elegí un horario futuro.')
+        return
+      }
+      if (isTooSoonMinutes(slotMin, nowMin, minAdvance, leadEnabled)) {
+        setBookingError(`Reservá con al menos ${minAdvance} minutos de anticipación.`)
+        return
+      }
+    }
     setSaving(true)
     setSlotTakenError(false)
     setBookingError(null)
@@ -286,10 +377,34 @@ export function PublicBookingForm({ business, services, employees, workingHours,
         return
       }
 
+      if (res.status === 401) {
+        setSaving(false)
+        const body = await res.json().catch(() => null)
+        if (body?.error === 'guest_not_allowed') {
+          setBookingError(body.message ?? 'Debes registrarte para reservar en este negocio')
+          return
+        }
+        setBookingError('Debes iniciar sesión para reservar.')
+        return
+      }
+
       if (res.status === 429) {
         setSaving(false)
         setBookingError('Too many booking attempts. Please wait a few minutes and try again.')
         return
+      }
+
+      if (res.status === 400) {
+        setSaving(false)
+        const body = await res.json().catch(() => null)
+        if (body?.error === 'in_past') {
+          setBookingError('No se puede reservar en el pasado. Elegí una fecha y hora futuras.')
+          return
+        }
+        if (body?.error === 'too_soon') {
+          setBookingError(body.message ?? `Reservá con al menos ${minAdvance} minutos de anticipación.`)
+          return
+        }
       }
 
       if (!res.ok) throw new Error(await res.text())
@@ -437,6 +552,33 @@ export function PublicBookingForm({ business, services, employees, workingHours,
   const inputBorder = isEsc ? '1px solid rgba(197,160,89,0.2)' : '0.5px solid #E8E0D8'
   const inputRadius = isEsc ? 0 : 10
 
+  // Guest guard: if business blocks guests and user is not logged, show login required
+  if (!allowGuestBookings && authChecked && !authUser) {
+    return (
+      <div style={{ background: cardBg, border: isEsc ? '1px solid rgba(197,160,89,0.2)' : '0.5px solid #E8E0D8', borderRadius: isEsc ? 0 : 12, padding: 20 }}>
+        <h3 style={{ fontSize: 16, fontWeight: 600, color: cardText, marginBottom: 8 }}>Debes registrarte para reservar</h3>
+        <p style={{ fontSize: 13, color: cardMuted, marginBottom: 16 }}>Este negocio solo permite reservas a clientes registrados.</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <a href={`/client/login?redirect=/book/${business.slug}`} style={{ display: 'block', textAlign: 'center', background: isEsc ? '#C5A059' : 'var(--brand)', color: isEsc ? '#000' : 'white', padding: '12px', borderRadius: isEsc ? 0 : 10, fontSize: 14, fontWeight: 500, textDecoration: 'none' }}>Iniciar sesión</a>
+          <a href={`/client/register?redirect=/book/${business.slug}`} style={{ display: 'block', textAlign: 'center', background: 'white', border: '0.5px solid #E8E0D8', color: '#2D2926', padding: '12px', borderRadius: isEsc ? 0 : 10, fontSize: 14, fontWeight: 500, textDecoration: 'none' }}>Crear cuenta</a>
+        </div>
+      </div>
+    )
+  }
+
+  // Helper to handle datetime continue with skip for logged users
+  function handleDatetimeContinue() {
+    if (authUser && contact.name && (contact.phone || contact.email)) {
+      // Prefilled and authenticated — skip contact step and submit directly
+      submit()
+    } else if (authUser) {
+      // Authenticated but contact not fully prefilled — go to contact (prefilled) for confirmation
+      setStep('contact')
+    } else {
+      setStep('contact')
+    }
+  }
+
   return (
     <div>
 
@@ -573,7 +715,12 @@ export function PublicBookingForm({ business, services, employees, workingHours,
             </div>
           )}
 
-          <CtaButton label={isEsc ? 'Continuar →' : t('datetime.continue')} onClick={() => setStep('contact')} disabled={!date || !time} theme={theme} />
+          <CtaButton label={isEsc ? 'Continuar →' : t('datetime.continue')} onClick={handleDatetimeContinue} disabled={!date || !time} theme={theme} />
+          {bookingError && (
+            <div style={{ marginTop: 16, padding: 12, background: isEsc ? '#1c1b1b' : '#FFF0F0', border: isEsc ? '1px solid #93000a' : '0.5px solid #F5AAAA', borderRadius: isEsc ? 0 : 10, fontSize: 13, color: isEsc ? '#ffb4ab' : '#B00020' }}>
+              {bookingError}
+            </div>
+          )}
         </div>
       )}
 

@@ -23,11 +23,29 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid body', details: String(e) }, { status: 400 })
   }
 
-  // Verify business belongs to user via RLS (my_business_ids)
-  const { data: biz } = await supabase.from('businesses').select('id').eq('id', body.business_id).maybeSingle()
+  // Verify business belongs to user via RLS (my_business_ids) and fetch cash-register config (055)
+  const { data: biz } = await supabase
+    .from('businesses')
+    .select('id, require_cash_register_for_cash')
+    .eq('id', body.business_id)
+    .maybeSingle()
   if (!biz) return NextResponse.json({ error: 'Business not in my_business_ids' }, { status: 403 })
 
   if (body.amount <= 0) return NextResponse.json({ error: 'Amount must be >0' }, { status: 400 })
+
+  // Cash sales require an open cash register only when business config demands it (055)
+  const requireCashRegister = (biz as { require_cash_register_for_cash?: boolean | null })?.require_cash_register_for_cash ?? true
+  if (body.payment_method === 'cash' && requireCashRegister) {
+    const { data: openRegister } = await supabase
+      .from('cash_registers')
+      .select('id')
+      .eq('business_id', body.business_id)
+      .eq('status', 'open')
+      .maybeSingle()
+    if (!openRegister) {
+      return NextResponse.json({ error: 'cash_register_closed', message: 'Debes abrir caja antes de cobrar en efectivo' }, { status: 409 })
+    }
+  }
 
   const { data, error } = await supabase
     .from('transactions')

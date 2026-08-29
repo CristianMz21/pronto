@@ -12,6 +12,7 @@ const EXCLUDED_ROUTE_PREFIXES = [
   '/api', '/dashboard', '/settings', '/admin',
   '/check-email', '/offline', '/onboarding',
   '/forgot-password', '/reset-password',
+  '/client',
 ]
 
 // Priority map for known routes; everything else gets 0.6

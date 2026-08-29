@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { Header } from '@/components/layout/header'
 import { BookingCalendar } from './booking-calendar'
 import { getAuthUser } from '@/lib/auth-user'
+import { DEFAULT_LEAD_MINUTES } from '@/lib/booking-availability'
 
 export default async function BookingPage() {
   const supabase = await createClient()
@@ -9,7 +10,7 @@ export default async function BookingPage() {
 
   const { data: business } = await supabase
     .from('businesses')
-    .select('id, slug, timezone')
+    .select('id, slug, timezone, min_advance_minutes, booking_lead_time_enabled')
     .eq('owner_id', user!.id)
     .maybeSingle()
 
@@ -64,6 +65,8 @@ export default async function BookingPage() {
         services={services ?? []}
         clients={clients ?? []}
         businessHours={businessHours ?? []}
+        minAdvanceMinutes={(business as { min_advance_minutes?: number | null })?.min_advance_minutes ?? DEFAULT_LEAD_MINUTES}
+        bookingLeadTimeEnabled={(business as { booking_lead_time_enabled?: boolean | null })?.booking_lead_time_enabled ?? true}
       />
     </>
   )
