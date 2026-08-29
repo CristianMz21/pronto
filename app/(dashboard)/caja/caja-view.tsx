@@ -168,7 +168,7 @@ export function CajaView({ currency, openRegister, history, movements }: Props) 
               <div className="flex items-center gap-2">
                 <select
                   value={moveType}
-                  onChange={(e) => setMoveType(e.target.value as any)}
+                  onChange={(e) => setMoveType(e.target.value as unknown)}
                   className="border rounded-lg px-2 py-2 text-sm"
                 >
                   <option value="in">Ingreso</option>

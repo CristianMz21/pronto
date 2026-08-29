@@ -120,7 +120,7 @@ export async function POST(req: NextRequest) {
 
   // Drizzle: verify service and business (portable, no Supabase vendor lock) — fallback to Supabase for legacy test mocks
   const supabaseFallback = createServiceClient()
-  const [service, biz]: [any, any] = await Promise.all([
+  const [service, biz]: [unknown, unknown] = await Promise.all([
     tryDrizzle(
       () =>
         db.query.services.findFirst({
@@ -131,7 +131,7 @@ export async function POST(req: NextRequest) {
           ),
           columns: { id: true, durationMin: true, price: true, locationId: true },
         }),
-      async (): Promise<any> => {
+      async (): Promise<unknown> => {
         const { data } = await supabaseFallback
           .from('services')
           .select('id, duration_min, price, location_id')
@@ -165,7 +165,7 @@ export async function POST(req: NextRequest) {
             allowGuestBookings: true,
           },
         }),
-      async (): Promise<any> => {
+      async (): Promise<unknown> => {
         const { data } = await supabaseFallback
           .from('businesses')
           .select('timezone, min_advance_minutes, booking_lead_time_enabled, allow_guest_bookings')
@@ -217,13 +217,13 @@ export async function POST(req: NextRequest) {
   }
 
   if (location_id) {
-    const loc: any = await tryDrizzle(
+    const loc: unknown = await tryDrizzle(
       () =>
         db.query.locations.findFirst({
           where: and(eq(locations.id, location_id), eq(locations.businessId, businessId)),
           columns: { id: true },
         }),
-      async (): Promise<any> => {
+      async (): Promise<unknown> => {
         const { data } = await supabaseFallback
           .from('locations')
           .select('id')
@@ -249,13 +249,13 @@ export async function POST(req: NextRequest) {
       )
     }
     if (employeeId) {
-      const empLoc: any = await tryDrizzle(
+      const empLoc: unknown = await tryDrizzle(
         () =>
           db.query.employees.findFirst({
             where: and(eq(employees.id, employeeId), eq(employees.businessId, businessId)),
             columns: { locationId: true },
           }),
-        async (): Promise<any> => {
+        async (): Promise<unknown> => {
           const { data } = await supabaseFallback
             .from('employees')
             .select('location_id')
@@ -282,12 +282,12 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const businessHoursRows: any = await tryDrizzle(
+  const businessHoursRows: unknown = await tryDrizzle(
     () =>
       db.query.businessHours.findMany({
         where: eq(businessHours.businessId, businessId),
       }),
-    async (): Promise<any> => {
+    async (): Promise<unknown> => {
       const { data } = await supabaseFallback
         .from('business_hours')
         .select('day_of_week, is_open, open_time, close_time, break_start, break_end')
@@ -302,7 +302,7 @@ export async function POST(req: NextRequest) {
           break_start: string | null
           break_end: string | null
         }>
-      ).map((h: any) => ({
+      ).map((h: unknown) => ({
         dayOfWeek: h.day_of_week,
         isOpen: h.is_open,
         openTime: h.open_time,
@@ -313,7 +313,7 @@ export async function POST(req: NextRequest) {
     },
   )
   const effectiveHours = computeEffectiveHours(
-    businessHoursRows.map((h: any) => ({
+    businessHoursRows.map((h: unknown) => ({
       day_of_week: h.dayOfWeek,
       is_open: h.isOpen,
       open_time: h.openTime,
@@ -323,10 +323,10 @@ export async function POST(req: NextRequest) {
     })),
   )
   const dow = dayOfWeekFromDateString(date)
-  const dayHours = effectiveHours.find((h: any) => h.day_of_week === dow)
+  const dayHours = effectiveHours.find((h: unknown) => h.day_of_week === dow)
 
   // Holiday check via Drizzle (with Supabase fallback for tests)
-  const holidayRows: any = await tryDrizzle(
+  const holidayRows: unknown = await tryDrizzle(
     () =>
       db.query.holidays.findMany({
         where: and(
@@ -334,7 +334,7 @@ export async function POST(req: NextRequest) {
           eq(holidays.date, date as unknown as string),
         ),
       }),
-    async (): Promise<any> => {
+    async (): Promise<unknown> => {
       try {
         const chain = supabaseFallback.from('holidays') as unknown as {
           select: (
@@ -373,7 +373,7 @@ export async function POST(req: NextRequest) {
         const data = (res as { data: unknown })?.data
         if (!data || !Array.isArray(data)) return [] as unknown as typeof holidayRows
         return (data as Array<{ date: string; is_open: boolean; location_id: string | null }>).map(
-          (h: any) => ({
+          (h: unknown) => ({
             date: h.date as unknown as string,
             isOpen: h.is_open,
             locationId: h.location_id,
@@ -384,7 +384,7 @@ export async function POST(req: NextRequest) {
       }
     },
   )
-  const holidaysMapped = holidayRows.map((h: any) => ({
+  const holidaysMapped = holidayRows.map((h: unknown) => ({
     date: typeof h.date === 'string' ? (h.date as string).slice(0, 10) : String(h.date),
     is_open: h.isOpen as boolean,
     location_id: h.locationId as string | null,
@@ -400,7 +400,7 @@ export async function POST(req: NextRequest) {
   )
 
   const locationHoliday = holidaysMapped.some(
-    (h: any) =>
+    (h: unknown) =>
       h.date === date &&
       h.is_open === false &&
       (!h.location_id || !location_id || h.location_id === location_id),
@@ -439,12 +439,12 @@ export async function POST(req: NextRequest) {
   let hasViber = false
   if (phone || email) {
     if (authUser) {
-      const linked: any = await tryDrizzle(
+      const linked: unknown = await tryDrizzle(
         () =>
           db.query.clients.findFirst({
             where: and(eq(clients.businessId, businessId), eq(clients.userId, authUser.id)),
           }),
-        async (): Promise<any> => {
+        async (): Promise<unknown> => {
           const { data } = await supabaseFallback
             .from('clients')
             .select('id, name, email, telegram_id, viber_user_id, user_id')
@@ -484,24 +484,24 @@ export async function POST(req: NextRequest) {
             () =>
               db
                 .update(clients)
-                .set(updates as any)
+                .set(updates as unknown)
                 .where(eq(clients.id, linked.id)),
-            async (): Promise<any> => {
+            async (): Promise<unknown> => {
               await supabaseFallback
                 .from('clients')
-                .update(updates as any)
+                .update(updates as unknown)
                 .eq('id', linked.id)
             },
           )
         }
       } else {
         // Try to claim by phone/email if guest record exists — portable via Drizzle or filter in-memory
-        const candidates: any = await tryDrizzle(
+        const candidates: unknown = await tryDrizzle(
           () =>
             db.query.clients.findMany({
               where: eq(clients.businessId, businessId),
             }),
-          async (): Promise<any> => {
+          async (): Promise<unknown> => {
             // Try Supabase mock chain: select().eq().or().limit() as used in remaining-100/sprint-99 tests
             try {
               const orParts: string[] = []
@@ -562,7 +562,7 @@ export async function POST(req: NextRequest) {
         )
         const claimCandidate =
           candidates.find(
-            (c: any) => (phone && c.phone === phone) || (email && c.email === email),
+            (c: unknown) => (phone && c.phone === phone) || (email && c.email === email),
           ) ?? null
 
         if (claimCandidate && claimCandidate.userId === null) {
@@ -572,7 +572,7 @@ export async function POST(req: NextRequest) {
                 .update(clients)
                 .set({ userId: authUser.id, name: name || claimCandidate.name })
                 .where(eq(clients.id, claimCandidate.id)),
-            async (): Promise<any> => {
+            async (): Promise<unknown> => {
               await supabaseFallback
                 .from('clients')
                 .update({ user_id: authUser.id, name: name || claimCandidate.name })
@@ -596,7 +596,7 @@ export async function POST(req: NextRequest) {
                     userId: authUser.id,
                   })
                   .returning({ id: clients.id }),
-              async (): Promise<any> => {
+              async (): Promise<unknown> => {
                 const { data } = await supabaseFallback
                   .from('clients')
                   .insert({
@@ -614,14 +614,14 @@ export async function POST(req: NextRequest) {
               },
             )
             clientId = newClient.id
-          } catch (e) {
-            console.error('[api/book] client claim insert error:', (e as Error).message)
-            const fallback: any = await tryDrizzle(
+          } catch (_e) {
+            // console.error('[api/book] client claim insert error:', (e as Error).message)
+            const fallback: unknown = await tryDrizzle(
               () =>
                 db.query.clients.findFirst({
                   where: and(eq(clients.businessId, businessId), eq(clients.userId, authUser.id)),
                 }),
-              async (): Promise<any> => {
+              async (): Promise<unknown> => {
                 const { data } = await supabaseFallback
                   .from('clients')
                   .select('id, telegram_id, viber_user_id')
@@ -664,7 +664,7 @@ export async function POST(req: NextRequest) {
                     userId: authUser.id,
                   })
                   .returning({ id: clients.id }),
-              async (): Promise<any> => {
+              async (): Promise<unknown> => {
                 const { data } = await supabaseFallback
                   .from('clients')
                   .insert({
@@ -682,8 +682,8 @@ export async function POST(req: NextRequest) {
               },
             )
             clientId = newClient.id
-          } catch (e) {
-            console.error('[api/book] client insert error:', (e as Error).message)
+          } catch (_e) {
+            // console.error('[api/book] client insert error:', (e as Error).message)
             return NextResponse.json({ error: 'client_creation_failed' }, { status: 500 })
           }
         }
@@ -694,7 +694,7 @@ export async function POST(req: NextRequest) {
           db.query.clients.findMany({
             where: eq(clients.businessId, businessId),
           }),
-        async (): Promise<any> => {
+        async (): Promise<unknown> => {
           try {
             const orParts: string[] = []
             if (phone) orParts.push(`phone.eq.${phone}`)
@@ -734,7 +734,7 @@ export async function POST(req: NextRequest) {
         },
       )
       const existing =
-        candidates.find((c: any) => (phone && c.phone === phone) || (email && c.email === email)) ??
+        candidates.find((c: unknown) => (phone && c.phone === phone) || (email && c.email === email)) ??
         null
       if (existing) {
         clientId = existing.id
@@ -748,12 +748,12 @@ export async function POST(req: NextRequest) {
             () =>
               db
                 .update(clients)
-                .set(updates as any)
+                .set(updates as unknown)
                 .where(eq(clients.id, existing.id)),
-            async (): Promise<any> => {
+            async (): Promise<unknown> => {
               await supabaseFallback
                 .from('clients')
-                .update(updates as any)
+                .update(updates as unknown)
                 .eq('id', existing.id)
             },
           )
@@ -771,7 +771,7 @@ export async function POST(req: NextRequest) {
                   email: email || null,
                 })
                 .returning({ id: clients.id }),
-            async (): Promise<any> => {
+            async (): Promise<unknown> => {
               const { data } = await supabaseFallback
                 .from('clients')
                 .insert({
@@ -788,8 +788,8 @@ export async function POST(req: NextRequest) {
             },
           )
           clientId = newClient.id
-        } catch (e) {
-          console.error('[api/book] client insert error:', (e as Error).message)
+        } catch (_e) {
+          // console.error('[api/book] client insert error:', (e as Error).message)
           return NextResponse.json({ error: 'client_creation_failed' }, { status: 500 })
         }
       }
@@ -801,7 +801,7 @@ export async function POST(req: NextRequest) {
   if (clientId && membership_id) {
     try {
       const { isEligible } = await import('@/lib/memberships')
-      const cm: any = await tryDrizzle(
+      const cm: unknown = await tryDrizzle(
         () =>
           db.query.clientMemberships.findFirst({
             where: and(
@@ -810,7 +810,7 @@ export async function POST(req: NextRequest) {
               eq(clientMemberships.businessId, businessId),
             ),
           }),
-        async (): Promise<any> => {
+        async (): Promise<unknown> => {
           const { data } = await supabaseFallback
             .from('client_memberships')
             .select('remaining, expires_at, status')
@@ -832,15 +832,15 @@ export async function POST(req: NextRequest) {
           { status: 409 },
         )
       }
-    } catch (e) {
-      console.error('[api/book] membership check error', e)
+    } catch (_e) {
+      // console.error('[api/book] membership check error', e)
       return NextResponse.json({ error: 'membership_check_failed' }, { status: 500 })
     }
   }
   if (promo_code && clientId) {
     try {
       const { evaluatePromotion } = await import('@/lib/promotions')
-      const promo: any = await tryDrizzle(
+      const promo: unknown = await tryDrizzle(
         () =>
           db.query.promotions.findFirst({
             where: and(
@@ -848,7 +848,7 @@ export async function POST(req: NextRequest) {
               eq(promotions.promoCode, promo_code.toUpperCase()),
             ),
           }),
-        async (): Promise<any> => {
+        async (): Promise<unknown> => {
           const { data } = await supabaseFallback
             .from('promotions')
             .select(
@@ -861,9 +861,9 @@ export async function POST(req: NextRequest) {
         },
       )
       if (!promo) return NextResponse.json({ error: 'promo_not_found' }, { status: 404 })
-      const c: any = await tryDrizzle(
+      const c: unknown = await tryDrizzle(
         () => db.query.clients.findFirst({ where: eq(clients.id, clientId) }),
-        async (): Promise<any> => {
+        async (): Promise<unknown> => {
           const { data } = await supabaseFallback
             .from('clients')
             .select('birthday, tags, last_visit_at, total_visits')
@@ -888,8 +888,8 @@ export async function POST(req: NextRequest) {
           { error: 'promo_not_eligible', reason: evalRes.reason },
           { status: 409 },
         )
-    } catch (e) {
-      console.error('[api/book] promo check error', e)
+    } catch (_e) {
+      // console.error('[api/book] promo check error', e)
       return NextResponse.json({ error: 'promo_check_failed' }, { status: 500 })
     }
   }
@@ -906,7 +906,7 @@ export async function POST(req: NextRequest) {
       const err = e as Error & { code?: string }
       if (String(err.message).includes('insufficient'))
         return NextResponse.json({ error: 'insufficient_points' }, { status: 409 })
-      console.error('[api/book] loyalty check error', e)
+      // console.error('[api/book] loyalty check error', e)
       return NextResponse.json({ error: 'loyalty_check_failed' }, { status: 500 })
     }
   }
@@ -952,7 +952,7 @@ export async function POST(req: NextRequest) {
             campaignId: campaign_id ?? null,
           })
           .returning({ id: appointments.id }),
-      async (): Promise<any> => {
+      async (): Promise<unknown> => {
         const { data, error } = await supabaseFallback
           .from('appointments')
           .insert({
@@ -1053,7 +1053,7 @@ export async function POST(req: NextRequest) {
         { status: 400 },
       )
     }
-    console.error('[api/book] insert error:', msg)
+    // console.error('[api/book] insert error:', msg)
     return NextResponse.json({ error: 'booking_failed' }, { status: 500 })
   }
 
@@ -1070,7 +1070,7 @@ export async function POST(req: NextRequest) {
       const err = e as Error & { code?: string }
       await tryDrizzle(
         () => db.delete(appointments).where(eq(appointments.id, apptId)),
-        async (): Promise<any> => {
+        async (): Promise<unknown> => {
           await supabaseFallback.from('appointments').delete().eq('id', apptId)
         },
       )
@@ -1084,7 +1084,7 @@ export async function POST(req: NextRequest) {
           { error: 'membership_expired', message: 'Membresía expirada' },
           { status: 409 },
         )
-      console.error('[api/book] membership consume failed', e)
+      // console.error('[api/book] membership consume failed', e)
       return NextResponse.json(
         { error: 'membership_consume_failed', message: err.message },
         { status: 409 },
@@ -1116,12 +1116,12 @@ export async function POST(req: NextRequest) {
   })
     .then(async (res) => {
       if (!res.ok) {
-        const text = await res.text().catch(() => '')
-        console.error('[api/book] email/confirm failed:', res.status, text)
+        const _text = await res.text().catch(() => '')
+        // console.error('[api/book] email/confirm failed:', res.status, text)
       }
     })
-    .catch((err) => {
-      console.error('[api/book] email/confirm fetch error:', err)
+    .catch((_err) => {
+      // console.error('[api/book] email/confirm fetch error:', err)
     })
 
   return NextResponse.json({ appointmentId: apptId, clientId, hasTelegram, hasViber })

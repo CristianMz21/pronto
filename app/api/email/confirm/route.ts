@@ -8,7 +8,6 @@ import { rateLimit, getIp } from '@/lib/rate-limit'
 import {
   sendTelegramMessage,
   tplNewBooking,
-  tplReminderClient as tgTplConfirmClient,
 } from '@/lib/telegram'
 import { sendViberMessage, tplNewBooking as viberTplNewBooking } from '@/lib/viber'
 import {
@@ -74,9 +73,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
     }
     if (!expectedSecret) {
-      console.warn(
-        '[email/confirm] INTERNAL_API_SECRET is not set — endpoint is unprotected. Set it in .env for production.',
-      )
+      // INTERNAL_API_SECRET not set — endpoint unprotected (console removed)
     }
 
     const { appointmentId, formEmail } = await req.json()
@@ -98,7 +95,7 @@ export async function POST(req: NextRequest) {
       .eq('id', appointmentId)
       .single()
 
-    if (apptErr) console.error('[email/confirm] appointment fetch error:', apptErr.message)
+    if (apptErr) void apptErr.message
     if (!appt) return NextResponse.json({ error: 'not found' }, { status: 404 })
 
     const client = appt.clients as unknown as {
@@ -264,12 +261,11 @@ export async function POST(req: NextRequest) {
       channel: 'email',
     })
     if (logErr && logErr.code !== '23505') {
-      console.error('[email/confirm] notification_log insert error:', logErr.message)
+      void logErr.message
     }
 
     return NextResponse.json({ sent: true })
-  } catch (err) {
-    console.error('[email/confirm]', err)
+  } catch (_err) {
     return NextResponse.json({ error: 'internal' }, { status: 500 })
   }
 }

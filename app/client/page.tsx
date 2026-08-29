@@ -183,7 +183,7 @@ export default async function ClientPortalPage(props: {
                     const exp = new Date(m.expires_at)
                     const isActive =
                       m.status === 'active' && m.remaining > 0 && exp.getTime() > nowMs
-                    const renderClient = client as {
+                    const _renderClient = client as {
                       id: string
                       name: string
                       phone: string | null

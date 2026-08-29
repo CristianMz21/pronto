@@ -255,8 +255,8 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ ok: true })
-  } catch (err) {
-    console.error('[telegram/webhook]', err)
+  } catch (_err) {
+    // console.error('[telegram/webhook]', err)
     return NextResponse.json({ ok: false }, { status: 500 })
   }
 }

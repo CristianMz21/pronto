@@ -37,5 +37,8 @@ export async function insertOwnerAsEmployee(
     email: user.email ?? null,
     is_active: true,
   })
-  if (error) console.error('[create-business] failed to auto-create owner employee:', error.message)
+  if (error) {
+    // eslint-disable-next-line no-console
+    console.error('[create-business] failed to auto-create owner employee:', error.message)
+  }
 }

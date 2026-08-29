@@ -20,7 +20,7 @@ interface Props {
   locations?: { id: string; name: string }[]
 }
 
-export function ConfigSection({ businessId, initial, locations = [] }: Props) {
+export function ConfigSection({ _businessId, initial, locations = [] }: Props) {
   const [taxRate, setTaxRate] = useState(String(initial.tax_rate ?? 0))
   const [paymentMethods, setPaymentMethods] = useState<string[]>(
     initial.payment_methods ?? ['cash', 'card', 'transfer'],
@@ -76,7 +76,7 @@ export function ConfigSection({ businessId, initial, locations = [] }: Props) {
   }
 
   useEffect(() => {
-    loadHours(selectedLoc)
+    void loadHours(selectedLoc)
   }, [selectedLoc])
 
   async function saveHours() {

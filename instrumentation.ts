@@ -21,23 +21,23 @@ export async function register() {
     const afterUrl = translate(beforeUrl ?? '')
     if (beforeUrl && afterUrl !== beforeUrl) {
       process.env.NEXT_PUBLIC_SUPABASE_URL = afterUrl
-      console.log(`[instrumentation] Translated NEXT_PUBLIC_SUPABASE_URL for Docker bridge: ${beforeUrl} → ${afterUrl}`)
+      // console.log(`[instrumentation] Translated NEXT_PUBLIC_SUPABASE_URL for Docker bridge: ${beforeUrl} → ${afterUrl}`)
     }
 
     const beforeDb = process.env.DATABASE_URL
     const afterDb = translate(beforeDb ?? '')
     if (beforeDb && afterDb !== beforeDb) {
       process.env.DATABASE_URL = afterDb
-      console.log(`[instrumentation] Translated DATABASE_URL for Docker bridge: ${beforeDb} → ${afterDb}`)
+      // console.log(`[instrumentation] Translated DATABASE_URL for Docker bridge: ${beforeDb} → ${afterDb}`)
     }
 
     const beforeApp = process.env.NEXT_PUBLIC_APP_URL
     const afterApp = translate(beforeApp ?? '')
     if (beforeApp && afterApp !== beforeApp) {
       process.env.NEXT_PUBLIC_APP_URL = afterApp
-      console.log(`[instrumentation] Translated NEXT_PUBLIC_APP_URL for Docker bridge: ${beforeApp} → ${afterApp}`)
+      // console.log(`[instrumentation] Translated NEXT_PUBLIC_APP_URL for Docker bridge: ${beforeApp} → ${afterApp}`)
     }
-  } catch (e) {
-    console.error('[instrumentation] translate failed', e)
+  } catch (_e) {
+    // console.error('[instrumentation] translate failed', e)
   }
 }

@@ -241,7 +241,7 @@ export async function POST(req: NextRequest) {
             },
             { status: 409 },
           )
-        console.error('[pos] membership check error', e)
+        // console.error('[pos] membership check error', e)
         return NextResponse.json({ error: 'membership_check_failed' }, { status: 500 })
       }
     } else if (body.promo_code) {
@@ -287,8 +287,8 @@ export async function POST(req: NextRequest) {
           grossAmount,
         )
         discountReason = `promo:${body.promo_code}`
-      } catch (e) {
-        console.error('[pos] promo evaluate error', e)
+      } catch (_e) {
+        // console.error('[pos] promo evaluate error', e)
         return NextResponse.json({ error: 'promo_evaluate_failed' }, { status: 500 })
       }
     } else if (loyaltyRedeemed > 0) {
@@ -318,7 +318,7 @@ export async function POST(req: NextRequest) {
             { error: 'loyalty_insufficient', message: String(err.message) },
             { status: 409 },
           )
-        console.error('[pos] loyalty check error', e)
+        // console.error('[pos] loyalty check error', e)
         return NextResponse.json({ error: 'loyalty_check_failed' }, { status: 500 })
       }
     } else {
@@ -441,8 +441,8 @@ export async function POST(req: NextRequest) {
           transaction_id: (data as { id: string }).id,
           earn_rate: earnRate,
         })
-      } catch (e) {
-        console.error('[pos] loyalty earn failed', e)
+      } catch (_e) {
+        // console.error('[pos] loyalty earn failed', e)
       }
     }
     // Loyalty redeem (already validated, now deduct via RPC)
@@ -460,8 +460,8 @@ export async function POST(req: NextRequest) {
             reference: (data as { id: string }).id,
           } as unknown as Parameters<typeof redeemPoints>[1],
         )
-      } catch (e) {
-        console.error('[pos] loyalty redeem failed', e)
+      } catch (_e) {
+        // console.error('[pos] loyalty redeem failed', e)
       }
     }
     // Membership consume (advisory lock) — only if discount from membership
@@ -472,8 +472,8 @@ export async function POST(req: NextRequest) {
           supabase as unknown as Parameters<typeof consumeMembership>[0],
           body.membership_id!,
         )
-      } catch (e) {
-        console.error('[pos] membership consume failed', e)
+      } catch (_e) {
+        // console.error('[pos] membership consume failed', e)
       }
     }
   }

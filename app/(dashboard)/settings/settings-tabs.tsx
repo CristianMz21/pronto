@@ -876,7 +876,7 @@ export function SettingsTabs({
                     className="hidden"
                     onChange={(e) => {
                       const f = e.target.files?.[0]
-                      if (f) uploadLogo(f)
+                      if (f) void uploadLogo(f)
                     }}
                   />
                 </label>

@@ -522,7 +522,7 @@ export default async function DashboardPage(props: {
                       <span
                         className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[a.status]}`}
                       >
-                        {t(`appointmentStatus.${a.status}` as any)}
+                        {t(`appointmentStatus.${a.status}` as unknown)}
                       </span>
                     </div>
                   ))}

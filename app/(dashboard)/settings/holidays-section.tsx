@@ -4,7 +4,6 @@ import { Trash2, CalendarOff, Plus } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
-import { createClient } from '@/lib/supabase/client'
 
 interface Holiday {
   id: string
@@ -49,6 +48,7 @@ export function HolidaysSection({ businessId, locations: initialLocations = [] }
     }
   }, [initialLocations])
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   async function load() {
     setLoading(true)
     setError(null)
@@ -65,8 +65,8 @@ export function HolidaysSection({ businessId, locations: initialLocations = [] }
   }
 
   useEffect(() => {
-    load()
-  }, [businessId])
+    void load()
+  }, [businessId, load])
 
   async function add() {
     if (!form.date) return

@@ -12,7 +12,7 @@ export function buildGCalUrl(opts: {
   const [year, month, day] = opts.date.split('-')
   const [hour, minute] = opts.time.split(':')
 
-  const pad2 = (n: number) => String(n).padStart(2, '0')
+  const _pad2 = (n: number) => String(n).padStart(2, '0')
   const startStr = `${year}${month}${day}T${hour}${minute}00`
 
   const startMins = parseInt(hour) * 60 + parseInt(minute)

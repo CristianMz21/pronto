@@ -35,12 +35,12 @@ export async function sendViberMessage(
     const json = await res.json()
     // Viber возвращает status=0 при успехе (0 = ok, остальное = ошибка)
     if (json.status !== 0) {
-      console.error('[viber] sendMessage error:', json.status_message)
+      // console.error('[viber] sendMessage error:', json.status_message)
       return false
     }
     return true
-  } catch (err) {
-    console.error('[viber] sendMessage exception:', err)
+  } catch (_err) {
+    // console.error('[viber] sendMessage exception:', err)
     return false
   }
 }

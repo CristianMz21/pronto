@@ -1,4 +1,4 @@
-import { eq, and, gte, lt, asc, or, isNull, inArray } from 'drizzle-orm'
+import { eq, and, gte, lt, or, isNull, inArray } from 'drizzle-orm'
 import Link from 'next/link'
 
 import { Header } from '@/components/layout/header'

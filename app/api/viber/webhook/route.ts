@@ -236,8 +236,8 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ status: 0 })
-  } catch (err) {
-    console.error('[viber/webhook]', err)
+  } catch (_err) {
+    // console.error('[viber/webhook]', err)
     return NextResponse.json({ status: 0 })
   }
 }

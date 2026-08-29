@@ -49,14 +49,14 @@ export async function sendWhatsAppMessage(
         text: { body: message },
       }),
     })
-    const json = await res.json()
+    const _json = await res.json()
     if (!res.ok) {
-      console.error('[whatsapp] sendMessage error:', json?.error?.message ?? json)
+      // console.error('[whatsapp] sendMessage error:', json?.error?.message ?? json)
       return false
     }
     return true
-  } catch (err) {
-    console.error('[whatsapp] sendMessage exception:', err)
+  } catch (_err) {
+    // console.error('[whatsapp] sendMessage exception:', err)
     return false
   }
 }
@@ -228,14 +228,14 @@ export async function sendWhatsAppTemplate(
         },
       }),
     })
-    const json = await res.json()
+    const _json = await res.json()
     if (!res.ok) {
-      console.error('[whatsapp] sendTemplate error:', json?.error?.message ?? json)
+      // console.error('[whatsapp] sendTemplate error:', json?.error?.message ?? json)
       return false
     }
     return true
-  } catch (err) {
-    console.error('[whatsapp] sendTemplate exception:', err)
+  } catch (_err) {
+    // console.error('[whatsapp] sendTemplate exception:', err)
     return false
   }
 }

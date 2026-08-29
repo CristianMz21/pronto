@@ -54,7 +54,7 @@ export function DatePicker({
       setViewYear(now.getFullYear())
       setViewMonth(now.getMonth())
     }
-  }, [])
+  }, [parsed])
 
   // Sync view to value when value changes externally
   useEffect(() => {

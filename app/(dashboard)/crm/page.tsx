@@ -1,4 +1,4 @@
-import { eq, and, or, ilike, desc, sql, inArray } from 'drizzle-orm'
+import { eq, and, or, ilike, inArray } from 'drizzle-orm'
 import { Plus, Search, Phone, Mail } from 'lucide-react'
 import Link from 'next/link'
 import { getTranslations } from 'next-intl/server'

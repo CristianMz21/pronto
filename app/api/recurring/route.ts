@@ -27,7 +27,7 @@ async function resolveBusinessId(
   return null
 }
 
-async function resolveTimezone(businessId: string): Promise<string> {
+async function _resolveTimezone(businessId: string): Promise<string> {
   const service = createServiceClient()
   const { data } = await service
     .from('businesses')

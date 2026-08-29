@@ -65,7 +65,7 @@ export default async function InventoryItemPage(props: { params: Promise<{ id: s
       />
       <InventoryDetailView
         item={item}
-        movements={(movements ?? []) as any}
+        movements={(movements ?? []) as unknown}
         currency={business.currency}
         timezone={business.timezone}
         businessId={business.id}

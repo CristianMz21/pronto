@@ -78,8 +78,8 @@ export async function POST(req: NextRequest) {
       botUsername: botInfo.result?.username,
       webhookUrl,
     })
-  } catch (err) {
-    console.error('[telegram/set-webhook]', err)
+  } catch (_err) {
+    // console.error('[telegram/set-webhook]', err)
     return NextResponse.json({ error: 'internal' }, { status: 500 })
   }
 }

@@ -154,8 +154,8 @@ export async function POST(req: NextRequest) {
     })
 
     return NextResponse.json({ sent: true })
-  } catch (err) {
-    console.error('[email/low-stock]', err)
+  } catch (_err) {
+    // console.error('[email/low-stock]', err)
     return NextResponse.json({ error: 'internal' }, { status: 500 })
   }
 }

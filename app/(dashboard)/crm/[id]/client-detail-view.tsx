@@ -92,7 +92,7 @@ export function ClientDetailView({
   appointments,
   currency,
   timezone,
-  businessId,
+  _businessId,
   telegramBotUsername,
   preferredBarber,
   location,
@@ -124,7 +124,7 @@ export function ClientDetailView({
 
   function copyTelegramLink() {
     if (!telegramInviteLink) return
-    navigator.clipboard.writeText(telegramInviteLink).then(() => {
+    void navigator.clipboard.writeText(telegramInviteLink).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     })
@@ -606,7 +606,7 @@ export function ClientDetailView({
                       <span
                         className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[a.status] ?? 'bg-gray-100 text-gray-500'}`}
                       >
-                        {t(`status.${a.status}` as any)}
+                        {t(`status.${a.status}` as unknown)}
                       </span>
                     </div>
                   </div>

@@ -6,9 +6,9 @@ import { parseDateTimeInTz } from '@/lib/booking-availability'
 import { rateLimit, getIp } from '@/lib/rate-limit'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
-import { EnqueueSchema, listWaiting, expireStale, convert } from '@/lib/waitlist'
+import { EnqueueSchema, expireStale, convert } from '@/lib/waitlist'
 
-function sanitize(s: string): string {
+function _sanitize(s: string): string {
   return DOMPurify.sanitize(s, { ALLOWED_TAGS: [] }).trim()
 }
 

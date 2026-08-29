@@ -238,7 +238,7 @@ export async function notifyNext(
     }
   }
 
-  let query: Promise<{ data: WaitlistEntry[] | null; error: unknown }>
+  let _query: Promise<{ data: WaitlistEntry[] | null; error: unknown }>
   // Build query — simple: business_id + waiting, then JS filter for optional params (avoids chaining complexity with nullable eq)
   const base = supa
     .from('waitlist')

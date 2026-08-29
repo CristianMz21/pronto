@@ -1,6 +1,5 @@
 import DOMPurify from 'isomorphic-dompurify'
 import { NextRequest, NextResponse } from 'next/server'
-import { z } from 'zod'
 
 import { CampaignCreateSchema, createFromSegment } from '@/lib/campaigns'
 import { rateLimit, getIp } from '@/lib/rate-limit'

@@ -94,7 +94,7 @@ export default async function CajaPage(props: { searchParams: Promise<{ location
         .eq('register_id', openRegister.id)
         .order('created_at', { ascending: false })
         .limit(20)
-    : { data: [] as any[] }
+    : { data: [] as unknown[] }
 
   return (
     <>

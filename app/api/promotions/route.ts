@@ -1,6 +1,5 @@
 import DOMPurify from 'isomorphic-dompurify'
 import { NextResponse } from 'next/server'
-import { z } from 'zod'
 
 import { PromotionSchema } from '@/lib/promotions'
 import { rateLimit, getIp } from '@/lib/rate-limit'

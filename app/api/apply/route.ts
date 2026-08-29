@@ -20,7 +20,7 @@ async function verifyTurnstile(token: string | null | undefined): Promise<boolea
   const secret = process.env.TURNSTILE_SECRET_KEY
   if (!secret) {
     // In dev, allow without Turnstile with warning
-    console.warn('[apply] TURNSTILE_SECRET_KEY not set, skipping verification (dev only)')
+    // console.warn('[apply] TURNSTILE_SECRET_KEY not set, skipping verification (dev only)')
     return true
   }
   if (!token) return false
