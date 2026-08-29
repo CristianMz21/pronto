@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { formatInBusinessTimezone, uses12HourClock } from '@/lib/utils'
+import { isDayClosed as isDayClosedLib, isPastInTz, DEFAULT_LEAD_MINUTES } from '@/lib/booking-availability'
 import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
 import { ChevronLeft, ChevronRight, ExternalLink, CreditCard, Palette } from 'lucide-react'
@@ -100,6 +101,9 @@ interface Props {
   businessId: string; slug: string; timezone: string
   appointments: Appointment[]; employees: Employee[]; services: Service[]; clients: Client[]
   businessHours: BusinessHour[]
+  /** Configurable lead time (054) — for display in error messages; dashboard does NOT enforce lead time (walk-in 0) */
+  minAdvanceMinutes?: number | null
+  bookingLeadTimeEnabled?: boolean | null
 }
 
 // ─── Draggable appointment card ────────────────────────────────────────────────
@@ -152,7 +156,13 @@ function getMonday(date: Date) {
   return d
 }
 
-export function BookingCalendar({ businessId, slug, timezone, appointments: initial, employees, services, clients: initialClients, businessHours }: Props) {
+function todayInTz(tz: string): string {
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date())
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '00'
+  return `${get('year')}-${get('month')}-${get('day')}`
+}
+
+export function BookingCalendar({ businessId, slug, timezone, appointments: initial, employees, services, clients: initialClients, businessHours, minAdvanceMinutes, bookingLeadTimeEnabled }: Props) {
   const supabase = createClient()
   const router = useRouter()
   const t = useTranslations('booking')
@@ -205,13 +215,15 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
   const [form, setForm] = useState({ client_id: '', employee_id: '', service_id: '', date: '', hour: '', minute: '00', period: 'AM' as 'AM' | 'PM', notes: '' })
 
   async function openForm(prefill?: Partial<typeof form>) {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('clients')
       .select('id, name, phone')
       .eq('business_id', businessId)
       .order('name')
       .limit(200)
-    if (data) setClientsList(data as Client[])
+    if (error) {
+      console.error('[booking] openForm clients fetch failed:', error.message)
+    } else if (data) setClientsList(data as Client[])
     if (prefill) setForm((f) => ({ ...f, ...prefill }))
     setFormError(null)
     setShowForm(true)
@@ -250,17 +262,27 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
   const [showLegend, setShowLegend] = useState(false)
   const legendRef = useRef<HTMLDivElement>(null)
 
-  // day_of_week: 0=Sun, 1=Mon … 6=Sat (JS getDay() convention)
+  // day_of_week: 0=Sun, 1=Mon … 6=Sat — always in business timezone
+  // Dashboard note (054): lead time is intentionally NOT enforced here.
+  // Online bookings via /api/book respect businesses.min_advance_minutes + booking_lead_time_enabled,
+  // but admin walk-ins from the dashboard should allow immediate bookings (lead time 0).
+  // DB trigger 053 also only blocks past. If a business wants dashboard to respect lead time,
+  // it could be made configurable here, but default is past-only for admin.
+  function getDowInBusinessTz(date: Date): number {
+    const wd = new Intl.DateTimeFormat('en-US', { timeZone: timezone, weekday: 'short' }).format(date)
+    const map: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }
+    return map[wd] ?? date.getDay()
+  }
   function isDayClosed(date: Date) {
-    if (businessHours.length === 0) return false
-    const dow = date.getDay()
-    const rule = businessHours.find((h) => h.day_of_week === dow)
-    return rule ? !rule.is_open : false
+    // Use centralized helper for testability; fallback to local logic if lib helper not available
+    return isDayClosedLib(date, businessHours as unknown as import('@/lib/booking-availability').DayHours[], timezone)
   }
 
   function isOutsideWorkingHours(date: string, time: string): boolean {
     if (!date || !time || businessHours.length === 0) return false
-    const dow = new Date(date + 'T00:00:00').getDay()
+    // date is wall-clock in business timezone (YYYY-MM-DD from DatePicker), so derive dow independent of browser TZ
+    const [y, m, d] = date.split('-').map(Number)
+    const dow = new Date(Date.UTC(y, m - 1, d)).getUTCDay()
     const rule = businessHours.find((h) => h.day_of_week === dow)
     if (!rule || !rule.is_open || !rule.open_time || !rule.close_time) return false
     const [hh, mm] = time.split(':').map(Number)
@@ -307,14 +329,16 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
       hour, 0, timezone
     )
 
-    // Prevent dropping in the past or on a closed day
-    if (newStartsAt < new Date()) return
+    // Prevent dropping in the past or on a closed day (synchronized with business timezone)
+    // Lead time deliberately NOT enforced for drag-drop admin moves (walk-in semantics, see 053 doc)
+    if (isPastInTz(newStartsAt, new Date())) return
     if (isDayClosed(newStartsAt)) return
 
     const duration = new Date(appt.ends_at).getTime() - new Date(appt.starts_at).getTime()
     const newEndsAt = new Date(newStartsAt.getTime() + duration)
 
-    // Optimistic update
+    // Optimistic update — save previous for revert
+    const prevAppts = appointments
     setAppointments((prev) =>
       prev.map((a) =>
         a.id === apptId
@@ -323,10 +347,15 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
       )
     )
 
-    await supabase.from('appointments').update({
+    const { error } = await supabase.from('appointments').update({
       starts_at: newStartsAt.toISOString(),
       ends_at: newEndsAt.toISOString(),
     }).eq('id', apptId)
+    if (error) {
+      console.error('[booking] drag update failed:', error.message)
+      // Revert optimistic on error (e.g. 401, RLS)
+      setAppointments(prevAppts)
+    }
   }
 
   const days = t.raw('calendar.days') as string[]
@@ -344,9 +373,16 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
 
   async function loadWeek(start: Date) {
     const end = new Date(start); end.setDate(start.getDate() + 7)
-    const { data } = await supabase.from('appointments')
+    const { data, error } = await supabase.from('appointments')
       .select('id, starts_at, ends_at, status, source, notes, clients(id, name), employees(id, name), services(id, name, price)')
       .eq('business_id', businessId).gte('starts_at', start.toISOString()).lt('starts_at', end.toISOString()).order('starts_at')
+    if (error) {
+      console.error('[booking] loadWeek failed:', error.message)
+      // No borres el estado SSR — el 401 es token expirado, el middleware
+      // lo refrescará en el próximo request. Si limpiamos, el usuario ve
+      // "aparecen y desaparecen". Mantener datos previos es la UX correcta.
+      return
+    }
     setAppointments((data as Appointment[]) ?? [])
   }
 
@@ -368,6 +404,13 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
     const [fYear, fMonth, fDay] = form.date.split('-').map(Number)
     const [fHour, fMin] = formTime.split(':').map(Number)
     const startsAt = wallclockToUtc(fYear, fMonth, fDay, fHour, fMin, timezone)
+    // Past check — synchronized with /api/book and DB trigger (UTC comparison)
+    // Dashboard intentionally checks ONLY past, not lead time, to allow 0-min walk-ins.
+    // Online lead time (businesses.min_advance_minutes) is enforced only at /api/book and booking-form.
+    if (isPastInTz(startsAt, new Date())) {
+      setFormError('No se puede reservar en el pasado. Elegí una fecha y hora futuras.')
+      return
+    }
     setSaving(true)
     setFormError(null)
     const service = services.find((s) => s.id === form.service_id)!
@@ -391,7 +434,14 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
         body: JSON.stringify({ appointmentId: data.id }),
       }).catch(() => {/* non-critical */})
     } else if (error) {
-      if (error.message?.includes('no_staff_available')) {
+      if (error.message?.includes('in_past')) {
+        setFormError('No se puede reservar en el pasado. Elegí una fecha y hora futuras.')
+      } else if (error.message?.includes('too_soon')) {
+        // Should not happen for dashboard (lead time intentionally disabled for admin walk-ins; see 053 doc)
+        // Use business config when available, fallback via centralized default
+        const lead = minAdvanceMinutes ?? DEFAULT_LEAD_MINUTES
+        setFormError(`Reservá con al menos ${lead} minutos de anticipación.`)
+      } else if (error.message?.includes('no_staff_available')) {
         setFormError('No active staff available to take this booking. Add an employee in Settings, or select a specific employee.')
       } else if (error.message?.includes('slot_already_booked')) {
         setFormError('This time slot is already booked for the selected employee. Please choose a different time.')
@@ -403,15 +453,30 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
   }
 
   async function updateStatus(id: string, status: string) {
-    await supabase.from('appointments').update({ status }).eq('id', id)
+    const prev = appointments
+    const prevSelected = selectedAppt
+    // Optimistic
     setAppointments((prev) => prev.map((a) => a.id === id ? { ...a, status } : a))
     setSelectedAppt((a) => a?.id === id ? { ...a, status } : a)
+    const { error } = await supabase.from('appointments').update({ status }).eq('id', id)
+    if (error) {
+      console.error('[booking] updateStatus failed:', error.message)
+      setAppointments(prev)
+      setSelectedAppt(prevSelected)
+      return
+    }
     router.refresh()
   }
 
   async function deleteAppointment(id: string) {
-    await supabase.from('appointments').delete().eq('id', id)
+    const prev = appointments
     setAppointments((prev) => prev.filter((a) => a.id !== id))
+    const { error } = await supabase.from('appointments').delete().eq('id', id)
+    if (error) {
+      console.error('[booking] delete failed:', error.message)
+      setAppointments(prev)
+      return
+    }
     setSelectedAppt(null)
     setConfirmDelete(false)
     router.refresh()
@@ -645,6 +710,8 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
                     value={form.date}
                     onChange={(v) => setForm((f) => ({ ...f, date: v }))}
                     className="flex-1"
+                    minDate={todayInTz(timezone)}
+                    disabledWeekdays={businessHours.filter((h) => !h.is_open).map((h) => h.day_of_week)}
                   />
                   {is12h ? (
                     <>

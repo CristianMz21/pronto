@@ -51,9 +51,12 @@ interface POSTerminalProps {
   employees: Employee[]
   clients: Client[]
   bookingContext?: BookingContext
+  initialHasOpenRegister?: boolean
+  /** When false, cash sales do NOT require an open register (055 configurable) */
+  requireCashRegister?: boolean
 }
 
-export function POSTerminal({ businessId, currency, services: initialServices, employees: initialEmployees, clients: initialClients, bookingContext }: POSTerminalProps) {
+export function POSTerminal({ businessId, currency, services: initialServices, employees: initialEmployees, clients: initialClients, bookingContext, initialHasOpenRegister = false, requireCashRegister = true }: POSTerminalProps) {
   const supabase = createClient()
   const router = useRouter()
   const t = useTranslations('pos')
@@ -89,6 +92,10 @@ export function POSTerminal({ businessId, currency, services: initialServices, e
   const [mounted, setMounted] = useState(false)
   useEffect(() => { setMounted(true) }, [])
 
+  // ─── Cash register state ────────────────────────────────────────────────────
+  const [hasOpenRegister, setHasOpenRegister] = useState(initialHasOpenRegister)
+  const [checkoutError, setCheckoutError] = useState('')
+
   // Active data — switches between server-loaded props and IndexedDB cache
   const [activeServices, setActiveServices] = useState<Service[]>(initialServices)
   const [activeEmployees, setActiveEmployees] = useState<Employee[]>(initialEmployees)
@@ -108,6 +115,26 @@ export function POSTerminal({ businessId, currency, services: initialServices, e
     })().catch(() => {})
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // ─── Fetch cash register status ────────────────────────────────────────────
+  const fetchRegisterStatus = useCallback(async () => {
+    if (!navigator.onLine) return
+    try {
+      const res = await fetch('/api/cash/current')
+      if (res.ok) {
+        const json = await res.json()
+        setHasOpenRegister(!!json.register)
+      }
+    } catch {}
+  }, [])
+
+  useEffect(() => {
+    fetchRegisterStatus()
+  }, [fetchRegisterStatus])
+
+  useEffect(() => {
+    if (isOnline) fetchRegisterStatus()
+  }, [isOnline, fetchRegisterStatus])
 
   // ─── On mount: cache POS data to IndexedDB ──────────────────────────────
   useEffect(() => {
@@ -167,27 +194,37 @@ export function POSTerminal({ businessId, currency, services: initialServices, e
     try {
       const pending = await getPendingTransactions()
       for (const tx of pending) {
-        const { error } = await supabase.from('transactions').insert({
-          business_id: tx.business_id,
-          client_id: tx.client_id,
-          employee_id: tx.employee_id,
-          amount: tx.amount,
-          payment_method: tx.payment_method,
-          status: 'completed',
-          items: tx.items,
+        // Use API so cash_register check is enforced even for offline sales
+        const res = await fetch('/api/pos/transaction', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            business_id: tx.business_id,
+            client_id: tx.client_id,
+            employee_id: tx.employee_id,
+            amount: tx.amount,
+            payment_method: tx.payment_method,
+            items: tx.items,
+          }),
         })
-        if (!error) {
+        if (res.ok) {
           await markTransactionSynced(tx.id)
+        } else if (res.status === 409) {
+          const j = await res.json().catch(() => ({}))
+          setSyncError(j.message ?? 'Caja cerrada: abre caja para sincronizar ventas en efectivo pendientes.')
+          break
         }
       }
       const remaining = await getPendingCount()
       setPendingCount(remaining)
+      // Refresh register status after sync (maybe cash transactions changed expected)
+      fetchRegisterStatus()
     } catch {
       setSyncError('Sync failed. Will retry automatically.')
     } finally {
       setSyncing(false)
     }
-  }, [supabase])
+  }, [fetchRegisterStatus])
 
   useEffect(() => {
     if (isOnline && pendingCount > 0) {
@@ -215,8 +252,15 @@ export function POSTerminal({ businessId, currency, services: initialServices, e
   const categories = Array.from(new Set(activeServices.map((s) => s.category ?? 'Other')))
 
   // ─── Checkout ─────────────────────────────────────────────────────────────
+  // Cash register requirement is configurable per business (055): when requireCashRegister false, cash allowed without caja
+  const cashRegisterRequired = requireCashRegister
   async function checkout() {
     if (cart.length === 0) return
+    if (paymentMethod === 'cash' && cashRegisterRequired && !hasOpenRegister) {
+      setCheckoutError('Debes abrir caja antes de cobrar en efectivo. Ve a Caja → Abrir caja.')
+      return
+    }
+    setCheckoutError('')
     setLoading(true)
     const items = cart.map((i) => ({
       service_id: i.service.id,
@@ -254,7 +298,14 @@ export function POSTerminal({ businessId, currency, services: initialServices, e
           }),
         })
         const json = await res.json().catch(() => ({}))
-        if (!res.ok) throw new Error(json.error ?? 'transaction failed')
+        if (!res.ok) {
+          if (json.error === 'cash_register_closed') {
+            setCheckoutError(json.message ?? 'Debes abrir caja antes de cobrar en efectivo')
+            setHasOpenRegister(false)
+            throw new Error(json.message)
+          }
+          throw new Error(json.error ?? 'transaction failed')
+        }
         const data = json as { receipt_number: string; id: string }
         setReceiptNumber(data.receipt_number ?? '')
         router.refresh()
@@ -285,6 +336,12 @@ export function POSTerminal({ businessId, currency, services: initialServices, e
       setShowBookingBanner(false)
     } catch (err) {
       console.error(err)
+      if (!checkoutError) {
+        const msg = err instanceof Error ? err.message : 'Error al procesar el pago'
+        if (!msg.includes('cash_register_closed')) {
+          setCheckoutError(msg)
+        }
+      }
     } finally {
       setLoading(false)
     }
@@ -585,7 +642,7 @@ export function POSTerminal({ businessId, currency, services: initialServices, e
               {(['cash', 'card', 'transfer'] as PaymentMethod[]).map((m) => (
                 <button
                   key={m}
-                  onClick={() => setPaymentMethod(m)}
+                  onClick={() => { setPaymentMethod(m); setCheckoutError('') }}
                   className={`py-2 rounded-lg text-xs font-medium capitalize transition-colors ${
                     paymentMethod === m ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
@@ -598,9 +655,17 @@ export function POSTerminal({ businessId, currency, services: initialServices, e
               <span className="text-sm text-gray-500">{t('totalLabel')}</span>
               <span className="text-xl font-bold text-gray-900">{formatCurrency(total, currency)}</span>
             </div>
+            {paymentMethod === 'cash' && cashRegisterRequired && !hasOpenRegister && (
+              <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                Debes abrir caja antes de cobrar en efectivo. <a href="/caja" className="font-semibold underline hover:text-amber-900">Ir a Caja</a>
+              </div>
+            )}
+            {checkoutError && (
+              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{checkoutError}</div>
+            )}
             <Button
               onClick={checkout}
-              disabled={cart.length === 0 || loading}
+              disabled={cart.length === 0 || loading || (paymentMethod === 'cash' && cashRegisterRequired && !hasOpenRegister)}
               className={`w-full h-12 text-base ${!isOnline ? 'bg-orange-500 hover:bg-orange-600' : ''}`}
             >
               {loading

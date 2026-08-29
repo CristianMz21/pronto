@@ -496,7 +496,8 @@
       "notifications": "Notificaciones",
       "billing": "Facturación",
       "account": "Cuenta",
-      "modules": "Módulos"
+      "modules": "Módulos",
+      "advanced": "Configuración"
     },
     "billing": {
       "heading": "Plan actual",
@@ -778,6 +779,27 @@
           "description": "Telegram, WhatsApp, Viber, recordatorios por correo"
         }
       }
+    },
+    "advanced": {
+      "heading": "Configuración avanzada",
+      "description": "Solo el dueño puede modificar estas opciones.",
+      "bookingHeading": "Reservas — Antelación",
+      "posHeading": "POS — Caja",
+      "bookingLeadTimeEnabledLabel": "Activar antelación mínima",
+      "bookingLeadTimeEnabledHint": "Cuando está activado se exige una antelación mínima para reservar.",
+      "minAdvanceMinutesLabel": "Antelación mínima (minutos)",
+      "minAdvanceMinutesHint": "Entre 0 y 1440 minutos. Por defecto 30.",
+      "minAdvanceDisabledHint": "Activa la antelación mínima para editar este valor.",
+      "minAdvanceError": "Debe ser un valor entre 0 y 1440",
+      "requireCashRegisterLabel": "Exigir caja abierta para cobrar en efectivo",
+      "requireCashRegisterHint": "Si está activado no se podrá cobrar en efectivo sin caja abierta.",
+      "requireCashRegisterDescription": "Exigir caja abierta para cobrar en efectivo",
+      "saveButton": "Guardar configuración",
+      "saving": "Guardando…",
+      "saved": "Guardado ✓",
+      "savedHint": "Configuración guardada correctamente",
+      "ownerOnly": "Solo el dueño puede configurar estas opciones",
+      "ownerOnlyHint": "Inicia sesión con la cuenta del dueño para modificar esta configuración."
     }
   },
   "sidebar": {

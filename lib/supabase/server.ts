@@ -15,6 +15,18 @@ function cookieDomain(): string | undefined {
   return undefined
 }
 
+function getCookieName(): string {
+  try {
+    // Use ORIGINAL env URL (127.0.0.1) not the Docker-translated one
+    // — otherwise browser (sb-127) vs server (sb-host) mismatch → no refresh → 401
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
+    const hostname = new URL(url).hostname
+    return `sb-${hostname.split('.')[0]}-auth-token`
+  } catch {
+    return 'sb-127-auth-token'
+  }
+}
+
 export async function createClient() {
   const cookieStore = await cookies()
   const domain = cookieDomain()
@@ -23,6 +35,7 @@ export async function createClient() {
     getSupabaseUrl(),
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      cookieOptions: { name: getCookieName() },
       cookies: {
         getAll() {
           return cookieStore.getAll()

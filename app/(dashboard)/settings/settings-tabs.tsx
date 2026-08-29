@@ -5,14 +5,14 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Pencil, Trash2, Check, Loader2, CheckCircle2, AlertCircle, Users, Eye, EyeOff } from 'lucide-react'
+import { Plus, Pencil, Trash2, Check, Loader2, CheckCircle2, AlertCircle, Users, Eye, EyeOff, Settings } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { MODULES, ModuleKey } from '@/lib/modules'
 
 const clean = (s: string, max = 500) => s?.trim().slice(0, max) ?? ''
 
 interface Business {
-  id: string; name: string; slug: string; type: string | null; phone: string | null
+  id: string; owner_id?: string | null; name: string; slug: string; type: string | null; phone: string | null
   email: string | null; address: string | null; timezone: string; currency: string; plan: string
   plan_expires_at: string | null
   telegram_bot_token: string | null; viber_bot_token: string | null
@@ -33,6 +33,10 @@ interface Business {
   notification_language: string | null
   logo_url: string | null
   enabled_modules: string[] | null
+  min_advance_minutes?: number | null
+  booking_lead_time_enabled?: boolean | null
+  require_cash_register_for_cash?: boolean | null
+  allow_guest_bookings?: boolean | null
 }
 interface Service { id: string; name: string; description: string | null; price: number; duration_min: number; category: string | null; is_active: boolean; capacity: number; cost?: number | null }
 interface Employee { id: string; name: string; role: string; email: string | null; phone: string | null; is_active: boolean; color?: string | null; specialties?: string[]; commission_rate?: number | null; commission_fixed?: number | null; bio?: string | null; avatar_url?: string | null }
@@ -53,15 +57,15 @@ const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
   return `${String(h).padStart(2, '0')}:${m}`
 })
 
-interface Props { business: Business & { telegram_chat_id?: string | null; viber_chat_id?: string | null }; services: Service[]; employees: Employee[]; workingHours: DayHours[]; userEmail: string }
-type Tab = 'general' | 'services' | 'employees' | 'notifications' | 'billing' | 'account' | 'modules'
+interface Props { business: Business & { telegram_chat_id?: string | null; viber_chat_id?: string | null }; services: Service[]; employees: Employee[]; workingHours: DayHours[]; userEmail: string; userId?: string }
+type Tab = 'general' | 'services' | 'employees' | 'notifications' | 'billing' | 'account' | 'modules' | 'advanced'
 
-export function SettingsTabs({ business: initial, services: initServices, employees: initEmployees, workingHours: initHours, userEmail }: Props) {
+export function SettingsTabs({ business: initial, services: initServices, employees: initEmployees, workingHours: initHours, userEmail, userId }: Props) {
   const supabase = createClient()
   const router = useRouter()
   const t = useTranslations('settings')
   const searchParams = useSearchParams()
-  const initialTab = (['general', 'services', 'employees', 'notifications', 'billing', 'modules'].includes(searchParams.get('tab') ?? '')
+  const initialTab = (['general', 'services', 'employees', 'notifications', 'billing', 'modules', 'advanced'].includes(searchParams.get('tab') ?? '')
     ? searchParams.get('tab')
     : 'general') as Tab
   const [tab, setTab] = useState<Tab>(initialTab)
@@ -97,6 +101,41 @@ export function SettingsTabs({ business: initial, services: initServices, employ
   const [logoUrl, setLogoUrl] = useState<string | null>(initial.logo_url ?? null)
   const [logoUploading, setLogoUploading] = useState(false)
   const [logoError, setLogoError] = useState('')
+
+  // Advanced / owner-only settings
+  const [advancedSaving, setAdvancedSaving] = useState(false)
+  const [advancedSaved, setAdvancedSaved] = useState(false)
+  const [advancedError, setAdvancedError] = useState('')
+  const isOwner = !initial.owner_id || !userId ? true : initial.owner_id === userId
+  const minAdvanceValue = biz.min_advance_minutes ?? 30
+  const bookingLeadEnabled = biz.booking_lead_time_enabled ?? true
+  const requireCashRegister = biz.require_cash_register_for_cash ?? true
+  const allowGuestBookings = biz.allow_guest_bookings ?? true
+
+  async function saveAdvanced() {
+    const v = biz.min_advance_minutes ?? 30
+    if (!Number.isInteger(v) || v < 0 || v > 1440) {
+      setAdvancedError(t('advanced.minAdvanceError'))
+      setTimeout(() => setAdvancedError(''), 3000)
+      return
+    }
+    setAdvancedSaving(true)
+    setAdvancedError('')
+    const { error } = await supabase.from('businesses').update({
+      min_advance_minutes: v,
+      booking_lead_time_enabled: biz.booking_lead_time_enabled ?? true,
+      require_cash_register_for_cash: biz.require_cash_register_for_cash ?? true,
+      allow_guest_bookings: biz.allow_guest_bookings ?? true,
+    }).eq('id', biz.id)
+    setAdvancedSaving(false)
+    if (error) {
+      setAdvancedError(error.message)
+      return
+    }
+    setAdvancedSaved(true)
+    setTimeout(() => setAdvancedSaved(false), 2000)
+    router.refresh()
+  }
 
   async function uploadLogo(file: File) {
     setLogoError('')
@@ -353,7 +392,7 @@ export function SettingsTabs({ business: initial, services: initServices, employ
   }
 
   const bookingsOn = enabledModules.includes('bookings')
-  const tabs: { key: Tab; label: string }[] = [
+  const tabs: { key: Tab; label: string; icon?: React.ReactNode }[] = [
     { key: 'general', label: t('tabs.general') },
     ...(bookingsOn ? [{ key: 'services' as Tab, label: t('tabs.services') }] : []),
     { key: 'employees', label: t('tabs.employees') },
@@ -361,6 +400,7 @@ export function SettingsTabs({ business: initial, services: initServices, employ
     { key: 'billing', label: t('tabs.billing') },
     { key: 'modules', label: t('tabs.modules') },
     { key: 'account', label: t('tabs.account') },
+    ...(isOwner ? [{ key: 'advanced' as Tab, label: t('tabs.advanced'), icon: <Settings className="w-3.5 h-3.5" /> }] : []),
   ]
 
   const generalFields: { key: keyof Business; label: string; type: string }[] = [
@@ -455,11 +495,16 @@ export function SettingsTabs({ business: initial, services: initServices, employ
 
   return (
     <div className="p-3 sm:p-6 max-w-3xl">
+      {!isOwner && (
+        <div className="mb-4 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 flex items-center gap-2 text-sm text-amber-800">
+          <AlertCircle className="w-4 h-4 shrink-0" />{t('advanced.ownerOnly')}
+        </div>
+      )}
       <div className="flex flex-nowrap overflow-x-auto sm:flex-wrap sm:overflow-x-visible gap-1 bg-gray-100 p-1 rounded-lg mb-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         {tabs.map((tb) => (
           <button key={tb.key} onClick={() => setTab(tb.key)}
-            className={`shrink-0 px-2.5 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${tab === tb.key ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
-            {tb.label}
+            className={`shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${tab === tb.key ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
+            {tb.icon ? tb.icon : null}{tb.label}
           </button>
         ))}
       </div>
@@ -1382,6 +1427,147 @@ export function SettingsTabs({ business: initial, services: initServices, employ
               </Button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Advanced — owner only */}
+      {tab === 'advanced' && (
+        <div className="space-y-4">
+          {!isOwner ? (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-amber-800">{t('advanced.ownerOnly')}</p>
+                <p className="text-xs text-amber-700 mt-1">{t('advanced.ownerOnlyHint')}</p>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-6">
+              <div>
+                <h2 className="font-semibold text-gray-900 flex items-center gap-2">
+                  <Settings className="w-4 h-4 text-gray-500" />{t('advanced.heading')}
+                </h2>
+                <p className="text-xs text-gray-500 mt-1">{t('advanced.description')}</p>
+              </div>
+
+              {/* Reservas — Antelación */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold text-gray-900 border-t border-gray-100 pt-4">{t('advanced.bookingHeading')}</h3>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">{t('advanced.bookingLeadTimeEnabledLabel')}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{t('advanced.bookingLeadTimeEnabledHint')}</p>
+                  </div>
+                  <label className="flex items-center cursor-pointer relative shrink-0 ml-4">
+                    <input
+                      type="checkbox"
+                      checked={bookingLeadEnabled}
+                      onChange={(e) => setBiz((b) => ({ ...b, booking_lead_time_enabled: e.target.checked }))}
+                      className="sr-only"
+                    />
+                    <div className={`w-11 h-6 rounded-full transition-colors relative ${bookingLeadEnabled ? 'bg-blue-600' : 'bg-gray-200'}`}>
+                      <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${bookingLeadEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                    </div>
+                  </label>
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-gray-500">{t('advanced.minAdvanceMinutesLabel')}</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={1440}
+                    value={minAdvanceValue}
+                    disabled={!bookingLeadEnabled}
+                    onChange={(e) => {
+                      const raw = e.target.value
+                      if (raw === '') {
+                        setBiz((b) => ({ ...b, min_advance_minutes: 0 }))
+                        return
+                      }
+                      const n = parseInt(raw, 10)
+                      if (Number.isNaN(n)) return
+                      const clamped = Math.max(0, Math.min(1440, n))
+                      setBiz((b) => ({ ...b, min_advance_minutes: clamped }))
+                    }}
+                    className={`w-full mt-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${!bookingLeadEnabled ? 'bg-gray-50 text-gray-400 border-gray-200' : 'border-gray-200'} ${advancedError ? 'border-red-300 focus:ring-red-400' : ''}`}
+                  />
+                  <p className="text-xs text-gray-400 mt-1">{t('advanced.minAdvanceMinutesHint')}</p>
+                  {!bookingLeadEnabled && (
+                    <p className="text-xs text-amber-600 mt-1">{t('advanced.minAdvanceDisabledHint')}</p>
+                  )}
+                </div>
+              </div>
+
+              <hr className="border-gray-100" />
+
+              {/* POS — Caja */}
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-gray-900">{t('advanced.posHeading')}</h3>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">{t('advanced.requireCashRegisterLabel')}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{t('advanced.requireCashRegisterHint')}</p>
+                  </div>
+                  <label className="flex items-center cursor-pointer relative shrink-0 ml-4">
+                    <input
+                      type="checkbox"
+                      checked={requireCashRegister}
+                      onChange={(e) => setBiz((b) => ({ ...b, require_cash_register_for_cash: e.target.checked }))}
+                      className="sr-only"
+                    />
+                    <div className={`w-11 h-6 rounded-full transition-colors relative ${requireCashRegister ? 'bg-blue-600' : 'bg-gray-200'}`}>
+                      <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${requireCashRegister ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                    </div>
+                  </label>
+                </div>
+                <p className="text-xs text-gray-400">{t('advanced.requireCashRegisterDescription')}</p>
+              </div>
+
+              <hr className="border-gray-100" />
+
+              {/* Acceso clientes — solo owner (isOwner already true in this branch) */}
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-gray-900">Acceso clientes</h3>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">Permitir reservas sin registro (invitados)</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Si está desactivado, solo clientes registrados pueden reservar online</p>
+                  </div>
+                  <label className="flex items-center cursor-pointer relative shrink-0 ml-4">
+                    <input
+                      type="checkbox"
+                      checked={allowGuestBookings}
+                      onChange={(e) => setBiz((b) => ({ ...b, allow_guest_bookings: e.target.checked }))}
+                      className="sr-only"
+                    />
+                    <div className={`w-11 h-6 rounded-full transition-colors relative ${allowGuestBookings ? 'bg-blue-600' : 'bg-gray-200'}`}>
+                      <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${allowGuestBookings ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              {advancedError && (
+                <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" /> {advancedError}
+                </div>
+              )}
+
+              <div className="flex items-center gap-3 pt-2">
+                <Button onClick={saveAdvanced} disabled={advancedSaving}>
+                  {advancedSaving ? (
+                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{t('advanced.saving')}</>
+                  ) : advancedSaved ? (
+                    <><Check className="w-4 h-4 mr-1" />{t('advanced.saved')}</>
+                  ) : (
+                    t('advanced.saveButton')
+                  )}
+                </Button>
+                {advancedSaved && <span className="text-xs text-green-600">{t('advanced.savedHint')}</span>}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -32,7 +32,7 @@ export default async function PublicBookingPage(props: { params: Promise<{ slug:
 
   const { data: business } = await supabase
     .from('businesses')
-    .select('id, name, type, phone, logo_url, currency, slug, timezone, address, brand_color')
+    .select('id, name, type, phone, logo_url, currency, slug, timezone, address, brand_color, min_advance_minutes, booking_lead_time_enabled, allow_guest_bookings')
     .eq('slug', params.slug)
     .maybeSingle()
 
