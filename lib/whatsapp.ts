@@ -179,3 +179,84 @@ export function tplLowStock(opts: {
     `Please restock soon.`,
   ].join('\n')
 }
+
+export function tplCampaign(opts: {
+  clientName: string
+  businessName: string
+  body: string
+  bookingUrl?: string
+}): string {
+  const lines = [`Hi ${opts.clientName},`, ``, opts.body, ``]
+  if (opts.bookingUrl) lines.push(`Book now: ${opts.bookingUrl}`, ``)
+  lines.push(`— ${opts.businessName}`)
+  return lines.join('\n')
+}
+
+// ─── Template send (Meta Cloud v20 approved templates) ──────────────────────
+export interface TemplateComponent {
+  type: 'header' | 'body' | 'button'
+  parameters: { type: 'text'; text: string }[]
+}
+
+export async function sendWhatsAppTemplate(
+  to: string,
+  templateName: string,
+  language: string,
+  components: TemplateComponent[] | undefined,
+  credentials?: { phoneNumberId: string; accessToken: string }
+): Promise<boolean> {
+  const phoneNumberId = credentials?.phoneNumberId ?? process.env.META_WHATSAPP_PHONE_NUMBER_ID
+  const accessToken = credentials?.accessToken ?? process.env.META_WHATSAPP_ACCESS_TOKEN
+  if (!phoneNumberId || !accessToken) return false
+  const normalizedTo = normalizePhone(to)
+  if (!normalizedTo || !templateName) return false
+  try {
+    const res = await fetch(`${BASE}/${phoneNumberId}/messages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        to: normalizedTo,
+        type: 'template',
+        template: {
+          name: templateName,
+          language: { code: language || 'en' },
+          ...(components ? { components } : {}),
+        },
+      }),
+    })
+    const json = await res.json()
+    if (!res.ok) {
+      console.error('[whatsapp] sendTemplate error:', json?.error?.message ?? json)
+      return false
+    }
+    return true
+  } catch (err) {
+    console.error('[whatsapp] sendTemplate exception:', err)
+    return false
+  }
+}
+
+export async function verifyWhatsAppCredentials(credentials: {
+  phoneNumberId: string
+  accessToken: string
+}): Promise<{ ok: boolean; error?: string }> {
+  if (!credentials.phoneNumberId || !credentials.accessToken) {
+    return { ok: false, error: 'Missing phone_number_id or access_token' }
+  }
+  try {
+    const res = await fetch(`${BASE}/${credentials.phoneNumberId}?fields=verified_name,code_verification_status,display_phone_number`, {
+      headers: { Authorization: `Bearer ${credentials.accessToken}` },
+    })
+    const json = await res.json()
+    if (!res.ok) {
+      return { ok: false, error: json?.error?.message ?? `HTTP ${res.status}` }
+    }
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, error: String((e as Error).message ?? e) }
+  }
+}
