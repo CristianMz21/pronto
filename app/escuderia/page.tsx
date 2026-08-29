@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { formatCurrency } from '@/lib/utils'
 import { Playfair_Display, Montserrat } from 'next/font/google'
+import { Calendar, Clock, History } from 'lucide-react'
 
 const playfair = Playfair_Display({ subsets: ['latin'], weight: ['500','600','700'], variable: '--font-playfair' })
 const montserrat = Montserrat({ subsets: ['latin'], weight: ['400','500','600'], variable: '--font-montserrat' })
@@ -38,13 +39,16 @@ export default async function EscuderiaLandingPremium() {
   const bizAddress = business?.address ?? 'Colombia'
   const bizName = business?.name ?? 'Escudería'
 
-  const [{ data: services }, { data: employees }, { data: hours }, apptCountRes, empCountRes] = await Promise.all([
+  const [{ data: { user } }, { data: services }, { data: employees }, { data: hours }, apptCountRes, empCountRes] = await Promise.all([
+    supabase.auth.getUser(),
     supabase.from('services').select('id, name, description, price, duration_min, category').eq('business_id', bizId).eq('is_active', true).order('price'),
     supabase.from('employees').select('id, name, specialties, color').eq('business_id', bizId).eq('is_active', true).order('name'),
     supabase.from('business_hours').select('day_of_week, is_open, open_time, close_time').eq('business_id', bizId).order('day_of_week'),
     supabase.from('appointments').select('id', { count: 'exact', head: true }).eq('business_id', bizId),
     supabase.from('employees').select('id', { count: 'exact', head: true }).eq('business_id', bizId).eq('is_active', true),
   ])
+
+  const accountHref = user ? '/client/dashboard' : '/client/login?redirect=/escuderia'
 
   const svc = services ?? []
   const emps = employees ?? []
@@ -89,6 +93,8 @@ export default async function EscuderiaLandingPremium() {
         .btn-gold::before{content:'';position:absolute;inset:0;background:#C5A059;transform:scaleX(0);transform-origin:left;transition:transform .4s ease;z-index:-1}
         .btn-gold:hover::before{transform:scaleX(1)}
         .btn-gold:hover{color:#000}
+        .btn-outline-gold{border:1px solid rgba(197,160,89,.4);color:#C5A059;transition:all .4s ease}
+        .btn-outline-gold:hover{background:#C5A059;color:#000;border-color:#C5A059}
         .gold-dashed{border-bottom:1px dashed rgba(142,121,94,.2)}
         .fade-up{opacity:0;transform:translateY(24px);transition:opacity .7s ease,transform .7s ease}
         .fade-up.visible{opacity:1;transform:none}
@@ -106,6 +112,7 @@ export default async function EscuderiaLandingPremium() {
             <li><a className="font-[var(--font-montserrat)] text-[12px] tracking-[0.2em] font-semibold text-[#d0c5b9] hover:text-[#C5A059] nav-link" href="#services">SERVICIOS</a></li>
             <li><a className="font-[var(--font-montserrat)] text-[12px] tracking-[0.2em] font-semibold text-[#d0c5b9] hover:text-[#C5A059] nav-link" href="#barberos">BARBEROS</a></li>
             <li><a className="font-[var(--font-montserrat)] text-[12px] tracking-[0.2em] font-semibold text-[#d0c5b9] hover:text-[#C5A059] nav-link" href="#location">UBICACIÓN</a></li>
+            <li><Link className="font-[var(--font-montserrat)] text-[12px] tracking-[0.2em] font-semibold text-[#d0c5b9] hover:text-[#C5A059] nav-link" href={accountHref}>MI CUENTA</Link></li>
           </ul>
           <div className="flex items-center gap-3">
             <a href={`tel:${bizPhone.replace(/\s/g,'')}`} className="hidden md:flex items-center gap-1.5 text-sm text-[#d0c5b9] hover:text-[#C5A059]">
@@ -113,6 +120,9 @@ export default async function EscuderiaLandingPremium() {
             </a>
             <Link href="/book/escuderia" className="hidden md:inline-flex border border-[#C5A059] text-[#C5A059] px-6 py-2.5 font-[var(--font-montserrat)] text-[14px] tracking-[0.15em] font-medium hover:bg-[#C5A059] hover:text-black transition-colors">
               RESERVAR
+            </Link>
+            <Link href={accountHref} className="md:hidden font-[var(--font-montserrat)] text-[11px] tracking-[0.15em] font-medium text-[#d0c5b9] hover:text-[#C5A059]">
+              MI CUENTA
             </Link>
             <Link href="/book/escuderia" className="md:hidden border border-[#C5A059] text-[#C5A059] px-4 py-2 font-[var(--font-montserrat)] text-[11px] tracking-[0.15em] font-medium">RESERVAR</Link>
           </div>
@@ -135,9 +145,14 @@ export default async function EscuderiaLandingPremium() {
               <p className="font-[var(--font-montserrat)] text-[16px] leading-6 text-[#d0c5b9] mt-4 w-4/5">
                 Barbería contemporánea para hombres que entienden que los detalles hacen la diferencia.
               </p>
-              <Link href="/book/escuderia" className="btn-gold mt-8 border border-[#C5A059] text-[#C5A059] w-full py-4 font-[var(--font-montserrat)] text-[14px] tracking-[0.15em] font-medium inline-flex items-center justify-center gap-2 bg-transparent">
-                RESERVAR CITA <span>→</span>
-              </Link>
+              <div className="mt-8 flex flex-col gap-3">
+                <Link href="/book/escuderia" className="btn-gold border border-[#C5A059] text-[#C5A059] w-full py-4 font-[var(--font-montserrat)] text-[14px] tracking-[0.15em] font-medium inline-flex items-center justify-center gap-2 bg-transparent">
+                  RESERVAR CITA <span>→</span>
+                </Link>
+                <Link href={accountHref} className="btn-outline-gold w-full py-4 font-[var(--font-montserrat)] text-[14px] tracking-[0.15em] font-medium inline-flex items-center justify-center gap-2">
+                  MIS CITAS <span>→</span>
+                </Link>
+              </div>
             </div>
             <div className="hidden md:flex flex-col items-center text-center mx-auto">
               <h1 className="font-[var(--font-playfair)] text-[72px] font-bold leading-[80px] tracking-[-0.02em] text-white max-w-3xl">
@@ -146,9 +161,14 @@ export default async function EscuderiaLandingPremium() {
               <p className="font-[var(--font-montserrat)] text-[18px] leading-7 text-[#d0c5b9] mt-6 max-w-xl">
                 Barbería contemporánea para hombres que entienden que los detalles hacen la diferencia.
               </p>
-              <Link href="/book/escuderia" className="btn-gold mt-10 border border-[#C5A059] text-[#C5A059] px-10 py-4 font-[var(--font-montserrat)] text-[14px] tracking-[0.15em] font-medium inline-flex items-center gap-3 bg-transparent">
-                RESERVAR CITA <span>→</span>
-              </Link>
+              <div className="mt-10 flex flex-col items-center gap-3">
+                <Link href="/book/escuderia" className="btn-gold border border-[#C5A059] text-[#C5A059] px-10 py-4 font-[var(--font-montserrat)] text-[14px] tracking-[0.15em] font-medium inline-flex items-center gap-3 bg-transparent">
+                  RESERVAR CITA <span>→</span>
+                </Link>
+                <Link href={accountHref} className="btn-outline-gold px-10 py-4 font-[var(--font-montserrat)] text-[14px] tracking-[0.15em] font-medium inline-flex items-center gap-3">
+                  MIS CITAS <span>→</span>
+                </Link>
+              </div>
               <div className="mt-6 flex items-center gap-3 text-[11px] tracking-[0.2em] font-[var(--font-montserrat)] font-semibold text-[#d0c5b9]">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#C5A059] animate-pulse" /> {heroStats}
               </div>
@@ -235,6 +255,57 @@ export default async function EscuderiaLandingPremium() {
           </div>
         </section>
 
+        {/* Área Cliente */}
+        <section id="area-cliente" className="py-[80px] md:py-[120px] px-5 md:px-16 max-w-[1280px] mx-auto border-y border-[#8E795E]/10 bg-[#0e0e0e]">
+          <div className="text-center mb-12">
+            <span className="font-[var(--font-montserrat)] text-[12px] tracking-[0.2em] font-semibold text-[#C5A059] block mb-4">ÁREA CLIENTE</span>
+            <h2 className="font-[var(--font-playfair)] text-[32px] md:text-[48px] font-semibold text-white leading-tight">Tu barbería, a un click.</h2>
+            <p className="font-[var(--font-montserrat)] text-[16px] leading-6 text-[#d0c5b9] mt-4 max-w-2xl mx-auto">
+              Reservá como siempre — invitado o con cuenta — y gestioná todo desde tu área privada.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="border border-[rgba(142,121,94,.2)] bg-[#121212] p-8 md:p-10 flex flex-col gap-4 hover:bg-[#1a1a1a] transition-colors">
+              <div className="w-12 h-12 flex items-center justify-center border border-[#C5A059]/30 bg-[#1a1a1a] text-[#C5A059]">
+                <History className="w-6 h-6" />
+              </div>
+              <h3 className="font-[var(--font-montserrat)] text-[14px] tracking-[0.15em] font-semibold text-white">HISTORIAL COMPLETO</h3>
+              <p className="font-[var(--font-montserrat)] text-[14px] leading-6 text-[#d0c5b9]">
+                Todas tus citas y compras en un solo lugar. Consultá fechas, barbero, servicio y estado.
+              </p>
+            </div>
+            <div className="border border-[rgba(142,121,94,.2)] bg-[#121212] p-8 md:p-10 flex flex-col gap-4 hover:bg-[#1a1a1a] transition-colors">
+              <div className="w-12 h-12 flex items-center justify-center border border-[#C5A059]/30 bg-[#1a1a1a] text-[#C5A059]">
+                <Clock className="w-6 h-6" />
+              </div>
+              <h3 className="font-[var(--font-montserrat)] text-[14px] tracking-[0.15em] font-semibold text-white">REPROGRAMÁ EN 1 CLICK</h3>
+              <p className="font-[var(--font-montserrat)] text-[14px] leading-6 text-[#d0c5b9]">
+                Cancelá o reprogramá con 30 min de antelación. Sin llamadas, sin fricción.
+              </p>
+            </div>
+            <div className="border border-[rgba(142,121,94,.2)] bg-[#121212] p-8 md:p-10 flex flex-col gap-4 hover:bg-[#1a1a1a] transition-colors">
+              <div className="w-12 h-12 flex items-center justify-center border border-[#C5A059]/30 bg-[#1a1a1a] text-[#C5A059]">
+                <Calendar className="w-6 h-6" />
+              </div>
+              <h3 className="font-[var(--font-montserrat)] text-[14px] tracking-[0.15em] font-semibold text-white">SIN FRICCIÓN</h3>
+              <p className="font-[var(--font-montserrat)] text-[14px] leading-6 text-[#d0c5b9]">
+                ¿Ya reservaste como invitado? Al registrarte con el mismo email o teléfono reclamás tu historial automáticamente.
+              </p>
+            </div>
+          </div>
+          <div className="mt-12 flex flex-col md:flex-row items-center justify-center gap-4">
+            <Link href="/client/login" className="btn-gold border border-[#C5A059] text-[#C5A059] px-8 py-3.5 font-[var(--font-montserrat)] text-[14px] tracking-[0.15em] font-medium inline-flex items-center justify-center w-full md:w-auto bg-transparent">
+              INGRESAR A MI CUENTA
+            </Link>
+            <Link href="/client/register" className="btn-outline-gold px-8 py-3.5 font-[var(--font-montserrat)] text-[14px] tracking-[0.15em] font-medium inline-flex items-center justify-center w-full md:w-auto">
+              CREAR CUENTA
+            </Link>
+          </div>
+          <p className="font-[var(--font-montserrat)] text-[12px] tracking-[0.05em] text-[#8E795E] text-center mt-6">
+            El flujo público en <Link href="/book/escuderia" className="text-[#C5A059] hover:underline">/book/escuderia</Link> sigue funcionando para invitados si el dueño lo permite.
+          </p>
+        </section>
+
         {/* Signature */}
         <section className="py-[80px] md:py-[120px] relative overflow-hidden">
           <div className="absolute inset-0">
@@ -277,6 +348,7 @@ export default async function EscuderiaLandingPremium() {
           <div className="flex gap-8 font-[var(--font-montserrat)] text-[12px] tracking-[0.2em] font-semibold text-[#d0c5b9]">
             <Link href="/book/escuderia" className="hover:text-[#C5A059]">RESERVAR</Link>
             <Link href="/login" className="hover:text-[#C5A059]">STAFF</Link>
+            <Link href="/client/login" className="hover:text-[#C5A059]">CLIENTES</Link>
             <a href={`https://wa.me/${bizPhone.replace(/\D/g,'')}`} target="_blank" className="hover:text-[#C5A059]">WHATSAPP</a>
           </div>
           <div className="font-[var(--font-montserrat)] text-[11px] tracking-[0.15em] text-[#8E795E]">© 2026 {bizName.toUpperCase()} • {bizAddress.toUpperCase()} • {currency}</div>

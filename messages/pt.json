@@ -496,7 +496,8 @@
       "notifications": "Notificações",
       "billing": "Faturamento",
       "account": "Conta",
-      "modules": "Módulos"
+      "modules": "Módulos",
+      "advanced": "Configuração"
     },
     "billing": {
       "heading": "Plano atual",
@@ -778,6 +779,27 @@
           "description": "Telegram, WhatsApp, Viber, lembretes por e-mail"
         }
       }
+    },
+    "advanced": {
+      "heading": "Configuração avançada",
+      "description": "Apenas o dono pode alterar estas configurações.",
+      "bookingHeading": "Agendamentos — Antecedência",
+      "posHeading": "PDV — Caixa",
+      "bookingLeadTimeEnabledLabel": "Ativar antecedência mínima",
+      "bookingLeadTimeEnabledHint": "Quando ativado, agendamentos precisam de antecedência mínima.",
+      "minAdvanceMinutesLabel": "Antecedência mínima (minutos)",
+      "minAdvanceMinutesHint": "Entre 0 e 1440 minutos. Padrão 30.",
+      "minAdvanceDisabledHint": "Ative a antecedência mínima para editar este valor.",
+      "minAdvanceError": "Deve ser um valor entre 0 e 1440",
+      "requireCashRegisterLabel": "Exigir caixa aberto para pagamento em dinheiro",
+      "requireCashRegisterHint": "Quando ativado, pagamentos em dinheiro exigem caixa aberto.",
+      "requireCashRegisterDescription": "Exigir caixa aberto para cobrar em dinheiro",
+      "saveButton": "Salvar configuração",
+      "saving": "Salvando…",
+      "saved": "Salvo ✓",
+      "savedHint": "Configuração salva com sucesso",
+      "ownerOnly": "Apenas o dono pode configurar estas opções",
+      "ownerOnlyHint": "Entre com a conta do dono para alterar esta configuração."
     }
   },
   "sidebar": {

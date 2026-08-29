@@ -495,7 +495,8 @@
       "notifications": "Notifiche",
       "billing": "Fatturazione",
       "account": "Account",
-      "modules": "Moduli"
+      "modules": "Moduli",
+      "advanced": "Configurazione"
     },
     "billing": {
       "heading": "Piano attuale",
@@ -777,6 +778,27 @@
           "description": "Promemoria tramite Telegram, WhatsApp, Viber ed Email"
         }
       }
+    },
+    "advanced": {
+      "heading": "Configurazione avanzata",
+      "description": "Solo il proprietario può modificare queste impostazioni.",
+      "bookingHeading": "Prenotazioni — Anticipo",
+      "posHeading": "POS — Cassa",
+      "bookingLeadTimeEnabledLabel": "Abilita anticipo minimo",
+      "bookingLeadTimeEnabledHint": "Quando attivo, le prenotazioni richiedono un preavviso minimo.",
+      "minAdvanceMinutesLabel": "Anticipo minimo (minuti)",
+      "minAdvanceMinutesHint": "Tra 0 e 1440 minuti. Predefinito 30.",
+      "minAdvanceDisabledHint": "Abilita l'anticipo minimo per modificare questo valore.",
+      "minAdvanceError": "Deve essere un valore tra 0 e 1440",
+      "requireCashRegisterLabel": "Richiedi cassa aperta per pagamenti in contanti",
+      "requireCashRegisterHint": "Quando attivo, i pagamenti in contanti richiedono una cassa aperta.",
+      "requireCashRegisterDescription": "Richiedi cassa aperta per incassare in contanti",
+      "saveButton": "Salva configurazione",
+      "saving": "Salvataggio in corso…",
+      "saved": "Salvato ✓",
+      "savedHint": "Configurazione salvata correttamente",
+      "ownerOnly": "Solo il proprietario può configurare queste impostazioni",
+      "ownerOnlyHint": "Accedi con l'account del proprietario per modificare questa configurazione."
     }
   },
   "sidebar": {

@@ -8,31 +8,20 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import DOMPurify from 'isomorphic-dompurify'
 import { createServiceClient } from '@/lib/supabase/service'
+import { createClient as createAuthClient } from '@/lib/supabase/server'
 import { rateLimit, getIp } from '@/lib/rate-limit'
-import { computeEffectiveHours, checkSlotWithinHours, dayOfWeekFromDateString } from '@/lib/booking-availability'
+import {
+  computeEffectiveHours,
+  checkSlotWithinHours,
+  dayOfWeekFromDateString,
+  parseDateTimeInTz,
+  isPastInTz,
+  isTooSoonInTz,
+  DEFAULT_LEAD_MINUTES,
+} from '@/lib/booking-availability'
 
 function sanitize(s: string): string {
   return DOMPurify.sanitize(s, { ALLOWED_TAGS: [] }).trim()
-}
-
-/** Convert a wall-clock date+time (e.g. "2024-03-15", "14:30") in a named IANA timezone to a UTC Date. */
-function parseDateTimeInTz(date: string, time: string, timezone: string): Date {
-  const [year, month, day] = date.split('-').map(Number)
-  const [hour, minute] = time.split(':').map(Number)
-  // Use noon UTC on the same date as a stable reference to determine the TZ offset,
-  // avoiding DST edge cases that only happen near midnight.
-  const noonUtc = new Date(Date.UTC(year, month - 1, day, 12, 0))
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: timezone,
-    year: 'numeric', month: 'numeric', day: 'numeric',
-    hour: 'numeric', minute: 'numeric', second: 'numeric',
-    hour12: false,
-  }).formatToParts(noonUtc)
-  const get = (type: string) => parseInt(parts.find((p) => p.type === type)?.value ?? '0')
-  const localNoonMs = Date.UTC(get('year'), get('month') - 1, get('day'), get('hour') % 24, get('minute'), get('second'))
-  const offsetMs = localNoonMs - noonUtc.getTime()
-  // wall_clock = UTC + offset  →  UTC = wall_clock - offset
-  return new Date(Date.UTC(year, month - 1, day, hour, minute) - offsetMs)
 }
 
 const BookingSchema = z.object({
@@ -81,7 +70,7 @@ export async function POST(req: NextRequest) {
 
   const supabase = createServiceClient()
 
-  // Verify the business exists and the service belongs to it; also fetch timezone
+  // Verify the business exists and the service belongs to it; also fetch timezone + lead time config (054) + guest config (057)
   const [{ data: service }, { data: biz }] = await Promise.all([
     supabase
       .from('services')
@@ -92,7 +81,7 @@ export async function POST(req: NextRequest) {
       .maybeSingle(),
     supabase
       .from('businesses')
-      .select('timezone')
+      .select('timezone, min_advance_minutes, booking_lead_time_enabled, allow_guest_bookings')
       .eq('id', businessId)
       .maybeSingle(),
   ])
@@ -102,6 +91,22 @@ export async function POST(req: NextRequest) {
   }
 
   const timezone = biz?.timezone ?? 'UTC'
+  const minAdvance = (biz as { min_advance_minutes?: number | null } | null)?.min_advance_minutes ?? DEFAULT_LEAD_MINUTES
+  const leadEnabled = (biz as { booking_lead_time_enabled?: boolean | null } | null)?.booking_lead_time_enabled ?? true
+  const allowGuest = (biz as { allow_guest_bookings?: boolean | null } | null)?.allow_guest_bookings ?? true
+
+  // Guest guard (057): if business disallows guests, require authenticated user
+  let authUser: { id: string; email?: string | null } | null = null
+  try {
+    const authClient = await createAuthClient()
+    const { data: { user } } = await authClient.auth.getUser()
+    if (user) authUser = { id: user.id, email: user.email }
+  } catch {
+    // ignore — treat as guest if getUser fails
+  }
+  if (!allowGuest && !authUser) {
+    return NextResponse.json({ error: 'guest_not_allowed', message: 'Debes registrarte para reservar en este negocio' }, { status: 401 })
+  }
 
   // Server-side availability check — the client (booking-form.tsx) already
   // restricts the slot picker to open hours / outside break, but that's UI
@@ -131,60 +136,169 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // Upsert client
+  // Upsert client — with guest/registered claim logic (056+057)
   let clientId: string | null = null
   let hasTelegram = false
   let hasViber = false
   if (phone || email) {
-    // BUG-8: search by all provided fields combined — avoids duplicate clients when
-    // both phone and email are submitted but each matches a different existing record.
-    const orParts: string[] = []
-    if (phone) orParts.push(`phone.eq.${phone}`)
-    if (email) orParts.push(`email.eq.${email}`)
+    if (authUser) {
+      // 1) Try to find existing client linked to this auth user
+      const { data: linked } = await supabase
+        .from('clients')
+        .select('id, name, email, telegram_id, viber_user_id, user_id')
+        .eq('business_id', businessId)
+        .eq('user_id', authUser.id)
+        .limit(1)
+        .maybeSingle()
 
-    const { data: matches } = await supabase
-      .from('clients')
-      .select('id, name, email, telegram_id, viber_user_id')
-      .eq('business_id', businessId)
-      .or(orParts.join(','))
-      .limit(1)
+      if (linked) {
+        clientId = linked.id
+        hasTelegram = !!linked.telegram_id
+        hasViber = !!linked.viber_user_id
+        const updates: Record<string, unknown> = {}
+        if (name && name !== linked.name) updates.name = name
+        if (phone) updates.phone = phone
+        if (email && email !== linked.email) updates.email = email
+        if (Object.keys(updates).length > 0) {
+          await supabase.from('clients').update(updates).eq('id', linked.id)
+        }
+      } else {
+        // 2) No linked client — try to claim by phone/email if guest record exists
+        const orParts: string[] = []
+        if (phone) orParts.push(`phone.eq.${phone}`)
+        if (email) orParts.push(`email.eq.${email}`)
 
-    const existing = matches?.[0] ?? null
+        let claimCandidate: { id: string; name: string; email: string | null; telegram_id: string | null; viber_user_id: string | null; user_id: string | null } | null = null
+        if (orParts.length > 0) {
+          const { data: matches } = await supabase
+            .from('clients')
+            .select('id, name, email, telegram_id, viber_user_id, user_id')
+            .eq('business_id', businessId)
+            .or(orParts.join(','))
+            .limit(1)
+          claimCandidate = (matches?.[0] as typeof claimCandidate) ?? null
+        }
 
-    if (existing) {
-      clientId = existing.id
-      hasTelegram = !!existing.telegram_id
-      hasViber = !!existing.viber_user_id
-      // BUG-10: update both name and email if different from stored value
-      const updates: { name?: string; email?: string } = {}
-      if (name && name !== existing.name) updates.name = name
-      if (email && email !== existing.email) updates.email = email
-      if (Object.keys(updates).length > 0) {
-        await supabase.from('clients').update(updates).eq('id', existing.id)
+        if (claimCandidate && claimCandidate.user_id === null) {
+          // Claim guest history
+          await supabase.from('clients').update({ user_id: authUser.id, name: name || claimCandidate.name }).eq('id', claimCandidate.id)
+          clientId = claimCandidate.id
+          hasTelegram = !!claimCandidate.telegram_id
+          hasViber = !!claimCandidate.viber_user_id
+        } else if (claimCandidate && claimCandidate.user_id !== null) {
+          // Email/phone belongs to another registered user — create new linked record with unique email handling
+          // Try to create with user_id; if unique email conflict, fallback to using the candidate (already registered)
+          const { data: newClient, error: insertErr } = await supabase
+            .from('clients')
+            .insert({
+              business_id: businessId,
+              name,
+              phone: phone || null,
+              email: email || null,
+              user_id: authUser.id,
+            })
+            .select('id')
+            .single()
+          if (!insertErr && newClient) {
+            clientId = newClient.id
+          } else {
+            // If insert failed due to unique constraint, use existing linked or fallback
+            console.error('[api/book] client claim insert error:', insertErr?.message)
+            // Fallback: try to fetch again by user_id
+            const { data: fallback } = await supabase
+              .from('clients')
+              .select('id, telegram_id, viber_user_id')
+              .eq('business_id', businessId)
+              .eq('user_id', authUser.id)
+              .limit(1)
+              .maybeSingle()
+            if (fallback) {
+              clientId = fallback.id
+              hasTelegram = !!fallback.telegram_id
+              hasViber = !!fallback.viber_user_id
+            } else {
+              return NextResponse.json({ error: 'client_creation_failed' }, { status: 500 })
+            }
+          }
+        } else {
+          // 3) No match — create new registered client
+          const { data: newClient, error: insertErr } = await supabase
+            .from('clients')
+            .insert({
+              business_id: businessId,
+              name,
+              phone: phone || null,
+              email: email || null,
+              user_id: authUser.id,
+            })
+            .select('id')
+            .single()
+          if (insertErr || !newClient) {
+            console.error('[api/book] client insert error:', insertErr?.message)
+            return NextResponse.json({ error: 'client_creation_failed' }, { status: 500 })
+          }
+          clientId = newClient.id
+        }
       }
     } else {
-      // BUG-9: fail fast if client creation fails — never book without a valid clientId
-      const { data: newClient, error: insertErr } = await supabase
+      // Guest flow (allow_guest true guaranteed here)
+      const orParts: string[] = []
+      if (phone) orParts.push(`phone.eq.${phone}`)
+      if (email) orParts.push(`email.eq.${email}`)
+
+      const { data: matches } = await supabase
         .from('clients')
-        .insert({
-          business_id: businessId,
-          name,
-          phone: phone || null,
-          email: email || null,
-        })
-        .select('id')
-        .single()
-      if (insertErr || !newClient) {
-        console.error('[api/book] client insert error:', insertErr?.message)
-        return NextResponse.json({ error: 'client_creation_failed' }, { status: 500 })
+        .select('id, name, email, telegram_id, viber_user_id')
+        .eq('business_id', businessId)
+        .or(orParts.join(','))
+        .limit(1)
+
+      const existing = matches?.[0] ?? null
+
+      if (existing) {
+        clientId = existing.id
+        hasTelegram = !!existing.telegram_id
+        hasViber = !!existing.viber_user_id
+        const updates: { name?: string; email?: string } = {}
+        if (name && name !== existing.name) updates.name = name
+        if (email && email !== existing.email) updates.email = email
+        if (Object.keys(updates).length > 0) {
+          await supabase.from('clients').update(updates).eq('id', existing.id)
+        }
+      } else {
+        const { data: newClient, error: insertErr } = await supabase
+          .from('clients')
+          .insert({
+            business_id: businessId,
+            name,
+            phone: phone || null,
+            email: email || null,
+          })
+          .select('id')
+          .single()
+        if (insertErr || !newClient) {
+          console.error('[api/book] client insert error:', insertErr?.message)
+          return NextResponse.json({ error: 'client_creation_failed' }, { status: 500 })
+        }
+        clientId = newClient.id
       }
-      clientId = newClient.id
     }
   }
 
   // Create appointment — parse wall-clock time in the business timezone
   const startsAt = parseDateTimeInTz(date, time, timezone)
   const endsAt   = new Date(startsAt.getTime() + service.duration_min * 60_000)
+
+  // Past / lead-time validation — synchronized with booking-form.tsx and booking-calendar.tsx
+  // All comparisons in UTC (startsAt is UTC, now is UTC) so business.timezone is already accounted for
+  // Lead time is configurable per business (054); when booking_lead_time_enabled false, only past is blocked
+  const now = new Date()
+  if (isPastInTz(startsAt, now)) {
+    return NextResponse.json({ error: 'in_past', message: 'No se puede reservar en el pasado. Elegí una fecha y hora futuras.' }, { status: 400 })
+  }
+  if (isTooSoonInTz(startsAt, now, minAdvance, leadEnabled)) {
+    return NextResponse.json({ error: 'too_soon', message: `Reservá con al menos ${minAdvance} minutos de anticipación.` }, { status: 400 })
+  }
 
   const { data: appt, error: apptErr } = await supabase
     .from('appointments')
@@ -250,6 +364,14 @@ export async function POST(req: NextRequest) {
       }
       return NextResponse.json(
         { error: 'outside_availability', reason, message: messages[reason] },
+        { status: 400 }
+      )
+    }
+    if (apptErr?.message?.includes('in_past') || apptErr?.message?.includes('too_soon')) {
+      const isPast = apptErr.message.includes('in_past')
+      // Use configured lead time for message when available; fallback to 30 for safety (e.g. direct DB trigger legacy)
+      return NextResponse.json(
+        { error: isPast ? 'in_past' : 'too_soon', message: isPast ? 'No se puede reservar en el pasado.' : `Reservá con al menos ${minAdvance} minutos de anticipación.` },
         { status: 400 }
       )
     }

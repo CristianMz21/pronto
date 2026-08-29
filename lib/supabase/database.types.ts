@@ -155,6 +155,8 @@ export type Database = {
       businesses: {
         Row: {
           address: string | null
+          allow_guest_bookings: boolean
+          booking_lead_time_enabled: boolean
           brand_color: string | null
           created_at: string
           currency: string
@@ -168,6 +170,7 @@ export type Database = {
           ls_variant_id: string | null
           meta_whatsapp_access_token: string | null
           meta_whatsapp_phone_number_id: string | null
+          min_advance_minutes: number
           name: string
           notification_language: string | null
           onboarding_completed: boolean
@@ -176,6 +179,7 @@ export type Database = {
           phone: string | null
           plan: string
           plan_expires_at: string | null
+          require_cash_register_for_cash: boolean
           resend_api_key: string | null
           slug: string
           smtp_from: string | null
@@ -199,6 +203,8 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          allow_guest_bookings?: boolean
+          booking_lead_time_enabled?: boolean
           brand_color?: string | null
           created_at?: string
           currency?: string
@@ -212,6 +218,7 @@ export type Database = {
           ls_variant_id?: string | null
           meta_whatsapp_access_token?: string | null
           meta_whatsapp_phone_number_id?: string | null
+          min_advance_minutes?: number
           name: string
           notification_language?: string | null
           onboarding_completed?: boolean
@@ -220,6 +227,7 @@ export type Database = {
           phone?: string | null
           plan?: string
           plan_expires_at?: string | null
+          require_cash_register_for_cash?: boolean
           resend_api_key?: string | null
           slug: string
           smtp_from?: string | null
@@ -243,6 +251,8 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          allow_guest_bookings?: boolean
+          booking_lead_time_enabled?: boolean
           brand_color?: string | null
           created_at?: string
           currency?: string
@@ -256,6 +266,7 @@ export type Database = {
           ls_variant_id?: string | null
           meta_whatsapp_access_token?: string | null
           meta_whatsapp_phone_number_id?: string | null
+          min_advance_minutes?: number
           name?: string
           notification_language?: string | null
           onboarding_completed?: boolean
@@ -264,6 +275,7 @@ export type Database = {
           phone?: string | null
           plan?: string
           plan_expires_at?: string | null
+          require_cash_register_for_cash?: boolean
           resend_api_key?: string | null
           slug?: string
           smtp_from?: string | null
@@ -403,6 +415,7 @@ export type Database = {
           telegram_id: string | null
           total_spent: number
           total_visits: number
+          user_id: string | null
           viber_user_id: string | null
           whatsapp_number: string | null
         }
@@ -420,6 +433,7 @@ export type Database = {
           telegram_id?: string | null
           total_spent?: number
           total_visits?: number
+          user_id?: string | null
           viber_user_id?: string | null
           whatsapp_number?: string | null
         }
@@ -437,6 +451,7 @@ export type Database = {
           telegram_id?: string | null
           total_spent?: number
           total_visits?: number
+          user_id?: string | null
           viber_user_id?: string | null
           whatsapp_number?: string | null
         }
