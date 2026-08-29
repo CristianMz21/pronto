@@ -54,16 +54,18 @@ interface POSTerminalProps {
   initialHasOpenRegister?: boolean
   /** When false, cash sales do NOT require an open register (055 configurable) */
   requireCashRegister?: boolean
+  isBarbero?: boolean
+  currentEmployeeId?: string | null
 }
 
-export function POSTerminal({ businessId, currency, services: initialServices, employees: initialEmployees, clients: initialClients, bookingContext, initialHasOpenRegister = false, requireCashRegister = true }: POSTerminalProps) {
+export function POSTerminal({ businessId, currency, services: initialServices, employees: initialEmployees, clients: initialClients, bookingContext, initialHasOpenRegister = false, requireCashRegister = true, isBarbero = false, currentEmployeeId = null }: POSTerminalProps) {
   const supabase = createClient()
   const router = useRouter()
   const t = useTranslations('pos')
 
   // ─── POS state ────────────────────────────────────────────────────────────
   const [cart, setCart] = useState<CartItem[]>([])
-  const [selectedEmployee, setSelectedEmployee] = useState('')
+  const [selectedEmployee, setSelectedEmployee] = useState(isBarbero && currentEmployeeId ? currentEmployeeId : '')
   const [selectedClient, setSelectedClient] = useState('')
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash')
   const [discount, setDiscount] = useState(0)
@@ -155,7 +157,11 @@ export function POSTerminal({ businessId, currency, services: initialServices, e
     const svc = initialServices.find((s) => s.id === bookingContext.serviceId)
     if (svc) setCart([{ service: svc, qty: 1 }])
     if (bookingContext.clientId) setSelectedClient(bookingContext.clientId)
-    if (bookingContext.staffId) setSelectedEmployee(bookingContext.staffId)
+    if (isBarbero && currentEmployeeId) {
+      setSelectedEmployee(currentEmployeeId)
+    } else if (bookingContext.staffId) {
+      setSelectedEmployee(bookingContext.staffId)
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // only once on mount
 
@@ -269,13 +275,24 @@ export function POSTerminal({ businessId, currency, services: initialServices, e
       qty: i.qty,
     }))
 
+    const effectiveEmployeeId = isBarbero && currentEmployeeId ? currentEmployeeId : (selectedEmployee || null)
+    // Guard: barbero cannot submit a transaction with a service not assigned (defense-in-depth, RLS also enforces via app filter)
+    if (isBarbero && currentEmployeeId) {
+      const allowedServiceIds = new Set(initialServices.map((s) => s.id))
+      const hasDisallowed = items.some((it) => !allowedServiceIds.has(it.service_id))
+      if (hasDisallowed) {
+        setCheckoutError('No puedes vender un servicio no asignado a tu perfil. Contacta al administrador.')
+        setLoading(false)
+        return
+      }
+    }
     try {
       if (!isOnline) {
         // ── Offline: save to IndexedDB queue ──────────────────────────────
         const queued = await queueTransaction({
           business_id: businessId,
           client_id: selectedClient || null,
-          employee_id: selectedEmployee || null,
+          employee_id: effectiveEmployeeId,
           amount: total,
           payment_method: paymentMethod,
           items,
@@ -291,7 +308,7 @@ export function POSTerminal({ businessId, currency, services: initialServices, e
           body: JSON.stringify({
             business_id: businessId,
             client_id: selectedClient || null,
-            employee_id: selectedEmployee || null,
+            employee_id: effectiveEmployeeId,
             amount: total,
             payment_method: paymentMethod,
             items,
@@ -577,7 +594,7 @@ export function POSTerminal({ businessId, currency, services: initialServices, e
               </select>
             </div>
 
-            {activeEmployees.length > 0 && (
+            {!isBarbero && activeEmployees.length > 0 && (
               <div>
                 <label className="text-xs font-medium text-gray-500 uppercase">{t('employeeLabel')}</label>
                 <select
@@ -590,6 +607,12 @@ export function POSTerminal({ businessId, currency, services: initialServices, e
                     <option key={e.id} value={e.id}>{e.name}</option>
                   ))}
                 </select>
+              </div>
+            )}
+            {isBarbero && currentEmployeeId && activeEmployees.length > 0 && (
+              <div>
+                <label className="text-xs font-medium text-gray-500 uppercase">{t('employeeLabel')}</label>
+                <div className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-700">{activeEmployees[0]?.name ?? 'Mi perfil'}</div>
               </div>
             )}
 

@@ -33,6 +33,47 @@ export async function POST(req: NextRequest) {
 
   if (body.amount <= 0) return NextResponse.json({ error: 'Amount must be >0' }, { status: 400 })
 
+  // Barbero guard: enforce employee_id=self and service assignment via employee_services
+  // Resolve role to detect barbero; allow owner/staff unrestricted
+  let barberEmployeeId: string | null = null
+  try {
+    const { getUserRole } = await import('@/lib/auth/roles')
+    const role = await getUserRole(supabase as unknown as { from: (t: string) => unknown }, user.id, body.business_id)
+    if (role === 'barbero') {
+      const { data: emp } = await supabase
+        .from('employees')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('business_id', body.business_id)
+        .eq('is_active', true)
+        .limit(1)
+        .maybeSingle()
+      barberEmployeeId = (emp as { id: string } | null)?.id ?? null
+      if (!barberEmployeeId) {
+        return NextResponse.json({ error: 'barbero_no_employee' }, { status: 403 })
+      }
+      // Force employee_id to self regardless of payload
+      if (body.employee_id && body.employee_id !== barberEmployeeId) {
+        return NextResponse.json({ error: 'barbero_employee_mismatch', message: 'Barbero can only create transactions for self' }, { status: 403 })
+      }
+      body.employee_id = barberEmployeeId
+      // Validate each service_id is assigned via employee_services
+      const serviceIds = body.items.map((it) => it.service_id)
+      const { data: allowed } = await supabase
+        .from('employee_services')
+        .select('service_id')
+        .eq('employee_id', barberEmployeeId)
+        .in('service_id', serviceIds)
+      const allowedSet = new Set((allowed as { service_id: string }[] | null)?.map((r) => r.service_id) ?? [])
+      const disallowed = serviceIds.filter((id) => !allowedSet.has(id))
+      if (disallowed.length > 0) {
+        return NextResponse.json({ error: 'barbero_service_not_assigned', message: 'Service not assigned to barbero', disallowed }, { status: 403 })
+      }
+    }
+  } catch {
+    // If role resolution fails, proceed without barbero enforcement (fail open for non-barbero)
+  }
+
   // Cash sales require an open cash register only when business config demands it (055)
   const requireCashRegister = (biz as { require_cash_register_for_cash?: boolean | null })?.require_cash_register_for_cash ?? true
   if (body.payment_method === 'cash' && requireCashRegister) {

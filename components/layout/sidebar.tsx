@@ -9,19 +9,22 @@ import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { useState } from 'react'
 import { LangSwitcher } from './lang-switcher'
+import { canAccessRoute, type CanonicalRole } from '@/lib/auth/roles'
 
 interface SidebarProps {
   businessName: string
+  role?: CanonicalRole | null
+  employeeId?: string | null
 }
 
-export function Sidebar({ businessName }: SidebarProps) {
+export function Sidebar({ businessName, role }: SidebarProps) {
   const t = useTranslations('sidebar')
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
   const [open, setOpen] = useState(false)
 
-  const nav = [
+  const allNav = [
     { href: '/dashboard', label: t('dashboard'), icon: LayoutDashboard },
     { href: '/pos', label: t('pos'), icon: ShoppingCart },
     { href: '/caja', label: (t as any)('cash') ?? 'Caja', icon: Wallet },
@@ -29,6 +32,14 @@ export function Sidebar({ businessName }: SidebarProps) {
     { href: '/inventory', label: t('inventory'), icon: Package },
     { href: '/booking', label: t('booking'), icon: CalendarDays },
   ]
+
+  // Filter nav by role using single source ROLE_PERMISSIONS via canAccessRoute.
+  // Barbero only sees dashboard/booking/pos; others see full nav. Missing role → skeleton (hide privileged).
+  const nav = !role
+    ? [] // skeleton state — hide privileged until role resolved
+    : allNav.filter((item) => canAccessRoute(role, item.href))
+
+  const showSettings = !!role && canAccessRoute(role, '/settings')
 
   async function handleLogout() {
     await supabase.auth.signOut()
@@ -39,57 +50,68 @@ export function Sidebar({ businessName }: SidebarProps) {
   const navLinks = (
     <>
       <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
-        {nav.map(({ href, label, icon: Icon }) => (
-          <Link key={href} href={href} onClick={() => setOpen(false)} className={cn(
+        {!role ? (
+          // Skeleton while role unresolved — no privileged links, no FOUC
+          <div className="space-y-2 p-2">
+            <div className="h-9 bg-white/10 rounded-lg animate-pulse" />
+            <div className="h-9 bg-white/10 rounded-lg animate-pulse" />
+            <div className="h-9 bg-white/10 rounded-lg animate-pulse" />
+          </div>
+        ) : (
+          nav.map(({ href, label, icon: Icon }) => (
+            <Link key={href} href={href} onClick={() => setOpen(false)} className={cn(
+              'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+              pathname === href || pathname.startsWith(href + '/')
+                ? 'text-[#4ade80]'
+                : 'text-white/[0.55] hover:text-white/80'
+            )}
+            style={
+              pathname === href || pathname.startsWith(href + '/')
+                ? { backgroundColor: 'rgba(22,163,74,0.15)' }
+                : undefined
+            }
+            onMouseEnter={(e) => {
+              if (!(pathname === href || pathname.startsWith(href + '/')))
+                (e.currentTarget as HTMLElement).style.backgroundColor = 'rgba(255,255,255,0.08)'
+            }}
+            onMouseLeave={(e) => {
+              if (!(pathname === href || pathname.startsWith(href + '/')))
+                (e.currentTarget as HTMLElement).style.backgroundColor = ''
+            }}
+            >
+              <Icon className="w-4 h-4 shrink-0" />
+              {label}
+            </Link>
+          ))
+        )}
+      </nav>
+      <div className="p-3 border-t border-white/10 space-y-0.5">
+        <LangSwitcher />
+        {showSettings && (
+          <Link href="/settings" onClick={() => setOpen(false)} className={cn(
             'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-            pathname === href || pathname.startsWith(href + '/')
+            pathname.startsWith('/settings')
               ? 'text-[#4ade80]'
               : 'text-white/[0.55] hover:text-white/80'
           )}
           style={
-            pathname === href || pathname.startsWith(href + '/')
+            pathname.startsWith('/settings')
               ? { backgroundColor: 'rgba(22,163,74,0.15)' }
               : undefined
           }
           onMouseEnter={(e) => {
-            if (!(pathname === href || pathname.startsWith(href + '/')))
+            if (!pathname.startsWith('/settings'))
               (e.currentTarget as HTMLElement).style.backgroundColor = 'rgba(255,255,255,0.08)'
           }}
           onMouseLeave={(e) => {
-            if (!(pathname === href || pathname.startsWith(href + '/')))
+            if (!pathname.startsWith('/settings'))
               (e.currentTarget as HTMLElement).style.backgroundColor = ''
           }}
           >
-            <Icon className="w-4 h-4 shrink-0" />
-            {label}
+            <Settings className="w-4 h-4 shrink-0" />
+            {t('settings')}
           </Link>
-        ))}
-      </nav>
-      <div className="p-3 border-t border-white/10 space-y-0.5">
-        <LangSwitcher />
-        <Link href="/settings" onClick={() => setOpen(false)} className={cn(
-          'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-          pathname.startsWith('/settings')
-            ? 'text-[#4ade80]'
-            : 'text-white/[0.55] hover:text-white/80'
         )}
-        style={
-          pathname.startsWith('/settings')
-            ? { backgroundColor: 'rgba(22,163,74,0.15)' }
-            : undefined
-        }
-        onMouseEnter={(e) => {
-          if (!pathname.startsWith('/settings'))
-            (e.currentTarget as HTMLElement).style.backgroundColor = 'rgba(255,255,255,0.08)'
-        }}
-        onMouseLeave={(e) => {
-          if (!pathname.startsWith('/settings'))
-            (e.currentTarget as HTMLElement).style.backgroundColor = ''
-        }}
-        >
-          <Settings className="w-4 h-4 shrink-0" />
-          {t('settings')}
-        </Link>
         <button onClick={handleLogout}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-white/[0.55] hover:text-white/80 transition-colors"
           onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = 'rgba(255,255,255,0.08)' }}

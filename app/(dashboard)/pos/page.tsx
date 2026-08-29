@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { History } from 'lucide-react'
 import { formatInBusinessTimezone } from '@/lib/utils'
 import { getAuthUser } from '@/lib/auth-user'
+import { getUserRole } from '@/lib/auth/roles'
 
 interface SearchParams {
   bookingId?: string
@@ -19,27 +20,86 @@ export default async function POSPage(props: { searchParams: Promise<SearchParam
   const supabase = await createClient()
   const user = await getAuthUser()
 
-  const { data: business } = await supabase
+  // Resolve business: owner first, then employee (barbero) fallback
+  let business: { id: string; currency: string; timezone: string; require_cash_register_for_cash?: boolean | null; slug?: string } | null = null
+
+  const { data: owned } = await supabase
     .from('businesses')
-    .select('id, currency, timezone, require_cash_register_for_cash')
+    .select('id, currency, timezone, require_cash_register_for_cash, slug')
     .eq('owner_id', user!.id)
     .maybeSingle()
 
+  if (owned) {
+    business = owned as typeof business
+  } else {
+    const { data: empBiz } = await supabase
+      .from('employees')
+      .select('business_id, businesses!inner(id, currency, timezone, require_cash_register_for_cash, slug)')
+      .eq('user_id', user!.id)
+      .eq('is_active', true)
+      .limit(1)
+      .maybeSingle()
+    if (empBiz?.businesses) {
+      business = empBiz.businesses as unknown as typeof business
+    }
+  }
+
   if (!business) return null
 
-  const [{ data: services }, { data: employees }, { data: clients }, { data: openRegister }] = await Promise.all([
-    supabase
-      .from('services')
-      .select('id, name, price, duration_min, category')
-      .eq('business_id', business.id)
-      .eq('is_active', true)
-      .order('name'),
-    supabase
+  // Resolve role for barber scope
+  let role: string | null = null
+  try {
+    role = await getUserRole(supabase as unknown as { from: (t: string) => unknown }, user!.id, business.id)
+  } catch {
+    role = null
+  }
+  const isBarbero = role === 'barbero'
+
+  let barberEmployeeId: string | null = null
+  if (isBarbero) {
+    const { data: emp } = await supabase
       .from('employees')
-      .select('id, name')
+      .select('id')
+      .eq('user_id', user!.id)
       .eq('business_id', business.id)
       .eq('is_active', true)
-      .order('name'),
+      .limit(1)
+      .maybeSingle()
+    barberEmployeeId = (emp as { id: string } | null)?.id ?? null
+  }
+
+  // Fetch services/employees/clients with barber filtering
+  let servicesQuery = supabase
+    .from('services')
+    .select('id, name, price, duration_min, category')
+    .eq('business_id', business.id)
+    .eq('is_active', true)
+    .order('name')
+
+  let employeesQuery = supabase
+    .from('employees')
+    .select('id, name')
+    .eq('business_id', business.id)
+    .eq('is_active', true)
+    .order('name')
+
+  if (isBarbero && barberEmployeeId) {
+    employeesQuery = employeesQuery.eq('id', barberEmployeeId) as typeof employeesQuery
+    const { data: empServices } = await supabase
+      .from('employee_services')
+      .select('service_id')
+      .eq('employee_id', barberEmployeeId)
+    const allowedIds = (empServices as { service_id: string }[] | null)?.map((r) => r.service_id) ?? []
+    if (allowedIds.length > 0) {
+      servicesQuery = servicesQuery.in('id', allowedIds) as typeof servicesQuery
+    } else {
+      servicesQuery = servicesQuery.eq('id', '00000000-0000-0000-0000-000000000000') as typeof servicesQuery
+    }
+  }
+
+  const [{ data: services }, { data: employees }, { data: clients }, { data: openRegister }] = await Promise.all([
+    servicesQuery,
+    employeesQuery,
     supabase
       .from('clients')
       .select('id, name, phone')
@@ -79,7 +139,7 @@ export default async function POSPage(props: { searchParams: Promise<SearchParam
         bookingId: appt.id,
         clientId: searchParams.clientId ?? '',
         serviceId: searchParams.serviceId ?? '',
-        staffId: searchParams.staffId ?? (appt.employees as { id: string; name: string } | null)?.id ?? '',
+        staffId: isBarbero && barberEmployeeId ? barberEmployeeId : (searchParams.staffId ?? (appt.employees as { id: string; name: string } | null)?.id ?? ''),
         label: `${clientName} — ${serviceName} — ${formatInBusinessTimezone(appt.starts_at, tz, 'time')}`,
       }
     }
@@ -106,6 +166,8 @@ export default async function POSPage(props: { searchParams: Promise<SearchParam
         bookingContext={bookingContext}
         initialHasOpenRegister={!!openRegister}
         requireCashRegister={business.require_cash_register_for_cash ?? true}
+        isBarbero={isBarbero}
+        currentEmployeeId={barberEmployeeId}
       />
     </>
   )
