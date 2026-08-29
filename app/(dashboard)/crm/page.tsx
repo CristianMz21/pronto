@@ -169,10 +169,11 @@ export default async function CRMPage(
             ))}
           </div>
           {searchParams.segment && (
-            <Link href={`/crm?segment=${searchParams.segment}`} onClick={(e) => { e.preventDefault(); window.location.href = `/api/crm/segments?segment=${searchParams.segment}` }} className="text-xs text-blue-600 hover:underline ml-2">
+            <Link href={`/crm-campaigns?segment=${searchParams.segment}`} className="text-xs text-blue-600 hover:underline ml-2">
               Crear campaña →
             </Link>
           )}
+          <Link href="/crm-campaigns" className="text-xs text-gray-500 hover:text-gray-700 ml-2">Ver campañas</Link>
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
