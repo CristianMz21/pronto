@@ -17,8 +17,8 @@ reviews:
   profile: assertive
   # High-level summary at top of each review
   high_level_summary: true
-  # Generate PR description if missing
-  high_level_summary_placeholder: true
+  # Generate PR description if missing (string template required by schema)
+  high_level_summary_placeholder: "Please provide a high-level summary of this PR."
   # Allow request-changes workflow (set false to keep as comments only initially)
   # Strict audit: enable request_changesWorkflow so CoderRabbit can block on Critical findings
   request_changes_workflow: true
