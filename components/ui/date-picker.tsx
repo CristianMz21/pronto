@@ -13,6 +13,8 @@ interface DatePickerProps {
   disabledWeekdays?: number[]
   /** Minimum selectable date YYYY-MM-DD — days before it are greyed out */
   minDate?: string
+  /** Explicit YYYY-MM-DD dates that are holidays / closed (added US7) */
+  disabledDates?: string[]
 }
 
 function parseDate(val: string): Date | null {
@@ -28,6 +30,7 @@ export function DatePicker({
   className = '',
   disabledWeekdays,
   minDate,
+  disabledDates,
 }: DatePickerProps) {
   const dp = useTranslations('datePicker')
   const MONTHS = dp.raw('months') as string[]
@@ -101,6 +104,8 @@ export function DatePicker({
       const dow = new Date(viewYear, viewMonth, day).getDay() // 0=Sun, 6=Sat
       if (disabledWeekdays.includes(dow)) return true
     }
+
+    if (disabledDates?.length && disabledDates.includes(dateStr)) return true
 
     return false
   }

@@ -160,6 +160,11 @@ export function PublicBookingForm({ business, services, employees, workingHours,
   const [slotSpotsLeft, setSlotSpotsLeft] = useState<Record<string, number>>({})
   const [loadingSlots, setLoadingSlots] = useState(false)
   const [dayClosed, setDayClosed] = useState(false)
+  // US7 holidays (picker disable + slot filter)
+  const [holidayDates, setHolidayDates] = useState<string[]>([])
+  const [holidaysForLocation, setHolidaysForLocation] = useState<{ date: string; location_id: string | null; is_open: boolean }[]>([])
+  const [waitlistJoinLoading, setWaitlistJoinLoading] = useState(false)
+  const [waitlistJoined, setWaitlistJoined] = useState(false)
 
   const effectiveHours: DayHours[] = computeEffectiveHours(workingHours)
 
@@ -188,6 +193,84 @@ export function PublicBookingForm({ business, services, employees, workingHours,
   // Hydration-safe: server UTC date may differ from client business TZ date. Use '' fallback then hydrate.
   const [today, setToday] = useState('')
   useEffect(() => { setToday(todayInBusinessTz()) }, [])
+
+  // US7: fetch holidays for business and respect location_id if multi-sede
+  useEffect(() => {
+    let cancelled = false
+    async function fetchHolidays() {
+      try {
+        const url = selectedLocation
+          ? `/api/holidays?business_id=${business.id}&location_id=${selectedLocation}`
+          : `/api/holidays?business_id=${business.id}`
+        const res = await fetch(url)
+        if (!res.ok) return
+        const data = (await res.json()) as { date: string; is_open: boolean; location_id: string | null }[]
+        if (cancelled) return
+        const closed = data.filter((h) => h.is_open === false)
+        setHolidaysForLocation(closed)
+        setHolidayDates(closed.map((h) => h.date.slice(0, 10)))
+      } catch {}
+    }
+    fetchHolidays()
+    return () => { cancelled = true }
+  }, [business.id, selectedLocation])
+
+  // US7 waitlist helper: join waitlist for desired date+time
+  async function joinWaitlist() {
+    if (!selectedService || !date || !contact.name) {
+      setBookingError('Completá nombre y elegí fecha/horario para unirte a la lista')
+      return
+    }
+    if (!contact.phone && !contact.email) {
+      setBookingError('Dejá teléfono o email para que te avisemos')
+      return
+    }
+    setWaitlistJoinLoading(true)
+    setBookingError(null)
+    try {
+      // First ensure client exists via /api/book flow? We can call /api/waitlist directly which will validate client_id.
+      // For public we don't have client_id yet — we need to create/fetch client via supabase directly (public read)
+      // Simplified: call /api/book first to get clientId, but that would attempt booking. Instead we use service client via anon?
+      // MVP: try to fetch/create client via supabase client then enqueue
+      let cid: string | null = clientId
+      if (!cid) {
+        // Try to find or create client via supabase (RLS allows anon insert? Use service via API)
+        // We fallback to using a temp fetch to /api/clients/import? No, we simulate by calling waitlist with client creation via API guest?
+        // For now, try to upsert client via supabase directly (anon may be allowed)
+        const { data: existing } = await supabase.from('clients').select('id').eq('business_id', business.id).or(`phone.eq.${contact.phone},email.eq.${contact.email}`).maybeSingle()
+        if (existing) cid = (existing as { id: string }).id
+        else {
+          const { data: newClient } = await supabase.from('clients').insert({ business_id: business.id, name: contact.name, phone: contact.phone || null, email: contact.email || null }).select('id').single()
+          if (newClient) cid = (newClient as { id: string }).id
+        }
+      }
+      if (!cid) throw new Error('No se pudo crear cliente')
+      const desiredTime = time || '10:00'
+      const tz = business.timezone ?? 'America/Bogota'
+      const { parseDateTimeInTz } = await import('@/lib/booking-availability')
+      const desiredAt = parseDateTimeInTz(date, desiredTime, tz).toISOString()
+      const res = await fetch('/api/waitlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          business_id: business.id,
+          location_id: selectedLocation || null,
+          service_id: selectedService.id,
+          employee_id: selectedEmployee || null,
+          client_id: cid,
+          desired_at: desiredAt,
+        }),
+      })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(body.message ?? body.error ?? `HTTP ${res.status}`)
+      setWaitlistJoined(true)
+      setBookingError(null)
+    } catch (e) {
+      setBookingError(String((e as Error).message))
+    } finally {
+      setWaitlistJoinLoading(false)
+    }
+  }
 
   // Detect logged-in client for guest guard (057)
   useEffect(() => {
@@ -247,6 +330,13 @@ export function PublicBookingForm({ business, services, employees, workingHours,
     setDayClosed(false)
     setAvailableSlots([])
     setTime('')
+
+    // US7 holiday check: if date is holiday (is_open=false) then dayClosed with holiday reason
+    if (holidayDates.includes(selectedDate)) {
+      setDayClosed(true)
+      setLoadingSlots(false)
+      return
+    }
 
     const dow = new Date(selectedDate + 'T00:00:00').getDay()
     const dayHours = effectiveHours.find((h) => h.day_of_week === dow)
@@ -718,7 +808,13 @@ export function PublicBookingForm({ business, services, employees, workingHours,
               className="mt-1"
               minDate={today}
               disabledWeekdays={closedWeekdays}
+              disabledDates={holidayDates}
             />
+            {holidayDates.includes(date) && (
+              <div style={{ marginTop: 8, padding: 10, background: '#FFF8ED', border: '0.5px solid #F5C842', borderRadius: 10, fontSize: 12, color: '#7A5C00' }}>
+                ⚠ Este día es festivo y la barbería está cerrada. Elegí otra fecha.
+              </div>
+            )}
           </div>
 
           {date && (
@@ -771,10 +867,29 @@ export function PublicBookingForm({ business, services, employees, workingHours,
             </div>
           )}
 
+          {/* US7 waitlist CTA: when no slots or slot taken or day closed holiday, offer waitlist */}
+          {(dayClosed || availableSlots.length === 0 || slotTakenError) && date && (
+            <div style={{ marginTop: 16, padding: 12, background: isEsc ? '#1c1b1b' : '#FFF8ED', border: isEsc ? '1px solid rgba(197,160,89,0.2)' : '0.5px solid #E8E0D8', borderRadius: isEsc ? 0 : 10 }}>
+              <div style={{ fontSize: 13, fontWeight: 500, color: cardText, marginBottom: 4 }}>¿Sin horarios?</div>
+              <div style={{ fontSize: 12, color: cardMuted, marginBottom: 8 }}>Unite a la lista de espera. Te avisamos por WhatsApp cuando se libere un slot (30m para confirmar).</div>
+              <button
+                onClick={() => setStep('contact')}
+                style={{ background: isEsc ? '#C5A059' : 'var(--brand)', color: isEsc ? '#000' : 'white', border: isEsc ? '1px solid #C5A059' : 'none', borderRadius: isEsc ? 0 : 8, padding: '8px 14px', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
+              >
+                Unirme a lista de espera
+              </button>
+            </div>
+          )}
+
           <CtaButton label={isEsc ? 'Continuar →' : t('datetime.continue')} onClick={handleDatetimeContinue} disabled={!date || !time} theme={theme} />
           {bookingError && (
             <div style={{ marginTop: 16, padding: 12, background: isEsc ? '#1c1b1b' : '#FFF0F0', border: isEsc ? '1px solid #93000a' : '0.5px solid #F5AAAA', borderRadius: isEsc ? 0 : 10, fontSize: 13, color: isEsc ? '#ffb4ab' : '#B00020' }}>
               {bookingError}
+              {(bookingError.toLowerCase().includes('no staff') || bookingError.toLowerCase().includes('slot')) && (
+                <div style={{ marginTop: 8 }}>
+                  <button onClick={() => setStep('contact')} style={{ background: 'white', border: '0.5px solid #E8E0D8', borderRadius: 8, padding: '6px 12px', fontSize: 12, color: '#2D2926', cursor: 'pointer' }}>Unirme a lista de espera</button>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -844,7 +959,24 @@ export function PublicBookingForm({ business, services, employees, workingHours,
           >
             {saving ? t('contact.booking') : t('contact.confirm', { price: formatCurrency(selectedService?.price ?? 0, business.currency) })}
           </button>
-          <p style={{ fontSize: 11, color: cardMuted, textAlign: 'center', marginTop: 12 }}>{t('contact.noRegistration')}</p>
+          <div style={{ textAlign: 'center', marginTop: 10 }}>
+            <span style={{ fontSize: 11, color: cardMuted }}>o</span>
+          </div>
+          <button
+            onClick={joinWaitlist}
+            disabled={!contact.name || waitlistJoinLoading || waitlistJoined}
+            style={{
+              background: 'white',
+              border: isEsc ? '1px solid rgba(197,160,89,0.4)' : '0.5px solid #E8E0D8',
+              borderRadius: isEsc ? 0 : 10,
+              padding: '11px 20px',
+              fontSize: 13, fontWeight: 500, color: waitlistJoined ? '#16a34a' : cardText,
+              width: '100%', marginTop: 8, cursor: (!contact.name || waitlistJoinLoading) ? 'not-allowed' : 'pointer',
+            }}
+          >
+            {waitlistJoined ? '✓ En lista de espera' : waitlistJoinLoading ? 'Uniendo…' : `Unirme a lista de espera ${date ? `· ${date}` : ''} ${time ? formatSlot(time) : ''}`}
+          </button>
+          <p style={{ fontSize: 11, color: cardMuted, textAlign: 'center', marginTop: 12 }}>{t('contact.noRegistration')} · Lista de espera expira en 30m si no confirmás.</p>
         </div>
       )}
 

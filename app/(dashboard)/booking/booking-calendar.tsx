@@ -6,7 +6,9 @@ import { formatInBusinessTimezone, uses12HourClock } from '@/lib/utils'
 import { isDayClosed as isDayClosedLib, isPastInTz, DEFAULT_LEAD_MINUTES } from '@/lib/booking-availability'
 import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
-import { ChevronLeft, ChevronRight, ExternalLink, CreditCard, Palette } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ExternalLink, CreditCard, Palette, Clock, Repeat } from 'lucide-react'
+import { WaitlistPanel } from './waitlist-panel'
+import { RecurringModal } from './recurring-modal'
 import { useTranslations } from 'next-intl'
 import { useRouter } from 'next/navigation'
 import {
@@ -95,12 +97,17 @@ interface Employee { id: string; name: string }
 interface Service { id: string; name: string; duration_min: number; price: number }
 interface Client { id: string; name: string; phone: string | null }
 
-interface BusinessHour { day_of_week: number; is_open: boolean; open_time: string; close_time: string }
+interface BusinessHour { day_of_week: number; is_open: boolean; open_time: string; close_time: string; break_start?: string | null; break_end?: string | null }
+interface Holiday { id: string; business_id: string; location_id: string | null; date: string; reason: string | null; is_open: boolean }
+interface Location { id: string; name: string }
 
 interface Props {
   businessId: string; slug: string; timezone: string
   appointments: Appointment[]; employees: Employee[]; services: Service[]; clients: Client[]
   businessHours: BusinessHour[]
+  holidays?: Holiday[]
+  locations?: Location[]
+  selectedLocation?: string | null
   /** Configurable lead time (054) — for display in error messages; dashboard does NOT enforce lead time (walk-in 0) */
   minAdvanceMinutes?: number | null
   bookingLeadTimeEnabled?: boolean | null
@@ -164,7 +171,7 @@ function todayInTz(tz: string): string {
   return `${get('year')}-${get('month')}-${get('day')}`
 }
 
-export function BookingCalendar({ businessId, slug, timezone, appointments: initial, employees, services, clients: initialClients, businessHours, minAdvanceMinutes, bookingLeadTimeEnabled, isBarbero = false, currentEmployeeId = null }: Props) {
+export function BookingCalendar({ businessId, slug, timezone, appointments: initial, employees, services, clients: initialClients, businessHours, holidays = [], locations = [], selectedLocation = null, minAdvanceMinutes, bookingLeadTimeEnabled, isBarbero = false, currentEmployeeId = null }: Props) {
   const supabase = createClient()
   const router = useRouter()
   const t = useTranslations('booking')
@@ -272,6 +279,10 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
   const [assignError, setAssignError] = useState<string | null>(null)
   const [showLegend, setShowLegend] = useState(false)
   const legendRef = useRef<HTMLDivElement>(null)
+  // US7 panels
+  const [showWaitlist, setShowWaitlist] = useState(false)
+  const [showRecurring, setShowRecurring] = useState(false)
+  const [recurringPrefill, setRecurringPrefill] = useState<{ date?: string; time?: string; serviceId?: string; employeeId?: string } | null>(null)
 
   // day_of_week: 0=Sun, 1=Mon … 6=Sat — always in business timezone
   // Dashboard note (054): lead time is intentionally NOT enforced here.
@@ -284,8 +295,23 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
     const map: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }
     return map[wd] ?? date.getDay()
   }
+  function isHoliday(date: Date): boolean {
+    if (!holidays || holidays.length === 0) return false
+    const yyyy = date.getFullYear()
+    const mm = String(date.getMonth() + 1).padStart(2, '0')
+    const dd = String(date.getDate()).padStart(2, '0')
+    const dateStr = `${yyyy}-${mm}-${dd}`
+    return holidays.some((h) => {
+      if (h.date.slice(0, 10) !== dateStr) return false
+      if (h.is_open !== false) return false
+      if (!h.location_id) return true
+      return selectedLocation ? h.location_id === selectedLocation : true
+    })
+  }
+
   function isDayClosed(date: Date) {
     // Use centralized helper for testability; fallback to local logic if lib helper not available
+    if (isHoliday(date)) return true
     return isDayClosedLib(date, businessHours as unknown as import('@/lib/booking-availability').DayHours[], timezone)
   }
 
@@ -605,9 +631,25 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
               </div>
             )}
           </div>
+          <Button variant="outline" size="sm" onClick={() => setShowWaitlist((v) => !v)} className="gap-1">
+            <Clock className="w-3.5 h-3.5" /> {showWaitlist ? 'Ocultar espera' : 'Lista de espera'}
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => { setRecurringPrefill(null); setShowRecurring(true) }} className="gap-1">
+            <Repeat className="w-3.5 h-3.5" /> Recurrente
+          </Button>
           <Button size="sm" onClick={() => openForm()}>{t('newAppointment')}</Button>
         </div>
       </div>
+
+      {/* US7 panels */}
+      {showWaitlist && (
+        <WaitlistPanel businessId={businessId} locationId={selectedLocation ?? null} />
+      )}
+      {holidays && holidays.length > 0 && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-800">
+          <span className="font-semibold">Próximos bloqueos:</span> {holidays.slice(0, 5).map((h) => `${h.date.slice(0,10)}${h.reason ? ` (${h.reason})` : ''}`).join(' · ')} {holidays.length > 5 ? `+${holidays.length - 5} más` : ''}
+        </div>
+      )}
 
       {/* Calendar grid */}
       <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
@@ -618,10 +660,13 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
                 <th className="sticky top-0 z-10 w-14 border-b border-r border-gray-100 py-2 text-gray-400 font-normal bg-white" />
                 {weekDates.map((d, i) => {
                   const isToday = todayStr ? d.toDateString() === todayStr : false
+                  const holiday = isHoliday(d)
+                  const isClosed = isDayClosed(d)
                   return (
-                    <th key={i} className={`sticky top-0 z-10 border-b border-r border-gray-100 py-2 font-medium text-center ${isToday ? 'bg-blue-50 text-blue-700' : 'text-gray-600 bg-white'}`}>
+                    <th key={i} className={`sticky top-0 z-10 border-b border-r border-gray-100 py-2 font-medium text-center ${isToday ? 'bg-blue-50 text-blue-700' : holiday ? 'bg-amber-50 text-amber-700' : 'text-gray-600 bg-white'} ${isClosed ? 'opacity-60' : ''}`}>
                       <div>{days[i]}</div>
-                      <div className={`text-lg font-bold ${isToday ? 'text-blue-600' : 'text-gray-900'}`}>{d.getDate()}</div>
+                      <div className={`text-lg font-bold ${isToday ? 'text-blue-600' : holiday ? 'text-amber-700' : 'text-gray-900'}`}>{d.getDate()}</div>
+                      {holiday && <div className="text-[10px] leading-none text-amber-700">festivo</div>}
                     </th>
                   )
                 })}
@@ -921,6 +966,25 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
           </div>
         </div>
       )}
+      {/* US7 recurring modal */}
+      <RecurringModal
+        open={showRecurring}
+        onClose={() => setShowRecurring(false)}
+        businessId={businessId}
+        timezone={timezone}
+        clients={clientsList}
+        services={services}
+        employees={employees}
+        locations={locations}
+        initialDate={recurringPrefill?.date}
+        initialTime={recurringPrefill?.time}
+        initialServiceId={recurringPrefill?.serviceId}
+        initialEmployeeId={recurringPrefill?.employeeId}
+        onCreated={() => {
+          // Refresh week after creation
+          if (weekStart) loadWeek(weekStart)
+        }}
+      />
     </div>
   )
 }

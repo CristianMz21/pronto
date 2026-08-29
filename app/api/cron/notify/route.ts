@@ -421,5 +421,60 @@ export async function GET(req: NextRequest) {
     results.push(`birthday:${c.id}`)
   }
 
+  // ── 6. Waitlist expire (US7 T068) ────────────────────────────────────────────
+  try {
+    const waitlistCutoff = new Date(now.getTime() - 30 * 60_000).toISOString()
+    const { data: toExpireNotified } = await supabase
+      .from('waitlist')
+      .select('id')
+      .eq('status', 'notified')
+      .lt('notified_at', waitlistCutoff)
+    if (toExpireNotified && toExpireNotified.length > 0) {
+      const ids = toExpireNotified.map((r) => (r as { id: string }).id)
+      await supabase.from('waitlist').update({ status: 'expired' }).in('id', ids)
+      results.push(`waitlist_expired_notified:${ids.length}`)
+      debug.waitlist_expired_notified = ids.length
+    }
+    const nowIso = now.toISOString()
+    const { data: toExpireWaiting } = await supabase
+      .from('waitlist')
+      .select('id')
+      .eq('status', 'waiting')
+      .lt('desired_at', nowIso)
+    if (toExpireWaiting && toExpireWaiting.length > 0) {
+      const ids = toExpireWaiting.map((r) => (r as { id: string }).id)
+      await supabase.from('waitlist').update({ status: 'expired' }).in('id', ids)
+      results.push(`waitlist_expired_waiting:${ids.length}`)
+      debug.waitlist_expired_waiting = ids.length
+    }
+  } catch (e) {
+    debug.waitlist_expire_error = String((e as Error).message ?? e).slice(0, 200)
+  }
+
+  // ── 7. Holiday reminder (US7 T068) — notify clients with appointments tomorrow that tomorrow is holiday → warn? ──
+  // For MVP we just add debug entry for upcoming holidays in next 7 days per business (no send yet, avoids spam).
+  try {
+    const nextWeek = new Date(now)
+    nextWeek.setDate(nextWeek.getDate() + 7)
+    const todayStr = now.toISOString().slice(0, 10)
+    const nextWeekStr = nextWeek.toISOString().slice(0, 10)
+    const { data: upcomingHolidays } = await supabase
+      .from('holidays')
+      .select('business_id, date, reason, is_open')
+      .gte('date', todayStr)
+      .lte('date', nextWeekStr)
+      .eq('is_open', false)
+      .limit(50)
+    if (upcomingHolidays && upcomingHolidays.length > 0) {
+      debug.upcoming_holidays = upcomingHolidays.length
+      // For observability we push a result per holiday (no actual send to avoid duplicate holiday spam; actual blocking is at booking time)
+      for (const h of upcomingHolidays as { business_id: string; date: string }[]) {
+        results.push(`holiday:${h.business_id}:${h.date}`)
+      }
+    }
+  } catch (e) {
+    debug.holiday_error = String((e as Error).message ?? e).slice(0, 200)
+  }
+
   return NextResponse.json({ ok: true, sent: results.length, results, debug })
 }

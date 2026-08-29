@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Plus, Pencil, Trash2, Check, Loader2, CheckCircle2, AlertCircle, Users, Eye, EyeOff, Settings } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { MODULES, ModuleKey } from '@/lib/modules'
+import { HolidaysSection } from './holidays-section'
 
 const clean = (s: string, max = 500) => s?.trim().slice(0, max) ?? ''
 
@@ -762,6 +763,7 @@ export function SettingsTabs({ business: initial, services: initServices, employ
             {hoursValidationError && <p className="text-xs text-red-500">{hoursValidationError}</p>}
           </div>
         </div>
+        <HolidaysSection businessId={biz.id} />
         </div>
       )}
 

@@ -44,6 +44,7 @@
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "resend": "^4.0.0",
+    "rrule": "^2.8.1",
     "serwist": "^9.5.12",
     "tailwind-merge": "^2.5.4",
     "tailwindcss-animate": "^1.0.7",

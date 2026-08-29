@@ -168,13 +168,38 @@ export async function POST(req: NextRequest) {
   const effectiveHours = computeEffectiveHours(businessHours ?? [])
   const dow = dayOfWeekFromDateString(date)
   const dayHours = effectiveHours.find((h) => h.day_of_week === dow)
-  const slotCheck = checkSlotWithinHours(dayHours, time, service.duration_min)
+  // Holiday check (US7) — block bookings on business or location-specific holidays where is_open=false
+  let holidays: { date: string; is_open: boolean; location_id: string | null }[] = []
+  try {
+    const { data: hol } = await supabase
+      .from('holidays')
+      .select('date, is_open, location_id')
+      .eq('business_id', businessId)
+      .eq('date', date)
+    holidays = ((hol ?? []) as unknown as { date: string; is_open: boolean; location_id: string | null }[]).map((h) => ({
+      date: typeof h.date === 'string' ? h.date.slice(0, 10) : String(h.date),
+      is_open: h.is_open as boolean,
+      location_id: h.location_id as string | null,
+    }))
+  } catch {}
+  const { checkSlotWithHolidays } = await import('@/lib/booking-availability')
+  const slotCheck = checkSlotWithHolidays(dayHours, time, service.duration_min, date, holidays as unknown as import('@/lib/booking-availability').HolidayCheck[])
+
+  // Also enforce location-specific holiday filtering explicitly (if location_id provided, business-wide holiday still blocks)
+  const locationHoliday = holidays.some((h) => h.date === date && h.is_open === false && (!h.location_id || !location_id || h.location_id === location_id))
+  if (locationHoliday) {
+    return NextResponse.json(
+      { error: 'outside_availability', reason: 'holiday', message: 'Este día es festivo / cierre por mantenimiento. Elegí otra fecha.' },
+      { status: 400 }
+    )
+  }
 
   if (!slotCheck.ok) {
     const messages: Record<typeof slotCheck.reason, string> = {
       closed: 'This business is closed at the selected date. Please choose another day.',
       outside_hours: 'This time is outside business hours. Please choose another time.',
       break: 'This time falls during a break. Please choose another time.',
+      holiday: 'Este día es festivo y la barbería está cerrada. Elegí otra fecha.',
     }
     return NextResponse.json(
       { error: 'outside_availability', reason: slotCheck.reason, message: messages[slotCheck.reason] },
