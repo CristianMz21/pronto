@@ -1,4 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
+import { db } from '@/lib/db'
+import { businesses, employees } from '@/drizzle/schema'
+import { eq, and, or, ilike, desc, sql } from 'drizzle-orm'
 import { Header } from '@/components/layout/header'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -31,14 +34,21 @@ export default async function CRMPage(
   const t = await getTranslations('crm')
   const user = await getAuthUser()
 
+  // Drizzle ORM — portable to Postgres/MySQL/SQLite via DATABASE_URL
   let businessId: string | null = null
   let businessCurrency = 'COP'
   let businessTz = 'America/Bogota'
-  const { data: ownedBiz } = await supabase.from('businesses').select('id, currency, timezone').eq('owner_id', user!.id).maybeSingle()
-  if (ownedBiz) { businessId = (ownedBiz as { id: string }).id; businessCurrency = (ownedBiz as { currency: string }).currency ?? 'COP'; businessTz = (ownedBiz as { timezone: string }).timezone ?? 'America/Bogota' }
+  const ownedBiz = await db.query.businesses.findFirst({
+    where: eq(businesses.ownerId, user!.id),
+    columns: { id: true, currency: true, timezone: true },
+  })
+  if (ownedBiz) { businessId = ownedBiz.id; businessCurrency = ownedBiz.currency ?? 'COP'; businessTz = ownedBiz.timezone ?? 'America/Bogota' }
   else {
-    const { data: empBiz } = await supabase.from('employees').select('business_id, businesses!inner(id, currency, timezone)').eq('user_id', user!.id).eq('is_active', true).limit(1).maybeSingle()
-    if (empBiz) { businessId = (empBiz as { business_id: string }).business_id; const b = (empBiz as unknown as { businesses: { currency: string; timezone: string } }).businesses; businessCurrency = b?.currency ?? 'COP'; businessTz = b?.timezone ?? 'America/Bogota' }
+    const emp = await db.query.employees.findFirst({
+      where: and(eq(employees.userId, user!.id), eq(employees.isActive, true)),
+      with: { businesses: { columns: { currency: true, timezone: true } } },
+    }) as unknown as { businessId: string; businesses: { currency: string; timezone: string } } | undefined
+    if (emp) { businessId = emp.businessId; businessCurrency = emp.businesses?.currency ?? 'COP'; businessTz = emp.businesses?.timezone ?? 'America/Bogota' }
   }
   if (!businessId) return null
   const business = { id: businessId, currency: businessCurrency, timezone: businessTz }

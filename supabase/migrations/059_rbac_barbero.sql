@@ -1,11 +1,14 @@
 -- Migration 059: RBAC barbero reducido — constraint + helpers + RLS
 -- Idempotent: every DDL guarded with IF NOT EXISTS / DO $$ / DROP IF EXISTS
 
--- 1. Backfill legacy 'employee' -> 'staff'
+-- 1. Backfill legacy roles -> canonical
 do $$
 begin
   if exists (select 1 from information_schema.columns where table_schema='public' and table_name='employees' and column_name='role') then
     update public.employees set role='staff' where role='employee';
+    update public.employees set role='barbero' where role='barber';
+    update public.employees set role='admin' where role='owner';
+    update public.employees set role='staff' where role not in ('admin','staff','barbero');
   end if;
 end
 $$;
