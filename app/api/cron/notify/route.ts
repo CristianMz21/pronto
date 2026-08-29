@@ -476,5 +476,172 @@ export async function GET(req: NextRequest) {
     debug.holiday_error = String((e as Error).message ?? e).slice(0, 200)
   }
 
+  // ── 8. CRM inactive_42 + birthday_7 campaigns auto-send (T073) ─────────────
+  // Runs daily; uses dedup via notification_log 1h window and campaign logic.
+  try {
+    const { filterClientsBySegment } = await import('@/lib/campaigns')
+    const campaignTodayStr = now.toISOString().slice(0, 10) // dedup daily CRM auto run
+    // Process per business (limit 20 to avoid timeout)
+    const { data: businesses } = await supabase
+      .from('businesses')
+      .select('id, name, slug, meta_whatsapp_phone_number_id, meta_whatsapp_access_token')
+      .limit(20)
+
+    for (const bizRaw of (businesses as unknown as { id: string; name: string; slug: string | null; meta_whatsapp_phone_number_id: string | null; meta_whatsapp_access_token: string | null }[] | null) ?? []) {
+      const biz = bizRaw as { id: string; name: string; slug: string | null; meta_whatsapp_phone_number_id: string | null; meta_whatsapp_access_token: string | null }
+      const waCreds = biz.meta_whatsapp_phone_number_id && biz.meta_whatsapp_access_token
+        ? { phoneNumberId: biz.meta_whatsapp_phone_number_id, accessToken: biz.meta_whatsapp_access_token }
+        : undefined
+      const bookingUrl = biz.slug ? `${APP_URL}/book/${biz.slug}` : undefined
+
+      // Helper to send segment campaign if not already sent today (via notification_log)
+      async function processSegment(segment: 'inactive_42' | 'birthday_7') {
+        const eventType = `crm_auto_${segment}:${biz.id}:${campaignTodayStr}`
+        // Dedup: has this business already had a crm_auto run today?
+        const { error: logErr } = await supabase.from('notification_log').insert({
+          business_id: biz.id,
+          ref_id: biz.id,
+          type: eventType,
+          channel: 'whatsapp',
+        })
+        if (logErr) {
+          // Already logged today — skip to respect 1h/daily dedup
+          return
+        }
+
+        // Fetch clients for segment (same enrichment as segments route)
+        const { data: clientsRaw } = await supabase
+          .from('clients')
+          .select('id, name, phone, whatsapp_number, email, birthday, tags, last_visit_at')
+          .eq('business_id', biz.id)
+          .limit(300)
+
+        const clients = (clientsRaw as unknown as { id: string; name: string; phone: string | null; whatsapp_number: string | null; email: string | null; birthday: string | null; tags: string[] | null; last_visit_at: string | null }[] | null) ?? []
+        // Enrich with transaction stats for visits
+        const ids = clients.map((c) => c.id)
+        const statsMap: Record<string, { total_visits: number; last_visit_at: string | null }> = {}
+        if (ids.length > 0) {
+          const { data: txs } = await supabase
+            .from('transactions')
+            .select('client_id, created_at')
+            .eq('business_id', biz.id)
+            .eq('status', 'completed')
+            .in('client_id', ids)
+            .order('created_at', { ascending: false })
+            .limit(1000) as unknown as { data: { client_id: string; created_at: string }[] | null }
+          for (const tx of txs ?? []) {
+            if (!tx.client_id) continue
+            if (!statsMap[tx.client_id]) statsMap[tx.client_id] = { total_visits: 0, last_visit_at: null }
+            statsMap[tx.client_id].total_visits++
+            if (!statsMap[tx.client_id].last_visit_at) statsMap[tx.client_id].last_visit_at = tx.created_at
+          }
+        }
+        const enriched = clients.map((c) => ({
+          id: c.id,
+          birthday: c.birthday,
+          tags: c.tags,
+          last_visit_at: statsMap[c.id]?.last_visit_at ?? c.last_visit_at ?? null,
+          total_visits: statsMap[c.id]?.total_visits ?? 0,
+        }))
+        const filtered = filterClientsBySegment(enriched, segment, now)
+        const filteredIds = new Set(filtered.map((f) => f.id))
+        const recipients = clients.filter((c) => filteredIds.has(c.id))
+        if (recipients.length === 0) return
+
+        let template: string
+        if (segment === 'inactive_42') {
+          template = `Hola {{name}} 👋 te extrañamos en ${biz.name}. ¡Tenés 20% en tu próximo corte esta semana!${bookingUrl ? ` Reserva: ${bookingUrl}` : ''}`
+        } else {
+          template = `¡Feliz cumple {{name}}! 🎂 ${biz.name} te desea un gran día. ¡Tenés un regalo esperando!${bookingUrl ? ` Reserva: ${bookingUrl}` : ''}`
+        }
+
+        let sentCount = 0
+        for (const c of recipients.slice(0, 100)) { // cap 100 per run to avoid timeout
+          const dedupKey = `campaign_auto:${segment}:${c.id}`
+          const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
+          const { data: recent } = await supabase
+            .from('notification_log')
+            .select('id')
+            .eq('business_id', biz.id)
+            .eq('ref_id', c.id)
+            .eq('type', dedupKey)
+            .gte('sent_at', oneHourAgo)
+            .limit(1) as unknown as { data: unknown[] | null }
+          if ((recent as unknown[])?.length) continue
+
+          const body = template.replaceAll('{{name}}', c.name).replaceAll('{{business}}', biz.name)
+          const to = c.whatsapp_number ?? c.phone
+          let ok = false
+          if (to) {
+            ok = await sendWhatsAppMessage(to, body, waCreds)
+            // Stub if no creds: log but count as sent for observability
+            if (!ok && !waCreds) ok = true
+          }
+          try {
+            await supabase.from('notification_log').insert({
+              business_id: biz.id,
+              ref_id: c.id,
+              type: dedupKey,
+              channel: 'whatsapp',
+            })
+          } catch {}
+          if (ok) {
+            sentCount++
+            results.push(`crm_auto_${segment}:${c.id}`)
+          }
+        }
+        if (sentCount > 0) debug[`crm_auto_${segment}_${biz.id}`] = sentCount
+      }
+
+      await processSegment('inactive_42')
+      await processSegment('birthday_7')
+    }
+  } catch (e) {
+    debug.crm_auto_error = String((e as Error).message ?? e).slice(0, 300)
+  }
+
+  // ── 9. Campaign rebooked attribution sweep (T073) ──────────────────────────
+  // Find appointments created in last 24h with source=campaign and flip recipients to rebooked.
+  try {
+    const since = new Date(now.getTime() - 24 * 3600 * 1000).toISOString()
+    const { data: recentCampaignAppts } = await supabase
+      .from('appointments')
+      .select('id, client_id, business_id, campaign_id, created_at, source')
+      .gte('created_at', since)
+      .in('source', ['campaign', 'campaign_auto'])
+      .limit(100)
+
+    for (const a of (recentCampaignAppts as unknown as { id: string; client_id: string | null; business_id: string; campaign_id: string | null; source: string }[] | null) ?? []) {
+      if (!a.client_id) continue
+      try {
+        if (a.campaign_id) {
+          const { data: existing } = await supabase
+            .from('campaign_recipients')
+            .select('status')
+            .eq('campaign_id', a.campaign_id)
+            .eq('client_id', a.client_id)
+            .maybeSingle() as unknown as { data: { status: string } | null }
+          if (existing && existing.status !== 'rebooked') {
+            await supabase.from('campaign_recipients').update({ status: 'rebooked' }).eq('campaign_id', a.campaign_id).eq('client_id', a.client_id)
+            const { data: camp } = await supabase.from('campaigns').select('stats').eq('id', a.campaign_id).maybeSingle() as unknown as { data: { stats: Record<string, number> } | null }
+            if (camp?.stats) {
+              const next = { ...camp.stats, rebooked: (camp.stats.rebooked ?? 0) + 1 }
+              await supabase.from('campaigns').update({ stats: next }).eq('id', a.campaign_id)
+            }
+            results.push(`campaign_rebooked:${a.campaign_id}:${a.client_id}`)
+          }
+        } else {
+          // No campaign_id, attribute to most recent sent campaign for this client
+          const { attributeRebooking } = await import('@/lib/campaigns')
+          await attributeRebooking(supabase as unknown as Parameters<typeof attributeRebooking>[0], { clientId: a.client_id, businessId: a.business_id })
+          results.push(`campaign_rebooked_auto:${a.client_id}`)
+        }
+      } catch {}
+    }
+    // Also sweep: any client with a new completed transaction? Could extend but cron sweep above covers appointments.
+  } catch (e) {
+    debug.campaign_rebooked_error = String((e as Error).message ?? e).slice(0, 300)
+  }
+
   return NextResponse.json({ ok: true, sent: results.length, results, debug })
 }
