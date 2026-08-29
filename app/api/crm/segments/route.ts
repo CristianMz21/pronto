@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { z } from 'zod'
 import { SEGMENTS, filterClientsBySegment } from '@/lib/campaigns'
+import { rateLimit, getIp } from '@/lib/rate-limit'
 
 const QuerySchema = z.object({
   segment: z.enum(SEGMENTS),
@@ -27,6 +28,8 @@ function inDaysFromNow(dateStr: string, days: number, now: Date): boolean {
 }
 
 export async function GET(req: NextRequest) {
+  const ip = getIp(req)
+  if (!rateLimit(`crm-segments:${ip}`, { limit: 60, windowMs: 60 * 1000 })) return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
   const url = new URL(req.url)
   const segment = url.searchParams.get('segment')
   const locationId = url.searchParams.get('location_id')

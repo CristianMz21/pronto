@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Pencil, Trash2, MapPin, Phone, Building2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, MapPin, Phone } from 'lucide-react'
 import { LocationForm } from './location-form'
+import { EmptyState } from '@/components/ui/empty-state'
 
 interface Location {
   id: string
@@ -58,15 +59,7 @@ export function SucursalesClient({ locations }: { locations: Location[] }) {
       </div>
 
       {locations.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center text-gray-500">
-            <Building2 className="w-10 h-10 mx-auto mb-3 text-gray-300" />
-            <p className="text-sm">Sin sucursales. La sede por defecto se crea automáticamente.</p>
-            <Button size="sm" className="mt-4" onClick={() => setCreating(true)}>
-              Crear primera sede
-            </Button>
-          </CardContent>
-        </Card>
+        <EmptyState variant="locations" actionLabel="Crear primera sede" onAction={() => setCreating(true)} />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {locations.map((loc) => (

@@ -63,6 +63,8 @@
     "drizzle-kit": "^0.31.10",
     "eslint": "9.39.5",
     "eslint-config-next": "16.3.2",
+    "fake-indexeddb": "^6.2.5",
+    "fast-check": "^4.9.0",
     "jsdom": "^29.1.1",
     "pg": "^8.22.0",
     "postcss": "^8",

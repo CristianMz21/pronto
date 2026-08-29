@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
 import { Sidebar } from '@/components/layout/sidebar'
+import { BottomTab } from '@/components/layout/bottom-tab'
 import { getAuthUser } from '@/lib/auth-user'
 import { canAccessRoute, getUserRole, type CanonicalRole } from '@/lib/auth/roles'
 
@@ -98,9 +99,10 @@ export default async function DashboardLayout({
   return (
     <div className="fixed inset-0 flex overflow-hidden bg-gray-50">
       <Sidebar businessName={business.name} role={effectiveRole} employeeId={employeeId} />
-      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto pt-14 md:pt-0">
+      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto pt-14 md:pt-0 pb-16 md:pb-0">
         {children}
       </div>
+      <BottomTab role={effectiveRole} />
     </div>
   )
 }

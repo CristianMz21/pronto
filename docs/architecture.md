@@ -121,6 +121,44 @@ Public booking → Client slots (computeEffectiveHours) → POST /api/book → t
 POS → IndexedDB queue → syncQueue → transactions → trigger 008 → clients.total_* → commissions
 ```
 
+## 006 — Barbería SaaS Integral (Escudería) — Extensiones
+
+### Multi-sucursal (`locations`, 044 + 082)
+
+- Tabla `locations(business_id, slug unique per business)` con seed idempotente `11111111-1111-1111-1111-111111111111 Centro` para single-sede default.
+- `location_id nullable` propagado a `employees, services, appointments, inventory_items, cash_registers, memberships, promotions, campaigns, holidays, business_hours, recurring_appointments, waitlist`.
+- Filtros `?location=` en dashboard/reportes/POS/booking/calendar; manager futuro restringido vía `lib/auth/roles.ts:getUserLocationIds()` (V1 stub `all`).
+- Índices `idx_appointments_location`, `idx_appointments_business_location_starts`, `idx_inventory_business_qty_threshold`.
+
+### Waitlist + Recurring + Holidays (060, 061, 068, 083)
+
+- `waitlist(business_id, client_id, desired_at unique, status waiting|notified|converted|expired|cancelled, location_id, employee_id)` + `idx_waitlist_desired` + `expire 30m` via `POST /api/waitlist` + `cron/notify` sweep + `PATCH /api/appointments/[id]` cancel triggers `notifyNext`.
+- `recurring_appointments(business_id, rrule RFC5545, next_at, until, is_active)` + `RRule` lib (`rrule`) + `appointments.recurring_id` + `POST /api/recurring` batch con `checkSlotWithinHours` por ocurrencia + `cron/recurring-generate`.
+- `holidays(business_id, location_id nullable, date, is_open default false, reason)` + `isHoliday` picker disable + `checkSlotWithHolidays`/`checkSlotWithinLocation` en lib+API.
+
+### Membresías / Promos / Fidelización (061-065, 076-080)
+
+- `memberships(business_id, price, duration_days, benefits jsonb {cuts})` + `client_memberships(client_id, membership_id, remaining, expires_at, status)` con `pg_advisory_xact_lock` consume + `transactions.discount_amount/audit`.
+- `promotions(business_id, type percent|fixed|combo, value, promo_code unique per business, valid_from/to, rules jsonb {day_of_week, service_ids, client_segment}, location_id)` + `evaluatePromotion` + `calculateDiscount`.
+- `loyalty_accounts(client_id PK, points)` + `loyalty_movements(earn/redeem)` + `loyalty_points_view` + `earn 1pt/$1k` / `redeem 100pt=$10k` + `l_view` transaction `discount_reason`.
+- `service_combos(business_id, service_ids uuid[], price, duration_min)` + `findBestCombo`.
+- `transactions.discount_amount, discount_reason, promo_code, membership_id, loyalty_points_earned/redeemed, tip_amount` + `tips(business_id, transaction_id, employee_id, amount, method)` (071).
+
+### CRM Campañas (065 + 084)
+
+- `campaigns(business_id, segment inactive_30/42/60|birthday_7|vip|new|all, channel whatsapp|email|telegram, template, status draft|sending|sent, stats jsonb {sent,delivered,rebooked}, location_id)` + `campaign_recipients(campaign_id, client_id, status pending|sent|delivered|rebooked|failed)`.
+- Flujo `CRM segmentos → createFromSegment → sendCampaign → notification_log dedup 1h → cron inactive_42/birthday_7 auto-send + rebooked attribution` via `campaigns_completeness`.
+
+### Performance (T079, 086)
+
+- Índices polish `idx_appointments_employee_starts(business_id, employee_id, starts_at)` + `idx_transactions_business_created` + `idx_campaign_recipients_client_status` + `idx_client_memberships_active`.
+- Dashboard `Promise.all` 9 queries paralelas (ya en `app/(dashboard)/dashboard/page.tsx:1`).
+- `book/[slug] generateSlotsMemo` con cache Map + `useMemo` para `visibleServices/Employees` y `effectiveHours`.
+
+### PWA & Offline
+
+- `app/sw.ts` Serwist `fallbacks /offline` + `next.config.js additionalPrecacheEntries ['/offline']` + `public/sw.js` build check.
+
 ## Infra
 
 - `docker-compose.yml`: `migrate` (one-shot `scripts/migrate.js` con retry + `certs/supabase-ca.crt` verify) → `app` (3000, `NEXT_PUBLIC_DEPLOYMENT_MODE=selfhosted` hardcodeado)

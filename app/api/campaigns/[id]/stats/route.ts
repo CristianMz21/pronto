@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getCampaignStats } from '@/lib/campaigns'
+import { rateLimit, getIp } from '@/lib/rate-limit'
 
 async function resolveBusinessId(supabase: Awaited<ReturnType<typeof createClient>>, userId: string): Promise<string | null> {
   const { data: owned } = await supabase.from('businesses').select('id').eq('owner_id', userId).maybeSingle()
@@ -11,6 +12,8 @@ async function resolveBusinessId(supabase: Awaited<ReturnType<typeof createClien
 }
 
 export async function GET(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const ip = getIp(req)
+  if (!rateLimit(`campaigns-stats:${ip}`, { limit: 60, windowMs: 60 * 1000 })) return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
   const { id } = await props.params
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

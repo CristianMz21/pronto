@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { formatCurrency, uses12HourClock } from '@/lib/utils'
 import { CalendarPlus, Loader2 } from 'lucide-react'
@@ -57,6 +57,18 @@ function generateSlots(openTime: string, closeTime: string, durationMin: number)
     slots.push(`${String(Math.floor(cur / 60)).padStart(2, '0')}:${String(cur % 60).padStart(2, '0')}`)
     cur += durationMin
   }
+  return slots
+}
+
+// Memoized slot generation — pure computation keyed on open/close/duration, avoids
+// re-allocating the same slot array on every render (Lighthouse ≥90, T079).
+const slotCache = new Map<string, string[]>()
+function generateSlotsMemo(openTime: string, closeTime: string, durationMin: number): string[] {
+  const key = `${openTime}-${closeTime}-${durationMin}`
+  const hit = slotCache.get(key)
+  if (hit) return hit
+  const slots = generateSlots(openTime, closeTime, durationMin)
+  slotCache.set(key, slots)
   return slots
 }
 
@@ -166,15 +178,15 @@ export function PublicBookingForm({ business, services, employees, workingHours,
   const [waitlistJoinLoading, setWaitlistJoinLoading] = useState(false)
   const [waitlistJoined, setWaitlistJoined] = useState(false)
 
-  const effectiveHours: DayHours[] = computeEffectiveHours(workingHours)
+  const effectiveHours: DayHours[] = useMemo(() => computeEffectiveHours(workingHours), [workingHours])
 
-  // Multi-sede filtered catalogs (nullable location_id = visible for any location)
-  const visibleServices = selectedLocation
+  // Multi-sede filtered catalogs (nullable location_id = visible for any location) — memoized for 375px perf
+  const visibleServices = useMemo(() => selectedLocation
     ? services.filter((s) => !s.location_id || s.location_id === selectedLocation)
-    : services
-  const visibleEmployees = selectedLocation
+    : services, [services, selectedLocation])
+  const visibleEmployees = useMemo(() => selectedLocation
     ? employees.filter((e) => !e.location_id || e.location_id === selectedLocation)
-    : employees
+    : employees, [employees, selectedLocation])
   const hasMultipleLocations = locations.length > 1
   const hasEmployeeStep = visibleEmployees.length > 1
 
@@ -347,7 +359,7 @@ export function PublicBookingForm({ business, services, employees, workingHours,
       return
     }
 
-    let slots = generateSlots(dayHours.open_time, dayHours.close_time, svc.duration_min)
+    let slots = generateSlotsMemo(dayHours.open_time, dayHours.close_time, svc.duration_min)
 
     if (dayHours.break_start && dayHours.break_end) {
       const [brh, brm] = dayHours.break_start.split(':').map(Number)

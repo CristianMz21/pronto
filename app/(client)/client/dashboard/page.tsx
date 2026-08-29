@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { DashboardClient } from './dashboard-client'
 
@@ -20,9 +21,9 @@ export default async function ClientDashboardPage() {
       <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
         <h2 className="text-lg font-semibold text-gray-900 mb-2">¡Bienvenido!</h2>
         <p className="text-sm text-gray-500 mb-4">Aún no tenés reservas vinculadas a tu cuenta.</p>
-        <a href="/" className="inline-block bg-blue-600 text-white rounded-lg px-6 py-2.5 text-sm font-medium hover:bg-blue-700">
+        <Link href="/" className="inline-block bg-blue-600 text-white rounded-lg px-6 py-2.5 text-sm font-medium hover:bg-blue-700">
           Reservá por primera vez
-        </a>
+        </Link>
       </div>
     )
   }

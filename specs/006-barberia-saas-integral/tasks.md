@@ -243,14 +243,14 @@ description: "Task list for Barbería SaaS Integral — Escudería (006)"
 
 **Purpose**: Premium visual, performance, seguridad, docs, verificación SCs.
 
-- [ ] T078 [P] Premium UX: `components/ui` polish — empty states ilustrados, skeletons, `loading.tsx`/`error.tsx` por ruta nueva, micro-interacciones, bottom-tab móvil; verificar 375px/360px sin scroll horizontal
-- [ ] T079 [P] Performance: `get_booked_slots` index `idx_appointments_employee_starts`, dashboard `Promise.all` parallel queries, `book/[slug]` `generateSlots` memo, Lighthouse ≥90 mobile
-- [ ] T080 [P] Security: RLS audit `supabase Advisors → Security Advisor` 0 flags; headers `HSTS/X-Frame/CSP` (004); Zod+DomPurify+rateLimit en todo `api/*` new; `REVOKE anon` check
-- [ ] T081 [P] Docs updates `docs/architecture.md` (locations, waitlist, recurring, memberships), `docs/database.md` (059..069 ERD), `docs/security.md` (RLS per location), `docs/testing.md` (E2E steps), `docs/backup.md` (new tables)
-- [ ] T082 [P] PWA verification: `manifest.json` + `sw.ts` + `public/sw.js` build check; `additionalPrecacheEntries ['/offline']` exists; 5 offline POS sync test
-- [ ] T083 [P] Run `quickstart.md` validation full: `docker compose up` + seed + US1..US7 quick checks
-- [ ] T084 [P] `npm run build` + `npm run lint` + `npm run test:unit` verde; `specs/006-barberia-saas-integral` artifacts lint (`spec.md` has all FR-*/NFR-*/SC-*)
-- [ ] T085 Final `gentle-ai sdd-status` + `specify check` green; `ls specs/006-barberia-saas-integral/` shows `spec.md plan.md research.md data-model.md quickstart.md contracts/ tasks.md`
+- [x] T078 [P] Premium UX: `components/ui` polish — empty states ilustrados, skeletons, `loading.tsx`/`error.tsx` por ruta nueva, micro-interacciones, bottom-tab móvil; verificar 375px/360px sin scroll horizontal
+- [x] T079 [P] Performance: `get_booked_slots` index `idx_appointments_employee_starts`, dashboard `Promise.all` parallel queries, `book/[slug]` `generateSlots` memo, Lighthouse ≥90 mobile
+- [x] T080 [P] Security: RLS audit `supabase Advisors → Security Advisor` 0 flags; headers `HSTS/X-Frame/CSP` (004); Zod+DomPurify+rateLimit en todo `api/*` new; `REVOKE anon` check
+- [x] T081 [P] Docs updates `docs/architecture.md` (locations, waitlist, recurring, memberships), `docs/database.md` (059..069 ERD), `docs/security.md` (RLS per location), `docs/testing.md` (E2E steps), `docs/backup.md` (new tables)
+- [x] T082 [P] PWA verification: `manifest.json` + `sw.ts` + `public/sw.js` build check; `additionalPrecacheEntries ['/offline']` exists; 5 offline POS sync test
+- [x] T083 [P] Run `quickstart.md` validation full: `docker compose up` + seed + US1..US7 quick checks
+- [x] T084 [P] `npm run build` + `npm run lint` + `npm run test:unit` verde; `specs/006-barberia-saas-integral` artifacts lint (`spec.md` has all FR-*/NFR-*/SC-*)
+- [x] T085 Final `gentle-ai sdd-status` + `specify check` green; `ls specs/006-barberia-saas-integral/` shows `spec.md plan.md research.md data-model.md quickstart.md contracts/ tasks.md`
 
 ---
 
