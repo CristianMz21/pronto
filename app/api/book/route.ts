@@ -38,6 +38,9 @@ const BookingSchema = z.object({
   promo_code: z.string().max(50).optional().nullable(),
   loyalty_redeem_points: z.coerce.number().int().min(0).max(1_000_000).optional().nullable(),
   location_id: z.string().uuid().optional().nullable(),
+  // CRM campaigns attribution (T073)
+  source: z.enum(['online','manual','campaign','campaign_auto','walk-in']).optional().nullable(),
+  campaign_id: z.string().uuid().optional().nullable(),
 })
 
 export async function POST(req: NextRequest) {
@@ -65,6 +68,8 @@ export async function POST(req: NextRequest) {
 
   const { businessId, serviceId, employeeId, date, time, phone, email, membership_id, promo_code, loyalty_redeem_points } = parsed.data
   const location_id = (parsed.data as { location_id?: string | null }).location_id ?? null
+  const source = (parsed.data as { source?: string | null }).source ?? 'online'
+  const campaign_id = (parsed.data as { campaign_id?: string | null }).campaign_id ?? null
   const name = sanitize(parsed.data.name)
 
   // US5 stack guard: only one promo/membership/loyalty discount at a time
@@ -437,7 +442,8 @@ export async function POST(req: NextRequest) {
       ends_at:     endsAt.toISOString(),
       price:       service.price,
       status:      'confirmed',
-      source:      'online',
+      source:      campaign_id ? 'campaign' : source ?? 'online',
+      campaign_id: campaign_id ?? null,
     } as unknown as never)
     .select('id')
     .single()
@@ -519,6 +525,18 @@ export async function POST(req: NextRequest) {
       console.error('[api/book] membership consume failed', e)
       return NextResponse.json({ error: 'membership_consume_failed', message: err.message }, { status: 409 })
     }
+  }
+
+  // CRM attribution: mark campaign recipient as rebooked (T073)
+  if (clientId && (campaign_id || source === 'campaign' || source === 'campaign_auto')) {
+    try {
+      const { attributeRebooking } = await import('@/lib/campaigns')
+      await attributeRebooking(supabase as unknown as Parameters<typeof attributeRebooking>[0], {
+        clientId,
+        businessId,
+        campaignId: campaign_id ?? null,
+      })
+    } catch {}
   }
 
   // Trigger notifications (fire-and-forget — non-blocking)
