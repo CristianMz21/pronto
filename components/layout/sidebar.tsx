@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, ShoppingCart, Users, Package, CalendarDays, Settings, LogOut, Menu, X, Wallet, Scissors, UserCircle, BarChart3, Crown, Tag, Boxes } from 'lucide-react'
+import { LayoutDashboard, ShoppingCart, Users, Package, CalendarDays, Settings, LogOut, Menu, X, Wallet, Scissors, UserCircle, BarChart3, Crown, Tag, Building2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -36,6 +36,7 @@ export function Sidebar({ businessName, role }: SidebarProps) {
     { href: '/membresias', label: 'Membresías', icon: Crown },
     { href: '/promociones', label: 'Promociones', icon: Tag },
     { href: '/reportes', label: (t as any)('reports') ?? 'Reportes', icon: BarChart3 },
+    { href: '/sucursales', label: 'Sucursales', icon: Building2 },
   ]
 
   // Filter nav by role using single source ROLE_PERMISSIONS via canAccessRoute.
