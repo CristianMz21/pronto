@@ -104,6 +104,8 @@ interface Props {
   /** Configurable lead time (054) — for display in error messages; dashboard does NOT enforce lead time (walk-in 0) */
   minAdvanceMinutes?: number | null
   bookingLeadTimeEnabled?: boolean | null
+  isBarbero?: boolean
+  currentEmployeeId?: string | null
 }
 
 // ─── Draggable appointment card ────────────────────────────────────────────────
@@ -162,7 +164,7 @@ function todayInTz(tz: string): string {
   return `${get('year')}-${get('month')}-${get('day')}`
 }
 
-export function BookingCalendar({ businessId, slug, timezone, appointments: initial, employees, services, clients: initialClients, businessHours, minAdvanceMinutes, bookingLeadTimeEnabled }: Props) {
+export function BookingCalendar({ businessId, slug, timezone, appointments: initial, employees, services, clients: initialClients, businessHours, minAdvanceMinutes, bookingLeadTimeEnabled, isBarbero = false, currentEmployeeId = null }: Props) {
   const supabase = createClient()
   const router = useRouter()
   const t = useTranslations('booking')
@@ -212,7 +214,16 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
   const is12h = uses12HourClock(mounted ? locale : 'en-US')
 
   // hour/minute always stored in 24h internally; period only used when is12h
-  const [form, setForm] = useState({ client_id: '', employee_id: '', service_id: '', date: '', hour: '', minute: '00', period: 'AM' as 'AM' | 'PM', notes: '' })
+  const [form, setForm] = useState({
+    client_id: '',
+    employee_id: isBarbero && currentEmployeeId ? currentEmployeeId : '',
+    service_id: '',
+    date: '',
+    hour: '',
+    minute: '00',
+    period: 'AM' as 'AM' | 'PM',
+    notes: '',
+  })
 
   async function openForm(prefill?: Partial<typeof form>) {
     const { data, error } = await supabase
@@ -373,9 +384,13 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
 
   async function loadWeek(start: Date) {
     const end = new Date(start); end.setDate(start.getDate() + 7)
-    const { data, error } = await supabase.from('appointments')
+    let q = supabase.from('appointments')
       .select('id, starts_at, ends_at, status, source, notes, clients(id, name), employees(id, name), services(id, name, price)')
       .eq('business_id', businessId).gte('starts_at', start.toISOString()).lt('starts_at', end.toISOString()).order('starts_at')
+    if (isBarbero && currentEmployeeId) {
+      q = (q as unknown as { eq: (c: string, v: string) => typeof q }).eq('employee_id', currentEmployeeId) as typeof q
+    }
+    const { data, error } = await q
     if (error) {
       console.error('[booking] loadWeek failed:', error.message)
       // No borres el estado SSR — el 401 es token expirado, el middleware
@@ -416,8 +431,9 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
     const service = services.find((s) => s.id === form.service_id)!
     const endsAt = new Date(startsAt.getTime() + service.duration_min * 60000)
 
+    const effectiveEmployeeId = isBarbero && currentEmployeeId ? currentEmployeeId : (form.employee_id || null)
     const { data, error } = await supabase.from('appointments').insert({
-      business_id: businessId, client_id: form.client_id || null, employee_id: form.employee_id || null,
+      business_id: businessId, client_id: form.client_id || null, employee_id: effectiveEmployeeId,
       service_id: form.service_id, starts_at: startsAt.toISOString(), ends_at: endsAt.toISOString(),
       notes: form.notes ? form.notes.trim() || null : null, price: service.price, status: 'confirmed', source: 'manual',
     }).select('id, starts_at, ends_at, status, source, notes, clients(id, name), employees(id, name), services(id, name, price)').single()
@@ -426,7 +442,7 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
       setAppointments((prev) => [...prev, data as Appointment])
       setShowForm(false)
       setFormError(null)
-      setForm({ client_id: '', employee_id: '', service_id: '', date: '', hour: '', minute: '00', period: 'AM', notes: '' })
+      setForm({ client_id: '', employee_id: isBarbero && currentEmployeeId ? currentEmployeeId : '', service_id: '', date: '', hour: '', minute: '00', period: 'AM', notes: '' })
       router.refresh()
       fetch('/api/email/confirm', {
         method: 'POST',
@@ -773,7 +789,7 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
                   {clientsList.map((c) => <option key={c.id} value={c.id}>{c.name}{c.phone ? ` · ${c.phone}` : ''}</option>)}
                 </select>
               </div>
-              {employees.length > 0 && (
+              {!isBarbero && employees.length > 0 && (
                 <div>
                   <label className="text-xs text-gray-500 font-medium">{t('form.employeeLabel')}</label>
                   <select value={form.employee_id} onChange={(e) => setForm((f) => ({ ...f, employee_id: e.target.value }))}
@@ -820,7 +836,7 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
                 </span>
               )}
             </div>
-            {employees.length > 0 && (
+            {!isBarbero && employees.length > 0 && (
               <div className="mb-4">
                 <label className="text-xs text-gray-400 uppercase font-medium">{t('detail.employeeLabel')}</label>
                 <select
@@ -836,6 +852,12 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
                 {assignError && (
                   <p className="mt-1 text-xs text-red-600">{assignError}</p>
                 )}
+              </div>
+            )}
+            {isBarbero && selectedAppt.employees?.name && (
+              <div className="mb-4">
+                <label className="text-xs text-gray-400 uppercase font-medium">{t('detail.employeeLabel')}</label>
+                <div className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-700">{selectedAppt.employees.name}</div>
               </div>
             )}
             {selectedAppt.notes && <p className="text-sm text-gray-600 mb-4 italic">{'"'}{selectedAppt.notes}{'"'}</p>}
