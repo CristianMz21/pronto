@@ -5,7 +5,8 @@ import { getAuthUser } from '@/lib/auth-user'
 import { DEFAULT_LEAD_MINUTES } from '@/lib/booking-availability'
 import { getUserRole } from '@/lib/auth/roles'
 
-export default async function BookingPage() {
+export default async function BookingPage(props: { searchParams: Promise<{ location?: string }> }) {
+  const searchParams = await props.searchParams
   const supabase = await createClient()
   const user = await getAuthUser()
 
@@ -63,10 +64,12 @@ export default async function BookingPage() {
   const weekEnd = new Date(weekStart)
   weekEnd.setDate(weekStart.getDate() + 7)
 
+  const selectedLocation = searchParams.location ?? null
+
   // Fetch base data
   let appointmentsQuery = supabase
     .from('appointments')
-    .select('id, starts_at, ends_at, status, source, notes, clients(id, name), employees(id, name), services(id, name, price)')
+    .select('id, starts_at, ends_at, status, source, notes, location_id, clients(id, name), employees(id, name), services(id, name, price)')
     .eq('business_id', business.id)
     .gte('starts_at', weekStart.toISOString())
     .lt('starts_at', weekEnd.toISOString())
@@ -75,12 +78,16 @@ export default async function BookingPage() {
   if (isBarbero && barberEmployeeId) {
     appointmentsQuery = appointmentsQuery.eq('employee_id', barberEmployeeId)
   }
+  if (selectedLocation) {
+    appointmentsQuery = appointmentsQuery.eq('location_id', selectedLocation) as typeof appointmentsQuery
+  }
 
   let employeesQuery = supabase
     .from('employees')
-    .select('id, name')
+    .select('id, name, location_id')
     .eq('business_id', business.id)
     .eq('is_active', true)
+  if (selectedLocation) employeesQuery = employeesQuery.eq('location_id', selectedLocation) as typeof employeesQuery
 
   if (isBarbero && barberEmployeeId) {
     employeesQuery = employeesQuery.eq('id', barberEmployeeId)
@@ -88,9 +95,10 @@ export default async function BookingPage() {
 
   let servicesQuery = supabase
     .from('services')
-    .select('id, name, duration_min, price')
+    .select('id, name, duration_min, price, location_id')
     .eq('business_id', business.id)
     .eq('is_active', true)
+  if (selectedLocation) servicesQuery = servicesQuery.or(`location_id.eq.${selectedLocation},location_id.is.null`) as typeof servicesQuery
 
   let servicesData: { id: string; name: string; duration_min: number; price: number }[] | null = null
   let employeeServicesIds: string[] | null = null
@@ -109,7 +117,7 @@ export default async function BookingPage() {
     }
   }
 
-  const [{ data: appointments }, { data: employees }, { data: services }, { data: clients }, { data: businessHours }] =
+  const [{ data: appointments }, { data: employees }, { data: services }, { data: clients }, { data: businessHours }, { data: locations }] =
     await Promise.all([
       appointmentsQuery as unknown as Promise<{ data: typeof appointments }>,
       employeesQuery as unknown as Promise<{ data: typeof employees }>,
@@ -124,11 +132,20 @@ export default async function BookingPage() {
         .from('business_hours')
         .select('day_of_week, is_open, open_time, close_time')
         .eq('business_id', business.id),
+      supabase.from('locations').select('id, name').eq('business_id', business.id).order('name'),
     ])
 
   return (
     <>
       <Header title="Booking" />
+      {(locations?.length ?? 0) > 1 && !isBarbero && (
+        <div className="px-6 pt-3 flex gap-2 text-xs">
+          <a href="/booking" className={`px-3 py-1 rounded-full border ${!selectedLocation ? 'bg-gray-900 text-white' : 'bg-white'}`}>Todas</a>
+          {locations!.map((l) => (
+            <a key={l.id} href={`/booking?location=${l.id}`} className={`px-3 py-1 rounded-full border ${selectedLocation === l.id ? 'bg-gray-900 text-white' : 'bg-white'}`}>{l.name}</a>
+          ))}
+        </div>
+      )}
       <BookingCalendar
         businessId={business.id}
         slug={business.slug}
