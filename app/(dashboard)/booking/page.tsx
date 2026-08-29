@@ -118,7 +118,9 @@ export default async function BookingPage(props: { searchParams: Promise<{ locat
     }
   }
 
-  const [{ data: appointments }, { data: employees }, { data: services }, { data: clients }, { data: businessHours }, { data: locations }] =
+  const todayStr = today.toISOString().slice(0, 10)
+  const nextMonthStr = new Date(today.getFullYear(), today.getMonth() + 2, 0).toISOString().slice(0, 10)
+  const [{ data: appointments }, { data: employees }, { data: services }, { data: clients }, { data: businessHours }, { data: locations }, { data: holidays }] =
     await Promise.all([
       appointmentsQuery as unknown as Promise<{ data: typeof appointments }>,
       employeesQuery as unknown as Promise<{ data: typeof employees }>,
@@ -131,9 +133,10 @@ export default async function BookingPage(props: { searchParams: Promise<{ locat
         .limit(200),
       supabase
         .from('business_hours')
-        .select('day_of_week, is_open, open_time, close_time')
+        .select('day_of_week, is_open, open_time, close_time, break_start, break_end')
         .eq('business_id', business.id),
       supabase.from('locations').select('id, name').eq('business_id', business.id).order('name'),
+      supabase.from('holidays').select('id, business_id, location_id, date, reason, is_open').eq('business_id', business.id).gte('date', todayStr).lte('date', nextMonthStr).order('date'),
     ])
 
   return (
@@ -156,6 +159,9 @@ export default async function BookingPage(props: { searchParams: Promise<{ locat
         services={services ?? []}
         clients={clients ?? []}
         businessHours={businessHours ?? []}
+        holidays={holidays ?? []}
+        locations={locations ?? []}
+        selectedLocation={selectedLocation}
         minAdvanceMinutes={(business as { min_advance_minutes?: number | null })?.min_advance_minutes ?? DEFAULT_LEAD_MINUTES}
         bookingLeadTimeEnabled={(business as { booking_lead_time_enabled?: boolean | null })?.booking_lead_time_enabled ?? true}
         isBarbero={isBarbero}
