@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { EmployeeForm } from './employee-form'
 import { formatCurrency } from '@/lib/utils'
 
 interface Employee {
@@ -87,12 +88,12 @@ export function BarberosClient({ employees, services, locations }: { employees: 
       )}
 
       {(creating || editing) && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl p-6 max-w-sm w-full text-center">
-            <p className="text-sm text-gray-600 mb-4">Formulario barbero disponible en próximo PR (T034b).</p>
-            <Button size="sm" onClick={() => { setCreating(false); setEditing(null) }}>Cerrar</Button>
-          </div>
-        </div>
+        <EmployeeForm
+          employee={editing}
+          services={services}
+          locations={locations}
+          onClose={() => { setCreating(false); setEditing(null) }}
+        />
       )}
     </div>
   )
