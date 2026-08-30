@@ -500,8 +500,19 @@ export function PublicBookingForm({
     // For business TZ, use Intl to get weekday in that TZ (handles DST)
     const tzDow = (() => {
       try {
-        const wd = new Intl.DateTimeFormat('en-US', { timeZone: business.timezone ?? 'UTC', weekday: 'short' }).format(new Date(Date.UTC(y!, m! - 1, d!, 12, 0)))
-        const map: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }
+        const wd = new Intl.DateTimeFormat('en-US', {
+          timeZone: business.timezone ?? 'UTC',
+          weekday: 'short',
+        }).format(new Date(Date.UTC(y!, m! - 1, d!, 12, 0)))
+        const map: Record<string, number> = {
+          Sun: 0,
+          Mon: 1,
+          Tue: 2,
+          Wed: 3,
+          Thu: 4,
+          Fri: 5,
+          Sat: 6,
+        }
         return map[wd] ?? dow
       } catch {
         return dow
@@ -1406,41 +1417,43 @@ export function PublicBookingForm({
           )}
 
           {/* US7 waitlist CTA: when no slots or slot taken or day closed holiday, offer waitlist - not during loading */}
-          {!loadingSlots && (dayClosed || availableSlots.length === 0 || slotTakenError) && date && (
-            <div
-              style={{
-                marginTop: 16,
-                padding: 12,
-                background: isEsc ? '#1c1b1b' : '#FFF8ED',
-                border: isEsc ? '1px solid rgba(197,160,89,0.2)' : '0.5px solid #E8E0D8',
-                borderRadius: isEsc ? 0 : 10,
-              }}
-            >
-              <div style={{ fontSize: 13, fontWeight: 500, color: cardText, marginBottom: 4 }}>
-                ¿Sin horarios?
-              </div>
-              <div style={{ fontSize: 12, color: cardMuted, marginBottom: 8 }}>
-                Unite a la lista de espera. Te avisamos por WhatsApp cuando se libere un slot (30m
-                para confirmar).
-              </div>
-              <button
-                type="button"
-                onClick={() => setStep('contact')}
+          {!loadingSlots &&
+            (dayClosed || availableSlots.length === 0 || slotTakenError) &&
+            date && (
+              <div
                 style={{
-                  background: isEsc ? '#C5A059' : 'var(--brand)',
-                  color: isEsc ? '#000' : 'white',
-                  border: isEsc ? '1px solid #C5A059' : 'none',
-                  borderRadius: isEsc ? 0 : 8,
-                  padding: '8px 14px',
-                  fontSize: 13,
-                  fontWeight: 500,
-                  cursor: 'pointer',
+                  marginTop: 16,
+                  padding: 12,
+                  background: isEsc ? '#1c1b1b' : '#FFF8ED',
+                  border: isEsc ? '1px solid rgba(197,160,89,0.2)' : '0.5px solid #E8E0D8',
+                  borderRadius: isEsc ? 0 : 10,
                 }}
               >
-                Unirme a lista de espera
-              </button>
-            </div>
-          )}
+                <div style={{ fontSize: 13, fontWeight: 500, color: cardText, marginBottom: 4 }}>
+                  ¿Sin horarios?
+                </div>
+                <div style={{ fontSize: 12, color: cardMuted, marginBottom: 8 }}>
+                  Unite a la lista de espera. Te avisamos por WhatsApp cuando se libere un slot (30m
+                  para confirmar).
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setStep('contact')}
+                  style={{
+                    background: isEsc ? '#C5A059' : 'var(--brand)',
+                    color: isEsc ? '#000' : 'white',
+                    border: isEsc ? '1px solid #C5A059' : 'none',
+                    borderRadius: isEsc ? 0 : 8,
+                    padding: '8px 14px',
+                    fontSize: 13,
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Unirme a lista de espera
+                </button>
+              </div>
+            )}
 
           <CtaButton
             label={isEsc ? 'Continuar →' : t('datetime.continue')}
