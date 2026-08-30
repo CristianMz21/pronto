@@ -114,9 +114,13 @@ export function CajaView({ currency, openRegister, history, movements }: Props) 
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Unlock className="w-4 h-4 text-green-600" /> Caja abierta —{' '}
-              {mounted
-                ? new Date(openRegister.opened_at).toLocaleString('es-CO')
-                : new Date(openRegister.opened_at).toISOString().slice(0, 16).replace('T', ' ')}
+              <span suppressHydrationWarning>
+                {mounted
+                  ? new Date(openRegister.opened_at).toLocaleString('es-CO', {
+                      timeZone: 'America/Bogota',
+                    })
+                  : new Date(openRegister.opened_at).toISOString().slice(0, 16).replace('T', ' ')}
+              </span>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -204,9 +208,11 @@ export function CajaView({ currency, openRegister, history, movements }: Props) 
                         {m.type === 'in' ? '↑' : '↓'} {formatCurrency(Number(m.amount), currency)}{' '}
                         {m.reason ? `— ${m.reason}` : ''}
                       </span>
-                      <span className="text-gray-400">
+                      <span className="text-gray-400" suppressHydrationWarning>
                         {mounted
-                          ? new Date(m.created_at).toLocaleTimeString('es-CO')
+                          ? new Date(m.created_at).toLocaleTimeString('es-CO', {
+                              timeZone: 'America/Bogota',
+                            })
                           : new Date(m.created_at).toISOString().slice(11, 16)}
                       </span>
                     </div>
@@ -257,13 +263,23 @@ export function CajaView({ currency, openRegister, history, movements }: Props) 
               {history.map((h) => (
                 <div key={h.id} className="flex justify-between items-center border-b py-2">
                   <div>
-                    <div className="font-medium">
+                    <div className="font-medium" suppressHydrationWarning>
                       {mounted
-                        ? new Date(h.opened_at).toLocaleDateString('es-CO')
+                        ? new Date(h.opened_at).toLocaleDateString('es-CO', {
+                            timeZone: 'America/Bogota',
+                          })
                         : new Date(h.opened_at).toISOString().slice(0, 10)}{' '}
                       {h.status === 'open'
                         ? '— abierta'
-                        : `→ ${mounted && h.closed_at ? new Date(h.closed_at).toLocaleDateString('es-CO') : h.closed_at ? new Date(h.closed_at).toISOString().slice(0, 10) : ''}`}
+                        : `→ ${
+                            mounted && h.closed_at
+                              ? new Date(h.closed_at).toLocaleDateString('es-CO', {
+                                  timeZone: 'America/Bogota',
+                                })
+                              : h.closed_at
+                                ? new Date(h.closed_at).toISOString().slice(0, 10)
+                                : ''
+                          }`}
                     </div>
                     <div className="text-xs text-gray-500">
                       Apertura {formatCurrency(Number(h.opening_cash), currency)} · Esperado{' '}

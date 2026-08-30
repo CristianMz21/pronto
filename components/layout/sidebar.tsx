@@ -82,6 +82,8 @@ export function Sidebar({ businessName, role }: SidebarProps) {
     : allNav.filter((item) => canAccessRoute(role, item.href))
 
   const showSettings = !!role && canAccessRoute(role, '/settings')
+  // Hydration boundary: suppress mismatches from pathname or locale differences during initial hydration
+  // Sidebar receives role from server RSC; fallback skeleton ensures consistent initial HTML if role is pending
 
   async function handleLogout() {
     await supabase.auth.signOut()
@@ -91,7 +93,7 @@ export function Sidebar({ businessName, role }: SidebarProps) {
 
   const navLinks = (
     <>
-      <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
+      <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto" suppressHydrationWarning>
         {!role ? (
           // Skeleton while role unresolved — no privileged links, no FOUC
           <div className="space-y-2 p-2">

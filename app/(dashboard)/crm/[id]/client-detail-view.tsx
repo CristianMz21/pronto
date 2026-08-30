@@ -3,7 +3,7 @@
 import { CalendarDays, Clock, DollarSign, Pencil, Trash2, UserCheck } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -120,6 +120,10 @@ export function ClientDetailView({
   const [copied, setCopied] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [editErrors, setEditErrors] = useState<{ phone?: string; birthday?: string }>({})
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const telegramInviteLink = telegramBotUsername
     ? `https://t.me/${telegramBotUsername}?start=client_${initial.id}`
@@ -236,14 +240,26 @@ export function ClientDetailView({
             <Badge
               key={m.id}
               variant="outline"
+              suppressHydrationWarning
               className={
-                m.status === 'active' && m.remaining > 0 && new Date(m.expires_at) > new Date()
+                mounted &&
+                m.status === 'active' &&
+                m.remaining > 0 &&
+                new Date(m.expires_at) > new Date()
                   ? 'bg-green-50 text-green-700 border-green-200'
-                  : 'bg-gray-100 text-gray-500'
+                  : m.status === 'active' && m.remaining > 0
+                    ? 'bg-green-50 text-green-700 border-green-200'
+                    : 'bg-gray-100 text-gray-500'
               }
             >
               👑 {m.memberships?.name ?? m.id.slice(0, 8)} · {m.remaining} usos · vence{' '}
-              {new Date(m.expires_at).toLocaleDateString('es-CO')}
+              <span suppressHydrationWarning>
+                {mounted
+                  ? new Date(m.expires_at).toLocaleDateString('es-CO', {
+                      timeZone: 'America/Bogota',
+                    })
+                  : new Date(m.expires_at).toISOString().slice(0, 10)}
+              </span>
             </Badge>
           ))}
         </div>

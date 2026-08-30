@@ -748,7 +748,10 @@ export function BookingCalendar({
   // Hydration guard: don't render calendar until mounted to avoid server/client date mismatch (#441)
   if (!mounted || !weekStart) {
     return (
-      <div className="flex-1 flex items-center justify-center p-6 text-sm text-gray-500" suppressHydrationWarning>
+      <div
+        className="flex-1 flex items-center justify-center p-6 text-sm text-gray-500"
+        suppressHydrationWarning
+      >
         Cargando calendario...
       </div>
     )
@@ -766,9 +769,12 @@ export function BookingCalendar({
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
-          <span className="text-sm font-medium text-gray-700 w-40 text-center">
+          <span
+            className="text-sm font-medium text-gray-700 w-40 text-center"
+            suppressHydrationWarning
+          >
             {weekDates.length
-              ? `${weekDates[0]?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${weekDates[6]?.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+              ? `${weekDates[0]?.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/Bogota' })} – ${weekDates[6]?.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Bogota' })}`
               : '—'}
           </span>
           <button

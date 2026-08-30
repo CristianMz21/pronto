@@ -941,9 +941,13 @@ export function POSTerminal({
                     >
                       <option value="">— Sin membresía —</option>
                       {membershipOptions.map((m) => (
-                        <option key={m.id} value={m.id}>
+                        <option key={m.id} value={m.id} suppressHydrationWarning>
                           {m.name} · {m.remaining} usos · vence{' '}
-                          {new Date(m.expires_at).toLocaleDateString('es-CO')}
+                          {mounted
+                            ? new Date(m.expires_at).toLocaleDateString('es-CO', {
+                                timeZone: 'America/Bogota',
+                              })
+                            : new Date(m.expires_at).toISOString().slice(0, 10)}
                         </option>
                       ))}
                     </select>

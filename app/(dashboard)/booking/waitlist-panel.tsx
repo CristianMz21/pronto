@@ -148,7 +148,7 @@ export function WaitlistPanel({ businessId, locationId }: Props) {
         timeStyle: 'short',
       }).format(new Date(iso))
     } catch {
-      return new Date(iso).toLocaleString()
+      return new Date(iso).toLocaleString('es-CO', { timeZone: tz })
     }
   }
 

@@ -2,7 +2,7 @@
 
 import { Calendar, Coins, Pencil, Plus, Trash2, Users } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -58,6 +58,11 @@ export function MembresiasClient({
   const [error, setError] = useState<string | null>(null)
   const [showPurchase, setShowPurchase] = useState<string | null>(null)
   const [purchaseClient, setPurchaseClient] = useState('')
+  // Hydration-safe: avoid new Date() mismatch during SSR/hydration
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   function openCreate() {
     setForm({
@@ -272,15 +277,22 @@ export function MembresiasClient({
                 <tbody>
                   {clientMemberships.map((cm) => {
                     const mem = memberships.find((m) => m.id === cm.membership_id)
-                    const expired = new Date(cm.expires_at) < new Date() || cm.remaining <= 0
+                    // Hydration-safe: server and initial client use deterministic fallback (not expired), real check after mount
+                    const expired = mounted
+                      ? new Date(cm.expires_at) < new Date() || cm.remaining <= 0
+                      : cm.remaining <= 0
                     return (
                       <tr key={cm.id} className="border-b last:border-0">
                         <td className="py-2">{cm.clients?.name ?? cm.client_id.slice(0, 8)}</td>
                         <td className="py-2">{mem?.name ?? cm.membership_id.slice(0, 8)}</td>
                         <td className="py-2 text-center font-mono">{cm.remaining}</td>
-                        <td className="py-2 flex items-center gap-1">
+                        <td className="py-2 flex items-center gap-1" suppressHydrationWarning>
                           <Calendar className="w-3 h-3" />{' '}
-                          {new Date(cm.expires_at).toLocaleDateString('es-CO')}
+                          {mounted
+                            ? new Date(cm.expires_at).toLocaleDateString('es-CO', {
+                                timeZone: 'America/Bogota',
+                              })
+                            : new Date(cm.expires_at).toISOString().slice(0, 10)}
                         </td>
                         <td className="py-2">
                           <Badge

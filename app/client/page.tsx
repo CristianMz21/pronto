@@ -200,7 +200,7 @@ export default async function ClientPortalPage(props: {
                         </div>
                         <div className="text-xs text-gray-600">
                           Usos restantes: <span className="font-bold">{m.remaining}</span> · Vence{' '}
-                          {exp.toLocaleDateString('es-CO')}
+                          {exp.toLocaleDateString('es-CO', { timeZone: 'America/Bogota' })}
                         </div>
                         <div
                           className={`text-xs mt-1 ${isActive ? 'text-green-700' : 'text-gray-500'}`}

@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import { createClient } from '@/lib/supabase/client'
 
@@ -76,6 +76,10 @@ export function DashboardClient({
   stats,
 }: Props) {
   const supabase = createClient()
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => {
+    setMounted(true)
+  }, [])
   const [profile, setProfile] = useState({
     name: primaryClient.name ?? '',
     phone: primaryClient.phone ?? '',
@@ -173,8 +177,14 @@ export function DashboardClient({
           <div className="text-xs text-gray-500">Gasto total</div>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
-          <div className="text-xs font-medium text-gray-900 truncate">
-            {stats.last_visit_at ? new Date(stats.last_visit_at).toLocaleDateString() : '—'}
+          <div className="text-xs font-medium text-gray-900 truncate" suppressHydrationWarning>
+            {stats.last_visit_at
+              ? mounted
+                ? new Date(stats.last_visit_at).toLocaleDateString('es-CO', {
+                    timeZone: 'America/Bogota',
+                  })
+                : new Date(stats.last_visit_at).toISOString().slice(0, 10)
+              : '—'}
           </div>
           <div className="text-xs text-gray-500">Última visita</div>
         </div>
@@ -204,9 +214,10 @@ export function DashboardClient({
                 <div className="text-base font-semibold text-gray-900 truncate">
                   {getServiceName(upcoming) || 'Cita'} — {getBusinessName(upcoming)}
                 </div>
-                <div className="text-sm text-gray-700 mt-1">
-                  {new Date(upcoming.starts_at).toLocaleString()} —{' '}
-                  {new Date(upcoming.ends_at).toLocaleTimeString()}
+                <div className="text-sm text-gray-700 mt-1" suppressHydrationWarning>
+                  {mounted
+                    ? `${new Date(upcoming.starts_at).toLocaleString('es-CO', { timeZone: 'America/Bogota' })} — ${new Date(upcoming.ends_at).toLocaleTimeString('es-CO', { timeZone: 'America/Bogota' })}`
+                    : `${new Date(upcoming.starts_at).toISOString().slice(0, 16).replace('T', ' ')} — ${new Date(upcoming.ends_at).toISOString().slice(11, 16)}`}
                 </div>
                 <div className="inline-flex items-center gap-2 text-xs mt-2">
                   <span className="px-2 py-0.5 rounded-full bg-blue-600 text-white font-medium capitalize">
@@ -294,8 +305,10 @@ export function DashboardClient({
                     <div className="text-sm font-medium text-gray-900">
                       {getServiceName(h) || 'Cita'} — {getBusinessName(h)}
                     </div>
-                    <div className="text-xs text-gray-500">
-                      {new Date(h.starts_at).toLocaleString()} · {h.status}
+                    <div className="text-xs text-gray-500" suppressHydrationWarning>
+                      {mounted
+                        ? `${new Date(h.starts_at).toLocaleString('es-CO', { timeZone: 'America/Bogota' })} · ${h.status}`
+                        : `${new Date(h.starts_at).toISOString().slice(0, 16).replace('T', ' ')} · ${h.status}`}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -309,6 +322,7 @@ export function DashboardClient({
                     {(h.status === 'pending' ||
                       h.status === 'confirmed' ||
                       h.status === 'scheduled') &&
+                      mounted &&
                       new Date(h.starts_at) > new Date() && (
                         <button
                           type="button"
@@ -333,9 +347,13 @@ export function DashboardClient({
                   key={t.id}
                   className="flex justify-between text-xs text-gray-600 border-b border-gray-50 py-1"
                 >
-                  <span>
-                    {new Date(t.created_at).toLocaleDateString()} —{' '}
-                    {getBusinessName(t as unknown as { businesses: unknown })}
+                  <span suppressHydrationWarning>
+                    {mounted
+                      ? new Date(t.created_at).toLocaleDateString('es-CO', {
+                          timeZone: 'America/Bogota',
+                        })
+                      : new Date(t.created_at).toISOString().slice(0, 10)}{' '}
+                    — {getBusinessName(t as unknown as { businesses: unknown })}
                   </span>
                   <span className="font-medium">${Number(t.amount).toFixed(2)}</span>
                 </div>

@@ -2,7 +2,7 @@
 
 import { Calendar, Pencil, Plus, Tag, Trash2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -58,12 +58,13 @@ export function PromocionesClient({
   const router = useRouter()
   const [creating, setCreating] = useState(false)
   const [editing, setEditing] = useState<Promotion | null>(null)
+  // Hydration-safe: avoid new Date() in initial state (server UTC vs client America/Bogota midnight mismatch)
   const [form, setForm] = useState({
     name: '',
     type: 'percent' as 'percent' | 'fixed' | 'combo',
     value: '20',
     promo_code: '',
-    valid_from: new Date().toISOString().slice(0, 10),
+    valid_from: '',
     valid_to: '',
     day_of_week: [] as number[],
     service_ids: [] as string[],
@@ -71,6 +72,13 @@ export function PromocionesClient({
     location_id: '',
     is_active: true,
   })
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => {
+    setMounted(true)
+    setForm((prev) =>
+      prev.valid_from ? prev : { ...prev, valid_from: new Date().toISOString().slice(0, 10) },
+    )
+  }, [])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [testResult, setTestResult] = useState<string | null>(null)
@@ -238,10 +246,24 @@ export function PromocionesClient({
                       <Badge variant="outline">{r.service_ids.length} servicios</Badge>
                     ) : null}
                   </div>
-                  <div className="mt-2 text-xs text-gray-500 flex items-center gap-1">
+                  <div
+                    className="mt-2 text-xs text-gray-500 flex items-center gap-1"
+                    suppressHydrationWarning
+                  >
                     <Calendar className="w-3 h-3" />{' '}
-                    {new Date(p.valid_from).toLocaleDateString('es-CO')} →{' '}
-                    {p.valid_to ? new Date(p.valid_to).toLocaleDateString('es-CO') : '∞'}
+                    {mounted
+                      ? new Date(p.valid_from).toLocaleDateString('es-CO', {
+                          timeZone: 'America/Bogota',
+                        })
+                      : new Date(p.valid_from).toISOString().slice(0, 10)}{' '}
+                    →{' '}
+                    {p.valid_to
+                      ? mounted
+                        ? new Date(p.valid_to).toLocaleDateString('es-CO', {
+                            timeZone: 'America/Bogota',
+                          })
+                        : new Date(p.valid_to).toISOString().slice(0, 10)
+                      : '∞'}
                   </div>
                   {p.location_id && (
                     <div className="text-xs text-gray-500">

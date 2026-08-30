@@ -80,7 +80,7 @@ export function CampaignBuilder({ initialLocationId, onCreated }: Props) {
         body: JSON.stringify({
           name:
             name ||
-            `Campaña ${SEGMENT_LABELS[segment]} — ${new Date().toLocaleDateString('es-CO')}`,
+            `Campaña ${SEGMENT_LABELS[segment]} — ${new Date().toLocaleDateString('es-CO', { timeZone: 'America/Bogota' })}`,
           segment,
           channel,
           template,
