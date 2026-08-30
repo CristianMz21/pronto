@@ -41,7 +41,7 @@ export default async function CRMPage(props: {
   let businessCurrency = 'COP'
   let businessTz = 'America/Bogota'
   const ownedBiz = await db.query.businesses.findFirst({
-    where: eq(businesses.ownerId, user?.id),
+    where: eq(businesses.ownerId, user?.id ?? ''),
     columns: { id: true, currency: true, timezone: true },
   })
   if (ownedBiz) {
@@ -50,7 +50,7 @@ export default async function CRMPage(props: {
     businessTz = ownedBiz.timezone ?? 'America/Bogota'
   } else {
     const emp = (await db.query.employees.findFirst({
-      where: and(eq(employees.userId, user?.id), eq(employees.isActive, true)),
+      where: and(eq(employees.userId, user?.id ?? ''), eq(employees.isActive, true)),
       with: { business: { columns: { currency: true, timezone: true } } },
     })) as unknown as
       | { businessId: string; business: { currency: string; timezone: string } }

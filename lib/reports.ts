@@ -8,10 +8,6 @@ export interface TxLike {
   client_id?: string | null
   created_at?: string
 }
-export interface ApptLike {
-  id: string
-  status: string
-}
 
 export function calcAvgTicket(transactions: TxLike[]): number {
   if (!transactions || transactions.length === 0) return 0
@@ -61,17 +57,6 @@ export function reportSalesByBarber(transactions: TxLike[]): Record<string, numb
     const id = tx.employee_id ?? 'unassigned'
     out[id] = (out[id] ?? 0) + Number(tx.amount ?? 0)
   }
-  // @ts-expect-error - tsc strict fix
-  for (const k of Object.keys(out)) out[k] = Math.round(out[k] * 100) / 100
-  return out
-}
-
-export function reportCommissions(
-  commissions: { employee_id: string; amount: number }[],
-): Record<string, number> {
-  const out: Record<string, number> = {}
-  for (const c of commissions)
-    out[c.employee_id] = (out[c.employee_id] ?? 0) + Number(c.amount ?? 0)
   // @ts-expect-error - tsc strict fix
   for (const k of Object.keys(out)) out[k] = Math.round(out[k] * 100) / 100
   return out

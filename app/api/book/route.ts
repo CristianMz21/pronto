@@ -457,7 +457,7 @@ export async function POST(req: NextRequest) {
   const slotCheck = checkSlotWithHolidays(
     dayHours,
     time,
-    (service as ServiceRow)?.durationMin,
+    (service as ServiceRow)?.durationMin ?? 30,
     date,
     holidaysMapped as unknown as import('@/lib/booking-availability').HolidayCheck[],
   )
@@ -682,7 +682,7 @@ export async function POST(req: NextRequest) {
                 }>
               },
             )) as Array<{ id: string }>
-            clientId = newClient?.id
+            clientId = newClient?.id ?? null
           } catch (_e) {
             // console.error('[api/book] client claim insert error:', (e as Error).message)
             const fallback = (await tryDrizzle(
@@ -754,7 +754,7 @@ export async function POST(req: NextRequest) {
                 }>
               },
             )) as Array<{ id: string }>
-            clientId = newClient?.id
+            clientId = newClient?.id ?? null
           } catch (_e) {
             // console.error('[api/book] client insert error:', (e as Error).message)
             return NextResponse.json({ error: 'client_creation_failed' }, { status: 500 })
@@ -861,7 +861,7 @@ export async function POST(req: NextRequest) {
               }>
             },
           )) as Array<{ id: string }>
-          clientId = newClient?.id
+          clientId = newClient?.id ?? null
         } catch (_e) {
           // console.error('[api/book] client insert error:', (e as Error).message)
           return NextResponse.json({ error: 'client_creation_failed' }, { status: 500 })
@@ -981,7 +981,9 @@ export async function POST(req: NextRequest) {
   }
 
   const startsAt = parseDateTimeInTz(date, time, timezone)
-  const endsAt = new Date(startsAt.getTime() + (service as ServiceRow)?.durationMin * 60_000)
+  const endsAt = new Date(
+    startsAt.getTime() + ((service as ServiceRow)?.durationMin ?? 30) * 60_000,
+  )
 
   const now = new Date()
   if (isPastInTz(startsAt, now)) {
@@ -1044,7 +1046,7 @@ export async function POST(req: NextRequest) {
       },
     )) as Array<{ id: string }>
     const appt = apptRes[0]
-    apptId = appt?.id
+    apptId = appt?.id ?? null
   } catch (e) {
     const msg = (e as Error).message ?? ''
     if (msg.includes('no_staff_available')) {

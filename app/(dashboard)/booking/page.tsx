@@ -36,7 +36,7 @@ export default async function BookingPage(props: { searchParams: Promise<{ locat
   } | null = null
 
   const owned = await db.query.businesses.findFirst({
-    where: eq(businesses.ownerId, user?.id),
+    where: eq(businesses.ownerId, user?.id ?? ''),
     columns: {
       id: true,
       slug: true,
@@ -57,7 +57,7 @@ export default async function BookingPage(props: { searchParams: Promise<{ locat
     }
   } else {
     const emp = (await db.query.employees.findFirst({
-      where: and(eq(employees.userId, user?.id), eq(employees.isActive, true)),
+      where: and(eq(employees.userId, user?.id ?? ''), eq(employees.isActive, true)),
       with: {
         business: {
           columns: {
@@ -97,7 +97,7 @@ export default async function BookingPage(props: { searchParams: Promise<{ locat
   try {
     role = await getUserRole(
       supabase as unknown as { from: (t: string) => unknown },
-      user?.id,
+      user?.id ?? '',
       business.id,
     )
   } catch {
@@ -109,7 +109,7 @@ export default async function BookingPage(props: { searchParams: Promise<{ locat
   if (isBarbero) {
     const emp = await db.query.employees.findFirst({
       where: and(
-        eq(employees.userId, user?.id),
+        eq(employees.userId, user?.id ?? ''),
         eq(employees.businessId, business.id),
         eq(employees.isActive, true),
       ),

@@ -478,19 +478,20 @@ export function BookingCalendar({
     // Skip if dropped on the same slot (compare in business timezone)
     const p = apptTzParts(appt.starts_at, timezone)
     const sameDay = weekDates[dayIndex]
+    if (!sameDay) return
     if (
       p.hour === hour &&
-      p.year === sameDay?.getFullYear() &&
-      p.month === sameDay?.getMonth() + 1 &&
-      p.day === sameDay?.getDate()
+      p.year === sameDay.getFullYear() &&
+      p.month === sameDay.getMonth() + 1 &&
+      p.day === sameDay.getDate()
     )
       return
 
     // Build the new UTC timestamp from the business-timezone wall-clock time
     const newStartsAt = wallclockToUtc(
-      sameDay?.getFullYear(),
-      sameDay?.getMonth() + 1,
-      sameDay?.getDate(),
+      sameDay.getFullYear(),
+      sameDay.getMonth() + 1,
+      sameDay.getDate(),
       hour,
       0,
       timezone,
@@ -947,9 +948,10 @@ export function BookingCalendar({
                         onClick={() => {
                           if (cellAppts.length === 0) {
                             const d = weekDates[di]
-                            const yyyy = d?.getFullYear()
-                            const mm = String(d?.getMonth() + 1).padStart(2, '0')
-                            const dd = String(d?.getDate()).padStart(2, '0')
+                            if (!d) return
+                            const yyyy = d.getFullYear()
+                            const mm = String(d.getMonth() + 1).padStart(2, '0')
+                            const dd = String(d.getDate()).padStart(2, '0')
                             const hh = String(hour).padStart(2, '0')
                             void openForm({
                               date: `${yyyy}-${mm}-${dd}`,

@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-export const PromotionRulesSchema = z
+const PromotionRulesSchema = z
   .object({
     day_of_week: z.array(z.number().min(0).max(6)).optional(),
     service_ids: z.array(z.string().uuid()).optional(),
@@ -40,8 +40,6 @@ export const PromotionSchema = z.object({
   is_active: z.boolean().optional().default(true),
 })
 
-export type PromotionInput = z.infer<typeof PromotionSchema>
-
 export interface Promotion {
   id: string
   business_id: string
@@ -71,7 +69,7 @@ export interface EvaluateContext {
   locationId?: string | null
 }
 
-export function isPromotionActive(promo: Promotion, now: Date = new Date()): boolean {
+function isPromotionActive(promo: Promotion, now: Date = new Date()): boolean {
   if (!promo.is_active) return false
   const from = promo.valid_from ? new Date(promo.valid_from) : null
   const to = promo.valid_to ? new Date(promo.valid_to) : null
@@ -193,45 +191,3 @@ export function applyPromotion(
 }
 
 // --- DB helper: evaluate best promo for context (server) ---
-export async function evaluateBestPromotion(
-  supabase: {
-    from: (t: string) => {
-      select: (c: string) => {
-        eq: (c: string, v: unknown) => { eq: (c: string, v: unknown) => unknown }
-      }
-    }
-  },
-  businessId: string,
-  ctx: EvaluateContext,
-): Promise<{ promo: Promotion | null; discount: number }> {
-  // Fetch active promos (no raw SQL via supabase eq)
-  const { data, error } = await ((
-    supabase.from('promotions') as unknown as {
-      select: (c: string) => {
-        eq: (
-          a: string,
-          b: unknown,
-        ) => {
-          eq: (c: string, d: unknown) => Promise<{ data: Promotion[] | null; error: unknown }>
-        }
-      }
-    }
-  )
-    .select('*')
-    .eq('business_id', businessId)
-    .eq('is_active', true) as unknown as Promise<{ data: Promotion[] | null; error: unknown }>)
-  if (error || !data) return { promo: null, discount: 0 }
-  let best: Promotion | null = null
-  let bestDiscount = 0
-  const amount = ctx.amount ?? 0
-  for (const p of data as Promotion[]) {
-    const ev = evaluatePromotion(p, ctx)
-    if (!ev.eligible) continue
-    const d = calculateDiscount(p, amount)
-    if (d > bestDiscount) {
-      bestDiscount = d
-      best = p
-    }
-  }
-  return { promo: best, discount: bestDiscount }
-}

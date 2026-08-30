@@ -95,7 +95,3 @@ export function EmptyState({
     </div>
   )
 }
-
-export function InlineEmpty({ message, className }: { message: string; className?: string }) {
-  return <p className={cn('py-8 text-center text-sm text-gray-400', className)}>{message}</p>
-}

@@ -207,13 +207,12 @@ export async function PATCH(request: Request, props: { params: Promise<{ id: str
       // Use service client so RLS bypass (create lazily to avoid breaking tests that don't mock it)
       const service = createServiceClient()
       const { notifyNext } = await import('@/lib/waitlist')
-      // @ts-expect-error - tsc strict fix
       const notified = await notifyNext(service as unknown as Parameters<typeof notifyNext>[0], {
         business_id: appt.business_id,
         desired_at: appt.starts_at,
         location_id: appt.location_id,
-        service_id: appt.service_id ?? undefined,
-        employee_id: appt.employee_id ?? undefined,
+        service_id: appt.service_id,
+        employee_id: appt.employee_id,
       })
       if (notified) {
         // Attempt to send WhatsApp to notified client (fire-and-forget)
@@ -275,7 +274,6 @@ export async function PATCH(request: Request, props: { params: Promise<{ id: str
 
   return NextResponse.json(data)
 }
-// @ts-expect-error - tsc strict fix
 export async function GET(_request: Request, props: { params: Promise<{ id: string }> }) {
   const params = await props.params
   const supabase = await createClient()

@@ -12,14 +12,12 @@ export const SEGMENTS = [
 ] as const
 export type Segment = (typeof SEGMENTS)[number]
 
-export const CHANNELS = ['whatsapp', 'email', 'telegram'] as const
+const CHANNELS = ['whatsapp', 'email', 'telegram'] as const
 export type Channel = (typeof CHANNELS)[number]
 
-export const STATUSES = ['draft', 'sending', 'sent', 'cancelled'] as const
-export type CampaignStatus = (typeof STATUSES)[number]
+type CampaignStatus = 'draft' | 'sending' | 'sent' | 'cancelled'
 
-export const RECIPIENT_STATUSES = ['pending', 'sent', 'delivered', 'rebooked', 'failed'] as const
-export type RecipientStatus = (typeof RECIPIENT_STATUSES)[number]
+type RecipientStatus = 'pending' | 'sent' | 'delivered' | 'rebooked' | 'failed'
 
 // ── Zod schemas ──────────────────────────────────────────────────────────────
 export const CampaignCreateSchema = z.object({
@@ -29,12 +27,6 @@ export const CampaignCreateSchema = z.object({
   template: z.string().min(1).max(2000),
   location_id: z.string().uuid().nullable().optional().or(z.literal('')),
 })
-
-export const CampaignSendSchema = z.object({
-  campaign_id: z.string().uuid(),
-})
-
-export type CampaignInput = z.infer<typeof CampaignCreateSchema>
 
 export interface Campaign {
   id: string
@@ -50,22 +42,15 @@ export interface Campaign {
   created_at: string
 }
 
-export interface CampaignRecipient {
+interface CampaignRecipient {
   campaign_id: string
   client_id: string
   status: RecipientStatus
 }
 
 // ── Pure helpers ─────────────────────────────────────────────────────────────
-export function isValidSegment(s: string): s is Segment {
-  return (SEGMENTS as readonly string[]).includes(s)
-}
 
-export function isValidChannel(s: string): s is Channel {
-  return (CHANNELS as readonly string[]).includes(s)
-}
-
-export function interpolateTemplate(template: string, vars: Record<string, string>): string {
+function interpolateTemplate(template: string, vars: Record<string, string>): string {
   let out = template
   for (const [k, v] of Object.entries(vars)) {
     out = out.replaceAll(`{{${k}}}`, v).replaceAll(`{${k}}`, v)
