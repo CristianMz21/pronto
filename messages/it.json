@@ -788,9 +788,13 @@
   "sidebar": {
     "dashboard": "Dashboard",
     "pos": "POS",
+    "cash": "Cassa",
     "clients": "Clienti",
     "inventory": "Inventario",
     "booking": "Prenotazioni",
+    "barbers": "Barbieri",
+    "services": "Servizi",
+    "reports": "Rapporti",
     "analytics": "Analisi",
     "settings": "Impostazioni",
     "signOut": "Disconnetti",

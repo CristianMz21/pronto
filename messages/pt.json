@@ -789,9 +789,13 @@
   "sidebar": {
     "dashboard": "Painel",
     "pos": "PDV",
+    "cash": "Caixa",
     "clients": "Clientes",
     "inventory": "Estoque",
     "booking": "Agendamentos",
+    "barbers": "Barbeiros",
+    "services": "Serviços",
+    "reports": "Relatórios",
     "analytics": "Análises",
     "settings": "Configurações",
     "signOut": "Sair",
