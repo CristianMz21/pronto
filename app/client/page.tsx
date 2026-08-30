@@ -132,7 +132,7 @@ export default async function ClientPortalPage(props: {
       .maybeSingle()
     businessSlug = (biz as { slug: string } | null)?.slug ?? null
   }
-  const bookHref = businessSlug ? `/book/${businessSlug}` : '/book/escuderia'
+  const bookHref = businessSlug ? `/book/${businessSlug}` : '/book'
   return (
     <div className="min-h-screen bg-[#FBF8F5] p-4">
       <div className="max-w-lg mx-auto">

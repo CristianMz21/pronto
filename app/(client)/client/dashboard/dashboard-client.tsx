@@ -269,7 +269,10 @@ export function DashboardClient({
         ) : (
           <p className="text-sm text-gray-500">
             No tenés próximas citas.{' '}
-            <Link href="/book/escuderia" className="text-blue-600 hover:underline font-medium">
+            <Link
+              href={`/book/${(primaryClient as unknown as { businesses?: { slug?: string } })?.businesses?.slug ?? clients[0]?.businesses?.slug ?? 'escuderia'}`}
+              className="text-blue-600 hover:underline font-medium"
+            >
               Reservá ahora
             </Link>
           </p>
@@ -289,9 +292,9 @@ export function DashboardClient({
             {history.map((h) => {
               const businessSlug = (() => {
                 const b = h.businesses as { slug: string } | { slug: string }[] | null
-                if (!b) return 'escuderia'
-                if (Array.isArray(b)) return b[0]?.slug ?? 'escuderia'
-                return (b as { slug: string }).slug ?? 'escuderia'
+                if (!b) return ''
+                if (Array.isArray(b)) return b[0]?.slug ?? ''
+                return (b as { slug: string }).slug ?? ''
               })()
               const rebookHref = h.service_id
                 ? `/book/${businessSlug}?service=${h.service_id}${h.employee_id ? `&employee=${h.employee_id}` : ''}`
