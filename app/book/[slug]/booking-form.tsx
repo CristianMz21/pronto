@@ -494,8 +494,20 @@ export function PublicBookingForm({
       return
     }
 
-    const dow = new Date(`${selectedDate}T00:00:00`).getDay()
-    const dayHours = effectiveHours.find((h) => h.day_of_week === dow)
+    // Use business timezone for day_of_week (not browser local) to avoid Sunday/Monday shift
+    const [y, m, d] = selectedDate.split('-').map(Number)
+    const dow = new Date(Date.UTC(y!, m! - 1, d!)).getUTCDay()
+    // For business TZ, use Intl to get weekday in that TZ (handles DST)
+    const tzDow = (() => {
+      try {
+        const wd = new Intl.DateTimeFormat('en-US', { timeZone: business.timezone ?? 'UTC', weekday: 'short' }).format(new Date(Date.UTC(y!, m! - 1, d!, 12, 0)))
+        const map: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }
+        return map[wd] ?? dow
+      } catch {
+        return dow
+      }
+    })()
+    const dayHours = effectiveHours.find((h) => h.day_of_week === tzDow)
 
     if (!dayHours?.is_open) {
       setDayClosed(true)
@@ -1393,8 +1405,8 @@ export function PublicBookingForm({
             </div>
           )}
 
-          {/* US7 waitlist CTA: when no slots or slot taken or day closed holiday, offer waitlist */}
-          {(dayClosed || availableSlots.length === 0 || slotTakenError) && date && (
+          {/* US7 waitlist CTA: when no slots or slot taken or day closed holiday, offer waitlist - not during loading */}
+          {!loadingSlots && (dayClosed || availableSlots.length === 0 || slotTakenError) && date && (
             <div
               style={{
                 marginTop: 16,
