@@ -14,19 +14,6 @@ export const EnqueueSchema = z.object({
     .default('waiting'),
 })
 
-export const NotifyNextSchema = z.object({
-  business_id: z.string().uuid(),
-  location_id: z.string().uuid().nullable().optional(),
-  service_id: z.string().uuid().optional(),
-  employee_id: z.string().uuid().nullable().optional(),
-  desired_at: z.string().datetime().optional(),
-})
-
-export const ConvertSchema = z.object({
-  waitlist_id: z.string().uuid(),
-  business_id: z.string().uuid().optional(),
-})
-
 export type WaitlistInput = z.infer<typeof EnqueueSchema>
 
 export interface WaitlistEntry {
@@ -46,15 +33,10 @@ export interface WaitlistEntry {
 }
 
 // ── Pure helpers (unit-testable) ─────────────────────────────────────────────
-export const WAITLIST_NOTIFY_WINDOW_MIN = 30
-export const WAITLIST_EXPIRE_MIN = 30
+const WAITLIST_EXPIRE_MIN = 30
 
 export function isWaiting(entry: Pick<WaitlistEntry, 'status'>): boolean {
   return entry.status === 'waiting'
-}
-
-export function isNotified(entry: Pick<WaitlistEntry, 'status'>): boolean {
-  return entry.status === 'notified'
 }
 
 /** True if notified entry has expired (>30m since notified_at) */
@@ -138,52 +120,6 @@ export async function enqueue(
     throw error
   }
   return data as WaitlistEntry
-}
-
-export async function listWaiting(
-  supabase: SupabaseLike,
-  businessId: string,
-  opts?: { location_id?: string | null; limit?: number },
-): Promise<WaitlistEntry[]> {
-  const limit = opts?.limit ?? 50
-  const q = (
-    supabase.from('waitlist') as unknown as {
-      select: (c: string) => {
-        eq: (
-          col: string,
-          v: unknown,
-        ) => {
-          eq: (
-            col: string,
-            v: unknown,
-          ) => {
-            order: (
-              col: string,
-              o: unknown,
-            ) => { limit: (n: number) => Promise<{ data: WaitlistEntry[] | null; error: unknown }> }
-          }
-        }
-      }
-    }
-  )
-    .select('*, clients(id, name, phone, email), services(id, name), employees(id, name)')
-    .eq('business_id', businessId)
-    .eq('status', 'waiting')
-    .order('created_at', { ascending: true })
-    .limit(limit)
-
-  // Location filter if provided
-  if (opts?.location_id) {
-    // Supabase chaining: need to handle dynamic — fetch all then filter for simplicity in V1, or add eq if available
-    const { data } = await q
-    const filtered = (data ?? []).filter(
-      (w) => !w.location_id || w.location_id === opts.location_id,
-    )
-    return filtered
-  }
-  const { data, error } = await q
-  if (error) throw error
-  return (data ?? []) as WaitlistEntry[]
 }
 
 /**

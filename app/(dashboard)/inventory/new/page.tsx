@@ -16,7 +16,7 @@ export default async function NewInventoryItemPage() {
   const { data: business } = await supabase
     .from('businesses')
     .select('id')
-    .eq('owner_id', user?.id)
+    .eq('owner_id', user?.id ?? '')
     .maybeSingle()
 
   // Fetch existing categories for the combobox autocomplete

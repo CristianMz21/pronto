@@ -185,66 +185,7 @@ export function tplLowStock(opts: {
   ].join('\n')
 }
 
-export function tplCampaign(opts: {
-  clientName: string
-  businessName: string
-  body: string
-  bookingUrl?: string
-}): string {
-  const lines = [`Hi ${opts.clientName},`, ``, opts.body, ``]
-  if (opts.bookingUrl) lines.push(`Book now: ${opts.bookingUrl}`, ``)
-  lines.push(`— ${opts.businessName}`)
-  return lines.join('\n')
-}
-
 // ─── Template send (Meta Cloud v20 approved templates) ──────────────────────
-export interface TemplateComponent {
-  type: 'header' | 'body' | 'button'
-  parameters: { type: 'text'; text: string }[]
-}
-
-export async function sendWhatsAppTemplate(
-  to: string,
-  templateName: string,
-  language: string,
-  components: TemplateComponent[] | undefined,
-  credentials?: { phoneNumberId: string; accessToken: string },
-): Promise<boolean> {
-  const phoneNumberId = credentials?.phoneNumberId ?? process.env.META_WHATSAPP_PHONE_NUMBER_ID
-  const accessToken = credentials?.accessToken ?? process.env.META_WHATSAPP_ACCESS_TOKEN
-  if (!phoneNumberId || !accessToken) return false
-  const normalizedTo = normalizePhone(to)
-  if (!normalizedTo || !templateName) return false
-  try {
-    const res = await fetch(`${BASE}/${phoneNumberId}/messages`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify({
-        messaging_product: 'whatsapp',
-        to: normalizedTo,
-        type: 'template',
-        template: {
-          name: templateName,
-          language: { code: language || 'en' },
-          ...(components ? { components } : {}),
-        },
-      }),
-    })
-    const _json = await res.json()
-    void _json
-    if (!res.ok) {
-      // console.error('[whatsapp] sendTemplate error:', json?.error?.message ?? json)
-      return false
-    }
-    return true
-  } catch (_err) {
-    // console.error('[whatsapp] sendTemplate exception:', err)
-    return false
-  }
-}
 
 export async function verifyWhatsAppCredentials(credentials: {
   phoneNumberId: string

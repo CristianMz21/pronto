@@ -8,12 +8,6 @@ export const TipSchema = z.object({
   method: z.enum(['cash', 'card', 'transfer', 'digital']).optional().default('cash'),
 })
 
-export const TipAmountSchema = z.object({
-  tip_amount: z.coerce.number().int().min(0).max(10_000_000),
-  amount: z.coerce.number().min(0).optional(),
-  role: z.string().optional(),
-})
-
 export type TipInput = z.infer<typeof TipSchema>
 
 export interface Tip {
@@ -40,15 +34,6 @@ export function isValidTipAmount(
   const max = Math.floor(transactionAmount * 0.5)
   if (tipAmount > max && !opts?.isManager) return { ok: false, reason: 'tip_exceeds_50_percent' }
   return { ok: true }
-}
-
-export function validateTipInput(
-  data: unknown,
-): { ok: true; data: TipInput } | { ok: false; reason: string; details?: unknown } {
-  const parsed = TipSchema.safeParse(data)
-  if (!parsed.success)
-    return { ok: false, reason: 'validation_failed', details: parsed.error.flatten().fieldErrors }
-  return { ok: true, data: parsed.data }
 }
 
 // ── DB helpers ───────────────────────────────────────────────────────────────
@@ -118,46 +103,6 @@ export async function createTip(supabase: SupabaseLike, params: TipInput): Promi
   } catch {}
 
   return data as Tip
-}
-
-export async function listByEmployee(
-  supabase: SupabaseLike,
-  businessId: string,
-  employeeId: string,
-  opts?: { from?: string; to?: string },
-): Promise<Tip[]> {
-  const query = (
-    supabase.from('tips') as unknown as {
-      select: (c: string) => {
-        eq: (
-          a: string,
-          b: unknown,
-        ) => {
-          eq: (
-            c: string,
-            d: unknown,
-          ) => {
-            gte?: (col: string, v: string) => unknown
-            order?: (col: string, o: unknown) => Promise<{ data: Tip[] | null; error: unknown }>
-          } & Promise<{ data: Tip[] | null; error: unknown }>
-        }
-      }
-    }
-  )
-    .select('*')
-    .eq('business_id', businessId)
-    .eq('employee_id', employeeId) as unknown as unknown as Promise<{
-    data: Tip[] | null
-    error: unknown
-  }>
-
-  // Simple fetch then filter by date if needed (keeps types simple)
-  const { data, error } = await query
-  if (error) throw error
-  let tips = (data ?? []) as Tip[]
-  if (opts?.from) tips = tips.filter((t) => t.created_at >= opts.from!)
-  if (opts?.to) tips = tips.filter((t) => t.created_at <= opts.to!)
-  return tips
 }
 
 export async function reportTips(

@@ -19,7 +19,7 @@ export default async function ClientDetailPage(props: { params: Promise<{ id: st
   const { data: business } = await supabase
     .from('businesses')
     .select('id, currency, timezone, telegram_bot_token')
-    .eq('owner_id', user?.id)
+    .eq('owner_id', user?.id ?? '')
     .maybeSingle()
   if (!business) return null
 

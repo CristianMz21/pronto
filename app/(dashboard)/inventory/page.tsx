@@ -25,7 +25,7 @@ export default async function InventoryPage(props: {
   const { data: owned } = await supabase
     .from('businesses')
     .select('id, currency')
-    .eq('owner_id', user?.id)
+    .eq('owner_id', user?.id ?? '')
     .maybeSingle()
   let currency = 'COP'
   if (owned) {
@@ -35,7 +35,7 @@ export default async function InventoryPage(props: {
     const { data: empBiz } = await supabase
       .from('employees')
       .select('business_id, businesses!inner(id, currency)')
-      .eq('user_id', user?.id)
+      .eq('user_id', user?.id ?? '')
       .eq('is_active', true)
       .limit(1)
       .maybeSingle()

@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 // Config: 1pt per 1000 COP, redeem 100pts = 10000 COP (100 COP per point)
-export const DEFAULT_EARN_RATE = 1000
+const DEFAULT_EARN_RATE = 1000
 export const DEFAULT_REDEEM_RATE = 100
 export const DEFAULT_REDEEM_VALUE = 10000
 
@@ -21,7 +21,7 @@ export const RedeemSchema = z.object({
   redeem_value: z.coerce.number().int().min(1).optional().default(DEFAULT_REDEEM_VALUE),
 })
 
-export interface LoyaltyAccount {
+interface LoyaltyAccount {
   client_id: string
   business_id: string
   points: number

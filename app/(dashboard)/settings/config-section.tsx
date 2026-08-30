@@ -304,7 +304,11 @@ export function ConfigSection({ businessId, initial, locations = [] }: Props) {
                     checked={h.is_open}
                     onChange={(e) =>
                       setHours((prev) =>
-                        prev?.map((x, i) => (i === idx ? { ...x, is_open: e.target.checked } : x)),
+                        prev
+                          ? prev.map((x, i) =>
+                              i === idx ? { ...x, is_open: e.target.checked } : x,
+                            )
+                          : null,
                       )
                     }
                   />{' '}
@@ -315,7 +319,9 @@ export function ConfigSection({ businessId, initial, locations = [] }: Props) {
                   value={h.open_time}
                   onChange={(e) =>
                     setHours((prev) =>
-                      prev?.map((x, i) => (i === idx ? { ...x, open_time: e.target.value } : x)),
+                      prev
+                        ? prev.map((x, i) => (i === idx ? { ...x, open_time: e.target.value } : x))
+                        : null,
                     )
                   }
                   disabled={!h.is_open}
@@ -327,7 +333,9 @@ export function ConfigSection({ businessId, initial, locations = [] }: Props) {
                   value={h.close_time}
                   onChange={(e) =>
                     setHours((prev) =>
-                      prev?.map((x, i) => (i === idx ? { ...x, close_time: e.target.value } : x)),
+                      prev
+                        ? prev.map((x, i) => (i === idx ? { ...x, close_time: e.target.value } : x))
+                        : null,
                     )
                   }
                   disabled={!h.is_open}
@@ -339,9 +347,11 @@ export function ConfigSection({ businessId, initial, locations = [] }: Props) {
                   value={h.break_start ?? ''}
                   onChange={(e) =>
                     setHours((prev) =>
-                      prev?.map((x, i) =>
-                        i === idx ? { ...x, break_start: e.target.value || null } : x,
-                      ),
+                      prev
+                        ? prev.map((x, i) =>
+                            i === idx ? { ...x, break_start: e.target.value || null } : x,
+                          )
+                        : null,
                     )
                   }
                   disabled={!h.is_open}
@@ -354,9 +364,11 @@ export function ConfigSection({ businessId, initial, locations = [] }: Props) {
                   value={h.break_end ?? ''}
                   onChange={(e) =>
                     setHours((prev) =>
-                      prev?.map((x, i) =>
-                        i === idx ? { ...x, break_end: e.target.value || null } : x,
-                      ),
+                      prev
+                        ? prev.map((x, i) =>
+                            i === idx ? { ...x, break_end: e.target.value || null } : x,
+                          )
+                        : null,
                     )
                   }
                   disabled={!h.is_open}

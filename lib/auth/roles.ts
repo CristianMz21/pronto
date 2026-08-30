@@ -222,29 +222,6 @@ export async function getUserRole(
  * Helper to fetch the active employee_id for a barber (used to scope booking/pos queries).
  * Returns null if not a barber or no active employee row.
  */
-export async function getBarberEmployeeId(
-  supabase: { from: (table: string) => unknown },
-  userId: string,
-  businessId: string,
-): Promise<string | null> {
-  try {
-    // @ts-expect-error - tsc strict fix - supabase chain
-    const { data } = await supabase
-      .from('employees')
-      .select('id, role')
-      .eq('user_id', userId)
-      .eq('business_id', businessId)
-      .eq('is_active', true)
-      .limit(1)
-      .maybeSingle()
-    if (!data) return null
-    const normalized = normalizeRole((data as { role: string }).role)
-    if (normalized !== 'barbero') return null
-    return (data as { id: string }).id
-  } catch {
-    return null
-  }
-}
 
 /**
  * V1 stub for per-user location access.

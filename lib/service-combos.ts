@@ -9,8 +9,6 @@ export const ServiceComboSchema = z.object({
   is_active: z.boolean().optional().default(true),
 })
 
-export type ServiceComboInput = z.infer<typeof ServiceComboSchema>
-
 export interface ServiceCombo {
   id: string
   business_id: string
@@ -22,14 +20,14 @@ export interface ServiceCombo {
   is_active: boolean
 }
 
-export function comboApplies(combo: ServiceCombo, cartServiceIds: string[]): boolean {
+function comboApplies(combo: ServiceCombo, cartServiceIds: string[]): boolean {
   if (!combo.is_active) return false
   if (!combo.service_ids || combo.service_ids.length === 0) return false
   // All services in combo must be present in cart (combo eligibility)
   return combo.service_ids.every((sid) => cartServiceIds.includes(sid))
 }
 
-export function calculateComboDiscount(
+function calculateComboDiscount(
   combo: ServiceCombo,
   cartServices: { id: string; price: number }[],
 ): number {
@@ -56,30 +54,4 @@ export function findBestCombo(
     }
   }
   return { combo: best, discount: bestDiscount }
-}
-
-export async function listActiveCombos(
-  supabase: {
-    from: (t: string) => {
-      select: (c: string) => {
-        eq: (a: string, b: unknown) => { eq: (c: string, d: unknown) => unknown }
-      }
-    }
-  },
-  businessId: string,
-): Promise<ServiceCombo[]> {
-  const { data, error } = await ((
-    supabase.from('service_combos') as unknown as {
-      select: (c: string) => {
-        eq: (a: string, b: unknown) => Promise<{ data: ServiceCombo[] | null; error: unknown }>
-      }
-    }
-  )
-    .select('*')
-    .eq('business_id', businessId) as unknown as Promise<{
-    data: ServiceCombo[] | null
-    error: unknown
-  }>)
-  if (error || !data) return []
-  return (data as ServiceCombo[]).filter((c) => c.is_active)
 }

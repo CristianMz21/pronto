@@ -10,12 +10,6 @@ const pool = new Pool({
 
 export const db = drizzle(pool, { schema })
 
-export type DB = typeof db
-
-export async function getDb() {
-  return db
-}
-
 export async function tryDrizzle<T>(fn: () => Promise<T>, fallback: () => Promise<T>): Promise<T> {
   try {
     return await fn()

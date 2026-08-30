@@ -23,12 +23,10 @@ export const PurchaseSchema = z.object({
   membership_id: z.string().uuid(),
 })
 
-export const ConsumeSchema = z.object({
+const ConsumeSchema = z.object({
   client_membership_id: z.string().uuid(),
   business_id: z.string().uuid().optional(),
 })
-
-export type MembershipInput = z.infer<typeof MembershipSchema>
 
 export interface ClientMembership {
   id: string
@@ -41,7 +39,7 @@ export interface ClientMembership {
   status: string
 }
 
-export interface Membership {
+interface Membership {
   id: string
   business_id: string
   location_id: string | null
@@ -62,14 +60,6 @@ export function isEligible(
   const exp = new Date(cm.expires_at)
   if (Number.isNaN(exp.getTime())) return false
   return exp.getTime() > now.getTime()
-}
-
-export function getRemainingUses(cm: ClientMembership): number {
-  return Math.max(0, cm.remaining)
-}
-
-export function isExpired(cm: ClientMembership, now: Date = new Date()): boolean {
-  return new Date(cm.expires_at).getTime() <= now.getTime() || cm.status === 'expired'
 }
 
 // --- DB helpers (use Supabase, no raw SQL injection) ---
@@ -275,58 +265,4 @@ export async function consumeMembership(
     } catch {}
   }
   return updated as ClientMembership
-}
-
-export async function listEligibleMemberships(
-  supabase: {
-    from: (t: string) => {
-      select: (c: string) => {
-        eq: (
-          c: string,
-          v: unknown,
-        ) => {
-          eq: (
-            c: string,
-            v: unknown,
-          ) => {
-            order: (c: string) => Promise<{ data: ClientMembership[] | null; error: unknown }>
-          }
-        }
-      }
-    }
-  },
-  clientId: string,
-  businessId: string,
-): Promise<ClientMembership[]> {
-  // Fetch all active memberships for client, then filter eligibility purely (allows testing without DB date quirks)
-  const { data, error } = await ((
-    supabase.from('client_memberships') as unknown as {
-      select: (c: string) => {
-        eq: (
-          a: string,
-          b: unknown,
-        ) => {
-          eq: (
-            c: string,
-            d: unknown,
-          ) => {
-            eq: (
-              e: string,
-              f: unknown,
-            ) => {
-              order: (g: string) => Promise<{ data: ClientMembership[] | null; error: unknown }>
-            }
-          }
-        }
-      }
-    }
-  )
-    .select('*')
-    .eq('client_id', clientId)
-    .eq('business_id', businessId)
-    .eq('status', 'active')
-    .order('expires_at') as unknown as Promise<{ data: ClientMembership[] | null; error: unknown }>)
-  if (error || !data) return []
-  const now = new Date()
-  return (data as ClientMembership[]).filter((cm) => isEligible(cm, now))
 }
