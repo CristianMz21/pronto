@@ -10,6 +10,8 @@
     "db:generate": "supabase gen types typescript --local > lib/supabase/database.types.ts",
     "db:push": "drizzle-kit push",
     "db:seed": "tsx drizzle/seed.ts",
+    "db:seed:realistic": "psql \"$DATABASE_URL\" -f supabase/seed-realistic.sql",
+    "db:seed:realistic:local": "psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -f supabase/seed-realistic.sql",
     "db:studio": "drizzle-kit studio",
     "db:check": "drizzle-kit check",
     "test:unit": "vitest run",
