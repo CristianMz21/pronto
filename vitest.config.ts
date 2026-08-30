@@ -11,8 +11,15 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reportsDirectory: 'coverage',
-      include: ['lib/**/*.ts', 'app/**/*.ts', 'proxy.ts'],
-      thresholds: { lines: 80, branches: 75 },
+      include: [
+        'lib/**/*.ts',
+        'app/**/*.ts',
+        'components/**/*.ts',
+        'hooks/**/*.ts',
+        'src/**/*.ts',
+        'proxy.ts',
+      ],
+      thresholds: { lines: 90, branches: 85, functions: 90, statements: 90 },
     },
   },
   resolve: {

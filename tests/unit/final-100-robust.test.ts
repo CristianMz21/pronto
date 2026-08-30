@@ -62,7 +62,7 @@ describe('final 100 robust', () => {
 
   it('sitemap basic', async () => {
     const sitemap = await import('@/app/sitemap')
-    const res = sitemap.default()
+    const res = await sitemap.default()
     expect(Array.isArray(res)).toBe(true)
     expect(res.length).toBeGreaterThan(0)
   })

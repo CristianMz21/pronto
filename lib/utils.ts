@@ -27,17 +27,16 @@ export function formatCurrency(amount: number, currency = 'USD', locale?: string
   return raw.replace(/\u00A0/g, ' ')
 }
 
-export function formatDate(date: string | Date, locale = 'es-CO'): string {
+export function formatDate(date: string | Date, locale = 'es-CO', timeZone?: string): string {
   const d = new Date(date)
   if (Number.isNaN(d.getTime())) return 'Invalid Date'
   try {
-    // Hydration-safe: explicit timeZone prevents server (UTC) vs client (America/Bogota) mismatch
-    const timeZone = locale === 'es-CO' ? 'America/Bogota' : 'UTC'
+    const tz = timeZone ?? (locale === 'es-CO' ? 'America/Bogota' : 'UTC')
     return new Intl.DateTimeFormat(locale, {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
-      timeZone,
+      timeZone: tz,
     }).format(d)
   } catch {
     return 'Invalid Date'
@@ -55,16 +54,16 @@ export function uses12HourClock(locale: string): boolean {
   }
 }
 
-export function formatTime(date: string | Date, locale = 'es-CO'): string {
+export function formatTime(date: string | Date, locale = 'es-CO', timeZone?: string): string {
   const d = new Date(date)
   if (Number.isNaN(d.getTime())) return 'Invalid Date'
   try {
-    const timeZone = locale === 'es-CO' ? 'America/Bogota' : 'UTC'
+    const tz = timeZone ?? (locale === 'es-CO' ? 'America/Bogota' : 'UTC')
     return new Intl.DateTimeFormat(locale, {
       hour: '2-digit',
       minute: '2-digit',
       hour12: uses12HourClock(locale),
-      timeZone,
+      timeZone: tz,
     }).format(d)
   } catch {
     return 'Invalid Date'

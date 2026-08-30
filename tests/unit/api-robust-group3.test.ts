@@ -502,7 +502,7 @@ describe('api robust group3', () => {
   describe('sitemap', () => {
     it('genera sitemap con rutas', async () => {
       const sitemap = await import('@/app/sitemap')
-      const result = sitemap.default()
+      const result = await sitemap.default()
       expect(Array.isArray(result)).toBe(true)
       // Debe contener al menos / y /login etc
       const urls = result.map((r: any) => r.url)
@@ -510,7 +510,7 @@ describe('api robust group3', () => {
     })
     it('filtra rutas excluidas', async () => {
       const sitemap = await import('@/app/sitemap')
-      const result = sitemap.default()
+      const result = await sitemap.default()
       const urls = result.map((r: any) => r.url)
       expect(urls.some((u: string) => u.includes('/api'))).toBe(false)
       expect(urls.some((u: string) => u.includes('/dashboard'))).toBe(false)

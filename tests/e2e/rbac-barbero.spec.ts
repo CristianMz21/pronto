@@ -14,10 +14,8 @@ test.describe('RBAC barbero — proxy + sidebar + barber scope (requires Supabas
   )
 
   test('barbero → /caja 302 → /dashboard (proxy early guard)', async ({ page }) => {
-    // Assuming authenticated as barbero E1 (seed user)
     await page.goto('/caja')
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 8000 })
-    // sidebar should only show 3 links for barbero
     const navLinks = page.locator('nav a')
     await expect(navLinks).toContainText(['Dashboard'])
     await expect(navLinks).toContainText(['Booking'])
@@ -44,12 +42,10 @@ test.describe('RBAC barbero — proxy + sidebar + barber scope (requires Supabas
     await expect(page).toHaveURL(/\/booking/)
     await page.goto('/pos')
     await expect(page).toHaveURL(/\/pos/)
-    // POS catalog filtered is verified via RLS: barbero sees only assigned S1,S2
   })
 
   test('sidebar for barbero: only dashboard/booking/pos visible, no FOUC', async ({ page }) => {
     await page.goto('/dashboard')
-    // initial HTML already filtered (server prop) — no flash of Caja
     const inventoryLink = page.locator('a[href="/inventory"]')
     await expect(inventoryLink).toHaveCount(0)
     await expect(page.locator('a[href="/caja"]')).toHaveCount(0)
@@ -63,7 +59,6 @@ test.describe('RBAC barbero — proxy + sidebar + barber scope (requires Supabas
   test('barbero cannot tab to hidden Settings (removed from DOM)', async ({ page }) => {
     await page.goto('/dashboard')
     await page.keyboard.press('Tab')
-    // focus should cycle through visible nav only; Settings not in tab order because not in DOM
     const settings = page.locator('a[href="/settings"]')
     await expect(settings).toHaveCount(0)
   })
@@ -72,23 +67,18 @@ test.describe('RBAC barbero — proxy + sidebar + barber scope (requires Supabas
 test.describe('RBAC barbero — lightweight smoke (always runs)', () => {
   test('unauthenticated /caja redirects to /login (not dashboard)', async ({ page }) => {
     await page.goto('/caja')
-    // unauthenticated protected path should go to /login, not /dashboard
     await expect(page).toHaveURL(/\/login/, { timeout: 8000 })
   })
 
   test('public /book/escuderia renders without RBAC redirect', async ({ page }) => {
     await page.goto('/book/escuderia')
     await page.waitForLoadState('networkidle').catch(() => {})
-    // public booking is never RBAC-guarded, even for authenticated barbero
     await expect(page.locator('body')).toBeVisible()
-    // should not have been redirected to /login or /dashboard
     expect(page.url()).toContain('/book/escuderia')
   })
 
   test('canAccessRoute logic smoke via page evaluate (mirrors unit)', async ({ page }) => {
     await page.goto('/login')
-    // Evaluate the role matrix logic in browser context by fetching the JS bundle logic
-    // We do a simple fetch to ensure the route exists and does not require auth
     const res = await page.request.get('/login')
     expect(res.status()).toBe(200)
   })

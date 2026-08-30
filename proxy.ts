@@ -201,7 +201,7 @@ export async function proxy(request: NextRequest) {
   }
 
   // Protected routes — admin panel (single Escudería now, multi-sede ready via locations)
-  // Public: /, /escuderia, /book/[slug], /login, /register, /privacy, /terms, /offline, /client/login, /client/register
+  // Public: /, /b/[slug], /book/[slug], /login, /register, /privacy, /terms, /offline, /client/login, /client/register
   const protectedPaths = [
     '/dashboard',
     '/pos',

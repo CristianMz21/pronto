@@ -115,11 +115,29 @@ export default async function ClientPortalPage(props: {
     phone: string | null
     business_id: string
   } | null
+  let businessSlug: string | null = null
+  const clientBusinessId = (client as { business_id?: string } | null)?.business_id
+  if (clientBusinessId) {
+    const { data: biz } = await supabase
+      .from('businesses')
+      .select('slug')
+      .eq('id', clientBusinessId)
+      .maybeSingle()
+    businessSlug = (biz as { slug: string } | null)?.slug ?? null
+  } else if (businessId) {
+    const { data: biz } = await supabase
+      .from('businesses')
+      .select('slug')
+      .eq('id', businessId)
+      .maybeSingle()
+    businessSlug = (biz as { slug: string } | null)?.slug ?? null
+  }
+  const bookHref = businessSlug ? `/book/${businessSlug}` : '/book/escuderia'
   return (
     <div className="min-h-screen bg-[#FBF8F5] p-4">
       <div className="max-w-lg mx-auto">
         <div className="text-center py-6">
-          <h1 className="text-2xl font-bold text-gray-900">Mi cuenta Escudería</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Mi cuenta</h1>
           <p className="text-sm text-gray-500 mt-1">Consulta tus membresías y puntos</p>
         </div>
 
@@ -215,7 +233,7 @@ export default async function ClientPortalPage(props: {
             </div>
 
             <Link
-              href={`/book/escuderia`}
+              href={bookHref}
               className="block w-full text-center bg-gray-900 text-white rounded-lg py-3 text-sm"
             >
               Reservar con beneficios →

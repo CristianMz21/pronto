@@ -39,6 +39,10 @@ import {
   employeeUnavailability,
 } from '@/drizzle/schema'
 
+void businessHours
+void transactionItems
+void tips
+
 // ─────────────────────────────────────────────
 // Constants — fixed UUIDs matching SQL seeds
 // ─────────────────────────────────────────────
@@ -62,12 +66,15 @@ function mulberry32(a: number) {
 const rng = mulberry32(Math.floor(0.42 * 4294967296)) // ~1803886264
 const rnd = () => rng()
 const rndInt = (min: number, max: number) => Math.floor(rnd() * (max - min + 1)) + min
-const pick = <T>(arr: T[]) => arr[Math.floor(rnd() * arr.length)]
+void rndInt
+const pick = <T>(arr: T[]): T => arr[Math.floor(rnd() * arr.length)]!
 const shuffle = <T>(arr: T[]) => {
   const a = [...arr]
   for (let i = a.length - 1; i > 0; i--) {
     const j = Math.floor(rnd() * (i + 1))
-    ;[a[i], a[j]] = [a[j], a[i]]
+    const tmp = a[i]!
+    a[i] = a[j]!
+    a[j] = tmp
   }
   return a
 }
@@ -111,6 +118,8 @@ async function getTotalCount(table: any): Promise<number> {
   // @ts-ignore
   return Number(res[0]?.cnt ?? 0)
 }
+
+void getTotalCount
 
 // ─────────────────────────────────────────────
 // 0) Ensure auth.users (FK for businesses.owner_id)
@@ -168,7 +177,7 @@ async function ensureAuthUsers() {
 // 1) Business + Settings + Locations
 // ─────────────────────────────────────────────
 async function seedBusinessAndLocations() {
-  // business
+  // business - generic (no hardcode beyond seed data for Escudería as one tenant)
   const existing = await db.query.businesses.findFirst({ where: eq(businesses.slug, 'escuderia') })
   if (!existing) {
     await db
@@ -180,17 +189,29 @@ async function seedBusinessAndLocations() {
         slug: 'escuderia',
         type: 'barbershop',
         phone: '+57 300 123 4567',
-        address: 'Colombia',
+        address: 'Cra 7 # 12-34, Bogotá',
         timezone: 'America/Bogota',
         currency: 'COP',
         brandColor: '#0A0A0A',
+        accentColor: '#C5A059',
+        heroTitle: 'Tu estilo.',
+        heroSubtitle: 'Barbería contemporánea para hombres que entienden que los detalles hacen la diferencia.',
+        heroImageUrl: '/business-assets/escuderia/hero.jpg',
+        galleryUrls: ['/business-assets/escuderia/cuero.png', '/business-assets/escuderia/tijeras.png', '/business-assets/escuderia/signature.jpg'],
+        locale: 'es',
       } as any)
       .onConflictDoNothing()
     console.log('Created business Escudería')
   } else {
-    // ensure timezone/currency correct
-    await db.execute(sql.raw(`UPDATE public.businesses SET timezone='America/Bogota', currency='COP', brand_color=COALESCE(brand_color,'#0A0A0A') WHERE id='${BID}'`))
-    console.log('Business exists, updated timezone/currency')
+    await db.execute(sql.raw(`UPDATE public.businesses SET timezone='America/Bogota', currency='COP', brand_color=COALESCE(brand_color,'#0A0A0A'), accent_color=COALESCE(accent_color,'#C5A059'), hero_title=COALESCE(hero_title,'Tu estilo.'), hero_subtitle=COALESCE(hero_subtitle,'Barbería contemporánea para hombres que entienden que los detalles hacen la diferencia.'), hero_image_url=COALESCE(hero_image_url,'/business-assets/escuderia/hero.jpg'), gallery_urls=COALESCE(gallery_urls,'{}'), locale=COALESCE(locale,'es') WHERE id='${BID}'`))
+    console.log('Business exists, updated timezone/currency/branding')
+  }
+  // ensure second business Cristain also has generic landing fields (demonstrates N barberías)
+  const existing2 = await db.query.businesses.findFirst({ where: eq(businesses.slug, 'cristain') })
+  if (!existing2) {
+    await db.insert(businesses).values({ id: '48e04ab8-7dee-4526-b98f-45a262218869', ownerId: SECOND_OWNER_ID, name: 'Cristain', slug: 'cristain', type: 'barbershop', phone: '+57 301 111 2222', address: 'Cl 50 # 10-20, Bogotá', timezone: 'America/Bogota', currency: 'COP', brandColor: '#1a1a1a', accentColor: '#16a34a', heroTitle: 'Estilo Cristain.', heroSubtitle: 'Barbería moderna, cortes precisos.', heroImageUrl: '/business-assets/escuderia/hero.jpg', galleryUrls: ['/business-assets/escuderia/cuero.png'], locale: 'es' } as any).onConflictDoNothing()
+  } else {
+    await db.execute(sql.raw(`UPDATE public.businesses SET accent_color=COALESCE(accent_color,'#16a34a'), hero_title=COALESCE(hero_title,'Estilo Cristain.'), locale=COALESCE(locale,'es') WHERE slug='cristain'`))
   }
 
   await db
@@ -519,10 +540,11 @@ async function seedInventory() {
   for (let gs = 1; gs <= total; gs++) {
     const baseIdx = ((gs - 1) % 50)
     const base = baseProducts[baseIdx]
+    if (!base) continue
     const suffix = gs > 50 ? ` ${Math.ceil(gs / 50)}` : ''
-    const name = base[1] + suffix
-    const cat = base[2]
-    const unit = base[3]
+    const name = base[1]! + suffix
+    const cat = base[2]!
+    const unit = base[3]!
     const qty = gs % 7 === 0 ? 1 + Math.floor(rnd() * 3) : gs % 5 === 0 ? 5 + Math.floor(rnd() * 6) : 15 + Math.floor(rnd() * 26)
     const low = cat === 'herramientas' ? 2 : cat === 'color' ? 8 : 5
     const cost = String(3000 + Math.floor(rnd() * 20000))
@@ -808,7 +830,6 @@ async function seedRecurring(allClientIds: string[]) {
 // 15) Appointments — 8000 (America/Bogota, Mon-Sat, breaks, holidays, overlap)
 // ─────────────────────────────────────────────
 type Svc = { id: string; price: string; durationMin: number; name: string }
-type Emp = string
 
 async function seedAppointments(allClientIds: string[], allServices: Svc[], empServiceMap: Map<string, string[]>, allEmps: string[], holidaySet: Set<string>) {
   const cnt = await getCount(appointments, BID)
@@ -853,6 +874,7 @@ async function seedAppointments(allClientIds: string[], allServices: Svc[], empS
   const nowMinus2Days = new Date(now.getTime() - 2 * 24 * 3600 * 1000)
 
   const holidayArray = Array.from(holidaySet) // for quick check
+  void holidayArray
 
   for (let gs = 1; gs <= 8000; gs++) {
     const svc = pick(allServices)
@@ -909,6 +931,7 @@ async function seedAppointments(allClientIds: string[], allServices: Svc[], empS
       startMin = 540 + offset
     }
     const [y, m, d] = localDateStr.split('-').map(Number)
+    if (y === undefined || m === undefined || d === undefined) continue
     let startAt = new Date(Date.UTC(y, m - 1, d, Math.floor(startMin / 60) + 5, startMin % 60))
     let endAt = new Date(startAt.getTime() + svc.durationMin * 60000)
     const r = rnd()
@@ -1168,19 +1191,21 @@ async function seedTransactions(apptRows: any[], allClientIds: string[], allEmps
 async function seedTransactionExtras() {
   // transaction_items for linked transactions
   try {
-    const res = await db.execute(
+    const _res = await db.execute(
       sql.raw(
         `INSERT INTO public.transaction_items (transaction_id, service_id, name_snapshot, price_snapshot, qty) SELECT t.id, a.service_id, s.name, s.price, 1 FROM public.transactions t JOIN public.appointments a ON a.id = t.appointment_id JOIN public.services s ON s.id = a.service_id WHERE t.business_id='${BID}' AND t.appointment_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM public.transaction_items ti WHERE ti.transaction_id=t.id) LIMIT 800 ON CONFLICT DO NOTHING`
       )
     )
+    void _res
     console.log('Seeded transaction_items')
   } catch (e) {
     // fallback via ORM - query transactions and insert via drizzle
     try {
-      const txs = await db
+      const _txs = await db
         .select({ id: transactions.id, appointmentId: transactions.appointmentId })
         .from(transactions)
         .where(eq(transactions.businessId, BID))
+      void _txs
       // simplified: skip if raw failed
       console.warn('transaction_items raw failed, skipping fallback', (e as Error).message)
     } catch {}

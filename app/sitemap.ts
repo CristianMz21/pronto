@@ -89,10 +89,10 @@ function getPriority(route: string): number {
   return ROUTE_PRIORITIES[route] ?? 0.6
 }
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const appDir = path.join(process.cwd(), 'app')
 
-  return walkPages(appDir)
+  const staticRoutes = walkPages(appDir)
     .filter((f) => !isExcludedByPath(f))
     .map((f) => ({ file: f, route: fileToRoute(f, appDir) }))
     .filter((item): item is { file: string; route: string } => item.route !== null)
@@ -106,4 +106,31 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: getPriority(route),
       lastModified: new Date(),
     }))
+
+  // Dynamic business routes: /b/{slug} and /book/{slug}
+  try {
+    const { createClient } = await import('@/lib/supabase/server')
+    const supabase = await createClient()
+    const { data: businesses } = await supabase
+      .from('businesses')
+      .select('slug, updated_at')
+      .limit(100)
+    const dynamic = (businesses ?? []).flatMap((b: { slug: string; updated_at?: string }) => [
+      {
+        url: `${BASE_URL}/b/${b.slug}`,
+        changeFrequency: 'weekly' as const,
+        priority: 0.8,
+        lastModified: b.updated_at ? new Date(b.updated_at) : new Date(),
+      },
+      {
+        url: `${BASE_URL}/book/${b.slug}`,
+        changeFrequency: 'weekly' as const,
+        priority: 0.9,
+        lastModified: b.updated_at ? new Date(b.updated_at) : new Date(),
+      },
+    ])
+    return [...staticRoutes, ...dynamic]
+  } catch {
+    return staticRoutes
+  }
 }
