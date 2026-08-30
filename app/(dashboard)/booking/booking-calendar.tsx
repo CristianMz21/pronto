@@ -745,16 +745,17 @@ export function BookingCalendar({
     }
   }, [showLegend])
 
-  if (!weekStart) {
+  // Hydration guard: don't render calendar until mounted to avoid server/client date mismatch (#441)
+  if (!mounted || !weekStart) {
     return (
-      <div className="flex-1 flex items-center justify-center p-6 text-sm text-gray-500">
+      <div className="flex-1 flex items-center justify-center p-6 text-sm text-gray-500" suppressHydrationWarning>
         Cargando calendario...
       </div>
     )
   }
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 p-3 sm:p-6 gap-4">
+    <div className="flex-1 flex flex-col min-h-0 p-3 sm:p-6 gap-4" suppressHydrationWarning>
       {/* Toolbar */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
