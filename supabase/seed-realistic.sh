@@ -1,28 +1,19 @@
 #!/usr/bin/env bash
-# supabase/seed-realistic.sh — aplica supabase/seed-realistic.sql idempotente
-# Uso: ./supabase/seed-realistic.sh [--local|--remote]
-#   --local  (default) usa supabase local en 54322
-#   --remote usa $DATABASE_URL o SUPABASE_DB_URL
+# DEPRECATED — supabase/seed-realistic.sh now delegates to ORM ultra seed
+# Original SQL seed is deprecated (see drizzle/seed-ultra.ts). This wrapper keeps backwards compat.
+# Uso: ./supabase/seed-realistic.sh [--local|--remote]  →  runs `npx tsx drizzle/seed-ultra.ts`
 set -euo pipefail
-DB_URL=""
 MODE="${1:-local}"
+echo "⚠ DEPRECATED: supabase/seed-realistic.sh — SQL seeds removed, using ORM ultra seed (drizzle/seed-ultra.ts)"
+echo "→ Ejecutando: npx tsx drizzle/seed-ultra.ts (mode=$MODE)"
+# Ensure DATABASE_URL is set for ORM
 if [[ "$MODE" == "--remote" ]]; then
-  DB_URL="${DATABASE_URL:-${SUPABASE_DB_URL:-}}"
-  if [[ -z "$DB_URL" ]]; then echo "ERROR: DATABASE_URL no definido para --remote" >&2; exit 1; fi
+  : "${DATABASE_URL:?DATABASE_URL required for --remote}"
 else
-  # local supabase
-  DB_URL="${DATABASE_URL:-postgresql://postgres:postgres@127.0.0.1:54322/postgres}"
-  # verificar que supabase local esté corriendo
-  if ! pg_isready -h 127.0.0.1 -p 54322 -q 2>/dev/null; then
-    echo "WARN: supabase local no responde en 54322, intenta con DATABASE_URL=$DB_URL" >&2
-  fi
+  export DATABASE_URL="${DATABASE_URL:-postgresql://postgres:postgres@127.0.0.1:54322/postgres}"
 fi
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-SQL_FILE="$SCRIPT_DIR/seed-realistic.sql"
-if [[ ! -f "$SQL_FILE" ]]; then echo "ERROR: no existe $SQL_FILE" >&2; exit 1; fi
-echo "→ Aplicando $SQL_FILE a $DB_URL (mode=$MODE)"
-psql "$DB_URL" -v ON_ERROR_STOP=1 -f "$SQL_FILE"
-echo "✓ seed-realistic aplicado"
+npx tsx drizzle/seed-ultra.ts
+echo "✓ seed-ultra ORM aplicado"
 echo "→ Verificación:"
 psql "$DB_URL" -c "
 select 'locations' as tabla, count(*) from public.locations where business_id='17c1a2b5-5d3b-4d84-bbb1-d361077d4c95'

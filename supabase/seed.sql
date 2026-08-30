@@ -1,3 +1,13 @@
+/*
+ * DEPRECATED — SQL seeds removed. ORM is source of truth.
+ * This file is kept for historical reference only and is NOT executed.
+ * Use:  DATABASE_URL=... npx tsx drizzle/seed-ultra.ts
+ *   or  npm run db:seed          (ultra 2000/8000)
+ *   or  npx tsx drizzle/seed.ts  (same, ultra)
+ * Supabase config: supabase/config.toml [db.seed] enabled=false, sql_paths=[]
+ * Reason: requirement "seeds must be with ORM, nothing in SQL" — 2026-08-30
+ */
+
 --
 -- PostgreSQL database dump
 --

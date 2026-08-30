@@ -68,11 +68,12 @@ enabled = true
 schema_paths = []
 
 [db.seed]
-# If enabled, seeds the database after migrations during a db reset.
-enabled = true
+# DEPRECATED: SQL seeds removed — ORM is source of truth (drizzle/seed.ts / drizzle/seed-ultra.ts via `npm run db:seed`)
+# Supabase seed via SQL is disabled to enforce pure Drizzle ORM.
+enabled = false
 # Specifies an ordered list of seed files to load during db reset.
 # Supports glob patterns relative to supabase directory: "./seeds/*.sql"
-sql_paths = ["./seed.sql"]
+sql_paths = []
 
 [db.network_restrictions]
 # Enable management of network restrictions.

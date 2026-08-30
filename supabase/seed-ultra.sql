@@ -1,3 +1,13 @@
+/*
+ * DEPRECATED — SQL seeds removed. ORM is source of truth.
+ * This file is kept for historical reference only and is NOT executed.
+ * Use:  DATABASE_URL=... npx tsx drizzle/seed-ultra.ts
+ *   or  npm run db:seed          (ultra 2000/8000)
+ *   or  npx tsx drizzle/seed.ts  (same, ultra)
+ * Supabase config: supabase/config.toml [db.seed] enabled=false, sql_paths=[]
+ * Reason: requirement "seeds must be with ORM, nothing in SQL" — 2026-08-30
+ */
+
 -- supabase/seed-realistic.sql — Escudería realistic environment
 -- ============================================
 -- Idempotent realistic seed: 2 sedes, 10 empleados, 15 servicios, ~800 clientes, ~2500 citas, ~1200 transacciones, 50 productos, festivos 2026
