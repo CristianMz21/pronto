@@ -56,3 +56,9 @@ unpacked_docx/
 # claude code / opencode session files — may contain tokens
 .claude/
 .opencode/
+
+# test & report artifacts — generated locally/CI
+/playwright-report/
+/test-results/
+/reports/
+/coverage/

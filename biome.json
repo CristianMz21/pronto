@@ -18,6 +18,11 @@
       "!**/drizzle",
       "!**/lib/supabase/database.types.ts",
       "!**/package-lock.json",
+      "!**/playwright-report",
+      "!**/test-results",
+      "!**/reports",
+      "!**/.opencode",
+      "!**/.claude",
       "!.git"
     ]
   },
@@ -62,11 +67,16 @@
             "noArrayIndexKey": "off"
           },
           "style": {
-            "noNonNullAssertion": "off"
+            "noNonNullAssertion": "off",
+            "useTemplate": "off"
           },
           "correctness": {
             "noUnusedVariables": "off",
-            "noUnusedImports": "off"
+            "noUnusedImports": "off",
+            "noUnusedFunctionParameters": "off"
+          },
+          "complexity": {
+            "useLiteralKeys": "off"
           },
           "a11y": {
             "noLabelWithoutControl": "off",

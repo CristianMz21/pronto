@@ -15,7 +15,7 @@
     "src/**/*.ts!"
   ],
   "project": ["**/*.{js,ts,jsx,tsx,css}"],
-  "ignore": ["drizzle/relations.ts"],
+  "ignore": ["drizzle/relations.ts", "tests/e2e/fixtures/**", "tests/e2e/helpers/**"],
   "ignoreDependencies": ["@swc/helpers", "tailwindcss-animate!"],
   "ignoreBinaries": ["supabase"],
   "rules": {

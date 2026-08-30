@@ -226,11 +226,11 @@ export const clients = pgTable("clients", {
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	viberUserId: text("viber_user_id"),
 	whatsappNumber: text("whatsapp_number"),
-	// TODO: failed to parse database type 'bytea'
+	/** Encrypted phone — DB bytea (pgsodium), mapped as text base64 for Drizzle */
 	phoneEncrypted: text("phone_encrypted"),
-	// TODO: failed to parse database type 'bytea'
+	/** Encrypted email — DB bytea, mapped as text base64 */
 	emailEncrypted: text("email_encrypted"),
-	// TODO: failed to parse database type 'bytea'
+	/** Encrypted WhatsApp — DB bytea, mapped as text base64 */
 	whatsappEncrypted: text("whatsapp_encrypted"),
 	userId: uuid("user_id"),
 	locationId: uuid("location_id"),
@@ -1193,11 +1193,11 @@ export const clientsSecure = pgView("clients_secure", {	id: uuid(),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }),
 	viberUserId: text("viber_user_id"),
 	whatsappNumber: text("whatsapp_number"),
-	// TODO: failed to parse database type 'bytea'
+	/** Encrypted phone — DB bytea, mapped as text base64 */
 	phoneEncrypted: text("phone_encrypted"),
-	// TODO: failed to parse database type 'bytea'
+	/** Encrypted email — DB bytea, mapped as text base64 */
 	emailEncrypted: text("email_encrypted"),
-	// TODO: failed to parse database type 'bytea'
+	/** Encrypted WhatsApp — DB bytea, mapped as text base64 */
 	whatsappEncrypted: text("whatsapp_encrypted"),
 	phoneSecure: text("phone_secure"),
 	emailSecure: text("email_secure"),
