@@ -42,14 +42,10 @@ export default async function SucursalesPage() {
     .eq('business_id', business.id)
     .order('name')
 
-  // Seed check: ensure Escudería Centro exists (11111111-1111-1111-1111-111111111111)
-  // This keeps single-sede default without breaking existing installs.
-  // Uses service client to bypass RLS if needed, idempotent.
-  const ESCUDERIA_DEFAULT_ID = '11111111-1111-1111-1111-111111111111'
-  const hasCentro = (locations ?? []).some(
-    (l) => l.id === ESCUDERIA_DEFAULT_ID || l.slug === 'centro',
-  )
-  if (!hasCentro && business.slug === 'escuderia') {
+  // Seed check: ensure default Centro exists for any business that has no locations yet (generic, no tenant hardcode)
+  const DEFAULT_CENTRO_ID = '11111111-1111-1111-1111-111111111111'
+  const hasCentro = (locations ?? []).some((l) => l.slug === 'centro')
+  if (!hasCentro && (!locations || locations.length === 0)) {
     try {
       const svc = createServiceClient()
       // Try to fetch business address/phone for seeding
@@ -62,24 +58,22 @@ export default async function SucursalesPage() {
       const phone = (bizFull as { phone?: string | null } | null)?.phone ?? null
 
       // Attempt to insert default location; on conflict (slug unique) it will be ignored
+      const defaultName = `${business.slug.charAt(0).toUpperCase() + business.slug.slice(1)} Centro`
       const { error: insErr } = await svc.from('locations').insert({
-        id: ESCUDERIA_DEFAULT_ID,
+        id: DEFAULT_CENTRO_ID,
         business_id: business.id,
-        name: 'Escudería Centro',
+        name: defaultName,
         slug: 'centro',
         address: addr,
         phone: phone,
         is_active: true,
       } as unknown as never)
-      // If insert failed due to existing slug but different id, just refetch
       if (insErr) {
-        // Check if error is not duplicate key on primary but slug conflict — still ok to ignore
         const msg = String(insErr.message ?? '')
         if (!msg.includes('duplicate') && !msg.includes('unique')) {
-          // For other errors, try without explicit id (let DB generate)
           await svc.from('locations').insert({
             business_id: business.id,
-            name: 'Escudería Centro',
+            name: defaultName,
             slug: 'centro',
             address: addr,
             phone: phone,
