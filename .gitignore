@@ -62,3 +62,8 @@ unpacked_docx/
 /test-results/
 /reports/
 /coverage/
+# React Doctor — generated reports (not committed)
+dependency-graph.dot
+dependency-graph.svg
+.next/analyze/
+.lighthouseci/

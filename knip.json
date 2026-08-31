@@ -25,6 +25,6 @@
     "unresolved": "error",
     "exports": "error",
     "types": "error",
-    "duplicates": "off"
+    "duplicates": "warn"
   }
 }

@@ -1,3 +1,7 @@
+const withBundleAnalyzer = require('@next/bundle-analyzer')({
+  enabled: process.env.ANALYZE === 'true',
+})
+
 const withSerwist = require('@serwist/next').default({
   swSrc: 'app/sw.ts',
   swDest: 'public/sw.js',
@@ -48,7 +52,11 @@ if (appHost && !allowedOrigins.includes(appHost)) {
 const nextConfig = {
   output: 'standalone', // required for Docker multi-stage build
   agentRules: false, // repo has no CLAUDE.md convention; don't let Next scaffold one
-  typescript: { ignoreBuildErrors: true }, // allow Docker build with vitest type quirks (tests not in runtime)
+  // TODO(quality-gates): remove ignoreBuildErrors once Supabase generated types + vitest global
+  // augmentations no longer leak into the build. At present `tsc --noEmit` is run in CI as a
+  // non-blocking gate; setting this to false would break `next build` in Docker without fixing
+  // the underlying type drift first. Tracked in docs/linting-roadmap.md.
+  typescript: { ignoreBuildErrors: true },
   // Escudería: single barbería ahora, headers críticos (HSTS, CSP, etc.)
   async headers() {
     return [
@@ -102,4 +110,14 @@ const nextConfig = {
   },
 }
 
-module.exports = withSerwist(withNextIntl(nextConfig))
+// Sentry: uncomment when NEXT_PUBLIC_SENTRY_DSN is set. See docs/sentry-evaluation.md and
+// sentry.client.config.ts / sentry.server.config.ts. Install is done (@sentry/nextjs),
+// but wrapper stays off until you opt in to avoid extra webpack plugin in Docker builds.
+// const { withSentryConfig } = require('@sentry/nextjs')
+// module.exports = withSentryConfig(withSerwist(withNextIntl(withBundleAnalyzer(nextConfig))), {
+//   silent: true,
+//   hideSourceMaps: true,
+//   widenClientFileUpload: true,
+//   tunnelRoute: '/monitoring',
+// })
+module.exports = withSerwist(withNextIntl(withBundleAnalyzer(nextConfig)))
