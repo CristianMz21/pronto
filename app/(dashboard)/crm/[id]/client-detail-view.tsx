@@ -87,6 +87,514 @@ function validateBirthday(birthday: string): string | null {
   return null
 }
 
+function buildClientStats(
+  t: ReturnType<typeof useTranslations<'clientDetail'>>,
+  client: Client,
+  currency: string,
+  timezone: string,
+) {
+  return [
+    {
+      label: t('stats.totalVisits'),
+      value: String(client.total_visits),
+      icon: CalendarDays,
+      color: 'text-blue-600',
+      bg: 'bg-blue-50',
+    },
+    {
+      label: t('stats.totalSpent'),
+      value: formatCurrency(client.total_spent, currency),
+      icon: DollarSign,
+      color: 'text-green-600',
+      bg: 'bg-green-50',
+    },
+    {
+      label: t('stats.lastVisit'),
+      value: client.last_visit_at
+        ? formatInBusinessTimezone(client.last_visit_at, timezone)
+        : t('stats.never'),
+      icon: Clock,
+      color: 'text-purple-600',
+      bg: 'bg-purple-50',
+    },
+    {
+      label: t('stats.clientSince'),
+      value: formatInBusinessTimezone(client.created_at, timezone),
+      icon: UserCheck,
+      color: 'text-orange-600',
+      bg: 'bg-orange-50',
+    },
+  ]
+}
+
+function formatMembershipBadge(m: NonNullable<Props['memberships']>[number], mounted: boolean) {
+  const isActive =
+    mounted && m.status === 'active' && m.remaining > 0 && new Date(m.expires_at) > new Date()
+  const isWarnActive = m.status === 'active' && m.remaining > 0
+  if (isActive) return 'bg-green-50 text-green-700 border-green-200'
+  if (isWarnActive) return 'bg-green-50 text-green-700 border-green-200'
+  return 'bg-gray-100 text-gray-500'
+}
+
+function formatMembershipDate(expiresAt: string, mounted: boolean) {
+  if (mounted)
+    return new Date(expiresAt).toLocaleDateString('es-CO', { timeZone: 'America/Bogota' })
+  return new Date(expiresAt).toISOString().slice(0, 10)
+}
+
+function StatsGrid({ stats }: { stats: ReturnType<typeof buildClientStats> }) {
+  return (
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {stats.map((s) => (
+        <Card key={s.label}>
+          <CardContent className="p-4">
+            <div className={`w-8 h-8 rounded-lg ${s.bg} flex items-center justify-center mb-2`}>
+              <s.icon className={`w-4 h-4 ${s.color}`} />
+            </div>
+            <div className="text-lg font-bold text-gray-900">{s.value}</div>
+            <div className="text-xs text-gray-500">{s.label}</div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  )
+}
+
+function LoyaltySection({
+  loyaltyPoints,
+  memberships,
+  currency,
+  mounted,
+}: {
+  loyaltyPoints: number
+  memberships: NonNullable<Props['memberships']>
+  currency: string
+  mounted: boolean
+}) {
+  if (loyaltyPoints <= 0 && memberships.length === 0) return null
+  return (
+    <div className="flex flex-wrap gap-2">
+      {loyaltyPoints > 0 && (
+        <Badge variant="outline" className="bg-amber-50 text-amber-800 border-amber-200">
+          ⭐ {loyaltyPoints} pts · {formatCurrency(loyaltyPoints * 100, currency)}{' '}
+        </Badge>
+      )}
+      {memberships.map((m) => (
+        <Badge
+          key={m.id}
+          variant="outline"
+          suppressHydrationWarning
+          className={formatMembershipBadge(m, mounted)}
+        >
+          👑 {m.memberships?.name ?? m.id.slice(0, 8)} · {m.remaining} usos · vence{' '}
+          <span suppressHydrationWarning>{formatMembershipDate(m.expires_at, mounted)}</span>
+        </Badge>
+      ))}
+    </div>
+  )
+}
+
+function MessengerStatus({
+  label,
+  connected,
+  onCopy,
+  copied,
+  inviteLink,
+  t,
+}: {
+  label: string
+  connected: boolean
+  onCopy?: () => void
+  copied?: boolean
+  inviteLink?: string | null
+  t: ReturnType<typeof useTranslations<'clientDetail'>>
+}) {
+  if (connected)
+    return (
+      <div className="flex items-center justify-between text-xs">
+        <span className="text-gray-500">{label}</span>
+        <span className="text-green-600 font-medium">{t('fields.connected')}</span>
+      </div>
+    )
+  if (label === 'Telegram' && onCopy)
+    return (
+      <div className="flex items-center justify-between text-xs">
+        <span className="text-gray-500">{label}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-gray-400">{t('fields.notConnected')}</span>
+          <button
+            type="button"
+            onClick={onCopy}
+            disabled={!inviteLink}
+            title={
+              inviteLink
+                ? 'Share this link with the client to connect Telegram notifications'
+                : 'Connect Telegram bot in Settings first'
+            }
+            className="text-xs px-2 py-0.5 rounded border border-gray-200 text-gray-500 hover:border-blue-400 hover:text-blue-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {copied ? '✓ Copied' : 'Copy link'}
+          </button>
+        </div>
+      </div>
+    )
+  return (
+    <div className="flex items-center justify-between text-xs">
+      <span className="text-gray-500">{label}</span>
+      <span className="text-gray-400">{t('fields.notConnected')}</span>
+    </div>
+  )
+}
+
+function validateAndSave(
+  form: { phone: string; birthday: string },
+  setEditErrors: React.Dispatch<React.SetStateAction<{ phone?: string; birthday?: string }>>,
+): boolean {
+  const phoneErr = validatePhone(form.phone)
+  const bdErr = validateBirthday(form.birthday)
+  if (phoneErr || bdErr) {
+    // @ts-expect-error - tsc strict fix
+    setEditErrors({ phone: phoneErr ?? undefined, birthday: bdErr ?? undefined })
+    return false
+  }
+  setEditErrors({})
+  return true
+}
+
+function EditingForm({
+  form,
+  setForm,
+  editErrors,
+  setEditErrors,
+  saving,
+  onSave,
+  onCancel,
+  client,
+  telegramInviteLink,
+  copied,
+  onCopy,
+  t,
+}: {
+  form: {
+    name: string
+    phone: string
+    email: string
+    birthday: string
+    notes: string
+    tags: string
+    whatsapp_number: string
+  }
+  setForm: React.Dispatch<
+    React.SetStateAction<{
+      name: string
+      phone: string
+      email: string
+      birthday: string
+      notes: string
+      tags: string
+      whatsapp_number: string
+    }>
+  >
+  editErrors: { phone?: string; birthday?: string }
+  setEditErrors: React.Dispatch<React.SetStateAction<{ phone?: string; birthday?: string }>>
+  saving: boolean
+  onSave: () => void
+  onCancel: () => void
+  client: Client
+  telegramInviteLink: string | null
+  copied: boolean
+  onCopy: () => void
+  t: ReturnType<typeof useTranslations<'clientDetail'>>
+}) {
+  return (
+    <div className="space-y-3">
+      <div>
+        <label className="text-xs font-medium text-gray-500">{t('fields.name')}</label>
+        <input
+          type="text"
+          value={form.name}
+          onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+          className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+      <div>
+        <label className="text-xs font-medium text-gray-500">{t('fields.phone')}</label>
+        <input
+          type="tel"
+          value={form.phone}
+          onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+          onBlur={() => {
+            const e = validatePhone(form.phone) // @ts-expect-error - tsc strict fix
+            setEditErrors((prev) => ({ ...prev, phone: e ?? undefined }))
+          }}
+          className={`w-full mt-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${editErrors.phone ? 'border-red-400' : 'border-gray-200'}`}
+        />
+        {editErrors.phone && <p className="text-xs text-red-500 mt-1">{editErrors.phone}</p>}
+      </div>
+      <div>
+        <label className="text-xs font-medium text-gray-500">{t('fields.email')}</label>
+        <input
+          type="email"
+          value={form.email}
+          onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+          className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+      <div>
+        <label className="text-xs font-medium text-gray-500">{t('fields.birthday')}</label>
+        <div
+          className="mt-1"
+          onBlur={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+              const err = validateBirthday(form.birthday) // @ts-expect-error - tsc strict fix
+              setEditErrors((prev) => ({ ...prev, birthday: err ?? undefined }))
+            }
+          }}
+        >
+          <DatePicker
+            value={form.birthday}
+            onChange={(v) => {
+              setForm((f) => ({ ...f, birthday: v })) // @ts-expect-error - tsc strict fix
+              setEditErrors((prev) => ({ ...prev, birthday: undefined }))
+            }}
+          />
+        </div>
+        {editErrors.birthday && <p className="text-xs text-red-500 mt-1">{editErrors.birthday}</p>}
+      </div>
+      <div>
+        <label className="text-xs font-medium text-gray-500">{t('fields.whatsappNumber')}</label>
+        <input
+          type="tel"
+          value={form.whatsapp_number}
+          onChange={(e) => setForm((f) => ({ ...f, whatsapp_number: e.target.value }))}
+          placeholder="+79001234567"
+          className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+      <div>
+        <label className="text-xs font-medium text-gray-500">{t('fields.tags')}</label>
+        <input
+          type="text"
+          value={form.tags}
+          onChange={(e) => setForm((f) => ({ ...f, tags: e.target.value }))}
+          placeholder={t('fields.tagsPlaceholder')}
+          className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+      <div>
+        <label className="text-xs font-medium text-gray-500">{t('fields.notes')}</label>
+        <textarea
+          value={form.notes}
+          onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+          rows={3}
+          placeholder={t('fields.notesPlaceholder')}
+          className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+        />
+      </div>
+      <div className="flex gap-2 pt-1">
+        <Button variant="outline" size="sm" onClick={onCancel}>
+          {t('cancelButton')}
+        </Button>
+        <Button size="sm" onClick={onSave} disabled={saving || !form.name}>
+          {saving ? '…' : t('saveButton')}
+        </Button>
+      </div>
+      <div className="pt-3 border-t border-gray-100 space-y-1.5">
+        <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">
+          {t('fields.messengers')}
+        </p>
+        <MessengerStatus
+          label="Telegram"
+          connected={!!client.telegram_id}
+          onCopy={onCopy}
+          copied={copied}
+          inviteLink={telegramInviteLink}
+          t={t}
+        />
+        <MessengerStatus label="Viber" connected={!!client.viber_user_id} t={t} />
+      </div>
+    </div>
+  )
+}
+
+function ClientView({
+  client,
+  location,
+  preferredBarber,
+  t,
+  telegramInviteLink,
+  copied,
+  onCopy,
+}: {
+  client: Client
+  location: { id: string; name: string } | null | undefined
+  preferredBarber: { id: string; name: string } | null | undefined
+  t: ReturnType<typeof useTranslations<'clientDetail'>>
+  telegramInviteLink: string | null
+  copied: boolean
+  onCopy: () => void
+}) {
+  return (
+    <div className="space-y-3 text-sm">
+      {client.phone && (
+        <div className="flex gap-2">
+          <span className="text-gray-400 w-16 shrink-0">{t('fields.phone')}</span>
+          <a href={`tel:${client.phone}`} className="text-blue-600 hover:underline">
+            {client.phone}
+          </a>
+        </div>
+      )}
+      {client.email && (
+        <div className="flex gap-2">
+          <span className="text-gray-400 w-16 shrink-0">{t('fields.email')}</span>
+          <a href={`mailto:${client.email}`} className="text-blue-600 hover:underline">
+            {client.email}
+          </a>
+        </div>
+      )}
+      {client.birthday && (
+        <div className="flex gap-2">
+          <span className="text-gray-400 w-16 shrink-0">{t('fields.birthday')}</span>
+          <span className="text-gray-700">{formatDate(client.birthday)}</span>
+        </div>
+      )}
+      {client.tags.length > 0 && (
+        <div className="flex gap-2 flex-wrap pt-1">
+          {client.tags.map((tag) => (
+            <Badge key={tag} variant="secondary">
+              {tag}
+            </Badge>
+          ))}
+        </div>
+      )}
+      {client.whatsapp_number && (
+        <div className="flex gap-2">
+          <span className="text-gray-400 w-16 shrink-0">{t('fields.whatsappNumber')}</span>
+          <a
+            href={`https://wa.me/${client.whatsapp_number.replace(/^\+/, '').replace(/\s/g, '')}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-green-600 hover:underline"
+          >
+            {client.whatsapp_number}
+          </a>
+        </div>
+      )}
+      {location && (
+        <div className="flex gap-2">
+          <span className="text-gray-400 w-16 shrink-0">Sede</span>
+          <span className="text-gray-700">{location.name}</span>
+        </div>
+      )}
+      {preferredBarber && (
+        <div className="flex gap-2">
+          <span className="text-gray-400 w-16 shrink-0">Barbero</span>
+          <span className="text-gray-700">{preferredBarber.name}</span>
+        </div>
+      )}
+      {Boolean(client.preferences) &&
+        typeof client.preferences === 'object' &&
+        Object.keys(client.preferences as Record<string, unknown>).length > 0 && (
+          <div className="flex gap-2">
+            <span className="text-gray-400 w-16 shrink-0">Prefs</span>
+            <span className="text-xs bg-gray-50 px-2 py-1 rounded border">
+              {JSON.stringify(client.preferences)}
+            </span>
+          </div>
+        )}
+      <div className="flex flex-wrap gap-2 pt-2">
+        <a
+          href={`/booking?clientId=${client.id}`}
+          className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+        >
+          Crear cita
+        </a>
+        {client.phone && (
+          <a
+            href={`https://wa.me/${client.phone.replace(/^\+/, '').replace(/\s/g, '')}`}
+            target="_blank"
+            className="text-xs px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700"
+            rel="noopener"
+          >
+            WhatsApp
+          </a>
+        )}
+        <a
+          href={`/pos?clientId=${client.id}`}
+          className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-gray-50"
+        >
+          Registrar venta
+        </a>
+      </div>
+      <div className="pt-2 border-t border-gray-100 space-y-1.5">
+        <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">
+          {t('fields.messengers')}
+        </p>
+        <MessengerStatus
+          label="Telegram"
+          connected={!!client.telegram_id}
+          onCopy={onCopy}
+          copied={copied}
+          inviteLink={telegramInviteLink}
+          t={t}
+        />
+        <MessengerStatus label="Viber" connected={!!client.viber_user_id} t={t} />
+      </div>
+      {client.notes && (
+        <div className="mt-3 p-3 bg-gray-50 rounded-lg text-gray-600 text-xs leading-relaxed">
+          {client.notes}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function VisitHistory({
+  appointments,
+  currency,
+  timezone,
+  t,
+}: {
+  appointments: Appointment[]
+  currency: string
+  timezone: string
+  t: ReturnType<typeof useTranslations<'clientDetail'>>
+}) {
+  if (appointments.length === 0)
+    return <p className="text-sm text-gray-400 py-4 text-center">{t('appointments.empty')}</p>
+  return (
+    <div className="space-y-3">
+      {appointments.map((a) => (
+        <div
+          key={a.id}
+          className="flex items-start justify-between py-2 border-b border-gray-100 last:border-0"
+        >
+          <div>
+            <div className="text-sm font-medium text-gray-900">{a.services?.name ?? '—'}</div>
+            <div className="text-xs text-gray-500 mt-0.5">
+              {formatInBusinessTimezone(a.starts_at, timezone)} ·{' '}
+              {formatInBusinessTimezone(a.starts_at, timezone, 'time')}
+              {a.employees?.name && ` · ${a.employees.name}`}
+            </div>
+          </div>
+          <div className="flex flex-col items-end gap-1 ml-3 shrink-0">
+            {a.price != null && (
+              <span className="text-sm font-semibold text-gray-900">
+                {formatCurrency(a.price, currency)}
+              </span>
+            )}
+            <span
+              className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[a.status] ?? 'bg-gray-100 text-gray-500'}`}
+            >
+              {t(`status.${a.status}` as unknown as string)}
+            </span>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export function ClientDetailView({
   client: initial,
   appointments,
@@ -138,14 +646,7 @@ export function ClientDetailView({
   }
 
   async function save() {
-    const phoneErr = validatePhone(form.phone)
-    const bdErr = validateBirthday(form.birthday)
-    if (phoneErr || bdErr) {
-      // @ts-expect-error - tsc strict fix
-      setEditErrors({ phone: phoneErr ?? undefined, birthday: bdErr ?? undefined })
-      return
-    }
-    setEditErrors({})
+    if (!validateAndSave(form, setEditErrors)) return
     setSaving(true)
     const tags = form.tags
       .split(',')
@@ -178,95 +679,19 @@ export function ClientDetailView({
     window.location.href = '/crm'
   }
 
-  const stats = [
-    {
-      label: t('stats.totalVisits'),
-      value: String(client.total_visits),
-      icon: CalendarDays,
-      color: 'text-blue-600',
-      bg: 'bg-blue-50',
-    },
-    {
-      label: t('stats.totalSpent'),
-      value: formatCurrency(client.total_spent, currency),
-      icon: DollarSign,
-      color: 'text-green-600',
-      bg: 'bg-green-50',
-    },
-    {
-      label: t('stats.lastVisit'),
-      value: client.last_visit_at
-        ? formatInBusinessTimezone(client.last_visit_at, timezone)
-        : t('stats.never'),
-      icon: Clock,
-      color: 'text-purple-600',
-      bg: 'bg-purple-50',
-    },
-    {
-      label: t('stats.clientSince'),
-      value: formatInBusinessTimezone(client.created_at, timezone),
-      icon: UserCheck,
-      color: 'text-orange-600',
-      bg: 'bg-orange-50',
-    },
-  ]
+  const stats = buildClientStats(t, client, currency, timezone)
 
   return (
     <div className="p-6 max-w-4xl space-y-6">
-      {/* Stats row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((s) => (
-          <Card key={s.label}>
-            <CardContent className="p-4">
-              <div className={`w-8 h-8 rounded-lg ${s.bg} flex items-center justify-center mb-2`}>
-                <s.icon className={`w-4 h-4 ${s.color}`} />
-              </div>
-              <div className="text-lg font-bold text-gray-900">{s.value}</div>
-              <div className="text-xs text-gray-500">{s.label}</div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* US5 loyalty/membership chips */}
-      {(loyaltyPoints > 0 || memberships.length > 0) && (
-        <div className="flex flex-wrap gap-2">
-          {loyaltyPoints > 0 && (
-            <Badge variant="outline" className="bg-amber-50 text-amber-800 border-amber-200">
-              ⭐ {loyaltyPoints} pts · {formatCurrency(loyaltyPoints * 100, currency)}{' '}
-            </Badge>
-          )}
-          {memberships.map((m) => (
-            <Badge
-              key={m.id}
-              variant="outline"
-              suppressHydrationWarning
-              className={
-                mounted &&
-                m.status === 'active' &&
-                m.remaining > 0 &&
-                new Date(m.expires_at) > new Date()
-                  ? 'bg-green-50 text-green-700 border-green-200'
-                  : m.status === 'active' && m.remaining > 0
-                    ? 'bg-green-50 text-green-700 border-green-200'
-                    : 'bg-gray-100 text-gray-500'
-              }
-            >
-              👑 {m.memberships?.name ?? m.id.slice(0, 8)} · {m.remaining} usos · vence{' '}
-              <span suppressHydrationWarning>
-                {mounted
-                  ? new Date(m.expires_at).toLocaleDateString('es-CO', {
-                      timeZone: 'America/Bogota',
-                    })
-                  : new Date(m.expires_at).toISOString().slice(0, 10)}
-              </span>
-            </Badge>
-          ))}
-        </div>
-      )}
+      <StatsGrid stats={stats} />
+      <LoyaltySection
+        loyaltyPoints={loyaltyPoints}
+        memberships={memberships}
+        currency={currency}
+        mounted={mounted}
+      />
 
       <div className="grid lg:grid-cols-2 gap-6">
-        {/* Client info card */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center justify-between text-base">
@@ -313,334 +738,45 @@ export function ClientDetailView({
           </CardHeader>
           <CardContent>
             {editing ? (
-              <div className="space-y-3">
-                <div>
-                  <label className="text-xs font-medium text-gray-500">{t('fields.name')}</label>
-                  <input
-                    type="text"
-                    value={form.name}
-                    onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                    className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-gray-500">{t('fields.phone')}</label>
-                  <input
-                    type="tel"
-                    value={form.phone}
-                    onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-                    onBlur={() => {
-                      const e = validatePhone(form.phone)
-                      // @ts-expect-error - tsc strict fix
-                      setEditErrors((prev) => ({ ...prev, phone: e ?? undefined }))
-                    }}
-                    className={`w-full mt-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${editErrors.phone ? 'border-red-400' : 'border-gray-200'}`}
-                  />
-                  {editErrors.phone && (
-                    <p className="text-xs text-red-500 mt-1">{editErrors.phone}</p>
-                  )}
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-gray-500">{t('fields.email')}</label>
-                  <input
-                    type="email"
-                    value={form.email}
-                    onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-                    className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-gray-500">
-                    {t('fields.birthday')}
-                  </label>
-                  <div
-                    className="mt-1"
-                    onBlur={(e) => {
-                      if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-                        const err = validateBirthday(form.birthday)
-                        // @ts-expect-error - tsc strict fix
-                        setEditErrors((prev) => ({ ...prev, birthday: err ?? undefined }))
-                      }
-                    }}
-                  >
-                    <DatePicker
-                      value={form.birthday}
-                      onChange={(v) => {
-                        setForm((f) => ({ ...f, birthday: v }))
-                        // @ts-expect-error - tsc strict fix
-                        setEditErrors((prev) => ({ ...prev, birthday: undefined }))
-                      }}
-                    />
-                  </div>
-                  {editErrors.birthday && (
-                    <p className="text-xs text-red-500 mt-1">{editErrors.birthday}</p>
-                  )}
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-gray-500">
-                    {t('fields.whatsappNumber')}
-                  </label>
-                  <input
-                    type="tel"
-                    value={form.whatsapp_number}
-                    onChange={(e) => setForm((f) => ({ ...f, whatsapp_number: e.target.value }))}
-                    placeholder="+79001234567"
-                    className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-gray-500">{t('fields.tags')}</label>
-                  <input
-                    type="text"
-                    value={form.tags}
-                    onChange={(e) => setForm((f) => ({ ...f, tags: e.target.value }))}
-                    placeholder={t('fields.tagsPlaceholder')}
-                    className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-gray-500">{t('fields.notes')}</label>
-                  <textarea
-                    value={form.notes}
-                    onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-                    rows={3}
-                    placeholder={t('fields.notesPlaceholder')}
-                    className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                  />
-                </div>
-                <div className="flex gap-2 pt-1">
-                  <Button variant="outline" size="sm" onClick={() => setEditing(false)}>
-                    {t('cancelButton')}
-                  </Button>
-                  <Button size="sm" onClick={save} disabled={saving || !form.name}>
-                    {saving ? '…' : t('saveButton')}
-                  </Button>
-                </div>
-
-                {/* Messenger connection status — read-only, set via bot /link command */}
-                <div className="pt-3 border-t border-gray-100 space-y-1.5">
-                  <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">
-                    {t('fields.messengers')}
-                  </p>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-gray-500">Telegram</span>
-                    {client.telegram_id ? (
-                      <span className="text-green-600 font-medium">{t('fields.connected')}</span>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <span className="text-gray-400">{t('fields.notConnected')}</span>
-                        <button
-                          type="button"
-                          onClick={copyTelegramLink}
-                          disabled={!telegramInviteLink}
-                          title={
-                            telegramInviteLink
-                              ? 'Share this link with the client to connect Telegram notifications'
-                              : 'Connect Telegram bot in Settings first'
-                          }
-                          className="text-xs px-2 py-0.5 rounded border border-gray-200 text-gray-500 hover:border-blue-400 hover:text-blue-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                        >
-                          {copied ? '✓ Copied' : 'Copy link'}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-gray-500">Viber</span>
-                    {client.viber_user_id ? (
-                      <span className="text-green-600 font-medium">{t('fields.connected')}</span>
-                    ) : (
-                      <span className="text-gray-400">{t('fields.notConnected')}</span>
-                    )}
-                  </div>
-                </div>
-              </div>
+              <EditingForm
+                form={form}
+                setForm={setForm}
+                editErrors={editErrors}
+                setEditErrors={setEditErrors}
+                saving={saving}
+                onSave={save}
+                onCancel={() => setEditing(false)}
+                client={client}
+                telegramInviteLink={telegramInviteLink}
+                copied={copied}
+                onCopy={copyTelegramLink}
+                t={t}
+              />
             ) : (
-              <div className="space-y-3 text-sm">
-                {client.phone && (
-                  <div className="flex gap-2">
-                    <span className="text-gray-400 w-16 shrink-0">{t('fields.phone')}</span>
-                    <a href={`tel:${client.phone}`} className="text-blue-600 hover:underline">
-                      {client.phone}
-                    </a>
-                  </div>
-                )}
-                {client.email && (
-                  <div className="flex gap-2">
-                    <span className="text-gray-400 w-16 shrink-0">{t('fields.email')}</span>
-                    <a href={`mailto:${client.email}`} className="text-blue-600 hover:underline">
-                      {client.email}
-                    </a>
-                  </div>
-                )}
-                {client.birthday && (
-                  <div className="flex gap-2">
-                    <span className="text-gray-400 w-16 shrink-0">{t('fields.birthday')}</span>
-                    <span className="text-gray-700">{formatDate(client.birthday)}</span>
-                  </div>
-                )}
-                {client.tags.length > 0 && (
-                  <div className="flex gap-2 flex-wrap pt-1">
-                    {client.tags.map((tag) => (
-                      <Badge key={tag} variant="secondary">
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                )}
-                {client.whatsapp_number && (
-                  <div className="flex gap-2">
-                    <span className="text-gray-400 w-16 shrink-0">
-                      {t('fields.whatsappNumber')}
-                    </span>
-                    <a
-                      href={`https://wa.me/${client.whatsapp_number.replace(/^\+/, '').replace(/\s/g, '')}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-green-600 hover:underline"
-                    >
-                      {client.whatsapp_number}
-                    </a>
-                  </div>
-                )}
-                {location && (
-                  <div className="flex gap-2">
-                    <span className="text-gray-400 w-16 shrink-0">Sede</span>
-                    <span className="text-gray-700">{location.name}</span>
-                  </div>
-                )}
-                {preferredBarber && (
-                  <div className="flex gap-2">
-                    <span className="text-gray-400 w-16 shrink-0">Barbero</span>
-                    <span className="text-gray-700">{preferredBarber.name}</span>
-                  </div>
-                )}
-                {Boolean(client.preferences) &&
-                  typeof client.preferences === 'object' &&
-                  Object.keys(client.preferences as Record<string, unknown>).length > 0 && (
-                    <div className="flex gap-2">
-                      <span className="text-gray-400 w-16 shrink-0">Prefs</span>
-                      <span className="text-xs bg-gray-50 px-2 py-1 rounded border">
-                        {JSON.stringify(client.preferences)}
-                      </span>
-                    </div>
-                  )}
-
-                {/* Quick actions */}
-                <div className="flex flex-wrap gap-2 pt-2">
-                  <a
-                    href={`/booking?clientId=${client.id}`}
-                    className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                  >
-                    Crear cita
-                  </a>
-                  {client.phone && (
-                    <a
-                      href={`https://wa.me/${client.phone.replace(/^\+/, '').replace(/\s/g, '')}`}
-                      target="_blank"
-                      className="text-xs px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700"
-                      rel="noopener"
-                    >
-                      WhatsApp
-                    </a>
-                  )}
-                  <a
-                    href={`/pos?clientId=${client.id}`}
-                    className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-gray-50"
-                  >
-                    Registrar venta
-                  </a>
-                </div>
-
-                {/* Messenger connection status */}
-                <div className="pt-2 border-t border-gray-100 space-y-1.5">
-                  <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">
-                    {t('fields.messengers')}
-                  </p>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-gray-400">Telegram</span>
-                    {client.telegram_id ? (
-                      <span className="text-green-600 font-medium">{t('fields.connected')}</span>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <span className="text-gray-400">{t('fields.notConnected')}</span>
-                        <button
-                          type="button"
-                          onClick={copyTelegramLink}
-                          disabled={!telegramInviteLink}
-                          title={
-                            telegramInviteLink
-                              ? 'Share this link with the client to connect Telegram notifications'
-                              : 'Connect Telegram bot in Settings first'
-                          }
-                          className="text-xs px-2 py-0.5 rounded border border-gray-200 text-gray-500 hover:border-blue-400 hover:text-blue-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                        >
-                          {copied ? '✓ Copied' : 'Copy link'}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-gray-400">Viber</span>
-                    {client.viber_user_id ? (
-                      <span className="text-green-600 font-medium">{t('fields.connected')}</span>
-                    ) : (
-                      <span className="text-gray-400">{t('fields.notConnected')}</span>
-                    )}
-                  </div>
-                </div>
-
-                {client.notes && (
-                  <div className="mt-3 p-3 bg-gray-50 rounded-lg text-gray-600 text-xs leading-relaxed">
-                    {client.notes}
-                  </div>
-                )}
-              </div>
+              <ClientView
+                client={client}
+                location={location}
+                preferredBarber={preferredBarber}
+                t={t}
+                telegramInviteLink={telegramInviteLink}
+                copied={copied}
+                onCopy={copyTelegramLink}
+              />
             )}
           </CardContent>
         </Card>
 
-        {/* Visit history */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base">{t('appointments.heading')}</CardTitle>
           </CardHeader>
           <CardContent>
-            {appointments.length === 0 ? (
-              <p className="text-sm text-gray-400 py-4 text-center">{t('appointments.empty')}</p>
-            ) : (
-              <div className="space-y-3">
-                {appointments.map((a) => (
-                  <div
-                    key={a.id}
-                    className="flex items-start justify-between py-2 border-b border-gray-100 last:border-0"
-                  >
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">
-                        {a.services?.name ?? '—'}
-                      </div>
-                      <div className="text-xs text-gray-500 mt-0.5">
-                        {formatInBusinessTimezone(a.starts_at, timezone)} ·{' '}
-                        {formatInBusinessTimezone(a.starts_at, timezone, 'time')}
-                        {a.employees?.name && ` · ${a.employees.name}`}
-                      </div>
-                    </div>
-                    <div className="flex flex-col items-end gap-1 ml-3 shrink-0">
-                      {a.price != null && (
-                        <span className="text-sm font-semibold text-gray-900">
-                          {formatCurrency(a.price, currency)}
-                        </span>
-                      )}
-                      <span
-                        className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[a.status] ?? 'bg-gray-100 text-gray-500'}`}
-                      >
-                        {t(`status.${a.status}` as unknown as string)}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+            <VisitHistory
+              appointments={appointments}
+              currency={currency}
+              timezone={timezone}
+              t={t}
+            />
           </CardContent>
         </Card>
       </div>

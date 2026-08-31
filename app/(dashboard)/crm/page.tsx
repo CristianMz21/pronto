@@ -29,51 +29,55 @@ function inDaysFromNow(dateStr: string, days: number): boolean {
   return diff >= 0 && diff <= days
 }
 
-export default async function CRMPage(props: {
-  searchParams: Promise<{ q?: string; tag?: string; segment?: string; location?: string }>
-}) {
-  const searchParams = await props.searchParams
-  const t = await getTranslations('crm')
-  const user = await getAuthUser()
+type CrmClient = {
+  id: string
+  name: string
+  phone: string | null
+  email: string | null
+  tags: string[]
+  createdAt: string
+  birthday: string | null
+  lastVisitAt: string | null
+  locationId: string | null
+}
 
-  // Drizzle ORM — portable to Postgres/MySQL/SQLite via DATABASE_URL
-  let businessId: string | null = null
-  let businessCurrency = 'COP'
-  let businessTz = 'America/Bogota'
+async function resolveCrmBusiness(
+  userId: string | undefined,
+): Promise<{ id: string; currency: string; timezone: string } | null> {
   const ownedBiz = await db.query.businesses.findFirst({
-    where: eq(businesses.ownerId, user?.id ?? ''),
+    where: eq(businesses.ownerId, userId ?? ''),
     columns: { id: true, currency: true, timezone: true },
   })
-  if (ownedBiz) {
-    businessId = ownedBiz.id
-    businessCurrency = ownedBiz.currency ?? 'COP'
-    businessTz = ownedBiz.timezone ?? 'America/Bogota'
-  } else {
-    const emp = (await db.query.employees.findFirst({
-      where: and(eq(employees.userId, user?.id ?? ''), eq(employees.isActive, true)),
-      with: { business: { columns: { currency: true, timezone: true } } },
-    })) as unknown as
-      | { businessId: string; business: { currency: string; timezone: string } }
-      | undefined
-    if (emp) {
-      businessId = emp.businessId
-      businessCurrency = emp.business?.currency ?? 'COP'
-      businessTz = emp.business?.timezone ?? 'America/Bogota'
+  if (ownedBiz)
+    return {
+      id: ownedBiz.id,
+      currency: ownedBiz.currency ?? 'COP',
+      timezone: ownedBiz.timezone ?? 'America/Bogota',
     }
+  const emp = (await db.query.employees.findFirst({
+    where: and(eq(employees.userId, userId ?? ''), eq(employees.isActive, true)),
+    with: { business: { columns: { currency: true, timezone: true } } },
+  })) as unknown as
+    | { businessId: string; business: { currency: string; timezone: string } }
+    | undefined
+  if (!emp) return null
+  return {
+    id: emp.businessId,
+    currency: emp.business?.currency ?? 'COP',
+    timezone: emp.business?.timezone ?? 'America/Bogota',
   }
-  if (!businessId) return null
-  const business = { id: businessId, currency: businessCurrency, timezone: businessTz }
+}
 
-  const selectedLocation = searchParams.location ?? null
-
-  // Build Drizzle where clause for clients (business_id tenant, plus search/location/tag)
-  const clientConditions: ReturnType<typeof eq>[] = [eq(clientsTable.businessId, business.id)]
-  if (selectedLocation) {
-    clientConditions.push(eq(clientsTable.locationId, selectedLocation))
-  }
-  if (searchParams.q) {
-    const q = `%${searchParams.q}%`
-    clientConditions.push(
+function buildClientConditions(
+  businessId: string,
+  location: string | null,
+  qParam: string | undefined,
+): ReturnType<typeof eq>[] {
+  const conds: ReturnType<typeof eq>[] = [eq(clientsTable.businessId, businessId)]
+  if (location) conds.push(eq(clientsTable.locationId, location))
+  if (qParam) {
+    const q = `%${qParam}%`
+    conds.push(
       or(
         ilike(clientsTable.name, q),
         ilike(clientsTable.phone, q),
@@ -81,44 +85,81 @@ export default async function CRMPage(props: {
       ) as unknown as ReturnType<typeof eq>,
     )
   }
+  return conds
+}
 
-  // Drizzle query for clients — 3FN portable, RLS via business_id filter
+function filterByTag(clients: CrmClient[], tag: string | undefined): CrmClient[] {
+  if (!tag) return clients
+  return clients.filter((c) => (c.tags ?? []).includes(tag))
+}
+
+function matchesSegment(
+  c: CrmClient,
+  segment: string,
+  stats: Record<string, { total_visits: number; last_visit_at: string | null }>,
+  now: number,
+): boolean {
+  const s = stats[c.id]
+  const last =
+    s?.last_visit_at ?? (c as unknown as { lastVisitAt?: string | null }).lastVisitAt ?? null
+  const visits = s?.total_visits ?? 0
+  const tags = (c.tags ?? []) as string[]
+  const bd = (c as unknown as { birthday?: string | null }).birthday
+  if (segment === 'inactive_30')
+    return last ? (now - new Date(last).getTime()) / 86400000 >= 30 : true
+  if (segment === 'inactive_42')
+    return last ? (now - new Date(last).getTime()) / 86400000 >= 42 : true
+  if (segment === 'inactive_60')
+    return last ? (now - new Date(last).getTime()) / 86400000 >= 60 : true
+  if (segment === 'birthday_7') return bd ? inDaysFromNow(bd, 7) : false
+  if (segment === 'vip') return tags.includes('vip') || tags.includes('VIP')
+  if (segment === 'new') return visits > 0 && visits < 3
+  if (segment === 'frequent') return visits >= 10
+  return true
+}
+
+function filterBySegment(
+  clients: CrmClient[],
+  segment: string | undefined,
+  statsMap: Record<string, { total_visits: number; last_visit_at: string | null }>,
+): CrmClient[] {
+  if (!segment) return clients
+  const now = Date.now()
+  return clients.filter((c) => matchesSegment(c, segment, statsMap, now))
+}
+
+async function fetchClientsWithFilters(
+  businessId: string,
+  location: string | null,
+  q: string | undefined,
+  tag: string | undefined,
+): Promise<CrmClient[]> {
+  const conds = buildClientConditions(businessId, location, q)
   let clientsRaw = await db.query.clients.findMany({
-    where: and(...clientConditions),
+    where: and(...conds),
     orderBy: (c, { asc }) => [asc(c.name)],
     limit: 80,
   })
+  let clients = clientsRaw as unknown as CrmClient[]
+  clients = filterByTag(clients, tag)
+  return clients
+}
 
-  // Tag filter: clients.tags text[] contains tag (keep for compat, also 3FN client_tags via join in future)
-  // Drizzle array contains via sql: tags && ARRAY[tag]
-  if (searchParams.tag) {
-    const tag = searchParams.tag
-    // Filter in-memory for portability (MySQL/SQLite would use join via client_tags); for Postgres we could use sql
-    clientsRaw = clientsRaw.filter((c) => (c.tags ?? []).includes(tag))
-    // Alternative Postgres-only: where sql`${clients.tags} @> ARRAY[${tag}]` — kept in-memory for multi-DB
-  }
-
-  let clients = clientsRaw as unknown as Array<{
-    id: string
-    name: string
-    phone: string | null
-    email: string | null
-    tags: string[]
-    createdAt: string
-    birthday: string | null
-    lastVisitAt: string | null
-    locationId: string | null
-  }>
-
-  const locs = await db.query.locations.findMany({
-    where: eq(locations.businessId, business.id),
-    orderBy: (l, { asc }) => [asc(l.name)],
-    columns: { id: true, name: true },
-  })
-
-  // Compute visits, spent, last visit, and last service name live from transactions (Drizzle)
-  const clientIds = clients.map((c) => c.id)
-  const statsMap: Record<
+async function buildStatsMap(
+  businessId: string,
+  clientIds: string[],
+): Promise<
+  Record<
+    string,
+    {
+      total_visits: number
+      total_spent: number
+      last_visit_at: string | null
+      lastService: string | null
+    }
+  >
+> {
+  const map: Record<
     string,
     {
       total_visits: number
@@ -127,72 +168,67 @@ export default async function CRMPage(props: {
       lastService: string | null
     }
   > = {}
-  if (clientIds.length > 0) {
-    const txs = await db.query.transactions.findMany({
-      where: and(
-        eq(transactions.businessId, business.id),
-        eq(transactions.status, 'completed'),
-        inArray(transactions.clientId, clientIds),
-      ),
-      orderBy: (t, { desc }) => [desc(t.createdAt)],
-      limit: 800,
-      columns: { clientId: true, amount: true, createdAt: true, items: true },
-    })
-    for (const tx of txs) {
-      if (!tx.clientId) continue
-      if (!statsMap[tx.clientId]) {
-        statsMap[tx.clientId] = {
-          total_visits: 0,
-          total_spent: 0,
-          last_visit_at: null,
-          lastService: null,
-        }
-      }
-      // @ts-expect-error - tsc strict fix
-      statsMap[tx.clientId].total_visits++
-      // amount is numeric string from drizzle
-      // @ts-expect-error - tsc strict fix
-      statsMap[tx.clientId].total_spent += Number(tx.amount ?? 0)
-      // @ts-expect-error - tsc strict fix
-      if (!statsMap[tx.clientId].last_visit_at)
-        // @ts-expect-error - tsc strict fix
-        statsMap[tx.clientId].last_visit_at = tx.createdAt as unknown as string
-      // @ts-expect-error - tsc strict fix
-      if (!statsMap[tx.clientId].lastService) {
-        const items = Array.isArray(tx.items) ? (tx.items as unknown[]) : []
-        const name = (items[0] as { name?: string } | undefined)?.name
-        // @ts-expect-error - tsc strict fix
-        if (name) statsMap[tx.clientId].lastService = name
-      }
+  if (clientIds.length === 0) return map
+  const txs = await db.query.transactions.findMany({
+    where: and(
+      eq(transactions.businessId, businessId),
+      eq(transactions.status, 'completed'),
+      inArray(transactions.clientId, clientIds),
+    ),
+    orderBy: (t, { desc }) => [desc(t.createdAt)],
+    limit: 800,
+    columns: { clientId: true, amount: true, createdAt: true, items: true },
+  })
+  for (const tx of txs) {
+    if (!tx.clientId) continue
+    if (!map[tx.clientId])
+      map[tx.clientId] = { total_visits: 0, total_spent: 0, last_visit_at: null, lastService: null }
+    const entry = map[tx.clientId]!
+    entry.total_visits++
+    entry.total_spent += Number(tx.amount ?? 0)
+    if (!entry.last_visit_at) entry.last_visit_at = tx.createdAt as unknown as string
+    if (!entry.lastService) {
+      const items = Array.isArray(tx.items) ? (tx.items as unknown[]) : []
+      const name = (items[0] as { name?: string } | undefined)?.name
+      if (name) entry.lastService = name
     }
   }
+  return map
+}
 
-  // Segment filtering (FR-CRM-003)
-  const segment = searchParams.segment
-  if (segment) {
-    const now = Date.now()
-    clients = clients.filter((c) => {
-      const stats = statsMap[c.id]
-      const last =
-        stats?.last_visit_at ??
-        (c as unknown as { lastVisitAt?: string | null }).lastVisitAt ??
-        null
-      const visits = stats?.total_visits ?? 0
-      const tags = (c.tags ?? []) as string[]
-      const bd = (c as unknown as { birthday?: string | null }).birthday
-      if (segment === 'inactive_30')
-        return last ? (now - new Date(last).getTime()) / 86400000 >= 30 : true
-      if (segment === 'inactive_42')
-        return last ? (now - new Date(last).getTime()) / 86400000 >= 42 : true
-      if (segment === 'inactive_60')
-        return last ? (now - new Date(last).getTime()) / 86400000 >= 60 : true
-      if (segment === 'birthday_7') return bd ? inDaysFromNow(bd, 7) : false
-      if (segment === 'vip') return tags.includes('vip') || tags.includes('VIP')
-      if (segment === 'new') return visits > 0 && visits < 3
-      if (segment === 'frequent') return visits >= 10
-      return true
-    })
-  }
+export default async function CRMPage(props: {
+  searchParams: Promise<{ q?: string; tag?: string; segment?: string; location?: string }>
+}) {
+  const searchParams = await props.searchParams
+  const t = await getTranslations('crm')
+  const user = await getAuthUser()
+
+  const business = await resolveCrmBusiness(user?.id)
+  if (!business) return null
+
+  const selectedLocation = searchParams.location ?? null
+
+  let clients = await fetchClientsWithFilters(
+    business.id,
+    selectedLocation,
+    searchParams.q,
+    searchParams.tag,
+  )
+
+  const locs = await db.query.locations.findMany({
+    where: eq(locations.businessId, business.id),
+    orderBy: (l, { asc }) => [asc(l.name)],
+    columns: { id: true, name: true },
+  })
+
+  const clientIds = clients.map((c) => c.id)
+  const statsMap = await buildStatsMap(business.id, clientIds)
+
+  clients = filterBySegment(
+    clients,
+    searchParams.segment,
+    statsMap as unknown as Record<string, { total_visits: number; last_visit_at: string | null }>,
+  )
 
   return (
     <>
