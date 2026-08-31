@@ -75,66 +75,35 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(data ?? [])
 }
 
-export async function PUT(req: NextRequest) {
-  const ip = getIp(req)
-  if (!rateLimit(`business-hours:${ip}`, { limit: 30, windowMs: 60 * 1000 }))
-    return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
-  const businessId = await resolveBusinessId(supabase, user.id)
-  if (!businessId) return NextResponse.json({ error: 'not_found' }, { status: 404 })
-
-  let raw: unknown
-  try {
-    raw = await req.json()
-  } catch {
-    return NextResponse.json({ error: 'invalid_json' }, { status: 400 })
+function validateBreaks(hours: z.infer<typeof BodySchema>['hours']): NextResponse | null {
+  for (const h of hours) {
+    if (!h.break_start || !h.break_end) continue
+    if (h.break_start >= h.break_end)
+      return NextResponse.json(
+        {
+          error: 'validation_failed',
+          details: { break: [`break_start must be < break_end for day ${h.day_of_week}`] },
+        },
+        { status: 422 },
+      )
+    if (h.break_start < h.open_time || h.break_end > h.close_time)
+      return NextResponse.json(
+        {
+          error: 'validation_failed',
+          details: { break: [`break outside open/close for day ${h.day_of_week}`] },
+        },
+        { status: 422 },
+      )
   }
-  const parsed = BodySchema.safeParse(raw)
-  if (!parsed.success)
-    return NextResponse.json(
-      { error: 'validation_failed', details: parsed.error.flatten().fieldErrors },
-      { status: 422 },
-    )
-  const body = parsed.data
-  const locationId = body.location_id || null
+  return null
+}
 
-  if (locationId) {
-    const { data: loc } = await supabase
-      .from('locations')
-      .select('id')
-      .eq('id', locationId)
-      .eq('business_id', businessId)
-      .maybeSingle()
-    if (!loc) return NextResponse.json({ error: 'location_not_found' }, { status: 404 })
-  }
-
-  // Validate break inside open/close and start < end
-  for (const h of body.hours) {
-    if (h.break_start && h.break_end) {
-      if (h.break_start >= h.break_end)
-        return NextResponse.json(
-          {
-            error: 'validation_failed',
-            details: { break: [`break_start must be < break_end for day ${h.day_of_week}`] },
-          },
-          { status: 422 },
-        )
-      if (h.break_start < h.open_time || h.break_end > h.close_time)
-        return NextResponse.json(
-          {
-            error: 'validation_failed',
-            details: { break: [`break outside open/close for day ${h.day_of_week}`] },
-          },
-          { status: 422 },
-        )
-    }
-  }
-
-  const rows = body.hours.map((h) => ({
+function buildRows(
+  hours: z.infer<typeof BodySchema>['hours'],
+  businessId: string,
+  locationId: string | null,
+) {
+  return hours.map((h) => ({
     business_id: businessId,
     location_id: locationId,
     day_of_week: h.day_of_week,
@@ -144,31 +113,107 @@ export async function PUT(req: NextRequest) {
     break_start: h.break_start || null,
     break_end: h.break_end || null,
   }))
+}
 
-  // Upsert: business_id + location_id + day_of_week
+async function upsertHours(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  rows: ReturnType<typeof buildRows>,
+  businessId: string,
+  locationId: string | null,
+): Promise<NextResponse | null> {
   const { error } = await supabase.from('business_hours').upsert(rows, {
     onConflict: 'business_id,location_id,day_of_week',
-  } as unknown as {
-    onConflict: string
-  })
-  // Fallback if constraint not yet satisfied (location_id null handling)
-  if (error) {
-    // Try delete + insert for that location
-    if (locationId)
-      await supabase
-        .from('business_hours')
-        .delete()
-        .eq('business_id', businessId)
-        .eq('location_id', locationId)
-    else
-      await supabase
-        .from('business_hours')
-        .delete()
-        .eq('business_id', businessId)
-        .is('location_id', null)
-    const { error: insErr } = await supabase.from('business_hours').insert(rows)
-    if (insErr) return NextResponse.json({ error: insErr.message }, { status: 500 })
+  } as unknown as { onConflict: string })
+  if (!error) return null
+  if (locationId)
+    await supabase
+      .from('business_hours')
+      .delete()
+      .eq('business_id', businessId)
+      .eq('location_id', locationId)
+  else
+    await supabase
+      .from('business_hours')
+      .delete()
+      .eq('business_id', businessId)
+      .is('location_id', null)
+  const { error: insErr } = await supabase.from('business_hours').insert(rows)
+  if (insErr) return NextResponse.json({ error: insErr.message }, { status: 500 })
+  return null
+}
+
+async function getHoursBusinessId(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+): Promise<{ businessId: string } | { error: NextResponse }> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: NextResponse.json({ error: 'unauthorized' }, { status: 401 }) }
+  const businessId = await resolveBusinessId(supabase, user.id)
+  if (!businessId) return { error: NextResponse.json({ error: 'not_found' }, { status: 404 }) }
+  return { businessId }
+}
+
+async function parseHoursBody(
+  req: NextRequest,
+): Promise<{ data: z.infer<typeof BodySchema> } | { error: NextResponse }> {
+  let raw: unknown
+  try {
+    raw = await req.json()
+  } catch {
+    return { error: NextResponse.json({ error: 'invalid_json' }, { status: 400 }) }
   }
+  const parsed = BodySchema.safeParse(raw)
+  if (!parsed.success)
+    return {
+      error: NextResponse.json(
+        { error: 'validation_failed', details: parsed.error.flatten().fieldErrors },
+        { status: 422 },
+      ),
+    }
+  return { data: parsed.data }
+}
+
+async function validateLocationExists(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  locationId: string,
+  businessId: string,
+): Promise<NextResponse | null> {
+  const { data: loc } = await supabase
+    .from('locations')
+    .select('id')
+    .eq('id', locationId)
+    .eq('business_id', businessId)
+    .maybeSingle()
+  if (!loc) return NextResponse.json({ error: 'location_not_found' }, { status: 404 })
+  return null
+}
+
+export async function PUT(req: NextRequest) {
+  const ip = getIp(req)
+  if (!rateLimit(`business-hours:${ip}`, { limit: 30, windowMs: 60 * 1000 }))
+    return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
+  const supabase = await createClient()
+  const auth = await getHoursBusinessId(supabase)
+  if ('error' in auth) return auth.error
+  const { businessId } = auth
+
+  const bodyRes = await parseHoursBody(req)
+  if ('error' in bodyRes) return bodyRes.error
+  const body = bodyRes.data
+  const locationId = body.location_id || null
+
+  if (locationId) {
+    const locErr = await validateLocationExists(supabase, locationId, businessId)
+    if (locErr) return locErr
+  }
+
+  const breakErr = validateBreaks(body.hours)
+  if (breakErr) return breakErr
+
+  const rows = buildRows(body.hours, businessId, locationId)
+  const upsertErr = await upsertHours(supabase, rows, businessId, locationId)
+  if (upsertErr) return upsertErr
 
   return NextResponse.json({ ok: true, location_id: locationId })
 }

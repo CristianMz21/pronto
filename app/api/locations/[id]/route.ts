@@ -39,11 +39,79 @@ async function resolveBusinessId(
   return null
 }
 
+function validateSlugFormat(slug: string): NextResponse | null {
+  if (!slug)
+    return NextResponse.json(
+      { error: 'validation_failed', details: { slug: ['invalid slug'] } },
+      { status: 422 },
+    )
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug))
+    return NextResponse.json(
+      {
+        error: 'validation_failed',
+        details: { slug: ['slug must be lowercase alphanumeric with hyphens'] },
+      },
+      { status: 422 },
+    )
+  return null
+}
+
+function buildLocationUpdates(data: z.infer<typeof UpdateSchema>): {
+  updates: Record<string, unknown>
+  error?: NextResponse
+} {
+  const updates: Record<string, unknown> = {}
+  if (data.name !== undefined) updates.name = sanitize(data.name)
+  if (data.slug !== undefined) {
+    const rawSlug = data.slug ?? data.name ?? ''
+    const slug = formatLocationSlug(String(rawSlug))
+    const slugErr = validateSlugFormat(slug)
+    if (slugErr) return { updates, error: slugErr }
+    updates.slug = slug
+  }
+  if (data.address !== undefined) updates.address = data.address ? sanitize(data.address) : null
+  if (data.phone !== undefined) updates.phone = data.phone ? sanitize(data.phone) : null
+  if (data.is_active !== undefined) updates.is_active = data.is_active
+  return { updates }
+}
+
+function mapLocationUpdateError(error: { message?: string; code?: string }): NextResponse | null {
+  const msg = String(error.message ?? '')
+  const code = error.code ?? ''
+  if (code === '23505' || msg.includes('duplicate') || msg.includes('unique'))
+    return NextResponse.json(
+      { error: 'slug_taken', message: 'Ya existe una sucursal con ese slug' },
+      { status: 409 },
+    )
+  if (msg.includes('not found') || code === 'PGRST116')
+    return NextResponse.json({ error: 'not_found' }, { status: 404 })
+  return null
+}
+
+async function parseLocationBody(
+  request: Request,
+): Promise<{ data: z.infer<typeof UpdateSchema> } | { error: NextResponse }> {
+  let raw: unknown
+  try {
+    raw = await request.json()
+  } catch {
+    return { error: NextResponse.json({ error: 'invalid_json' }, { status: 400 }) }
+  }
+  const parsed = UpdateSchema.safeParse(raw)
+  if (!parsed.success)
+    return {
+      error: NextResponse.json(
+        { error: 'validation_failed', details: parsed.error.flatten().fieldErrors },
+        { status: 422 },
+      ),
+    }
+  return { data: parsed.data }
+}
+
 export async function PATCH(request: Request, props: { params: Promise<{ id: string }> }) {
   const ip = getIp(request)
-  if (!rateLimit(`locations-update:${ip}`, { limit: 60, windowMs: 10 * 60 * 1000 })) {
+  if (!rateLimit(`locations-update:${ip}`, { limit: 60, windowMs: 10 * 60 * 1000 }))
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
-  }
 
   const supabase = await createClient()
   const {
@@ -55,57 +123,20 @@ export async function PATCH(request: Request, props: { params: Promise<{ id: str
 
   const params = await props.params
   const id = params.id
-  if (!id || !/^[0-9a-f-]{36}$/.test(id)) {
+  if (!id || !/^[0-9a-f-]{36}$/.test(id))
     return NextResponse.json({ error: 'invalid_id' }, { status: 400 })
-  }
 
-  let raw: unknown
-  try {
-    raw = await request.json()
-  } catch {
-    return NextResponse.json({ error: 'invalid_json' }, { status: 400 })
-  }
-  const parsed = UpdateSchema.safeParse(raw)
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: 'validation_failed', details: parsed.error.flatten().fieldErrors },
-      { status: 422 },
-    )
-  }
+  const body = await parseLocationBody(request)
+  if ('error' in body) return body.error
 
-  const updates: Record<string, unknown> = {}
-  if (parsed.data.name !== undefined) updates.name = sanitize(parsed.data.name)
-  if (parsed.data.slug !== undefined) {
-    const rawSlug = parsed.data.slug ?? parsed.data.name ?? ''
-    const slug = formatLocationSlug(String(rawSlug))
-    if (!slug)
-      return NextResponse.json(
-        { error: 'validation_failed', details: { slug: ['invalid slug'] } },
-        { status: 422 },
-      )
-    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
-      return NextResponse.json(
-        {
-          error: 'validation_failed',
-          details: { slug: ['slug must be lowercase alphanumeric with hyphens'] },
-        },
-        { status: 422 },
-      )
-    }
-    updates.slug = slug
-  }
-  if (parsed.data.address !== undefined)
-    updates.address = parsed.data.address ? sanitize(parsed.data.address) : null
-  if (parsed.data.phone !== undefined)
-    updates.phone = parsed.data.phone ? sanitize(parsed.data.phone) : null
-  if (parsed.data.is_active !== undefined) updates.is_active = parsed.data.is_active
-
-  if (Object.keys(updates).length === 0) {
+  const built = buildLocationUpdates(body.data)
+  if (built.error) return built.error
+  const updates = built.updates
+  if (Object.keys(updates).length === 0)
     return NextResponse.json(
       { error: 'validation_failed', message: 'No fields to update' },
       { status: 422 },
     )
-  }
 
   const { data, error } = await supabase
     .from('locations')
@@ -116,17 +147,9 @@ export async function PATCH(request: Request, props: { params: Promise<{ id: str
     .single()
 
   if (error) {
-    const msg = String(error.message ?? '')
-    const code = (error as { code?: string }).code ?? ''
-    if (code === '23505' || msg.includes('duplicate') || msg.includes('unique')) {
-      return NextResponse.json(
-        { error: 'slug_taken', message: 'Ya existe una sucursal con ese slug' },
-        { status: 409 },
-      )
-    }
-    if (msg.includes('not found') || code === 'PGRST116') {
-      return NextResponse.json({ error: 'not_found' }, { status: 404 })
-    }
+    const mapped = mapLocationUpdateError(error as { message?: string; code?: string })
+    if (mapped) return mapped
+    const msg = String((error as { message?: string }).message ?? '')
     return NextResponse.json({ error: msg || 'update_failed' }, { status: 500 })
   }
 

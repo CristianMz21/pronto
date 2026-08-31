@@ -44,47 +44,21 @@ function parseQty(val: string | undefined): number {
   return Math.round(n * 1000) / 1000
 }
 
-export async function POST(req: NextRequest) {
-  const ip = getIp(req)
-  if (!rateLimit(`inventory-import:${ip}`, { limit: 20, windowMs: 10 * 60 * 1000 })) {
-    return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
-  }
+type SanitizedRow = {
+  name: string
+  sku: string
+  barcode: string
+  category: string
+  unit: string
+  quantity: string
+  cost_price: string
+  sell_price: string
+  description: string
+}
 
-  const supabase = await createClient()
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser()
-  if (authError || !user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
-  const { data: business } = await supabase
-    .from('businesses')
-    .select('id')
-    .eq('owner_id', user.id)
-    .maybeSingle()
-
-  if (!business) {
-    return NextResponse.json({ error: 'Business not found' }, { status: 404 })
-  }
-
-  let rawBody: unknown
-  try {
-    rawBody = await req.json()
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
-  }
-  const parsed = BodySchema.safeParse(rawBody)
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: 'validation_failed', details: parsed.error.flatten().fieldErrors },
-      { status: 422 },
-    )
-  }
-  const rawRows = parsed.data.rows ?? []
-
-  const sanitized = rawRows
+function sanitizeRows(rawRows: z.infer<typeof BodySchema>['rows']): SanitizedRow[] {
+  if (!rawRows) return []
+  return rawRows
     .map((row) => ({
       name: sanitize(String(row.name ?? ''), 200),
       sku: row.sku ? sanitize(String(row.sku), 50) : '',
@@ -97,53 +71,117 @@ export async function POST(req: NextRequest) {
       description: row.description ? sanitize(String(row.description), 1000) : '',
     }))
     .filter((r) => r.name.length > 0)
+}
 
-  const skippedEmpty = rawRows.length - sanitized.length
+type ExistingSets = {
+  barcodes: Set<string>
+  skus: Set<string>
+  names: Set<string>
+}
 
-  if (sanitized.length === 0) {
-    return NextResponse.json({ imported: 0, skipped: rawRows.length, errors: [] })
+function buildExistingSets(
+  existing: Array<{ barcode?: string | null; sku?: string | null; name?: string }> | null,
+): ExistingSets {
+  const barcodes = new Set(
+    (existing ?? []).filter((e) => e.barcode).map((e) => e.barcode as string),
+  )
+  const skus = new Set((existing ?? []).filter((e) => e.sku).map((e) => e.sku as string))
+  const names = new Set(
+    (existing ?? [])
+      .filter((e) => !e.barcode && !e.sku)
+      .map((e) => (e.name as string).toLowerCase().trim()),
+  )
+  return { barcodes, skus, names }
+}
+
+function isDuplicate(row: SanitizedRow, sets: ExistingSets): boolean {
+  if (row.barcode && sets.barcodes.has(row.barcode)) return true
+  if (!row.barcode && row.sku && sets.skus.has(row.sku)) return true
+  if (!row.barcode && !row.sku && sets.names.has(row.name.toLowerCase().trim())) return true
+  return false
+}
+
+function registerRow(row: SanitizedRow, sets: ExistingSets): void {
+  if (row.barcode) sets.barcodes.add(row.barcode)
+  if (row.sku) sets.skus.add(row.sku)
+  if (!row.barcode && !row.sku) sets.names.add(row.name.toLowerCase().trim())
+}
+
+function dedupeRows(
+  sanitized: SanitizedRow[],
+  sets: ExistingSets,
+): { toInsert: SanitizedRow[]; skippedDupes: number } {
+  let skippedDupes = 0
+  const toInsert: SanitizedRow[] = []
+  for (const row of sanitized) {
+    if (isDuplicate(row, sets)) {
+      skippedDupes++
+      continue
+    }
+    registerRow(row, sets)
+    toInsert.push(row)
   }
+  return { toInsert, skippedDupes }
+}
+
+async function parseImportBody(
+  req: NextRequest,
+): Promise<{ rows: SanitizedRow[]; skippedEmpty: number } | { error: NextResponse }> {
+  let rawBody: unknown
+  try {
+    rawBody = await req.json()
+  } catch {
+    return { error: NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }) }
+  }
+  const parsed = BodySchema.safeParse(rawBody)
+  if (!parsed.success)
+    return {
+      error: NextResponse.json(
+        { error: 'validation_failed', details: parsed.error.flatten().fieldErrors },
+        { status: 422 },
+      ),
+    }
+  const rawRows = parsed.data.rows ?? []
+  const sanitized = sanitizeRows(rawRows)
+  const skippedEmpty = rawRows.length - sanitized.length
+  return { rows: sanitized, skippedEmpty }
+}
+
+export async function POST(req: NextRequest) {
+  const ip = getIp(req)
+  if (!rateLimit(`inventory-import:${ip}`, { limit: 20, windowMs: 10 * 60 * 1000 }))
+    return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
+
+  const supabase = await createClient()
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser()
+  if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data: business } = await supabase
+    .from('businesses')
+    .select('id')
+    .eq('owner_id', user.id)
+    .maybeSingle()
+  if (!business) return NextResponse.json({ error: 'Business not found' }, { status: 404 })
+
+  const body = await parseImportBody(req)
+  if ('error' in body) return body.error
+  const { rows: sanitized, skippedEmpty } = body
+  if (sanitized.length === 0)
+    return NextResponse.json({ imported: 0, skipped: sanitized.length + skippedEmpty, errors: [] })
 
   const { data: existing } = await supabase
     .from('inventory_items')
     .select('barcode, sku, name')
     .eq('business_id', business.id)
-
-  const existingBarcodes = new Set(
-    (existing ?? []).filter((e) => e.barcode).map((e) => e.barcode as string),
+  const sets = buildExistingSets(
+    existing as Array<{ barcode?: string | null; sku?: string | null; name?: string }> | null,
   )
-  const existingSkus = new Set((existing ?? []).filter((e) => e.sku).map((e) => e.sku as string))
-  const existingNames = new Set(
-    (existing ?? [])
-      .filter((e) => !e.barcode && !e.sku)
-      .map((e) => (e.name as string).toLowerCase().trim()),
-  )
-
-  let skippedDupes = 0
-  const toInsert: typeof sanitized = []
-
-  for (const row of sanitized) {
-    if (row.barcode && existingBarcodes.has(row.barcode)) {
-      skippedDupes++
-      continue
-    }
-    if (!row.barcode && row.sku && existingSkus.has(row.sku)) {
-      skippedDupes++
-      continue
-    }
-    if (!row.barcode && !row.sku && existingNames.has(row.name.toLowerCase().trim())) {
-      skippedDupes++
-      continue
-    }
-    if (row.barcode) existingBarcodes.add(row.barcode)
-    if (row.sku) existingSkus.add(row.sku)
-    if (!row.barcode && !row.sku) existingNames.add(row.name.toLowerCase().trim())
-    toInsert.push(row)
-  }
-
-  if (toInsert.length === 0) {
+  const { toInsert, skippedDupes } = dedupeRows(sanitized, sets)
+  if (toInsert.length === 0)
     return NextResponse.json({ imported: 0, skipped: skippedEmpty + skippedDupes, errors: [] })
-  }
 
   const rows = toInsert.map((r) => ({
     business_id: business.id,
@@ -163,14 +201,9 @@ export async function POST(req: NextRequest) {
     .from('inventory_items')
     .insert(rows)
     .select('id')
-
-  if (insertError) {
-    // console.error('[inventory/import] insert error:', insertError.message)
-    return NextResponse.json({ error: 'Database error' }, { status: 500 })
-  }
+  if (insertError) return NextResponse.json({ error: 'Database error' }, { status: 500 })
 
   const imported = inserted?.length ?? 0
   const skipped = skippedEmpty + skippedDupes + (toInsert.length - imported)
-
   return NextResponse.json({ imported, skipped, errors: [] })
 }
