@@ -83,93 +83,87 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(data ?? [])
 }
 
-// POST /api/recurring — create series with occurrences
-export async function POST(req: NextRequest) {
-  const ip = getIp(req)
-  if (!rateLimit(`recurring:${ip}`, { limit: 30, windowMs: 10 * 60 * 1000 })) {
-    return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
+
+async function checkRecurringBusinessAccess(supabase: Awaited<ReturnType<typeof createClient>>, userId: string, businessId: string): Promise<NextResponse | null> {
+  const { data: ownedCheck } = await supabase.from('businesses').select('id').eq('id', businessId).eq('owner_id', userId).maybeSingle()
+  if (ownedCheck) return null
+  const { data: empCheck } = await supabase.from('employees').select('id').eq('user_id', userId).eq('business_id', businessId).eq('is_active', true).maybeSingle()
+  if (!empCheck) return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+  return null
+}
+
+async function validateRecurringLocation(supabase: Awaited<ReturnType<typeof createClient>>, businessId: string, locationId: string | null | undefined): Promise<NextResponse | null> {
+  if (!locationId) return null
+  const { data: loc } = await supabase.from('locations').select('id').eq('id', locationId).eq('business_id', businessId).maybeSingle()
+  if (!loc) return NextResponse.json({ error: 'location_not_found' }, { status: 404 })
+  return null
+}
+
+async function fetchRecurringPrereqs(service: ReturnType<typeof createServiceClient>, businessId: string, clientId: string, serviceId: string) {
+  const [{ data: client }, { data: svc }, { data: biz }] = await Promise.all([
+    service.from('clients').select('id').eq('id', clientId).eq('business_id', businessId).maybeSingle(),
+    service.from('services').select('id, duration_min, price').eq('id', serviceId).eq('business_id', businessId).maybeSingle(),
+    service.from('businesses').select('timezone').eq('id', businessId).maybeSingle(),
+  ])
+  return { client, svc, biz }
+}
+
+async function resolveDtstartForRecurring(data: { dtstart?: string | null; date?: string | null; time?: string | null }, timezone: string): Promise<{ dtstart?: Date; error?: NextResponse }> {
+  if (data.dtstart) {
+    const d = new Date(data.dtstart)
+    if (Number.isNaN(d.getTime())) return { error: NextResponse.json({ error: 'invalid_dtstart' }, { status: 400 }) }
+    return { dtstart: d }
   }
-
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
-
-  let raw: unknown
-  try {
-    raw = await req.json()
-  } catch {
-    return NextResponse.json({ error: 'invalid_json' }, { status: 400 })
-  }
-
-  // Normalize business_id if passed as businessId, and allow date+time alternative
-  const rawObj = raw as Record<string, unknown>
-  if (rawObj.businessId && !rawObj.business_id) rawObj.business_id = rawObj.businessId
-  if (rawObj.clientId && !rawObj.client_id) rawObj.client_id = rawObj.clientId
-  if (rawObj.serviceId && !rawObj.service_id) rawObj.service_id = rawObj.serviceId
-
-  const parsed = RecurringCreateSchema.safeParse(raw)
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: 'validation_failed', details: parsed.error.flatten().fieldErrors },
-      { status: 422 },
-    )
-  }
-
-  const data = parsed.data
-
-  // Resolve businessId from auth if not provided? Must be provided; but check access
-  const authBusinessId = await resolveBusinessId(supabase, user.id)
-  if (!authBusinessId) return NextResponse.json({ error: 'not_found' }, { status: 404 })
-  // Allow creation only for own business (or if user is employee of that business)
-  if (data.business_id !== authBusinessId) {
-    const { data: ownedCheck } = await supabase
-      .from('businesses')
-      .select('id')
-      .eq('id', data.business_id)
-      .eq('owner_id', user.id)
-      .maybeSingle()
-    if (!ownedCheck) {
-      const { data: empCheck } = await supabase
-        .from('employees')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('business_id', data.business_id)
-        .eq('is_active', true)
-        .maybeSingle()
-      if (!empCheck) return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+  if (data.date && data.time) {
+    const { parseDateTimeInTz } = await import('@/lib/booking-availability')
+    try {
+      return { dtstart: parseDateTimeInTz(data.date, data.time, timezone) }
+    } catch {
+      return { error: NextResponse.json({ error: 'invalid_dtstart' }, { status: 400 }) }
     }
   }
+  return { error: NextResponse.json({ error: 'dtstart_required', message: 'Se requiere dtstart o date+time para la recurrencia' }, { status: 400 }) }
+}
 
-  // Validate location belongs to business
-  if (data.location_id) {
-    const { data: loc } = await supabase
-      .from('locations')
-      .select('id')
-      .eq('id', data.location_id)
-      .eq('business_id', data.business_id)
-      .maybeSingle()
-    if (!loc) return NextResponse.json({ error: 'location_not_found' }, { status: 404 })
+function mapRecurringCreateError(e: unknown): NextResponse {
+  const err = e as Error & { code?: string; details?: unknown }
+  if (err.code === 'validation_failed') return NextResponse.json({ error: 'validation_failed', details: err.details }, { status: 422 })
+  if (err.code === 'invalid_rrule' || err.code === 'count_too_large' || err.code === 'until_before_dtstart' || err.code === 'no_occurrences' || err.code === 'dtstart_required') return NextResponse.json({ error: err.code, message: err.message }, { status: 422 })
+  return NextResponse.json({ error: err.code ?? 'recurring_failed', message: String(err.message ?? 'Unknown') }, { status: 500 })
+}
+
+
+
+function normalizeRecurringRaw(raw: Record<string, unknown>): void {
+  if (raw.businessId && !raw.business_id) raw.business_id = raw.businessId
+  if (raw.clientId && !raw.client_id) raw.client_id = raw.clientId
+  if (raw.serviceId && !raw.service_id) raw.service_id = raw.serviceId
+}
+
+async function handleRecurringCreate(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  service: ReturnType<typeof createServiceClient>,
+  user: { id: string },
+  raw: unknown,
+): Promise<NextResponse> {
+  const rawObj = raw as Record<string, unknown>
+  normalizeRecurringRaw(rawObj)
+
+  const parsed = RecurringCreateSchema.safeParse(raw)
+  if (!parsed.success) return NextResponse.json({ error: 'validation_failed', details: parsed.error.flatten().fieldErrors }, { status: 422 })
+  const data = parsed.data
+
+  const authBusinessId = await resolveBusinessId(supabase, user.id)
+  if (!authBusinessId) return NextResponse.json({ error: 'not_found' }, { status: 404 })
+  if (data.business_id !== authBusinessId) {
+    const accessErr = await checkRecurringBusinessAccess(supabase, user.id, data.business_id)
+    if (accessErr) return accessErr
   }
 
-  // Validate client/service/employee belong to business
-  const service = createServiceClient()
-  const [{ data: client }, { data: svc }, { data: biz }] = await Promise.all([
-    service
-      .from('clients')
-      .select('id')
-      .eq('id', data.client_id)
-      .eq('business_id', data.business_id)
-      .maybeSingle(),
-    service
-      .from('services')
-      .select('id, duration_min, price')
-      .eq('id', data.service_id)
-      .eq('business_id', data.business_id)
-      .maybeSingle(),
-    service.from('businesses').select('timezone').eq('id', data.business_id).maybeSingle(),
-  ])
+  const locErr = await validateRecurringLocation(supabase, data.business_id, data.location_id)
+  if (locErr) return locErr
+
+  const { client, svc, biz } = await fetchRecurringPrereqs(service, data.business_id, data.client_id, data.service_id)
   if (!client) return NextResponse.json({ error: 'client_not_found' }, { status: 404 })
   if (!svc) return NextResponse.json({ error: 'service_not_found' }, { status: 404 })
 
@@ -178,88 +172,57 @@ export async function POST(req: NextRequest) {
   const price = (svc as { price: number }).price ?? 0
 
   if (data.employee_id) {
-    const { data: emp } = await service
-      .from('employees')
-      .select('id')
-      .eq('id', data.employee_id)
-      .eq('business_id', data.business_id)
-      .maybeSingle()
+    const { data: emp } = await service.from('employees').select('id').eq('id', data.employee_id).eq('business_id', data.business_id).maybeSingle()
     if (!emp) return NextResponse.json({ error: 'employee_not_found' }, { status: 404 })
   }
 
-  // Resolve dtstart: need a valid date for validation
-  let dtstart: Date | null = null
-  if (data.dtstart) dtstart = new Date(data.dtstart)
-  else if (data.date && data.time) {
-    const { parseDateTimeInTz } = await import('@/lib/booking-availability')
-    try {
-      dtstart = parseDateTimeInTz(data.date, data.time, timezone)
-    } catch {
-      return NextResponse.json({ error: 'invalid_dtstart' }, { status: 400 })
-    }
-  }
-  if (!dtstart || Number.isNaN(dtstart.getTime())) {
-    return NextResponse.json(
-      { error: 'dtstart_required', message: 'Se requiere dtstart o date+time para la recurrencia' },
-      { status: 400 },
-    )
-  }
-  if (dtstart.getTime() <= Date.now()) {
-    return NextResponse.json(
-      { error: 'in_past', message: 'La fecha de inicio debe ser futura' },
-      { status: 400 },
-    )
-  }
+  const dtRes = await resolveDtstartForRecurring(data, timezone)
+  if ('error' in dtRes && dtRes.error) return dtRes.error
+  const dtstart = dtRes.dtstart!
+  if (dtstart.getTime() <= Date.now()) return NextResponse.json({ error: 'in_past', message: 'La fecha de inicio debe ser futura' }, { status: 400 })
 
-  // Validate RRULE synchronously
   const validated = validateRRule(data.rrule, dtstart, data.until ? new Date(data.until) : null)
-  if (!validated.ok) {
-    return NextResponse.json({ error: validated.code, message: validated.reason }, { status: 422 })
-  }
+  if (!validated.ok) return NextResponse.json({ error: validated.code, message: validated.reason }, { status: 422 })
 
-  // Use service client for createSeries (bypasses RLS, but auth already checked)
   const { createSeries } = await import('@/lib/recurring')
   try {
-    const result = await createSeries(
-      service as unknown as Parameters<typeof createSeries>[0],
-      {
-        business_id: data.business_id,
-        location_id: data.location_id || null,
-        client_id: data.client_id,
-        service_id: data.service_id,
-        employee_id: data.employee_id || null,
-        rrule: data.rrule,
-        dtstart: dtstart.toISOString(),
-        until: data.until ?? null,
-        count: data.count,
-        timezone,
-        duration_min: durationMin,
-        price,
-      } as unknown as Parameters<typeof createSeries>[1],
-    )
-
+    const result = await createSeries(service as unknown as Parameters<typeof createSeries>[0], {
+      business_id: data.business_id,
+      location_id: data.location_id || null,
+      client_id: data.client_id,
+      service_id: data.service_id,
+      employee_id: data.employee_id || null,
+      rrule: data.rrule,
+      dtstart: dtstart.toISOString(),
+      until: data.until ?? null,
+      count: data.count,
+      timezone,
+      duration_min: durationMin,
+      price,
+    } as unknown as Parameters<typeof createSeries>[1])
     return NextResponse.json(result, { status: 201 })
   } catch (e) {
-    const err = e as Error & { code?: string; details?: unknown }
-    if (err.code === 'validation_failed')
-      return NextResponse.json(
-        { error: 'validation_failed', details: err.details },
-        { status: 422 },
-      )
-    if (
-      err.code === 'invalid_rrule' ||
-      err.code === 'count_too_large' ||
-      err.code === 'until_before_dtstart' ||
-      err.code === 'no_occurrences' ||
-      err.code === 'dtstart_required'
-    ) {
-      return NextResponse.json({ error: err.code, message: err.message }, { status: 422 })
-    }
-    return NextResponse.json(
-      { error: err.code ?? 'recurring_failed', message: String(err.message ?? 'Unknown') },
-      { status: 500 },
-    )
+    return mapRecurringCreateError(e)
   }
+}
+
+// POST /api/recurring — create series with occurrences
+export async function POST(req: NextRequest) {
+  const ip = getIp(req)
+  if (!rateLimit(`recurring:${ip}`, { limit: 30, windowMs: 10 * 60 * 1000 })) return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  let raw: unknown
+  try {
+    raw = await req.json()
+  } catch {
+    return NextResponse.json({ error: 'invalid_json' }, { status: 400 })
+  }
+  const service = createServiceClient()
+  return handleRecurringCreate(supabase, service, user, raw)
 }
 
 // PATCH /api/recurring — deactivate series { id, is_active }
