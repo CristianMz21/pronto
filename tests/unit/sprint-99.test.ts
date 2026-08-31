@@ -477,6 +477,7 @@ describe('sprint 99 - final gaps', () => {
   })
 
   it('covers proxy setAll and config matcher', async () => {
+    process.env.NEXT_PUBLIC_DEPLOYMENT_MODE = 'saas'
     const { proxy, config } = await import('@/proxy')
     expect(config.matcher).toBeDefined()
     const { createServerClient } = await import('@supabase/ssr')

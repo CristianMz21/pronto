@@ -231,7 +231,7 @@ async function handleViberToday(
     .gte('starts_at', start)
     .lte('starts_at', end)
     .order('starts_at')
-    .returns<AppointmentTodayRow[]>()
+
   const appts = (apptsData as unknown as AppointmentTodayRow[] | null) ?? null
   if (!appts || appts.length === 0) {
     await sendViberMessage(viberToken, senderId, '📅 No appointments today.')

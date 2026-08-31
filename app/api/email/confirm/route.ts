@@ -14,7 +14,7 @@ import {
 } from '@/lib/whatsapp'
 
 const ConfirmBodySchema = z.object({
-  appointmentId: z.string().uuid(),
+  appointmentId: z.string().min(1),
   formEmail: z.string().email().nullable().optional(),
 })
 

@@ -39,7 +39,9 @@ describe('supabase getUrl strict 100%', () => {
       process.env.NEXT_PUBLIC_SUPABASE_URL = 'http://127.0.0.1:54321'
       delete process.env.IS_DOCKER
       vi.spyOn(fs, 'existsSync').mockReturnValue(true)
-      expect(getSupabaseUrl()).toContain('host.docker.internal')
+      // After fix(build): fs check removed to avoid bundling fs in client; IS_DOCKER is sole trigger
+      expect(getSupabaseUrl()).toBe('http://127.0.0.1:54321')
+      expect(getSupabaseUrl()).not.toContain('host.docker.internal')
     })
     it('fs.existsSync throws -> ignore', () => {
       process.env.NEXT_PUBLIC_SUPABASE_URL = 'http://127.0.0.1:54321'

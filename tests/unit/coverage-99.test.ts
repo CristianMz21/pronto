@@ -305,6 +305,7 @@ describe('coverage 99 strict', () => {
     expect(Array.isArray(urls)).toBe(true)
 
     // proxy 49
+    process.env.NEXT_PUBLIC_DEPLOYMENT_MODE = 'saas'
     const { proxy } = await import('@/proxy')
     const { createServerClient } = await import('@supabase/ssr')
     let _setAllCalled = false

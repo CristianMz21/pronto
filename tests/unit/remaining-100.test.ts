@@ -384,6 +384,7 @@ describe('remaining 100 strict', () => {
     expect(sitemap.default).toBeDefined()
 
     // proxy 49 setAll already covered, test again with multiple cookies
+    process.env.NEXT_PUBLIC_DEPLOYMENT_MODE = 'saas'
     const { proxy } = await import('@/proxy')
     const { createServerClient } = await import('@supabase/ssr')
     let capturedSetAll: any

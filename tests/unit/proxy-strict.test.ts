@@ -48,7 +48,7 @@ describe('proxy strict 100%', () => {
     mockGetUser.mockResolvedValue({ data: { user: null } })
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'http://127.0.0.1:54321'
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon'
-    delete process.env.NEXT_PUBLIC_DEPLOYMENT_MODE
+    process.env.NEXT_PUBLIC_DEPLOYMENT_MODE = 'saas'
     delete process.env.IS_DOCKER
   })
   afterEach(() => {

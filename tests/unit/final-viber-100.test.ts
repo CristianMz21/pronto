@@ -346,6 +346,7 @@ describe('final viber 100 strict', () => {
     // proxy 49: setAll - already covered in previous tests, just verify proxy still works
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'http://localhost:54321'
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-key'
+    process.env.NEXT_PUBLIC_DEPLOYMENT_MODE = 'saas'
     const { proxy } = await import('@/proxy')
     const url = new URL('http://localhost/dashboard')
     ;(url as any).clone = () => {

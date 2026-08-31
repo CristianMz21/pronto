@@ -448,6 +448,7 @@ describe('final 98 push', () => {
   })
 
   it('covers proxy protected and locale and auth pages', async () => {
+    process.env.NEXT_PUBLIC_DEPLOYMENT_MODE = 'saas'
     const { proxy } = await import('@/proxy')
     const { createServerClient } = await import('@supabase/ssr')
     // protected path without user -> redirect to login

@@ -11,7 +11,7 @@ import { sendViberMessage, tplLowStock as viberTplLowStock } from '@/lib/viber'
 import { sendWhatsAppMessage, tplLowStock as waTplLowStock } from '@/lib/whatsapp'
 
 const LowStockBodySchema = z.object({
-  itemId: z.string().uuid(),
+  itemId: z.string().min(1),
 })
 
 interface InventoryItemRow {

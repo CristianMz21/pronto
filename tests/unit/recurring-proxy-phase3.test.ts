@@ -55,7 +55,7 @@ describe('proxy phase3 branches', () => {
     mockFrom.mockReset()
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'http://127.0.0.1:54321'
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon'
-    delete process.env.NEXT_PUBLIC_DEPLOYMENT_MODE
+    process.env.NEXT_PUBLIC_DEPLOYMENT_MODE = 'saas'
     delete process.env.IS_DOCKER
     delete process.env.ALLOW_PUBLIC_REGISTER
     vi.mocked(getUserLocationIds).mockResolvedValue(null)

@@ -121,15 +121,6 @@ interface ClientBirthdayRow {
   birthday: string | null
   business_id: string
 }
-interface WaitlistIdRow {
-  id: string
-}
-interface HolidayRow {
-  business_id: string
-  date: string
-  reason: string | null
-  is_open: boolean
-}
 interface BusinessCampaignRow {
   id: string
   name: string
@@ -146,18 +137,6 @@ interface ClientCampaignRow {
   birthday: string | null
   tags: string[] | null
   last_visit_at: string | null
-}
-interface TransactionStatRow {
-  client_id: string
-  created_at: string
-}
-interface AppointmentCampaignRow {
-  id: string
-  client_id: string | null
-  business_id: string
-  campaign_id: string | null
-  created_at: string
-  source: string
 }
 interface CampaignStatsRow {
   stats: Record<string, number>
@@ -297,7 +276,7 @@ async function processReminderWindow(
     .gte('starts_at', from)
     .lte('starts_at', to)
     .eq('status', 'confirmed')
-    .returns<AppointmentReminderRow[]>()
+
   debug[type] = { count: appts?.length ?? 0, error: error?.message ?? null }
   for (const a of appts ?? []) {
     const client = a.clients
@@ -399,7 +378,7 @@ async function handleThankYouBatch(
     .eq('status', 'completed')
     .gte('ends_at', twoHoursAgo)
     .lte('ends_at', now.toISOString())
-    .returns<AppointmentThankYouRow[]>()
+
   debug.thankyou = { count: completed?.length ?? 0, error: error?.message ?? null }
   for (const a of completed ?? []) {
     if (!(await tryLog(supabase, a.business_id, a.id, 'thankyou'))) continue
@@ -471,7 +450,7 @@ async function handleReactivationBatch(
     .select('id, name, email, whatsapp_number, viber_user_id, telegram_id, business_id')
     .gte('last_visit_at', start.toISOString())
     .lte('last_visit_at', end.toISOString())
-    .returns<ClientDormantRow[]>()
+
   debug.reactivation = { count: dormant?.length ?? 0, error: error?.message ?? null }
   for (const c of dormant ?? []) {
     if (!c.email && !c.whatsapp_number && !c.viber_user_id && !c.telegram_id) continue
@@ -535,7 +514,7 @@ async function handleBirthdayBatch(supabase: Supa, now: Date, results: string[])
     .from('clients')
     .select('id, name, email, whatsapp_number, viber_user_id, telegram_id, birthday, business_id')
     .not('birthday', 'is', null)
-    .returns<ClientBirthdayRow[]>()
+
   const bdays = (all ?? []).filter(
     (c) => typeof c.birthday === 'string' && c.birthday.slice(5) === todayMD,
   )
@@ -574,7 +553,7 @@ async function handleWaitlistBatch(
       .select('id')
       .eq('status', 'notified')
       .lt('notified_at', cutoff)
-      .returns<WaitlistIdRow[]>()
+
     if (toExpireNotified && toExpireNotified.length > 0) {
       const ids = toExpireNotified.map((r) => r.id)
       await supabase.from('waitlist').update({ status: 'expired' }).in('id', ids)
@@ -586,7 +565,7 @@ async function handleWaitlistBatch(
       .select('id')
       .eq('status', 'waiting')
       .lt('desired_at', now.toISOString())
-      .returns<WaitlistIdRow[]>()
+
     if (toExpireWaiting && toExpireWaiting.length > 0) {
       const ids = toExpireWaiting.map((r) => r.id)
       await supabase.from('waitlist').update({ status: 'expired' }).in('id', ids)
@@ -619,7 +598,7 @@ async function handleHolidayBatch(
       .lte('date', nextWeekStr)
       .eq('is_open', false)
       .limit(50)
-      .returns<HolidayRow[]>()
+
     if (upcoming && upcoming.length > 0) {
       debug.upcoming_holidays = upcoming.length
       for (const h of upcoming) results.push(`holiday:${h.business_id}:${h.date}`)
@@ -655,7 +634,7 @@ async function sendSegmentRecipients(
       .eq('type', dedupKey)
       .gte('sent_at', oneHourAgo)
       .limit(1)
-      .returns<{ id: string }[]>()
+
     if (recent && recent.length > 0) continue
     const body = template.replaceAll('{{name}}', c.name).replaceAll('{{business}}', biz.name)
     const to = c.whatsapp_number ?? c.phone
@@ -696,7 +675,7 @@ async function processCrmSegment(
     .select('id, name, phone, whatsapp_number, email, birthday, tags, last_visit_at')
     .eq('business_id', biz.id)
     .limit(300)
-    .returns<ClientCampaignRow[]>()
+
   const clients = clientsRaw ?? []
   const ids = clients.map((c) => c.id)
   const statsMap: Record<string, { total_visits: number; last_visit_at: string | null }> = {}
@@ -709,7 +688,7 @@ async function processCrmSegment(
       .in('client_id', ids)
       .order('created_at', { ascending: false })
       .limit(1000)
-      .returns<TransactionStatRow[]>()
+
     for (const tx of txs ?? []) {
       if (!tx.client_id) continue
       if (!statsMap[tx.client_id]) statsMap[tx.client_id] = { total_visits: 0, last_visit_at: null }
@@ -757,7 +736,7 @@ async function handleCrmBatch(
       .from('businesses')
       .select('id, name, slug, meta_whatsapp_phone_number_id, meta_whatsapp_access_token')
       .limit(20)
-      .returns<BusinessCampaignRow[]>()
+
     for (const biz of businesses ?? []) {
       await processCrmSegment(supabase, biz, 'inactive_42', now, campaignTodayStr, results, debug)
       await processCrmSegment(supabase, biz, 'birthday_7', now, campaignTodayStr, results, debug)
@@ -781,7 +760,7 @@ async function handleCampaignRebookedBatch(
       .gte('created_at', since)
       .in('source', ['campaign', 'campaign_auto'])
       .limit(100)
-      .returns<AppointmentCampaignRow[]>()
+
     for (const a of recent ?? []) {
       if (!a.client_id) continue
       try {
