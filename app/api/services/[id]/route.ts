@@ -48,32 +48,7 @@ async function resolveBusinessId(
   return null
 }
 
-export async function PATCH(request: Request, props: { params: Promise<{ id: string }> }) {
-  const ip = getIp(request)
-  if (!rateLimit(`services-patch:${ip}`, { limit: 60, windowMs: 10 * 60 * 1000 }))
-    return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
-  const params = await props.params
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
-  const businessId = await resolveBusinessId(supabase, user.id)
-  if (!businessId) return NextResponse.json({ error: 'not_found' }, { status: 404 })
-
-  let raw: unknown
-  try {
-    raw = await request.json()
-  } catch {
-    return NextResponse.json({ error: 'invalid_json' }, { status: 400 })
-  }
-  const parsed = PatchSchema.safeParse(raw)
-  if (!parsed.success)
-    return NextResponse.json(
-      { error: 'validation_failed', details: parsed.error.flatten().fieldErrors },
-      { status: 422 },
-    )
-  const b = parsed.data
+function buildServiceUpdates(b: z.infer<typeof PatchSchema>): Record<string, unknown> {
   const updates: Record<string, unknown> = {}
   if (b.name !== undefined) updates.name = sanitize(b.name)
   if (b.description !== undefined)
@@ -86,6 +61,52 @@ export async function PATCH(request: Request, props: { params: Promise<{ id: str
   if (b.color !== undefined) updates.color = b.color || null
   if (b.cost !== undefined) updates.cost = b.cost
   if (b.location_id !== undefined) updates.location_id = b.location_id || null
+  return updates
+}
+
+async function getAuthenticatedBusinessId(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+): Promise<{ businessId: string } | { error: NextResponse }> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: NextResponse.json({ error: 'unauthorized' }, { status: 401 }) }
+  const businessId = await resolveBusinessId(supabase, user.id)
+  if (!businessId) return { error: NextResponse.json({ error: 'not_found' }, { status: 404 }) }
+  return { businessId }
+}
+
+async function parseJsonBody(
+  request: Request,
+): Promise<{ raw: unknown } | { error: NextResponse }> {
+  try {
+    const raw: unknown = await request.json()
+    return { raw }
+  } catch {
+    return { error: NextResponse.json({ error: 'invalid_json' }, { status: 400 }) }
+  }
+}
+
+export async function PATCH(request: Request, props: { params: Promise<{ id: string }> }) {
+  const ip = getIp(request)
+  if (!rateLimit(`services-patch:${ip}`, { limit: 60, windowMs: 10 * 60 * 1000 }))
+    return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
+  const params = await props.params
+  const supabase = await createClient()
+  const auth = await getAuthenticatedBusinessId(supabase)
+  if ('error' in auth) return auth.error
+  const { businessId } = auth
+
+  const body = await parseJsonBody(request)
+  if ('error' in body) return body.error
+
+  const parsed = PatchSchema.safeParse(body.raw)
+  if (!parsed.success)
+    return NextResponse.json(
+      { error: 'validation_failed', details: parsed.error.flatten().fieldErrors },
+      { status: 422 },
+    )
+  const updates = buildServiceUpdates(parsed.data)
   if (Object.keys(updates).length === 0)
     return NextResponse.json({ error: 'no_updates' }, { status: 400 })
 

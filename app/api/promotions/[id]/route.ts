@@ -31,6 +31,38 @@ async function resolveBusinessId(
   return null
 }
 
+function buildPromotionPayload(b: Record<string, unknown>): Record<string, unknown> {
+  const payload: Record<string, unknown> = {}
+  if (b.name !== undefined) payload.name = sanitize(b.name as string)
+  if (b.type !== undefined) payload.type = b.type as string
+  if (b.value !== undefined) payload.value = b.value as number
+  if (b.promo_code !== undefined)
+    payload.promo_code = b.promo_code ? (b.promo_code as string).toUpperCase() : null
+  if (b.valid_from !== undefined) payload.valid_from = (b.valid_from as string) || null
+  if (b.valid_to !== undefined) payload.valid_to = (b.valid_to as string) || null
+  if (b.rules !== undefined) payload.rules = b.rules as Record<string, unknown>
+  if (b.location_id !== undefined) payload.location_id = (b.location_id as string) || null
+  if (b.is_active !== undefined) payload.is_active = b.is_active as boolean
+  return payload
+}
+
+function validatePercentValue(b: Record<string, unknown>): NextResponse | null {
+  if (b.type === 'percent' && b.value != null && Number(b.value as number) > 100)
+    return NextResponse.json(
+      { error: 'validation_failed', details: { value: ['percent max 100'] } },
+      { status: 422 },
+    )
+  return null
+}
+
+async function parsePromoBody(req: Request): Promise<{ raw: unknown } | { error: NextResponse }> {
+  try {
+    return { raw: (await req.json()) as unknown }
+  } catch {
+    return { error: NextResponse.json({ error: 'invalid_json' }, { status: 400 }) }
+  }
+}
+
 export async function PATCH(req: Request, props: { params: Promise<{ id: string }> }) {
   const params = await props.params
   const ip = getIp(req)
@@ -47,38 +79,20 @@ export async function PATCH(req: Request, props: { params: Promise<{ id: string 
   if (!z.string().uuid().safeParse(id).success)
     return NextResponse.json({ error: 'invalid_id' }, { status: 400 })
 
-  let raw: unknown
-  try {
-    raw = await req.json()
-  } catch {
-    return NextResponse.json({ error: 'invalid_json' }, { status: 400 })
-  }
+  const body = await parsePromoBody(req)
+  if ('error' in body) return body.error
+
   const schema = PromotionSchema.partial()
-  const parsed = schema.safeParse(raw)
+  const parsed = schema.safeParse(body.raw)
   if (!parsed.success)
     return NextResponse.json(
       { error: 'validation_failed', details: parsed.error.flatten().fieldErrors },
       { status: 422 },
     )
-  const b = parsed.data
-  if (b.type === 'percent' && b.value != null && Number(b.value) > 100)
-    return NextResponse.json(
-      { error: 'validation_failed', details: { value: ['percent max 100'] } },
-      { status: 422 },
-    )
+  const percentError = validatePercentValue(parsed.data as Record<string, unknown>)
+  if (percentError) return percentError
 
-  const payload: Record<string, unknown> = {}
-  if (b.name !== undefined) payload.name = sanitize(b.name)
-  if (b.type !== undefined) payload.type = b.type
-  if (b.value !== undefined) payload.value = b.value
-  if (b.promo_code !== undefined)
-    payload.promo_code = b.promo_code ? (b.promo_code as string).toUpperCase() : null
-  if (b.valid_from !== undefined) payload.valid_from = b.valid_from || null
-  if (b.valid_to !== undefined) payload.valid_to = b.valid_to || null
-  if (b.rules !== undefined) payload.rules = b.rules
-  if (b.location_id !== undefined) payload.location_id = b.location_id || null
-  if (b.is_active !== undefined) payload.is_active = b.is_active
-
+  const payload = buildPromotionPayload(parsed.data as Record<string, unknown>)
   if (Object.keys(payload).length === 0)
     return NextResponse.json({ error: 'no_fields' }, { status: 400 })
 

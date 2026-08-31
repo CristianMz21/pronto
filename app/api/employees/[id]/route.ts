@@ -48,32 +48,7 @@ async function resolveBusinessId(
   return null
 }
 
-export async function PATCH(request: Request, props: { params: Promise<{ id: string }> }) {
-  const ip = getIp(request)
-  if (!rateLimit(`employees-patch:${ip}`, { limit: 60, windowMs: 10 * 60 * 1000 }))
-    return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
-  const params = await props.params
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
-  const businessId = await resolveBusinessId(supabase, user.id)
-  if (!businessId) return NextResponse.json({ error: 'not_found' }, { status: 404 })
-
-  let raw: unknown
-  try {
-    raw = await request.json()
-  } catch {
-    return NextResponse.json({ error: 'invalid_json' }, { status: 400 })
-  }
-  const parsed = PatchSchema.safeParse(raw)
-  if (!parsed.success)
-    return NextResponse.json(
-      { error: 'validation_failed', details: parsed.error.flatten().fieldErrors },
-      { status: 422 },
-    )
-  const b = parsed.data
+function buildEmployeeUpdates(b: z.infer<typeof PatchSchema>): Record<string, unknown> {
   const updates: Record<string, unknown> = {}
   if (b.name !== undefined) updates.name = sanitize(b.name)
   if (b.phone !== undefined) updates.phone = b.phone ? sanitize(b.phone) : null
@@ -85,7 +60,49 @@ export async function PATCH(request: Request, props: { params: Promise<{ id: str
   if (b.commission_fixed !== undefined) updates.commission_fixed = b.commission_fixed ?? null
   if (b.is_active !== undefined) updates.is_active = b.is_active
   if (b.location_id !== undefined) updates.location_id = b.location_id || null
+  return updates
+}
 
+async function getAuthBusinessId(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+): Promise<{ businessId: string } | { error: NextResponse }> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: NextResponse.json({ error: 'unauthorized' }, { status: 401 }) }
+  const businessId = await resolveBusinessId(supabase, user.id)
+  if (!businessId) return { error: NextResponse.json({ error: 'not_found' }, { status: 404 }) }
+  return { businessId }
+}
+
+async function parseBody(request: Request): Promise<{ raw: unknown } | { error: NextResponse }> {
+  try {
+    const raw: unknown = await request.json()
+    return { raw }
+  } catch {
+    return { error: NextResponse.json({ error: 'invalid_json' }, { status: 400 }) }
+  }
+}
+
+export async function PATCH(request: Request, props: { params: Promise<{ id: string }> }) {
+  const ip = getIp(request)
+  if (!rateLimit(`employees-patch:${ip}`, { limit: 60, windowMs: 10 * 60 * 1000 }))
+    return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
+  const params = await props.params
+  const supabase = await createClient()
+  const auth = await getAuthBusinessId(supabase)
+  if ('error' in auth) return auth.error
+
+  const body = await parseBody(request)
+  if ('error' in body) return body.error
+
+  const parsed = PatchSchema.safeParse(body.raw)
+  if (!parsed.success)
+    return NextResponse.json(
+      { error: 'validation_failed', details: parsed.error.flatten().fieldErrors },
+      { status: 422 },
+    )
+  const updates = buildEmployeeUpdates(parsed.data)
   if (Object.keys(updates).length === 0)
     return NextResponse.json({ error: 'no_updates' }, { status: 400 })
 
@@ -93,7 +110,7 @@ export async function PATCH(request: Request, props: { params: Promise<{ id: str
     .from('employees')
     .update(updates as unknown as never)
     .eq('id', params.id)
-    .eq('business_id', businessId)
+    .eq('business_id', auth.businessId)
     .select('id')
     .single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

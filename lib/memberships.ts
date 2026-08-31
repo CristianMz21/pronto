@@ -148,92 +148,104 @@ export async function purchaseMembership(
  * Uses pg_advisory_xact_lock via RPC `consume_membership` to prevent double-use race.
  * Falls back to atomic UPDATE with condition if RPC not available.
  */
-export async function consumeMembership(
-  supabase: SupabaseLike & {
-    from: (t: string) => {
-      update: (data: unknown) => {
-        eq: (c: string, v: unknown) => { eq: (c: string, v: unknown) => unknown }
-      }
+type ConsumeSupabase = SupabaseLike & {
+  from: (t: string) => {
+    update: (data: unknown) => {
+      eq: (c: string, v: unknown) => { eq: (c: string, v: unknown) => unknown }
     }
-  },
-  clientMembershipId: string,
-): Promise<ClientMembership> {
-  const parsed = ConsumeSchema.safeParse({ client_membership_id: clientMembershipId })
-  if (!parsed.success) throw new Error('validation_failed')
+  }
+}
 
-  // Try advisory-lock RPC first (preferred: DB-level serialized)
+function throwMembershipError(code: string): never {
+  throw Object.assign(new Error(code), { code })
+}
+
+function isKnownConsumptionError(msg: string): boolean {
+  return (
+    msg.includes('no_uses_left') ||
+    msg.includes('membership_expired') ||
+    msg.includes('membership_not_found')
+  )
+}
+
+function isRpcMissingError(msg: string): boolean {
+  return msg.includes('does not exist') || msg.includes('not found')
+}
+
+function mapRpcErrorToThrow(msg: string, error: unknown): void {
+  if (msg.includes('membership_no_uses_left')) throwMembershipError('no_uses_left')
+  if (msg.includes('membership_expired')) throwMembershipError('membership_expired')
+  if (msg.includes('membership_not_found')) throwMembershipError('membership_not_found')
+  if (!isRpcMissingError(msg) && msg.includes('membership_')) throw error
+}
+
+async function tryConsumeViaRpc(
+  supabase: SupabaseLike,
+  clientMembershipId: string,
+): Promise<ClientMembership | null> {
   try {
     const { data, error } = await supabase.rpc('consume_membership', {
       p_client_membership_id: clientMembershipId,
     })
     if (!error && data) return data as ClientMembership
     const msg = String((error as { message?: string })?.message ?? '')
-    if (msg.includes('membership_no_uses_left'))
-      throw Object.assign(new Error('no_uses_left'), { code: 'no_uses_left' })
-    if (msg.includes('membership_expired'))
-      throw Object.assign(new Error('membership_expired'), { code: 'membership_expired' })
-    if (msg.includes('membership_not_found'))
-      throw Object.assign(new Error('membership_not_found'), { code: 'membership_not_found' })
-    // If RPC missing or other error, fall through to fallback
-    if (!msg.includes('does not exist') && !msg.includes('not found')) {
-      // If we got a known membership error, rethrow
-      if (msg.includes('membership_')) throw error
-    }
+    if (!msg) return null
+    mapRpcErrorToThrow(msg, error)
   } catch (e) {
     const msg = String((e as Error)?.message ?? '')
-    if (
-      msg.includes('no_uses_left') ||
-      msg.includes('membership_expired') ||
-      msg.includes('membership_not_found')
-    )
-      throw e
-    // otherwise fallback
+    if (isKnownConsumptionError(msg)) throw e
   }
+  return null
+}
 
-  // Fallback: atomic update (still safe without advisory lock but less strict under extreme concurrency)
-  // Use supabase update with filter remaining>0 and status active
-  // Note: we can't express expires_at > now() in a single eq, so we do post-check via returned row
-  const supa = supabase as unknown as {
-    from: (t: string) => {
-      select: (cols: string) => {
+type FallbackSupa = {
+  from: (t: string) => {
+    select: (cols: string) => {
+      eq: (
+        c: string,
+        v: unknown,
+      ) => { single: () => Promise<{ data: ClientMembership | null; error: unknown }> }
+    }
+    update: (data: unknown) => {
+      eq: (
+        c: string,
+        v: unknown,
+      ) => {
         eq: (
-          c: string,
-          v: unknown,
-        ) => { single: () => Promise<{ data: ClientMembership | null; error: unknown }> }
-      }
-      update: (data: unknown) => {
-        eq: (
-          c: string,
-          v: unknown,
+          c2: string,
+          v2: unknown,
         ) => {
-          eq: (
-            c2: string,
-            v2: unknown,
-          ) => {
-            select: () => {
-              single: () => Promise<{ data: ClientMembership | null; error: unknown }>
-            }
-          }
+          select: () => { single: () => Promise<{ data: ClientMembership | null; error: unknown }> }
         }
       }
     }
   }
-  // Fetch current to check eligibility before update (still race-prone without lock, but mitigated by remaining>0 filter on update)
+}
+
+async function fetchCurrentMembership(
+  supa: FallbackSupa,
+  clientMembershipId: string,
+): Promise<ClientMembership> {
   const { data: current } = await supa
     .from('client_memberships')
     .select('id, remaining, expires_at, status')
     .eq('id', clientMembershipId)
     .single()
-  if (!current)
-    throw Object.assign(new Error('membership_not_found'), { code: 'membership_not_found' })
-  if (!isEligible(current as ClientMembership)) {
-    if ((current as ClientMembership).remaining <= 0)
-      throw Object.assign(new Error('no_uses_left'), { code: 'no_uses_left' })
-    throw Object.assign(new Error('membership_expired'), { code: 'membership_expired' })
-  }
+  if (!current) throwMembershipError('membership_not_found')
+  return current as ClientMembership
+}
 
-  // Atomic decrement attempted via RPC fallback already; now do direct update with condition via filter
-  // Supabase doesn't support `remaining >0` as eq, so we use `gte` alternative via rpc fallback not available; we simulate by updating and checking result
+function assertEligible(current: ClientMembership): void {
+  if (isEligible(current)) return
+  if (current.remaining <= 0) throwMembershipError('no_uses_left')
+  throwMembershipError('membership_expired')
+}
+
+async function decrementRemaining(
+  supa: FallbackSupa,
+  clientMembershipId: string,
+  remaining: number,
+): Promise<ClientMembership> {
   const { data: updated, error: updErr } = await (
     supa.from('client_memberships') as unknown as {
       update: (d: unknown) => {
@@ -246,23 +258,46 @@ export async function consumeMembership(
       }
     }
   )
-    .update({ remaining: (current as ClientMembership).remaining - 1 })
+    .update({ remaining: remaining - 1 })
     .eq('id', clientMembershipId)
     .select()
     .single()
-
-  if (updErr || !updated) throw Object.assign(new Error('no_uses_left'), { code: 'no_uses_left' })
-  // If remaining becomes 0, optionally mark expired via separate update (non-critical)
-  if ((updated as ClientMembership).remaining === 0) {
-    try {
-      await (
-        supa.from('client_memberships') as unknown as {
-          update: (d: unknown) => { eq: (c: string, v: unknown) => Promise<unknown> }
-        }
-      )
-        .update({ status: 'expired' })
-        .eq('id', clientMembershipId)
-    } catch {}
-  }
+  if (updErr || !updated) throwMembershipError('no_uses_left')
   return updated as ClientMembership
+}
+
+async function maybeMarkExpired(supa: FallbackSupa, id: string, remaining: number): Promise<void> {
+  if (remaining !== 0) return
+  try {
+    await (
+      supa.from('client_memberships') as unknown as {
+        update: (d: unknown) => { eq: (c: string, v: unknown) => Promise<unknown> }
+      }
+    )
+      .update({ status: 'expired' })
+      .eq('id', id)
+  } catch {}
+}
+
+async function consumeViaFallback(
+  supabase: SupabaseLike,
+  clientMembershipId: string,
+): Promise<ClientMembership> {
+  const supa = supabase as unknown as FallbackSupa
+  const current = await fetchCurrentMembership(supa, clientMembershipId)
+  assertEligible(current)
+  const updated = await decrementRemaining(supa, clientMembershipId, current.remaining)
+  await maybeMarkExpired(supa, clientMembershipId, (updated as ClientMembership).remaining)
+  return updated
+}
+
+export async function consumeMembership(
+  supabase: ConsumeSupabase,
+  clientMembershipId: string,
+): Promise<ClientMembership> {
+  const parsed = ConsumeSchema.safeParse({ client_membership_id: clientMembershipId })
+  if (!parsed.success) throw new Error('validation_failed')
+  const rpcResult = await tryConsumeViaRpc(supabase, clientMembershipId)
+  if (rpcResult) return rpcResult
+  return consumeViaFallback(supabase, clientMembershipId)
 }
