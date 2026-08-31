@@ -7,49 +7,89 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Pronto — Business Management for Service SMBs',
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'),
+  title: {
+    default: 'Escudero — Barbería Premium | Bogotá',
+    template: '%s | Escudero',
+  },
   description:
-    'Self-hosted POS, CRM, Inventory & Omnichannel Notifications. Your data, your server. Zero commission. One command install.',
+    'Barbería contemporánea en Bogotá. Reserva online sin registro — solo nombre y teléfono. Corte fade, barba premium, color y rituales. 15 servicios, 10 barberos.',
   keywords: [
-    'open source POS',
-    'self-hosted CRM',
-    'appointment booking',
-    'Telegram notifications',
-    'salon management software',
-    'small business management',
+    'barbería Bogotá',
+    'barbería premium',
+    'corte fade Bogotá',
+    'barba premium',
+    'barbería contemporánea',
+    'reserva online barbería',
+    'Escudero barbería',
+    'corte cabello Bogotá',
   ],
   // PWA
   manifest: '/site.webmanifest',
   appleWebApp: {
     capable: true,
-    statusBarStyle: 'default',
-    title: 'Pronto',
+    statusBarStyle: 'black-translucent',
+    title: 'Escudero',
   },
   formatDetection: {
-    telephone: false,
+    telephone: true,
   },
   icons: {
     icon: [
       { url: '/favicon.ico', sizes: 'any' },
+      { url: '/favicon.svg', type: 'image/svg+xml' },
       { url: '/favicon-32x32.png', type: 'image/png', sizes: '32x32' },
       { url: '/favicon-16x16.png', type: 'image/png', sizes: '16x16' },
     ],
-    apple: '/apple-touch-icon.png',
+    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
   },
   openGraph: {
-    images: [{ url: 'https://trypronto.app/og-image.png', width: 1200, height: 630 }],
+    type: 'website',
+    locale: 'es_CO',
+    siteName: 'Escudero',
+    images: [
+      {
+        url: '/og-escudero.jpg',
+        width: 1200,
+        height: 630,
+        alt: 'Escudero — Barbería Premium Bogotá',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
-    images: ['https://trypronto.app/og-image.png'],
+    images: ['/og-escudero.jpg'],
+    creator: '@escudero',
+  },
+  alternates: {
+    canonical: '/',
+    languages: {
+      'es-CO': '/',
+      es: '/es',
+    },
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+      'max-video-preview': -1,
+    },
+  },
+  verification: {
+    // Add when available: google: 'your-google-verification', yandex: '...', other: '...'
   },
 }
 
 export const viewport: Viewport = {
-  themeColor: '#2563eb',
+  themeColor: '#0A0A0A',
   width: 'device-width',
   initialScale: 1,
   minimumScale: 1,
+  colorScheme: 'dark',
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

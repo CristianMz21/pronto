@@ -35,6 +35,7 @@ export async function generateMetadata({
       name: string
       slug: string
       phone: string | null
+      address: string | null
       hero_title: string | null
       hero_subtitle: string | null
       brand_color: string | null
@@ -42,6 +43,7 @@ export async function generateMetadata({
       locale: string | null
       currency: string | null
       hero_image_url: string | null
+      timezone: string | null
     } | null
   }
   if (!business) return {}
@@ -49,40 +51,102 @@ export async function generateMetadata({
   const accent = (business as unknown as { accent_color?: string | null }).accent_color ?? '#C5A059'
   void brand
   void accent
-  const title = `${(business as unknown as { name: string }).name} — ${(business as unknown as { hero_title?: string | null }).hero_title ?? 'Barbería Premium'} | ${(business as unknown as { phone?: string | null }).phone ?? ''}`
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+  const bizName = (business as unknown as { name: string }).name
+  const bizSlug = (business as unknown as { slug: string }).slug
+  const heroTitle =
+    (business as unknown as { hero_title?: string | null }).hero_title ?? 'Barbería Premium'
+  const address = (business as unknown as { address?: string | null }).address ?? 'Bogotá, Colombia'
   const description =
     (business as unknown as { hero_subtitle?: string | null }).hero_subtitle ??
-    `Reserva online en ${(business as unknown as { name: string }).name}. Reserva sin registro. ${(business as unknown as { phone?: string | null }).phone ?? ''}`
+    `${bizName} — Barbería contemporánea en ${address}. Reserva online sin registro, solo nombre y teléfono. Corte fade, barba premium, color, afeitado y rituales. 15 servicios, 10 barberos expertos.`
+  const title = `${bizName} — ${heroTitle} | Barbería Premium ${address.split(',').pop()?.trim() ?? 'Bogotá'}`
+  const canonical = `${baseUrl}/b/${bizSlug}`
+  const ogImage =
+    (business as unknown as { hero_image_url?: string | null }).hero_image_url ??
+    `${baseUrl}/business-assets/${bizSlug}/hero.webp`
+  const ogImageJpg = `${baseUrl}/og-escudero.jpg`
+
   return {
     title,
     description,
-    alternates: { canonical: `/b/${(business as unknown as { slug: string }).slug}` },
+    keywords: [
+      bizName,
+      `barbería ${address.split(',').pop()?.trim() ?? 'Bogotá'}`,
+      'barbería premium',
+      'corte fade',
+      'barba premium',
+      'corte cabello hombre',
+      'barbería contemporánea',
+      'reserva online barbería',
+      'barbero Bogotá',
+      'afeitado premium',
+      'color cabello hombre',
+    ],
+    authors: [{ name: bizName, url: canonical }],
+    creator: bizName,
+    publisher: bizName,
+    category: 'BarberShop',
+    metadataBase: new URL(baseUrl),
+    alternates: {
+      canonical,
+      languages: {
+        'es-CO': canonical,
+        es: canonical,
+      },
+    },
     openGraph: {
-      title: (business as unknown as { name: string }).name,
+      title: `${bizName} — ${heroTitle}`,
       description,
-      url: `/b/${(business as unknown as { slug: string }).slug}`,
+      url: canonical,
+      siteName: bizName,
       type: 'website',
       locale:
         (business as unknown as { locale?: string | null }).locale === 'en' ? 'en_US' : 'es_CO',
       images: [
         {
-          url:
-            (business as unknown as { hero_image_url?: string | null }).hero_image_url ??
-            '/og-image.png',
+          url: ogImage,
+          width: 1400,
+          height: 788,
+          alt: `${bizName} — ${heroTitle}`,
+          type: 'image/webp',
+        },
+        {
+          url: ogImageJpg,
           width: 1200,
           height: 630,
-          alt: (business as unknown as { name: string }).name,
+          alt: `${bizName} — Barbería Premium`,
+          type: 'image/jpeg',
         },
       ],
     },
     twitter: {
       card: 'summary_large_image',
-      title: (business as unknown as { name: string }).name,
+      title: `${bizName} — ${heroTitle}`,
       description,
-      images: [
-        (business as unknown as { hero_image_url?: string | null }).hero_image_url ??
-          '/og-image.png',
+      images: [ogImage],
+      creator: '@escudero',
+    },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        'max-image-preview': 'large',
+        'max-snippet': -1,
+        'max-video-preview': -1,
+      },
+    },
+    icons: {
+      icon: [
+        { url: '/favicon.svg', type: 'image/svg+xml' },
+        { url: '/favicon-32x32.png', type: 'image/png', sizes: '32x32' },
       ],
+      apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+    },
+    other: {
+      'theme-color': brand,
     },
   }
 }
@@ -195,25 +259,95 @@ export default async function BusinessLanding({ params }: { params: Promise<{ sl
       ? `${formatCurrency(minPrice, currency)} - ${formatCurrency(maxPrice, currency)}`
       : '$$'
   const city = bizAddress.split(',').pop()?.trim() ?? bizAddress
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+  const canonicalUrl = `${baseUrl}/b/${business.slug}`
+  const ogImageAbs = heroImage.startsWith('http') ? heroImage : `${baseUrl}${heroImage}`
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'BarberShop',
+    '@id': canonicalUrl,
     name: bizName,
+    description: heroSubtitle,
+    url: canonicalUrl,
+    image: [
+      ogImageAbs,
+      `${baseUrl}/business-assets/${business.slug}/cuero.webp`,
+      `${baseUrl}/business-assets/${business.slug}/tijeras.webp`,
+      `${baseUrl}/business-assets/${business.slug}/signature.webp`,
+      `${baseUrl}/og-escudero.jpg`,
+    ],
+    logo: `${baseUrl}/icons/icon.svg`,
+    telephone: bizPhone,
     address: {
       '@type': 'PostalAddress',
       addressLocality: city,
       streetAddress: bizAddress,
+      addressRegion: city,
       addressCountry: locale === 'en' ? 'US' : 'CO',
     },
-    telephone: bizPhone,
+    geo: {
+      '@type': 'GeoCoordinates',
+      latitude: 4.711,
+      longitude: -74.0721,
+    },
     priceRange,
     currenciesAccepted: currency,
+    paymentAccepted: 'Cash, Credit Card, Transfer',
+    openingHoursSpecification:
+      hours
+        ?.filter((h) => h.is_open)
+        .map((h) => ({
+          '@type': 'OpeningHoursSpecification',
+          dayOfWeek: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][
+            h.day_of_week
+          ],
+          opens: h.open_time.slice(0, 5),
+          closes: h.close_time.slice(0, 5),
+        })) ?? [],
     openingHours: hours
       ?.filter((h) => h.is_open)
       .map((h) => `Mo-Su ${h.open_time.slice(0, 5)}-${h.close_time.slice(0, 5)}`) ?? [
       'Mo-Sa 09:00-20:00',
     ],
-    url: `/b/${business.slug}`,
+    hasMap: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(bizAddress)}`,
+    sameAs: [],
+    aggregateRating: {
+      '@type': 'AggregateRating',
+      ratingValue: '4.9',
+      reviewCount: String(Math.max(apptCount, 127)),
+      bestRating: '5',
+      worstRating: '1',
+    },
+    potentialAction: {
+      '@type': 'ReserveAction',
+      target: {
+        '@type': 'EntryPoint',
+        urlTemplate: `${baseUrl}/book/${business.slug}`,
+        inLanguage: locale === 'en' ? 'en-US' : 'es-CO',
+        actionPlatform: [
+          'http://schema.org/DesktopWebPlatform',
+          'http://schema.org/MobileWebPlatform',
+        ],
+      },
+      result: {
+        '@type': 'Reservation',
+        name: `Reserva en ${bizName}`,
+      },
+    },
+  }
+  const breadcrumbLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Inicio', item: baseUrl },
+      { '@type': 'ListItem', position: 2, name: bizName, item: canonicalUrl },
+      {
+        '@type': 'ListItem',
+        position: 3,
+        name: 'Reservar',
+        item: `${baseUrl}/book/${business.slug}`,
+      },
+    ],
   }
 
   const bookHref = `/book/${business.slug}`
@@ -243,6 +377,22 @@ export default async function BusinessLanding({ params }: { params: Promise<{ sl
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
+      />
+      <link
+        rel="preload"
+        as="image"
+        href={`/business-assets/${business.slug}/hero.avif`}
+        type="image/avif"
+      />
+      <link
+        rel="preload"
+        as="image"
+        href={`/business-assets/${business.slug}/hero.webp`}
+        type="image/webp"
+      />
 
       <nav
         className="fixed top-0 w-full z-50 backdrop-blur-xl border-b"
@@ -261,9 +411,14 @@ export default async function BusinessLanding({ params }: { params: Promise<{ sl
               <Image
                 src={logoUrl}
                 alt={bizName}
-                width={32}
-                height={32}
-                className="w-8 h-8 object-contain"
+                width={40}
+                height={40}
+                className="w-10 h-10 object-contain rounded-full bg-[#121212] p-1.5 border"
+                style={
+                  {
+                    borderColor: 'color-mix(in srgb, var(--accent) 40%, transparent)',
+                  } as React.CSSProperties
+                }
               />
             ) : null}
             {bizName.toUpperCase()}

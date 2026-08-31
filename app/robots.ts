@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next'
 
 export default function robots(): MetadataRoute.Robots {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://trypronto.app'
   return {
     rules: [
       {
@@ -8,6 +9,7 @@ export default function robots(): MetadataRoute.Robots {
         allow: '/',
         disallow: [
           '/admin',
+          '/escuderito-admin',
           '/dashboard',
           '/pos',
           '/caja',
@@ -17,9 +19,15 @@ export default function robots(): MetadataRoute.Robots {
           '/settings',
           '/client',
           '/api',
+          '/onboarding',
         ],
       },
+      {
+        userAgent: 'Googlebot-Image',
+        allow: '/',
+      },
     ],
-    sitemap: 'https://trypronto.app/sitemap.xml',
+    sitemap: `${baseUrl}/sitemap.xml`,
+    host: baseUrl,
   }
 }

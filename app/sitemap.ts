@@ -3,7 +3,7 @@ import path from 'node:path'
 
 import type { MetadataRoute } from 'next'
 
-const BASE_URL = 'https://trypronto.app'
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://trypronto.app'
 
 // Filesystem path segments that disqualify a page (route groups with these names)
 const EXCLUDED_FS_SEGMENTS = ['(dashboard)', '(admin)', 'api']
