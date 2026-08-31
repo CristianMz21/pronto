@@ -1,30 +1,36 @@
 'use client'
 
-import {
-  AlertCircle,
-  Check,
-  CheckCircle2,
-  Eye,
-  EyeOff,
-  Loader2,
-  Pencil,
-  Plus,
-  Settings,
-  Trash2,
-  Users,
-} from 'lucide-react'
-import Image from 'next/image'
+import { AlertCircle, Settings } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { useEffect, useMemo, useState } from 'react'
 
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { MODULES, type ModuleKey } from '@/lib/modules'
+import type { ModuleKey } from '@/lib/modules'
 import { createClient } from '@/lib/supabase/client'
 import { isRecord } from '@/lib/validation/guard'
 
 import { HolidaysSection } from './holidays-section'
+import { AccountTab } from './tabs/account-tab'
+import { AdvancedTab } from './tabs/advanced-tab'
+import { BillingTab } from './tabs/billing-tab'
+import { EmployeesTab } from './tabs/employees-tab'
+import { GeneralTab } from './tabs/general-tab'
+import {
+  findBreakValidationError,
+  getInitialTab,
+  sanitizeSlug,
+  type Business,
+  type DayHours,
+  type Employee,
+  type Service,
+} from './tabs/helpers'
+import { ModulesTab } from './tabs/modules-tab'
+import { NotificationsTab } from './tabs/notifications-tab'
+import { ServicesTab } from './tabs/services-tab'
+import { TabNavigation } from './tabs/tab-navigation'
+import { WorkingHoursCard } from './tabs/working-hours-card'
+
+// ─── Helpers outside component ───────────────────────────────────────────────
 
 function getStringField(obj: unknown, key: string): string | undefined {
   if (!isRecord(obj)) return undefined
@@ -39,80 +45,6 @@ function getBooleanField(obj: unknown, key: string): boolean | undefined {
 
 const clean = (s: string, max = 500) => s?.trim().slice(0, max) ?? ''
 
-interface Business {
-  id: string
-  owner_id?: string | null
-  name: string
-  slug: string
-  type: string | null
-  phone: string | null
-  email: string | null
-  address: string | null
-  timezone: string
-  currency: string
-  plan: string
-  plan_expires_at: string | null
-  telegram_bot_token: string | null
-  viber_bot_token: string | null
-  owner_whatsapp: string | null
-  email_provider: string | null
-  smtp_host: string | null
-  smtp_port: number | null
-  smtp_user: string | null
-  smtp_pass: string | null
-  smtp_from: string | null
-  resend_api_key: string | null
-  meta_whatsapp_phone_number_id: string | null
-  meta_whatsapp_access_token: string | null
-  wa_template_confirmation: string | null
-  wa_template_reminder: string | null
-  wa_template_thankyou: string | null
-  wa_template_reactivation: string | null
-  wa_template_birthday: string | null
-  wa_template_language: string | null
-  brand_color: string | null
-  notification_language: string | null
-  logo_url: string | null
-  enabled_modules: string[] | null
-  min_advance_minutes?: number | null
-  booking_lead_time_enabled?: boolean | null
-  require_cash_register_for_cash?: boolean | null
-  allow_guest_bookings?: boolean | null
-}
-interface Service {
-  id: string
-  name: string
-  description: string | null
-  price: number
-  duration_min: number
-  category: string | null
-  is_active: boolean
-  capacity: number
-  cost?: number | null
-}
-interface Employee {
-  id: string
-  name: string
-  role: string
-  email: string | null
-  phone: string | null
-  is_active: boolean
-  color?: string | null
-  specialties?: string[]
-  commission_rate?: number | null
-  commission_fixed?: number | null
-  bio?: string | null
-  avatar_url?: string | null
-}
-interface DayHours {
-  day_of_week: number
-  is_open: boolean
-  open_time: string
-  close_time: string
-  break_start?: string | null
-  break_end?: string | null
-}
-
 const DEFAULT_HOURS: DayHours[] = [0, 1, 2, 3, 4, 5, 6].map((dow) => ({
   day_of_week: dow,
   is_open: dow >= 1 && dow <= 5,
@@ -122,20 +54,6 @@ const DEFAULT_HOURS: DayHours[] = [0, 1, 2, 3, 4, 5, 6].map((dow) => ({
   break_end: null,
 }))
 
-const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
-  const h = Math.floor(i / 2)
-  const m = i % 2 === 0 ? '00' : '30'
-  return `${String(h).padStart(2, '0')}:${m}`
-})
-
-interface Props {
-  business: Business & { telegram_chat_id?: string | null; viber_chat_id?: string | null }
-  services: Service[]
-  employees: Employee[]
-  workingHours: DayHours[]
-  userEmail: string
-  userId?: string
-}
 type Tab =
   | 'general'
   | 'services'
@@ -145,6 +63,653 @@ type Tab =
   | 'account'
   | 'modules'
   | 'advanced'
+
+function buildTabs(
+  t: ReturnType<typeof useTranslations<'settings'>>,
+  bookingsOn: boolean,
+  isOwner: boolean,
+): { key: Tab; label: string; icon?: React.ReactNode }[] {
+  const tabs: { key: Tab; label: string; icon?: React.ReactNode }[] = [
+    { key: 'general', label: t('tabs.general') },
+  ]
+  if (bookingsOn) tabs.push({ key: 'services', label: t('tabs.services') })
+  tabs.push(
+    { key: 'employees', label: t('tabs.employees') },
+    { key: 'notifications', label: t('tabs.notifications') },
+    { key: 'billing', label: t('tabs.billing') },
+    { key: 'modules', label: t('tabs.modules') },
+    { key: 'account', label: t('tabs.account') },
+  )
+  if (isOwner) {
+    tabs.push({
+      key: 'advanced',
+      label: t('tabs.advanced'),
+      icon: <Settings className="w-3.5 h-3.5" />,
+    })
+  }
+  return tabs
+}
+
+async function handleSaveAdvanced(args: {
+  supabase: ReturnType<typeof createClient>
+  biz: Business
+  t: ReturnType<typeof useTranslations<'settings'>>
+  setAdvancedError: (v: string) => void
+  setAdvancedSaving: (v: boolean) => void
+  setAdvancedSaved: (v: boolean) => void
+  router: ReturnType<typeof useRouter>
+}): Promise<void> {
+  const v = args.biz.min_advance_minutes ?? 30
+  if (!Number.isInteger(v) || v < 0 || v > 1440) {
+    args.setAdvancedError(args.t('advanced.minAdvanceError'))
+    setTimeout(() => args.setAdvancedError(''), 3000)
+    return
+  }
+  args.setAdvancedSaving(true)
+  args.setAdvancedError('')
+  const { error } = await args.supabase
+    .from('businesses')
+    .update({
+      min_advance_minutes: v,
+      booking_lead_time_enabled: args.biz.booking_lead_time_enabled ?? true,
+      require_cash_register_for_cash: args.biz.require_cash_register_for_cash ?? true,
+      allow_guest_bookings: args.biz.allow_guest_bookings ?? true,
+    })
+    .eq('id', args.biz.id)
+  args.setAdvancedSaving(false)
+  if (error) {
+    args.setAdvancedError(error.message)
+    return
+  }
+  args.setAdvancedSaved(true)
+  setTimeout(() => args.setAdvancedSaved(false), 2000)
+  args.router.refresh()
+}
+
+async function handleUploadLogo(args: {
+  file: File
+  setLogoError: (v: string) => void
+  setLogoUploading: (v: boolean) => void
+  setLogoUrl: (v: string | null) => void
+  t: ReturnType<typeof useTranslations<'settings'>>
+}): Promise<void> {
+  args.setLogoError('')
+  args.setLogoUploading(true)
+  try {
+    const form = new FormData()
+    form.append('logo', args.file)
+    const res = await fetch('/api/business/logo', { method: 'POST', body: form })
+    let json: unknown = {}
+    try {
+      json = await res.json()
+    } catch {
+      /* non-JSON response */
+    }
+    if (!res.ok) {
+      const err = getStringField(json, 'error')
+      args.setLogoError(err ?? `Upload failed (HTTP ${res.status})`)
+      return
+    }
+    const logoUrlVal = getStringField(json, 'logo_url')
+    args.setLogoUrl(logoUrlVal ?? null)
+  } catch (e) {
+    args.setLogoError(
+      args.t('general.logoErrorNetwork', {
+        message: e instanceof Error ? e.message : 'please try again',
+      }),
+    )
+  } finally {
+    args.setLogoUploading(false)
+  }
+}
+
+async function handleRemoveLogo(args: {
+  setLogoError: (v: string) => void
+  setLogoUploading: (v: boolean) => void
+  setLogoUrl: (v: string | null) => void
+  t: ReturnType<typeof useTranslations<'settings'>>
+}): Promise<void> {
+  args.setLogoError('')
+  args.setLogoUploading(true)
+  try {
+    await fetch('/api/business/logo', { method: 'DELETE' })
+    args.setLogoUrl(null)
+  } catch {
+    args.setLogoError(args.t('general.logoErrorRemove'))
+  } finally {
+    args.setLogoUploading(false)
+  }
+}
+
+async function handleSaveBusiness(args: {
+  supabase: ReturnType<typeof createClient>
+  biz: Business
+  initialSlug: string
+  slugError: string
+  setBiz: React.Dispatch<React.SetStateAction<Business>>
+  setSaving: (v: boolean) => void
+  setSaved: (v: boolean) => void
+  router: ReturnType<typeof useRouter>
+}): Promise<void> {
+  if (args.slugError) return
+  args.setSaving(true)
+  const cleanSlug = sanitizeSlug(args.biz.slug, args.initialSlug)
+  const bizName = clean(args.biz.name || '', 100)
+  const bizAddress = args.biz.address ? clean(args.biz.address, 200) || null : null
+  args.setBiz((b) => ({ ...b, slug: cleanSlug }))
+  await args.supabase
+    .from('businesses')
+    .update({
+      name: bizName,
+      slug: cleanSlug,
+      type: args.biz.type,
+      phone: args.biz.phone,
+      email: args.biz.email,
+      address: bizAddress,
+      timezone: args.biz.timezone,
+      currency: args.biz.currency,
+      telegram_bot_token: args.biz.telegram_bot_token,
+      viber_bot_token: args.biz.viber_bot_token,
+      owner_whatsapp: args.biz.owner_whatsapp,
+      email_provider: args.biz.email_provider,
+      smtp_host: args.biz.smtp_host,
+      smtp_port: args.biz.smtp_port,
+      smtp_user: args.biz.smtp_user,
+      smtp_pass: args.biz.smtp_pass,
+      smtp_from: args.biz.smtp_from,
+      resend_api_key: args.biz.resend_api_key,
+      meta_whatsapp_phone_number_id: args.biz.meta_whatsapp_phone_number_id,
+      meta_whatsapp_access_token: args.biz.meta_whatsapp_access_token,
+      wa_template_confirmation: args.biz.wa_template_confirmation,
+      wa_template_reminder: args.biz.wa_template_reminder,
+      wa_template_thankyou: args.biz.wa_template_thankyou,
+      wa_template_reactivation: args.biz.wa_template_reactivation,
+      wa_template_birthday: args.biz.wa_template_birthday,
+      wa_template_language: args.biz.wa_template_language ?? 'en',
+      brand_color: args.biz.brand_color || '#2D2926',
+      notification_language: args.biz.notification_language ?? 'en',
+    })
+    .eq('id', args.biz.id)
+  args.setSaving(false)
+  args.setSaved(true)
+  setTimeout(() => args.setSaved(false), 2000)
+  args.router.refresh()
+}
+
+async function handleSaveService(args: {
+  supabase: ReturnType<typeof createClient>
+  svcForm: Partial<Service>
+  editingSvc: string | null
+  bizId: string
+  setServices: React.Dispatch<React.SetStateAction<Service[]>>
+  setSvcForm: (v: Partial<Service>) => void
+  setEditingSvc: (v: string | null) => void
+  router: ReturnType<typeof useRouter>
+}): Promise<void> {
+  if (!args.svcForm.name || args.svcForm.price == null) return
+  const svcName = clean(args.svcForm.name, 100)
+  if (!svcName) return
+  const svcDescription = args.svcForm.description
+    ? clean(args.svcForm.description, 500) || null
+    : null
+  const svcCategory = args.svcForm.category ? clean(args.svcForm.category, 100) || null : null
+  const sanitizedForm = {
+    ...args.svcForm,
+    name: svcName,
+    description: svcDescription,
+    category: svcCategory,
+  }
+  if (args.editingSvc) {
+    await args.supabase.from('services').update(sanitizedForm).eq('id', args.editingSvc)
+    args.setServices((prev) =>
+      prev.map((s) => (s.id === args.editingSvc ? ({ ...s, ...sanitizedForm } as Service) : s)),
+    )
+  } else {
+    const { data } = await args.supabase
+      .from('services')
+      .insert({
+        business_id: args.bizId,
+        name: svcName,
+        description: svcDescription,
+        price: args.svcForm.price!,
+        duration_min: args.svcForm.duration_min ?? 60,
+        category: svcCategory,
+        capacity: args.svcForm.capacity ?? 1,
+      })
+      .select()
+      .single()
+    if (data) args.setServices((prev) => [...prev, data as Service])
+  }
+  args.setSvcForm({})
+  args.setEditingSvc(null)
+  args.router.refresh()
+}
+
+async function handleDeleteService(args: {
+  supabase: ReturnType<typeof createClient>
+  id: string
+  setServices: React.Dispatch<React.SetStateAction<Service[]>>
+  setConfirmDeleteSvcId: (v: string | null) => void
+  router: ReturnType<typeof useRouter>
+}): Promise<void> {
+  await args.supabase.from('services').delete().eq('id', args.id)
+  args.setServices((prev) => prev.filter((s) => s.id !== args.id))
+  args.setConfirmDeleteSvcId(null)
+  args.router.refresh()
+}
+
+async function handleSaveEmployee(args: {
+  supabase: ReturnType<typeof createClient>
+  empForm: Partial<Employee>
+  editingEmp: string | null
+  bizId: string
+  setEmployees: React.Dispatch<React.SetStateAction<Employee[]>>
+  setEmpForm: (v: Partial<Employee>) => void
+  setEditingEmp: (v: string | null) => void
+  router: ReturnType<typeof useRouter>
+}): Promise<void> {
+  if (!args.empForm.name) return
+  const empName = clean(args.empForm.name, 100)
+  if (!empName) return
+  const sanitizedEmp = { ...args.empForm, name: empName }
+  if (args.editingEmp) {
+    await args.supabase.from('employees').update(sanitizedEmp).eq('id', args.editingEmp)
+    args.setEmployees((prev) =>
+      prev.map((e) => (e.id === args.editingEmp ? ({ ...e, ...sanitizedEmp } as Employee) : e)),
+    )
+  } else {
+    const { data } = await args.supabase
+      .from('employees')
+      .insert({
+        business_id: args.bizId,
+        name: empName,
+        role: args.empForm.role ?? 'employee',
+        email: args.empForm.email ?? null,
+        phone: args.empForm.phone ?? null,
+      })
+      .select()
+      .single()
+    if (data) args.setEmployees((prev) => [...prev, data as Employee])
+  }
+  args.setEmpForm({})
+  args.setEditingEmp(null)
+  args.router.refresh()
+}
+
+async function handleDeleteEmployee(args: {
+  supabase: ReturnType<typeof createClient>
+  id: string
+  setEmployees: React.Dispatch<React.SetStateAction<Employee[]>>
+  setConfirmDeleteEmpId: (v: string | null) => void
+  router: ReturnType<typeof useRouter>
+}): Promise<void> {
+  await args.supabase.from('employees').delete().eq('id', args.id)
+  args.setEmployees((prev) => prev.filter((e) => e.id !== args.id))
+  args.setConfirmDeleteEmpId(null)
+  args.router.refresh()
+}
+
+async function handleConnectWhatsApp(args: {
+  supabase: ReturnType<typeof createClient>
+  biz: Business
+  setWaStatus: (v: 'idle' | 'loading' | 'ok' | 'error') => void
+  setWaMsg: (v: string) => void
+  router: ReturnType<typeof useRouter>
+}): Promise<void> {
+  args.setWaStatus('loading')
+  args.setWaMsg('')
+  const { error } = await args.supabase
+    .from('businesses')
+    .update({
+      meta_whatsapp_phone_number_id: args.biz.meta_whatsapp_phone_number_id,
+      meta_whatsapp_access_token: args.biz.meta_whatsapp_access_token,
+    })
+    .eq('id', args.biz.id)
+  if (error) {
+    args.setWaStatus('error')
+    args.setWaMsg(error.message)
+  } else {
+    args.setWaStatus('ok')
+    args.setWaMsg('WhatsApp credentials saved successfully.')
+    args.router.refresh()
+  }
+}
+
+async function handleConnectViber(args: {
+  supabase: ReturnType<typeof createClient>
+  biz: Business
+  setViberWebhookStatus: (v: 'idle' | 'loading' | 'ok' | 'error') => void
+  setViberWebhookMsg: (v: string) => void
+}): Promise<void> {
+  args.setViberWebhookStatus('loading')
+  args.setViberWebhookMsg('')
+  await args.supabase
+    .from('businesses')
+    .update({ viber_bot_token: args.biz.viber_bot_token })
+    .eq('id', args.biz.id)
+  const res = await fetch('/api/viber/set-webhook', { method: 'POST' })
+  const json: unknown = await res.json()
+  const ok = getBooleanField(json, 'ok') ?? false
+  if (ok) {
+    const botName = getStringField(json, 'botName') ?? 'Viber Bot'
+    args.setViberWebhookStatus('ok')
+    args.setViberWebhookMsg(
+      `Connected! Bot: ${botName}. Now open your Viber bot and start a conversation.`,
+    )
+  } else {
+    args.setViberWebhookStatus('error')
+    const err = getStringField(json, 'error')
+    args.setViberWebhookMsg(err ?? 'Unknown error')
+  }
+}
+
+async function handleConnectTelegram(args: {
+  supabase: ReturnType<typeof createClient>
+  biz: Business
+  setWebhookStatus: (v: 'idle' | 'loading' | 'ok' | 'error') => void
+  setWebhookMsg: (v: string) => void
+}): Promise<void> {
+  args.setWebhookStatus('loading')
+  args.setWebhookMsg('')
+  await args.supabase
+    .from('businesses')
+    .update({ telegram_bot_token: args.biz.telegram_bot_token })
+    .eq('id', args.biz.id)
+  const res = await fetch('/api/telegram/set-webhook', { method: 'POST' })
+  const json: unknown = await res.json()
+  const ok = getBooleanField(json, 'ok') ?? false
+  if (ok) {
+    const botUsername = getStringField(json, 'botUsername') ?? 'bot'
+    args.setWebhookStatus('ok')
+    args.setWebhookMsg(
+      `Connected! Bot: @${botUsername}. Now open your bot in Telegram and send /start.`,
+    )
+  } else {
+    args.setWebhookStatus('error')
+    const err = getStringField(json, 'error')
+    args.setWebhookMsg(err ?? 'Unknown error')
+  }
+}
+
+async function handleChangePassword(args: {
+  supabase: ReturnType<typeof createClient>
+  pwForm: { newPassword: string; confirm: string }
+  t: ReturnType<typeof useTranslations<'settings'>>
+  setPwStatus: (v: 'idle' | 'loading' | 'ok' | 'error') => void
+  setPwMsg: (v: string) => void
+  setPwForm: (v: { newPassword: string; confirm: string }) => void
+}): Promise<void> {
+  if (args.pwForm.newPassword.length < 8) {
+    args.setPwStatus('error')
+    args.setPwMsg(args.t('account.pwMinLength'))
+    return
+  }
+  if (args.pwForm.newPassword !== args.pwForm.confirm) {
+    args.setPwStatus('error')
+    args.setPwMsg(args.t('account.pwNoMatch'))
+    return
+  }
+  args.setPwStatus('loading')
+  args.setPwMsg('')
+  const { error } = await args.supabase.auth.updateUser({ password: args.pwForm.newPassword })
+  if (error) {
+    args.setPwStatus('error')
+    args.setPwMsg(error.message)
+  } else {
+    args.setPwStatus('ok')
+    args.setPwMsg(args.t('account.pwSuccess'))
+    args.setPwForm({ newPassword: '', confirm: '' })
+  }
+}
+
+async function handleChangeEmail(args: {
+  supabase: ReturnType<typeof createClient>
+  newEmail: string
+  t: ReturnType<typeof useTranslations<'settings'>>
+  setEmailStatus: (v: 'idle' | 'loading' | 'ok' | 'error') => void
+  setEmailMsg: (v: string) => void
+  setNewEmail: (v: string) => void
+}): Promise<void> {
+  if (!args.newEmail.includes('@')) {
+    args.setEmailStatus('error')
+    args.setEmailMsg(args.t('account.emailInvalid'))
+    return
+  }
+  args.setEmailStatus('loading')
+  args.setEmailMsg('')
+  const { error } = await args.supabase.auth.updateUser({ email: args.newEmail })
+  if (error) {
+    args.setEmailStatus('error')
+    args.setEmailMsg(error.message)
+  } else {
+    args.setEmailStatus('ok')
+    args.setEmailMsg(args.t('account.emailConfirmSent', { email: args.newEmail }))
+    args.setNewEmail('')
+  }
+}
+
+function renderActiveTab(args: {
+  tab: Tab
+  biz: Business
+  initial: Business
+  setBiz: React.Dispatch<React.SetStateAction<Business>>
+  slugError: string
+  setSlugError: (v: string) => void
+  logoUrl: string | null
+  logoUploading: boolean
+  logoError: string
+  onUploadLogo: (f: File) => void
+  onRemoveLogo: () => void
+  bookingUrl: string
+  saving: boolean
+  saved: boolean
+  onSaveBusiness: () => void
+  hours: DayHours[]
+  updateDay: (dow: number, patch: Partial<DayHours>) => void
+  savingHours: boolean
+  savedHours: boolean
+  hoursValidationError: string | null
+  onSaveWorkingHours: () => void
+  services: Service[]
+  svcForm: Partial<Service>
+  setSvcForm: React.Dispatch<React.SetStateAction<Partial<Service>>>
+  editingSvc: string | null
+  setEditingSvc: (v: string | null) => void
+  confirmDeleteSvcId: string | null
+  setConfirmDeleteSvcId: (v: string | null) => void
+  onSaveService: () => void
+  onDeleteService: (id: string) => void
+  employees: Employee[]
+  empForm: Partial<Employee>
+  setEmpForm: React.Dispatch<React.SetStateAction<Partial<Employee>>>
+  editingEmp: string | null
+  setEditingEmp: (v: string | null) => void
+  confirmDeleteEmpId: string | null
+  setConfirmDeleteEmpId: (v: string | null) => void
+  onSaveEmployee: () => void
+  onDeleteEmployee: (id: string) => void
+  webhookStatus: 'idle' | 'loading' | 'ok' | 'error'
+  webhookMsg: string
+  viberWebhookStatus: 'idle' | 'loading' | 'ok' | 'error'
+  viberWebhookMsg: string
+  waStatus: 'idle' | 'loading' | 'ok' | 'error'
+  waMsg: string
+  onConnectTelegram: () => void
+  onConnectViber: () => void
+  onConnectWhatsApp: () => void
+  enabledModules: string[]
+  setEnabledModules: React.Dispatch<React.SetStateAction<string[]>>
+  confirmModule: ModuleKey | null
+  setConfirmModule: (v: ModuleKey | null) => void
+  modulesSaving: boolean
+  modulesSaved: boolean
+  onSaveModules: () => void
+  userEmail: string
+  newEmail: string
+  setNewEmail: (v: string) => void
+  emailStatus: 'idle' | 'loading' | 'ok' | 'error'
+  setEmailStatus: (v: 'idle' | 'loading' | 'ok' | 'error') => void
+  emailMsg: string
+  setEmailMsg: (v: string) => void
+  onChangeEmail: () => void
+  pwForm: { newPassword: string; confirm: string }
+  setPwForm: React.Dispatch<React.SetStateAction<{ newPassword: string; confirm: string }>>
+  showPw: boolean
+  setShowPw: React.Dispatch<React.SetStateAction<boolean>>
+  pwStatus: 'idle' | 'loading' | 'ok' | 'error'
+  setPwStatus: (v: 'idle' | 'loading' | 'ok' | 'error') => void
+  pwMsg: string
+  setPwMsg: (v: string) => void
+  onChangePassword: () => void
+  isOwner: boolean
+  advancedSaving: boolean
+  advancedSaved: boolean
+  advancedError: string
+  onSaveAdvanced: () => void
+}): React.ReactNode {
+  if (args.tab === 'general') {
+    return (
+      <div className="space-y-6">
+        <GeneralTab
+          biz={args.biz}
+          setBiz={args.setBiz}
+          slugError={args.slugError}
+          setSlugError={args.setSlugError}
+          logoUrl={args.logoUrl}
+          logoUploading={args.logoUploading}
+          logoError={args.logoError}
+          onUploadLogo={args.onUploadLogo}
+          onRemoveLogo={args.onRemoveLogo}
+          bookingUrl={args.bookingUrl}
+          saving={args.saving}
+          saved={args.saved}
+          onSave={args.onSaveBusiness}
+        />
+        <WorkingHoursCard
+          hours={args.hours}
+          updateDay={args.updateDay}
+          savingHours={args.savingHours}
+          savedHours={args.savedHours}
+          validationError={args.hoursValidationError}
+          onSave={args.onSaveWorkingHours}
+        />
+        <HolidaysSection businessId={args.biz.id} />
+      </div>
+    )
+  }
+  if (args.tab === 'services') {
+    return (
+      <ServicesTab
+        services={args.services}
+        bizCurrency={args.biz.currency}
+        svcForm={args.svcForm}
+        setSvcForm={args.setSvcForm}
+        editingSvc={args.editingSvc}
+        setEditingSvc={args.setEditingSvc}
+        confirmDeleteSvcId={args.confirmDeleteSvcId}
+        setConfirmDeleteSvcId={args.setConfirmDeleteSvcId}
+        onSave={args.onSaveService}
+        onDelete={args.onDeleteService}
+      />
+    )
+  }
+  if (args.tab === 'employees') {
+    return (
+      <EmployeesTab
+        employees={args.employees}
+        empForm={args.empForm}
+        setEmpForm={args.setEmpForm}
+        editingEmp={args.editingEmp}
+        setEditingEmp={args.setEditingEmp}
+        confirmDeleteEmpId={args.confirmDeleteEmpId}
+        setConfirmDeleteEmpId={args.setConfirmDeleteEmpId}
+        onSave={args.onSaveEmployee}
+        onDelete={args.onDeleteEmployee}
+      />
+    )
+  }
+  if (args.tab === 'notifications') {
+    return (
+      <NotificationsTab
+        biz={args.biz}
+        initial={args.initial}
+        setBiz={args.setBiz}
+        webhookStatus={args.webhookStatus}
+        webhookMsg={args.webhookMsg}
+        viberWebhookStatus={args.viberWebhookStatus}
+        viberWebhookMsg={args.viberWebhookMsg}
+        waStatus={args.waStatus}
+        waMsg={args.waMsg}
+        onConnectTelegram={args.onConnectTelegram}
+        onConnectViber={args.onConnectViber}
+        onConnectWhatsApp={args.onConnectWhatsApp}
+        onSave={args.onSaveBusiness}
+        saving={args.saving}
+        saved={args.saved}
+      />
+    )
+  }
+  if (args.tab === 'billing') return <BillingTab />
+  if (args.tab === 'modules') {
+    return (
+      <ModulesTab
+        enabledModules={args.enabledModules}
+        setEnabledModules={args.setEnabledModules}
+        confirmModule={args.confirmModule}
+        setConfirmModule={args.setConfirmModule}
+        modulesSaving={args.modulesSaving}
+        modulesSaved={args.modulesSaved}
+        onSave={args.onSaveModules}
+      />
+    )
+  }
+  if (args.tab === 'account') {
+    return (
+      <AccountTab
+        userEmail={args.userEmail}
+        newEmail={args.newEmail}
+        setNewEmail={args.setNewEmail}
+        emailStatus={args.emailStatus}
+        setEmailStatus={args.setEmailStatus}
+        emailMsg={args.emailMsg}
+        setEmailMsg={args.setEmailMsg}
+        onChangeEmail={args.onChangeEmail}
+        pwForm={args.pwForm}
+        setPwForm={args.setPwForm}
+        showPw={args.showPw}
+        setShowPw={args.setShowPw}
+        pwStatus={args.pwStatus}
+        setPwStatus={args.setPwStatus}
+        pwMsg={args.pwMsg}
+        setPwMsg={args.setPwMsg}
+        onChangePassword={args.onChangePassword}
+      />
+    )
+  }
+  if (args.tab === 'advanced') {
+    return (
+      <AdvancedTab
+        biz={args.biz}
+        setBiz={args.setBiz}
+        isOwner={args.isOwner}
+        advancedSaving={args.advancedSaving}
+        advancedSaved={args.advancedSaved}
+        advancedError={args.advancedError}
+        onSave={args.onSaveAdvanced}
+      />
+    )
+  }
+  return null
+}
+
+interface Props {
+  business: Business
+  services: Service[]
+  employees: Employee[]
+  workingHours: DayHours[]
+  userEmail: string
+  userId?: string
+}
 
 export function SettingsTabs({
   business: initial,
@@ -158,19 +723,7 @@ export function SettingsTabs({
   const router = useRouter()
   const t = useTranslations('settings')
   const searchParams = useSearchParams()
-  const initialTab = (
-    [
-      'general',
-      'services',
-      'employees',
-      'notifications',
-      'billing',
-      'modules',
-      'advanced',
-    ].includes(searchParams.get('tab') ?? '')
-      ? searchParams.get('tab')
-      : 'general'
-  ) as Tab
+  const initialTab = getInitialTab(searchParams.get('tab'))
   const [tab, setTab] = useState<Tab>(initialTab)
   const [webhookStatus, setWebhookStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle')
   const [webhookMsg, setWebhookMsg] = useState('')
@@ -193,7 +746,6 @@ export function SettingsTabs({
   const [empForm, setEmpForm] = useState<Partial<Employee>>({})
   const [editingEmp, setEditingEmp] = useState<string | null>(null)
 
-  // Modules tab state
   const DEFAULT_MODULES = ['bookings', 'crm', 'pos', 'inventory', 'notifications']
   const [enabledModules, setEnabledModules] = useState<string[]>(
     initial.enabled_modules ?? DEFAULT_MODULES,
@@ -202,92 +754,14 @@ export function SettingsTabs({
   const [confirmModule, setConfirmModule] = useState<ModuleKey | null>(null)
   const [modulesSaved, setModulesSaved] = useState(false)
 
-  // Logo state
   const [logoUrl, setLogoUrl] = useState<string | null>(initial.logo_url ?? null)
   const [logoUploading, setLogoUploading] = useState(false)
   const [logoError, setLogoError] = useState('')
 
-  // Advanced / owner-only settings
   const [advancedSaving, setAdvancedSaving] = useState(false)
   const [advancedSaved, setAdvancedSaved] = useState(false)
   const [advancedError, setAdvancedError] = useState('')
   const isOwner = !initial.owner_id || !userId ? true : initial.owner_id === userId
-  const minAdvanceValue = biz.min_advance_minutes ?? 30
-  const bookingLeadEnabled = biz.booking_lead_time_enabled ?? true
-  const requireCashRegister = biz.require_cash_register_for_cash ?? true
-  const allowGuestBookings = biz.allow_guest_bookings ?? true
-
-  async function saveAdvanced() {
-    const v = biz.min_advance_minutes ?? 30
-    if (!Number.isInteger(v) || v < 0 || v > 1440) {
-      setAdvancedError(t('advanced.minAdvanceError'))
-      setTimeout(() => setAdvancedError(''), 3000)
-      return
-    }
-    setAdvancedSaving(true)
-    setAdvancedError('')
-    const { error } = await supabase
-      .from('businesses')
-      .update({
-        min_advance_minutes: v,
-        booking_lead_time_enabled: biz.booking_lead_time_enabled ?? true,
-        require_cash_register_for_cash: biz.require_cash_register_for_cash ?? true,
-        allow_guest_bookings: biz.allow_guest_bookings ?? true,
-      })
-      .eq('id', biz.id)
-    setAdvancedSaving(false)
-    if (error) {
-      setAdvancedError(error.message)
-      return
-    }
-    setAdvancedSaved(true)
-    setTimeout(() => setAdvancedSaved(false), 2000)
-    router.refresh()
-  }
-
-  async function uploadLogo(file: File): Promise<void> {
-    setLogoError('')
-    setLogoUploading(true)
-    try {
-      const form = new FormData()
-      form.append('logo', file)
-      const res = await fetch('/api/business/logo', { method: 'POST', body: form })
-      let json: unknown = {}
-      try {
-        json = await res.json()
-      } catch {
-        /* non-JSON response */
-      }
-      if (!res.ok) {
-        const err = getStringField(json, 'error')
-        setLogoError(err ?? `Upload failed (HTTP ${res.status})`)
-        return
-      }
-      const logoUrlVal = getStringField(json, 'logo_url')
-      setLogoUrl(logoUrlVal ?? null)
-    } catch (e) {
-      setLogoError(
-        t('general.logoErrorNetwork', {
-          message: e instanceof Error ? e.message : 'please try again',
-        }),
-      )
-    } finally {
-      setLogoUploading(false)
-    }
-  }
-
-  async function removeLogo() {
-    setLogoError('')
-    setLogoUploading(true)
-    try {
-      await fetch('/api/business/logo', { method: 'DELETE' })
-      setLogoUrl(null)
-    } catch {
-      setLogoError(t('general.logoErrorRemove'))
-    } finally {
-      setLogoUploading(false)
-    }
-  }
 
   const [hours, setHours] = useState<DayHours[]>(() => {
     return DEFAULT_HOURS.map((def) => {
@@ -306,25 +780,35 @@ export function SettingsTabs({
   const [savedHours, setSavedHours] = useState(false)
   const [hoursValidationError, setHoursValidationError] = useState<string | null>(null)
 
-  // Break must sit inside the day's open/close window, start < end.
-  function findBreakValidationError(dayHours: DayHours[]): string | null {
-    for (const day of dayHours) {
-      if (!day.is_open || !day.break_start || !day.break_end) continue
-      const rawNames: unknown = t.raw('workingHours.dayNames')
-      const dayNames: string[] = Array.isArray(rawNames) ? (rawNames as string[]) : []
-      const dayName: string = dayNames[day.day_of_week] ?? String(day.day_of_week)
-      if (day.break_start >= day.break_end) {
-        return t('workingHours.breakInvalidRange', { day: dayName })
-      }
-      if (day.break_start < day.open_time || day.break_end > day.close_time) {
-        return t('workingHours.breakOutsideHours', { day: dayName })
-      }
-    }
-    return null
+  const [pwForm, setPwForm] = useState({ newPassword: '', confirm: '' })
+  const [showPw, setShowPw] = useState(false)
+  const [pwStatus, setPwStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle')
+  const [pwMsg, setPwMsg] = useState('')
+
+  const [newEmail, setNewEmail] = useState('')
+  const [emailStatus, setEmailStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle')
+  const [emailMsg, setEmailMsg] = useState('')
+
+  function updateDay(dow: number, patch: Partial<DayHours>) {
+    setHours((prev) => prev.map((h) => (h.day_of_week === dow ? { ...h, ...patch } : h)))
   }
 
-  async function saveWorkingHours() {
-    const validationError = findBreakValidationError(hours)
+  const onSaveAdvanced = () =>
+    void handleSaveAdvanced({
+      supabase,
+      biz,
+      t,
+      setAdvancedError,
+      setAdvancedSaving,
+      setAdvancedSaved,
+      router,
+    })
+  const onUploadLogo = (file: File) =>
+    void handleUploadLogo({ file, setLogoError, setLogoUploading, setLogoUrl, t })
+  const onRemoveLogo = () =>
+    void handleRemoveLogo({ setLogoError, setLogoUploading, setLogoUrl, t })
+  const onSaveWorkingHours = () => {
+    const validationError = findBreakValidationError(hours, t)
     if (validationError) {
       setHoursValidationError(validationError)
       setTimeout(() => setHoursValidationError(null), 4000)
@@ -340,380 +824,78 @@ export function SettingsTabs({
       break_start: h.break_start ?? null,
       break_end: h.break_end ?? null,
     }))
-    await supabase.from('business_hours').upsert(rows, { onConflict: 'business_id,day_of_week' })
-    setSavingHours(false)
-    setSavedHours(true)
-    setTimeout(() => setSavedHours(false), 2000)
-  }
-
-  function updateDay(dow: number, patch: Partial<DayHours>) {
-    setHours((prev) => prev.map((h) => (h.day_of_week === dow ? { ...h, ...patch } : h)))
-  }
-
-  const [pwForm, setPwForm] = useState({ newPassword: '', confirm: '' })
-  const [showPw, setShowPw] = useState(false)
-  const [pwStatus, setPwStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle')
-  const [pwMsg, setPwMsg] = useState('')
-
-  async function changePassword() {
-    if (pwForm.newPassword.length < 8) {
-      setPwStatus('error')
-      setPwMsg(t('account.pwMinLength'))
-      return
-    }
-    if (pwForm.newPassword !== pwForm.confirm) {
-      setPwStatus('error')
-      setPwMsg(t('account.pwNoMatch'))
-      return
-    }
-    setPwStatus('loading')
-    setPwMsg('')
-    const { error } = await supabase.auth.updateUser({ password: pwForm.newPassword })
-    if (error) {
-      setPwStatus('error')
-      setPwMsg(error.message)
-    } else {
-      setPwStatus('ok')
-      setPwMsg(t('account.pwSuccess'))
-      setPwForm({ newPassword: '', confirm: '' })
-    }
-  }
-
-  const [newEmail, setNewEmail] = useState('')
-  const [emailStatus, setEmailStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle')
-  const [emailMsg, setEmailMsg] = useState('')
-
-  async function changeEmail() {
-    if (!newEmail.includes('@')) {
-      setEmailStatus('error')
-      setEmailMsg(t('account.emailInvalid'))
-      return
-    }
-    setEmailStatus('loading')
-    setEmailMsg('')
-    const { error } = await supabase.auth.updateUser({ email: newEmail })
-    if (error) {
-      setEmailStatus('error')
-      setEmailMsg(error.message)
-    } else {
-      setEmailStatus('ok')
-      setEmailMsg(t('account.emailConfirmSent', { email: newEmail }))
-      setNewEmail('')
-    }
-  }
-
-  async function saveBusiness() {
-    if (slugError) return
-    setSaving(true)
-    const cleanSlug =
-      biz.slug
-        .toLowerCase()
-        .replace(/[^a-z0-9-]/g, '-')
-        .replace(/-+/g, '-')
-        .replace(/^-|-$/g, '') || initial.slug
-    const bizName = clean(biz.name || '', 100)
-    const bizAddress = biz.address ? clean(biz.address, 200) || null : null
-    setBiz((b) => ({ ...b, slug: cleanSlug }))
-    await supabase
-      .from('businesses')
-      .update({
-        name: bizName,
-        slug: cleanSlug,
-        type: biz.type,
-        phone: biz.phone,
-        email: biz.email,
-        address: bizAddress,
-        timezone: biz.timezone,
-        currency: biz.currency,
-        telegram_bot_token: biz.telegram_bot_token,
-        viber_bot_token: biz.viber_bot_token,
-        owner_whatsapp: biz.owner_whatsapp,
-        email_provider: biz.email_provider,
-        smtp_host: biz.smtp_host,
-        smtp_port: biz.smtp_port,
-        smtp_user: biz.smtp_user,
-        smtp_pass: biz.smtp_pass,
-        smtp_from: biz.smtp_from,
-        resend_api_key: biz.resend_api_key,
-        meta_whatsapp_phone_number_id: biz.meta_whatsapp_phone_number_id,
-        meta_whatsapp_access_token: biz.meta_whatsapp_access_token,
-        wa_template_confirmation: biz.wa_template_confirmation,
-        wa_template_reminder: biz.wa_template_reminder,
-        wa_template_thankyou: biz.wa_template_thankyou,
-        wa_template_reactivation: biz.wa_template_reactivation,
-        wa_template_birthday: biz.wa_template_birthday,
-        wa_template_language: biz.wa_template_language ?? 'en',
-        brand_color: biz.brand_color || '#2D2926',
-        notification_language: biz.notification_language ?? 'en',
+    void supabase
+      .from('business_hours')
+      .upsert(rows, { onConflict: 'business_id,day_of_week' })
+      .then(() => {
+        setSavingHours(false)
+        setSavedHours(true)
+        setTimeout(() => setSavedHours(false), 2000)
       })
-      .eq('id', biz.id)
-    setSaving(false)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+  }
+  const onChangePassword = () =>
+    void handleChangePassword({ supabase, pwForm, t, setPwStatus, setPwMsg, setPwForm })
+  const onChangeEmail = () =>
+    void handleChangeEmail({ supabase, newEmail, t, setEmailStatus, setEmailMsg, setNewEmail })
+  const onSaveBusiness = () =>
+    void handleSaveBusiness({
+      supabase,
+      biz,
+      initialSlug: initial.slug,
+      slugError,
+      setBiz,
+      setSaving,
+      setSaved,
+      router,
+    })
+  const onSaveService = () =>
+    void handleSaveService({
+      supabase,
+      svcForm,
+      editingSvc,
+      bizId: biz.id,
+      setServices,
+      setSvcForm,
+      setEditingSvc,
+      router,
+    })
+  const onDeleteService = (id: string) =>
+    void handleDeleteService({ supabase, id, setServices, setConfirmDeleteSvcId, router })
+  const onSaveEmployee = () =>
+    void handleSaveEmployee({
+      supabase,
+      empForm,
+      editingEmp,
+      bizId: biz.id,
+      setEmployees,
+      setEmpForm,
+      setEditingEmp,
+      router,
+    })
+  const onDeleteEmployee = (id: string) =>
+    void handleDeleteEmployee({ supabase, id, setEmployees, setConfirmDeleteEmpId, router })
+  const onConnectWhatsApp = () =>
+    void handleConnectWhatsApp({ supabase, biz, setWaStatus, setWaMsg, router })
+  const onConnectViber = () =>
+    void handleConnectViber({ supabase, biz, setViberWebhookStatus, setViberWebhookMsg })
+  const onConnectTelegram = () =>
+    void handleConnectTelegram({ supabase, biz, setWebhookStatus, setWebhookMsg })
+  const onSaveModules = async () => {
+    setModulesSaving(true)
+    setModulesSaved(false)
+    await fetch('/api/business/modules', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled_modules: enabledModules }),
+    })
+    setModulesSaving(false)
+    setModulesSaved(true)
     router.refresh()
-  }
-
-  async function saveService() {
-    if (!svcForm.name || svcForm.price == null) return
-    const svcName = clean(svcForm.name, 100)
-    if (!svcName) return
-    const svcDescription = svcForm.description ? clean(svcForm.description, 500) || null : null
-    const svcCategory = svcForm.category ? clean(svcForm.category, 100) || null : null
-    const sanitizedForm = {
-      ...svcForm,
-      name: svcName,
-      description: svcDescription,
-      category: svcCategory,
-    }
-    if (editingSvc) {
-      await supabase.from('services').update(sanitizedForm).eq('id', editingSvc)
-      setServices((prev) =>
-        prev.map((s) => (s.id === editingSvc ? ({ ...s, ...sanitizedForm } as Service) : s)),
-      )
-    } else {
-      const { data } = await supabase
-        .from('services')
-        .insert({
-          business_id: biz.id,
-          name: svcName,
-          description: svcDescription,
-          price: svcForm.price!,
-          duration_min: svcForm.duration_min ?? 60,
-          category: svcCategory,
-          capacity: svcForm.capacity ?? 1,
-        })
-        .select()
-        .single()
-      if (data) setServices((prev) => [...prev, data as Service])
-    }
-    setSvcForm({})
-    setEditingSvc(null)
-    router.refresh()
-  }
-
-  async function deleteService(id: string) {
-    await supabase.from('services').delete().eq('id', id)
-    setServices((prev) => prev.filter((s) => s.id !== id))
-    setConfirmDeleteSvcId(null)
-    router.refresh()
-  }
-
-  async function saveEmployee() {
-    if (!empForm.name) return
-    const empName = clean(empForm.name, 100)
-    if (!empName) return
-    const sanitizedEmp = { ...empForm, name: empName }
-    if (editingEmp) {
-      await supabase.from('employees').update(sanitizedEmp).eq('id', editingEmp)
-      setEmployees((prev) =>
-        prev.map((e) => (e.id === editingEmp ? ({ ...e, ...sanitizedEmp } as Employee) : e)),
-      )
-    } else {
-      const { data } = await supabase
-        .from('employees')
-        .insert({
-          business_id: biz.id,
-          name: empName,
-          role: empForm.role ?? 'employee',
-          email: empForm.email ?? null,
-          phone: empForm.phone ?? null,
-        })
-        .select()
-        .single()
-      if (data) setEmployees((prev) => [...prev, data as Employee])
-    }
-    setEmpForm({})
-    setEditingEmp(null)
-    router.refresh()
-  }
-
-  async function connectWhatsApp() {
-    setWaStatus('loading')
-    setWaMsg('')
-    const { error } = await supabase
-      .from('businesses')
-      .update({
-        meta_whatsapp_phone_number_id: biz.meta_whatsapp_phone_number_id,
-        meta_whatsapp_access_token: biz.meta_whatsapp_access_token,
-      })
-      .eq('id', biz.id)
-    if (error) {
-      setWaStatus('error')
-      setWaMsg(error.message)
-    } else {
-      setWaStatus('ok')
-      setWaMsg('WhatsApp credentials saved successfully.')
-      router.refresh()
-    }
-  }
-
-  async function connectViber(): Promise<void> {
-    setViberWebhookStatus('loading')
-    setViberWebhookMsg('')
-    await supabase
-      .from('businesses')
-      .update({ viber_bot_token: biz.viber_bot_token })
-      .eq('id', biz.id)
-    const res = await fetch('/api/viber/set-webhook', { method: 'POST' })
-    const json: unknown = await res.json()
-    const ok = getBooleanField(json, 'ok') ?? false
-    if (ok) {
-      const botName = getStringField(json, 'botName') ?? 'Viber Bot'
-      setViberWebhookStatus('ok')
-      setViberWebhookMsg(
-        `Connected! Bot: ${botName}. Now open your Viber bot and start a conversation.`,
-      )
-    } else {
-      setViberWebhookStatus('error')
-      const err = getStringField(json, 'error')
-      setViberWebhookMsg(err ?? 'Unknown error')
-    }
-  }
-
-  async function connectTelegram(): Promise<void> {
-    setWebhookStatus('loading')
-    setWebhookMsg('')
-    await supabase
-      .from('businesses')
-      .update({ telegram_bot_token: biz.telegram_bot_token })
-      .eq('id', biz.id)
-    const res = await fetch('/api/telegram/set-webhook', { method: 'POST' })
-    const json: unknown = await res.json()
-    const ok = getBooleanField(json, 'ok') ?? false
-    if (ok) {
-      const botUsername = getStringField(json, 'botUsername') ?? 'bot'
-      setWebhookStatus('ok')
-      setWebhookMsg(
-        `Connected! Bot: @${botUsername}. Now open your bot in Telegram and send /start.`,
-      )
-    } else {
-      setWebhookStatus('error')
-      const err = getStringField(json, 'error')
-      setWebhookMsg(err ?? 'Unknown error')
-    }
-  }
-
-  async function deleteEmployee(id: string): Promise<void> {
-    await supabase.from('employees').delete().eq('id', id)
-    setEmployees((prev) => prev.filter((e) => e.id !== id))
-    setConfirmDeleteEmpId(null)
-    router.refresh()
+    setTimeout(() => setModulesSaved(false), 2500)
   }
 
   const bookingsOn = enabledModules.includes('bookings')
-  const tabs: { key: Tab; label: string; icon?: React.ReactNode }[] = [
-    { key: 'general', label: t('tabs.general') },
-    ...(bookingsOn ? [{ key: 'services' as Tab, label: t('tabs.services') }] : []),
-    { key: 'employees', label: t('tabs.employees') },
-    { key: 'notifications', label: t('tabs.notifications') },
-    { key: 'billing', label: t('tabs.billing') },
-    { key: 'modules', label: t('tabs.modules') },
-    { key: 'account', label: t('tabs.account') },
-    ...(isOwner
-      ? [
-          {
-            key: 'advanced' as Tab,
-            label: t('tabs.advanced'),
-            icon: <Settings className="w-3.5 h-3.5" />,
-          },
-        ]
-      : []),
-  ]
-
-  const generalFields: { key: keyof Business; label: string; type: string }[] = [
-    { key: 'name', label: t('general.fields.name'), type: 'text' },
-    { key: 'phone', label: t('general.fields.phone'), type: 'tel' },
-    { key: 'email', label: t('general.fields.email'), type: 'email' },
-    { key: 'address', label: t('general.fields.address'), type: 'text' },
-  ]
-
-  const CURRENCIES: { value: string; label: string }[] = [
-    { value: 'USD', label: '🇺🇸 USD — US Dollar' },
-    { value: 'EUR', label: '🇪🇺 EUR — Euro' },
-    { value: 'GBP', label: '🇬🇧 GBP — British Pound' },
-    { value: 'AED', label: '🇦🇪 AED — UAE Dirham' },
-    { value: 'SAR', label: '🇸🇦 SAR — Saudi Riyal' },
-    { value: 'TRY', label: '🇹🇷 TRY — Turkish Lira' },
-    { value: 'UAH', label: '🇺🇦 UAH — Ukrainian Hryvnia' },
-    { value: 'RUB', label: '🇷🇺 RUB — Russian Ruble' },
-    { value: 'KZT', label: '🇰🇿 KZT — Kazakhstani Tenge' },
-    { value: 'GEL', label: '🇬🇪 GEL — Georgian Lari' },
-    { value: 'BRL', label: '🇧🇷 BRL — Brazilian Real' },
-    { value: 'MXN', label: '🇲🇽 MXN — Mexican Peso' },
-    { value: 'INR', label: '🇮🇳 INR — Indian Rupee' },
-    { value: 'THB', label: '🇹🇭 THB — Thai Baht' },
-    { value: 'JPY', label: '🇯🇵 JPY — Japanese Yen' },
-    { value: 'CNY', label: '🇨🇳 CNY — Chinese Yuan' },
-    { value: 'PLN', label: '🇵🇱 PLN — Polish Złoty' },
-    { value: 'RON', label: '🇷🇴 RON — Romanian Leu' },
-    { value: 'ARS', label: '🇦🇷 ARS — Argentine Peso' },
-    { value: 'other', label: '✏️ Other (enter manually)' },
-  ]
-
-  const isKnownCurrency = CURRENCIES.some((c) => c.value !== 'other' && c.value === biz.currency)
-  const currencySelectValue = isKnownCurrency ? biz.currency : biz.currency ? 'other' : 'USD'
-
-  const TIMEZONES: { value: string; label: string }[] = [
-    { value: 'UTC', label: '(UTC+0) UTC' },
-    { value: 'Europe/London', label: '(UTC+0) London' },
-    { value: 'Europe/Paris', label: '(UTC+1) Paris' },
-    { value: 'Europe/Berlin', label: '(UTC+1) Berlin' },
-    { value: 'Europe/Rome', label: '(UTC+1) Rome' },
-    { value: 'Europe/Madrid', label: '(UTC+1) Madrid' },
-    { value: 'Europe/Amsterdam', label: '(UTC+1) Amsterdam' },
-    { value: 'Europe/Brussels', label: '(UTC+1) Brussels' },
-    { value: 'Europe/Vienna', label: '(UTC+1) Vienna' },
-    { value: 'Europe/Warsaw', label: '(UTC+1) Warsaw' },
-    { value: 'Europe/Prague', label: '(UTC+1) Prague' },
-    { value: 'Europe/Budapest', label: '(UTC+1) Budapest' },
-    { value: 'Europe/Bucharest', label: '(UTC+2) Bucharest' },
-    { value: 'Europe/Sofia', label: '(UTC+2) Sofia' },
-    { value: 'Europe/Athens', label: '(UTC+2) Athens' },
-    { value: 'Europe/Kiev', label: '(UTC+2) Kyiv' },
-    { value: 'Europe/Minsk', label: '(UTC+3) Minsk' },
-    { value: 'Europe/Moscow', label: '(UTC+3) Moscow' },
-    { value: 'Europe/Istanbul', label: '(UTC+3) Istanbul' },
-    { value: 'Asia/Dubai', label: '(UTC+4) Dubai' },
-    { value: 'Asia/Karachi', label: '(UTC+5) Karachi' },
-    { value: 'Asia/Kolkata', label: '(UTC+5:30) Kolkata' },
-    { value: 'Asia/Dhaka', label: '(UTC+6) Dhaka' },
-    { value: 'Asia/Bangkok', label: '(UTC+7) Bangkok' },
-    { value: 'Asia/Singapore', label: '(UTC+8) Singapore' },
-    { value: 'Asia/Shanghai', label: '(UTC+8) Shanghai' },
-    { value: 'Asia/Tokyo', label: '(UTC+9) Tokyo' },
-    { value: 'Asia/Seoul', label: '(UTC+9) Seoul' },
-    { value: 'Australia/Sydney', label: '(UTC+10) Sydney' },
-    { value: 'Australia/Melbourne', label: '(UTC+10) Melbourne' },
-    { value: 'Pacific/Auckland', label: '(UTC+12) Auckland' },
-    { value: 'America/New_York', label: '(UTC-5) New York' },
-    { value: 'America/Toronto', label: '(UTC-5) Toronto' },
-    { value: 'America/Chicago', label: '(UTC-6) Chicago' },
-    { value: 'America/Mexico_City', label: '(UTC-6) Mexico City' },
-    { value: 'America/Denver', label: '(UTC-7) Denver' },
-    { value: 'America/Los_Angeles', label: '(UTC-8) Los Angeles' },
-    { value: 'America/Vancouver', label: '(UTC-8) Vancouver' },
-    { value: 'America/Anchorage', label: '(UTC-9) Anchorage' },
-    { value: 'Pacific/Honolulu', label: '(UTC-10) Honolulu' },
-    { value: 'America/Bogota', label: '(UTC-5) Bogota' },
-    { value: 'America/Lima', label: '(UTC-5) Lima' },
-    { value: 'America/Sao_Paulo', label: '(UTC-3) São Paulo' },
-    { value: 'America/Buenos_Aires', label: '(UTC-3) Buenos Aires' },
-  ]
-
-  const triggers = [
-    t('notifications.triggers.confirmation'),
-    t('notifications.triggers.reminder24h'),
-    t('notifications.triggers.reminder1h'),
-    t('notifications.triggers.thankYou'),
-    t('notifications.triggers.reactivation'),
-    t('notifications.triggers.birthday'),
-    t('notifications.triggers.lowStock'),
-  ]
-
-  function safeRawHtml(key: Parameters<typeof t.raw>[0]): string {
-    const val: unknown = t.raw(key)
-    return typeof val === 'string' ? val : ''
-  }
+  const tabs = buildTabs(t, bookingsOn, isOwner)
 
   return (
     <div className="p-3 sm:p-6 max-w-3xl">
@@ -723,1627 +905,86 @@ export function SettingsTabs({
           {t('advanced.ownerOnly')}
         </div>
       )}
-      <div className="flex flex-nowrap overflow-x-auto sm:flex-wrap sm:overflow-x-visible gap-1 bg-gray-100 p-1 rounded-lg mb-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-        {tabs.map((tb) => (
-          <button
-            type="button"
-            key={tb.key}
-            onClick={() => setTab(tb.key)}
-            className={`shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${tab === tb.key ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
-          >
-            {tb.icon ? tb.icon : null}
-            {tb.label}
-          </button>
-        ))}
-      </div>
-
-      {/* General */}
-      {tab === 'general' && (
-        <div className="space-y-6">
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h2 className="font-semibold text-gray-900 mb-4">{t('general.heading')}</h2>
-            <div className="grid sm:grid-cols-2 gap-4">
-              {generalFields.map(({ key, label, type }) => (
-                <div key={key}>
-                  <label className="text-xs font-medium text-gray-500">{label}</label>
-                  <input
-                    type={type}
-                    value={(biz[key] as string) ?? ''}
-                    onChange={(e) => setBiz((b) => ({ ...b, [key]: e.target.value }))}
-                    className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              ))}
-              <div>
-                <label className="text-xs font-medium text-gray-500">
-                  {t('general.fields.timezone')}
-                </label>
-                <select
-                  value={biz.timezone ?? 'UTC'}
-                  onChange={(e) => setBiz((b) => ({ ...b, timezone: e.target.value }))}
-                  className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  {TIMEZONES.map((tz) => (
-                    <option key={tz.value} value={tz.value}>
-                      {tz.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="text-xs font-medium text-gray-500">
-                  {t('general.fields.currency')}
-                </label>
-                <select
-                  value={currencySelectValue}
-                  onChange={(e) => {
-                    if (e.target.value !== 'other')
-                      setBiz((b) => ({ ...b, currency: e.target.value }))
-                    else setBiz((b) => ({ ...b, currency: '' }))
-                  }}
-                  className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  {CURRENCIES.map((c) => (
-                    <option key={c.value} value={c.value}>
-                      {c.label}
-                    </option>
-                  ))}
-                </select>
-                {currencySelectValue === 'other' && (
-                  <input
-                    type="text"
-                    value={biz.currency ?? ''}
-                    onChange={(e) =>
-                      setBiz((b) => ({ ...b, currency: e.target.value.toUpperCase() }))
-                    }
-                    placeholder="e.g. SGD"
-                    maxLength={10}
-                    className="w-full mt-2 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                )}
-              </div>
-            </div>
-            <div className="pt-2">
-              <label className="text-xs font-medium text-gray-500">{t('general.typeLabel')}</label>
-              <select
-                value={biz.type ?? ''}
-                onChange={(e) => setBiz((b) => ({ ...b, type: e.target.value }))}
-                className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">{t('general.typeDefault')}</option>
-                {(
-                  [
-                    'salon',
-                    'barbershop',
-                    'auto_repair',
-                    'cafe',
-                    'dental',
-                    'fitness',
-                    'massage',
-                    'other',
-                  ] as const
-                ).map((tp) => (
-                  <option key={tp} value={tp}>
-                    {t(`general.types.${tp}`)}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="pt-2">
-              <label className="text-xs font-medium text-gray-500">
-                {t('general.fields.slug')}
-              </label>
-              <input
-                type="text"
-                value={biz.slug ?? ''}
-                onChange={(e) => {
-                  const converted = e.target.value.toLowerCase().replace(/ /g, '-')
-                  setBiz((b) => ({ ...b, slug: converted }))
-                  setSlugError(/[^a-z0-9-]/.test(converted) ? t('general.slugError') : '')
-                }}
-                className={`w-full mt-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ${slugError ? 'border-red-400 focus:ring-red-400' : 'border-gray-200 focus:ring-blue-500'}`}
-              />
-              {slugError ? (
-                <p className="text-xs text-red-500 mt-1">{slugError}</p>
-              ) : (
-                <p className="text-xs text-gray-400 mt-1">{t('general.slugHint')}</p>
-              )}
-            </div>
-            <div className="pt-2">
-              <label className="text-xs font-medium text-gray-500">
-                {t('general.brandColorLabel')}
-              </label>
-              <div className="flex items-center gap-2 mt-1">
-                <input
-                  type="color"
-                  value={biz.brand_color || '#2D2926'}
-                  onChange={(e) => setBiz((b) => ({ ...b, brand_color: e.target.value }))}
-                  className="w-10 h-9 p-0.5 border border-gray-200 rounded-lg cursor-pointer"
-                />
-                <input
-                  type="text"
-                  value={biz.brand_color || '#2D2926'}
-                  onChange={(e) => setBiz((b) => ({ ...b, brand_color: e.target.value }))}
-                  maxLength={7}
-                  className="w-32 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
-                />
-              </div>
-              <p className="text-xs text-gray-400 mt-1">{t('general.brandColorHint')}</p>
-            </div>
-            {/* Business Logo */}
-            <div className="pt-2">
-              <label className="text-xs font-medium text-gray-500">{t('general.logoLabel')}</label>
-              <p className="text-xs text-gray-400 mt-0.5 mb-2">{t('general.logoHint')}</p>
-              {logoUrl ? (
-                <div className="flex items-center gap-3">
-                  <div className="w-16 h-16 rounded-lg border border-gray-200 bg-white flex items-center justify-center overflow-hidden">
-                    <Image
-                      src={logoUrl}
-                      alt="Business logo"
-                      width={52}
-                      height={52}
-                      style={{ objectFit: 'contain' }}
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={removeLogo}
-                    disabled={logoUploading}
-                    className="text-sm text-red-500 hover:text-red-700 font-medium disabled:opacity-50"
-                  >
-                    {logoUploading ? t('general.logoRemoving') : t('general.logoRemove')}
-                  </button>
-                </div>
-              ) : (
-                <label
-                  className={`flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${logoUploading ? 'opacity-50 pointer-events-none' : 'border-gray-200 hover:border-blue-400 bg-gray-50 hover:bg-blue-50'}`}
-                >
-                  <span className="text-sm text-gray-500">
-                    {logoUploading ? t('general.logoUploading') : t('general.logoUpload')}
-                  </span>
-                  <span className="text-xs text-gray-400 mt-1">{t('general.logoFormats')}</span>
-                  <input
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp,image/svg+xml"
-                    className="hidden"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0]
-                      if (f) void uploadLogo(f)
-                    }}
-                  />
-                </label>
-              )}
-              {logoError && <p className="text-xs text-red-500 mt-1">{logoError}</p>}
-            </div>
-
-            <div className="pt-2">
-              <label className="text-xs font-medium text-gray-500">
-                {t('general.notificationLanguageLabel')}
-              </label>
-              <div className="flex gap-2 mt-1">
-                {(['en', 'es', 'pt'] as const).map((lang) => (
-                  <button
-                    key={lang}
-                    type="button"
-                    onClick={() => setBiz((b) => ({ ...b, notification_language: lang }))}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
-                      (biz.notification_language ?? 'en') === lang
-                        ? 'bg-green-600 text-white border-green-600'
-                        : 'bg-white text-gray-600 border-gray-200 hover:border-green-400'
-                    }`}
-                  >
-                    {lang === 'en' ? 'English' : lang === 'es' ? 'Español' : 'Português'}
-                  </button>
-                ))}
-              </div>
-              <p className="text-xs text-gray-400 mt-1">{t('general.notificationLanguageHint')}</p>
-            </div>
-            <div className="pt-2">
-              <div className="text-xs font-medium text-gray-500 mb-1">
-                {t('general.bookingUrlLabel')}
-              </div>
-              <div className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-blue-600 select-all">
-                {bookingUrl}
-              </div>
-            </div>
-            <div className="flex items-center gap-3 pt-2">
-              <Button onClick={saveBusiness} disabled={saving || !!slugError}>
-                {saving ? (
-                  t('general.saving')
-                ) : saved ? (
-                  <>
-                    <Check className="w-4 h-4 mr-1" />
-                    {t('general.saved')}
-                  </>
-                ) : (
-                  t('general.saveButton')
-                )}
-              </Button>
-              <Badge variant="outline">
-                {t('general.planLabel')} {biz.plan}
-              </Badge>
-            </div>
-          </div>
-
-          {/* Working Hours card */}
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h2 className="font-semibold text-gray-900 mb-5">{t('workingHours.heading')}</h2>
-            <div className="space-y-2">
-              {[1, 2, 3, 4, 5, 6, 0].map((dow) => {
-                const day = hours.find((h) => h.day_of_week === dow)!
-                const rawNames2: unknown = t.raw('workingHours.dayNames')
-                const dayNames2: string[] = Array.isArray(rawNames2) ? (rawNames2 as string[]) : []
-                const dayName: string = dayNames2[dow] ?? String(dow)
-                return (
-                  <div key={dow}>
-                    <div className="flex items-center gap-3">
-                      <label className="flex items-center cursor-pointer relative">
-                        <input
-                          type="checkbox"
-                          checked={day.is_open}
-                          onChange={(e) => updateDay(dow, { is_open: e.target.checked })}
-                          className="sr-only"
-                        />
-                        <div
-                          className={`w-9 h-5 rounded-full transition-colors relative ${day.is_open ? 'bg-blue-600' : 'bg-gray-200'}`}
-                        >
-                          <div
-                            className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${day.is_open ? 'translate-x-4' : 'translate-x-0.5'}`}
-                          />
-                        </div>
-                      </label>
-                      <span
-                        className={`w-10 text-sm font-medium ${day.is_open ? 'text-gray-900' : 'text-gray-400'}`}
-                      >
-                        {dayName}
-                      </span>
-                      {day.is_open ? (
-                        <div className="flex items-center gap-2 flex-1">
-                          <span className="text-xs text-gray-400">{t('workingHours.from')}</span>
-                          <select
-                            value={day.open_time}
-                            onChange={(e) => updateDay(dow, { open_time: e.target.value })}
-                            className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          >
-                            {TIME_OPTIONS.map((opt) => (
-                              <option key={opt} value={opt}>
-                                {opt}
-                              </option>
-                            ))}
-                          </select>
-                          <span className="text-xs text-gray-400">{t('workingHours.to')}</span>
-                          <select
-                            value={day.close_time}
-                            onChange={(e) => updateDay(dow, { close_time: e.target.value })}
-                            className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          >
-                            {TIME_OPTIONS.map((opt) => (
-                              <option key={opt} value={opt}>
-                                {opt}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      ) : (
-                        <span className="text-sm text-gray-300 flex-1">
-                          {t('workingHours.closed')}
-                        </span>
-                      )}
-                    </div>
-                    {day.is_open && (
-                      <div className="flex items-center gap-3 pl-12">
-                        <label className="flex items-center cursor-pointer relative">
-                          <input
-                            type="checkbox"
-                            checked={!!(day.break_start && day.break_end)}
-                            onChange={(e) =>
-                              updateDay(
-                                dow,
-                                e.target.checked
-                                  ? { break_start: day.open_time, break_end: day.close_time }
-                                  : { break_start: null, break_end: null },
-                              )
-                            }
-                            className="sr-only"
-                          />
-                          <div
-                            className={`w-9 h-5 rounded-full transition-colors relative ${day.break_start && day.break_end ? 'bg-blue-600' : 'bg-gray-200'}`}
-                          >
-                            <div
-                              className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${day.break_start && day.break_end ? 'translate-x-4' : 'translate-x-0.5'}`}
-                            />
-                          </div>
-                        </label>
-                        <span className="w-24 text-xs text-gray-500">
-                          {t('workingHours.addBreak')}
-                        </span>
-                        {day.break_start && day.break_end && (
-                          <div className="flex items-center gap-2 flex-1">
-                            <span className="text-xs text-gray-400">{t('workingHours.from')}</span>
-                            <select
-                              value={day.break_start}
-                              onChange={(e) => updateDay(dow, { break_start: e.target.value })}
-                              className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            >
-                              {TIME_OPTIONS.map((opt) => (
-                                <option key={opt} value={opt}>
-                                  {opt}
-                                </option>
-                              ))}
-                            </select>
-                            <span className="text-xs text-gray-400">{t('workingHours.to')}</span>
-                            <select
-                              value={day.break_end}
-                              onChange={(e) => updateDay(dow, { break_end: e.target.value })}
-                              className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            >
-                              {TIME_OPTIONS.map((opt) => (
-                                <option key={opt} value={opt}>
-                                  {opt}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-            <div className="mt-5 flex items-center gap-3">
-              <Button onClick={saveWorkingHours} disabled={savingHours}>
-                {savingHours ? (
-                  t('workingHours.saving')
-                ) : savedHours ? (
-                  <>
-                    <Check className="w-4 h-4 mr-1" />
-                    {t('workingHours.saved')}
-                  </>
-                ) : (
-                  t('workingHours.saveButton')
-                )}
-              </Button>
-              {hoursValidationError && (
-                <p className="text-xs text-red-500">{hoursValidationError}</p>
-              )}
-            </div>
-          </div>
-          <HolidaysSection businessId={biz.id} />
-        </div>
-      )}
-
-      {/* Services */}
-      {tab === 'services' && (
-        <div className="space-y-4">
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            {services.length === 0 ? (
-              <div className="py-10 text-center text-gray-500 text-sm">{t('services.empty')}</div>
-            ) : (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-100 bg-gray-50 text-xs text-gray-500 uppercase">
-                    <th className="text-left px-4 py-3 font-medium">{t('services.table.name')}</th>
-                    <th className="text-left px-4 py-3 font-medium hidden sm:table-cell">
-                      {t('services.table.category')}
-                    </th>
-                    <th className="text-right px-4 py-3 font-medium">
-                      {t('services.table.price')}
-                    </th>
-                    <th className="text-right px-4 py-3 font-medium">
-                      {t('services.table.duration')}
-                    </th>
-                    <th className="text-right px-4 py-3 font-medium hidden sm:table-cell">
-                      {t('services.table.capacity')}
-                    </th>
-                    <th className="px-4 py-3" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {services.map((s) => (
-                    <tr
-                      key={s.id}
-                      className="border-b border-gray-100 hover:bg-gray-50 last:border-0"
-                    >
-                      <td className="px-4 py-3 font-medium text-gray-900">{s.name}</td>
-                      <td className="px-4 py-3 text-gray-500 hidden sm:table-cell">
-                        {s.category ?? '—'}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        {biz.currency} {s.price}
-                      </td>
-                      <td className="px-4 py-3 text-right text-gray-500">{s.duration_min} min</td>
-                      <td className="px-4 py-3 text-right text-gray-500 hidden sm:table-cell">
-                        {(s.capacity ?? 1) > 1 ? (
-                          <span className="inline-flex items-center gap-1 text-xs bg-purple-50 text-purple-700 border border-purple-200 rounded-full px-2 py-0.5">
-                            <Users className="w-3 h-3" />
-                            {s.capacity}
-                          </span>
-                        ) : (
-                          '1'
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        {confirmDeleteSvcId === s.id ? (
-                          <div className="flex justify-end items-center gap-2">
-                            <span className="text-xs text-gray-500">
-                              {t('services.deleteConfirm')}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => deleteService(s.id)}
-                              className="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600"
-                            >
-                              {t('services.deleteYes')}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setConfirmDeleteSvcId(null)}
-                              className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50"
-                            >
-                              {t('services.deleteNo')}
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex justify-end gap-1">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSvcForm(s)
-                                setEditingSvc(s.id)
-                              }}
-                              className="p-1.5 hover:bg-gray-100 rounded"
-                            >
-                              <Pencil className="w-3.5 h-3.5 text-gray-500" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setConfirmDeleteSvcId(s.id)}
-                              className="p-1.5 hover:bg-red-50 rounded"
-                            >
-                              <Trash2 className="w-3.5 h-3.5 text-red-400" />
-                            </button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <h3 className="text-sm font-semibold text-gray-900 mb-4">
-              {editingSvc ? t('services.editHeading') : t('services.addHeading')}
-            </h3>
-            <div className="grid sm:grid-cols-2 gap-3">
-              {(
-                [
-                  { key: 'name', label: t('services.fields.name'), type: 'text' },
-                  { key: 'category', label: t('services.fields.category'), type: 'text' },
-                  { key: 'price', label: t('services.fields.price'), type: 'number' },
-                  { key: 'duration_min', label: t('services.fields.duration'), type: 'number' },
-                ] as { key: keyof Service; label: string; type: string }[]
-              ).map(({ key, label, type }) => (
-                <div key={key}>
-                  <label className="text-xs font-medium text-gray-500">{label}</label>
-                  <input
-                    type={type}
-                    value={(svcForm[key] as string | number) ?? ''}
-                    onChange={(e) =>
-                      setSvcForm((f) => ({
-                        ...f,
-                        [key]: type === 'number' ? Number(e.target.value) : e.target.value,
-                      }))
-                    }
-                    className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              ))}
-              <div>
-                <label className="text-xs font-medium text-gray-500">
-                  {t('services.fields.capacity')}
-                </label>
-                <input
-                  type="number"
-                  min={1}
-                  value={(svcForm.capacity as number) ?? 1}
-                  onChange={(e) =>
-                    setSvcForm((f) => ({ ...f, capacity: Math.max(1, Number(e.target.value)) }))
-                  }
-                  className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <p className="text-xs text-gray-400 mt-1">{t('services.capacityHint')}</p>
-              </div>
-            </div>
-            <div className="flex gap-2 mt-4">
-              {editingSvc && (
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setSvcForm({})
-                    setEditingSvc(null)
-                  }}
-                >
-                  {t('services.cancelButton')}
-                </Button>
-              )}
-              <Button onClick={saveService} disabled={!svcForm.name}>
-                <Plus className="w-4 h-4 mr-1" />
-                {editingSvc ? t('services.updateButton') : t('services.addButton')}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Employees */}
-      {tab === 'employees' && (
-        <div className="space-y-4">
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            {employees.length === 0 ? (
-              <div className="py-10 text-center text-gray-500 text-sm">{t('employees.empty')}</div>
-            ) : (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-100 bg-gray-50 text-xs text-gray-500 uppercase">
-                    <th className="text-left px-4 py-3 font-medium">{t('employees.table.name')}</th>
-                    <th className="text-left px-4 py-3 font-medium hidden sm:table-cell">
-                      {t('employees.table.role')}
-                    </th>
-                    <th className="text-left px-4 py-3 font-medium hidden md:table-cell">
-                      {t('employees.table.contact')}
-                    </th>
-                    <th className="text-left px-4 py-3 font-medium hidden lg:table-cell">
-                      {t('employees.table.phone')}
-                    </th>
-                    <th className="px-4 py-3" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {employees.map((e) => (
-                    <tr
-                      key={e.id}
-                      className="border-b border-gray-100 hover:bg-gray-50 last:border-0"
-                    >
-                      <td className="px-4 py-3 font-medium text-gray-900">{e.name}</td>
-                      <td className="px-4 py-3 text-gray-500 hidden sm:table-cell capitalize">
-                        {e.role}
-                      </td>
-                      <td className="px-4 py-3 text-gray-500 hidden md:table-cell">
-                        {e.email ?? '—'}
-                      </td>
-                      <td className="px-4 py-3 text-gray-500 hidden lg:table-cell">
-                        {e.phone ?? '—'}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        {confirmDeleteEmpId === e.id ? (
-                          <div className="flex justify-end items-center gap-2">
-                            <span className="text-xs text-gray-500">
-                              {t('employees.deleteConfirm')}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => deleteEmployee(e.id)}
-                              className="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600"
-                            >
-                              {t('employees.deleteYes')}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setConfirmDeleteEmpId(null)}
-                              className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50"
-                            >
-                              {t('employees.deleteNo')}
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex justify-end gap-1">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setEmpForm(e)
-                                setEditingEmp(e.id)
-                              }}
-                              className="p-1.5 hover:bg-gray-100 rounded"
-                            >
-                              <Pencil className="w-3.5 h-3.5 text-gray-500" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setConfirmDeleteEmpId(e.id)}
-                              className="p-1.5 hover:bg-red-50 rounded"
-                            >
-                              <Trash2 className="w-3.5 h-3.5 text-red-400" />
-                            </button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <h3 className="text-sm font-semibold text-gray-900 mb-4">
-              {editingEmp ? t('employees.editHeading') : t('employees.addHeading')}
-            </h3>
-            <div className="grid sm:grid-cols-2 gap-3">
-              {(
-                [
-                  { key: 'name', label: t('employees.fields.name'), type: 'text' },
-                  { key: 'role', label: t('employees.fields.role'), type: 'text' },
-                  { key: 'email', label: t('employees.fields.email'), type: 'email' },
-                  { key: 'phone', label: t('employees.fields.phone'), type: 'tel' },
-                ] as { key: keyof Employee; label: string; type: string }[]
-              ).map(({ key, label, type }) => (
-                <div key={key}>
-                  <label className="text-xs font-medium text-gray-500">{label}</label>
-                  <input
-                    type={type}
-                    value={(empForm[key] as string) ?? ''}
-                    onChange={(e) => setEmpForm((f) => ({ ...f, [key]: e.target.value }))}
-                    className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              ))}
-            </div>
-            <div className="flex gap-2 mt-4">
-              {editingEmp && (
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setEmpForm({})
-                    setEditingEmp(null)
-                  }}
-                >
-                  {t('employees.cancelButton')}
-                </Button>
-              )}
-              <Button onClick={saveEmployee} disabled={!empForm.name}>
-                <Plus className="w-4 h-4 mr-1" />
-                {editingEmp ? t('employees.updateButton') : t('employees.addButton')}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Notifications */}
-      {tab === 'notifications' && (
-        <div className="space-y-4">
-          <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-6">
-            <h2 className="font-semibold text-gray-900">{t('notifications.heading')}</h2>
-
-            {/* Email */}
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-sm font-medium text-gray-900">
-                  {t('notifications.email.label')}
-                </span>
-                {(biz.email_provider === 'smtp' &&
-                  biz.smtp_host &&
-                  biz.smtp_user &&
-                  biz.smtp_pass &&
-                  biz.smtp_from) ||
-                (biz.email_provider === 'resend' && biz.resend_api_key) ? (
-                  <Badge variant="success">
-                    <CheckCircle2 className="w-3 h-3 mr-1" />
-                    {t('notifications.email.connected')}
-                  </Badge>
-                ) : (
-                  <Badge variant="secondary">{t('notifications.email.notSet')}</Badge>
-                )}
-              </div>
-
-              <div className="flex flex-col gap-2 mb-4">
-                {(['smtp', 'resend'] as const).map((p) => (
-                  <label key={p} className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="email_provider"
-                      value={p}
-                      checked={biz.email_provider === p}
-                      onChange={() => setBiz((b) => ({ ...b, email_provider: p }))}
-                      className="accent-blue-600"
-                    />
-                    <span className="text-sm text-gray-700">
-                      {p === 'smtp'
-                        ? t('notifications.email.smtpOption')
-                        : t('notifications.email.resendOption')}
-                    </span>
-                  </label>
-                ))}
-              </div>
-
-              {biz.email_provider === 'smtp' && (
-                <div className="grid sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-medium text-gray-500">
-                      {t('notifications.email.smtpHost')}
-                    </label>
-                    <input
-                      type="text"
-                      value={biz.smtp_host ?? ''}
-                      onChange={(e) => setBiz((b) => ({ ...b, smtp_host: e.target.value || null }))}
-                      placeholder={t('notifications.email.smtpHostPlaceholder')}
-                      className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-500">
-                      {t('notifications.email.smtpPort')}
-                    </label>
-                    <input
-                      type="number"
-                      value={biz.smtp_port ?? 587}
-                      onChange={(e) =>
-                        setBiz((b) => ({ ...b, smtp_port: parseInt(e.target.value, 10) || 587 }))
-                      }
-                      className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-500">
-                      {t('notifications.email.smtpUser')}
-                    </label>
-                    <input
-                      type="text"
-                      value={biz.smtp_user ?? ''}
-                      onChange={(e) => setBiz((b) => ({ ...b, smtp_user: e.target.value || null }))}
-                      className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-500">
-                      {t('notifications.email.smtpPass')}
-                    </label>
-                    <input
-                      type="password"
-                      value={biz.smtp_pass ?? ''}
-                      onChange={(e) => setBiz((b) => ({ ...b, smtp_pass: e.target.value || null }))}
-                      className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <p className="text-xs text-gray-400 mt-1">
-                      {t('notifications.email.smtpPassHint')}
-                    </p>
-                  </div>
-                  <div className="sm:col-span-2">
-                    <label className="text-xs font-medium text-gray-500">
-                      {t('notifications.email.smtpFrom')}
-                    </label>
-                    <input
-                      type="email"
-                      value={biz.smtp_from ?? ''}
-                      onChange={(e) => setBiz((b) => ({ ...b, smtp_from: e.target.value || null }))}
-                      placeholder={t('notifications.email.smtpFromPlaceholder')}
-                      className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {biz.email_provider === 'resend' && (
-                <div>
-                  <label className="text-xs font-medium text-gray-500">
-                    {t('notifications.email.resendApiKey')}
-                  </label>
-                  <input
-                    type="password"
-                    value={biz.resend_api_key ?? ''}
-                    onChange={(e) =>
-                      setBiz((b) => ({ ...b, resend_api_key: e.target.value || null }))
-                    }
-                    placeholder={t('notifications.email.resendApiKeyPlaceholder')}
-                    className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <p className="text-xs text-gray-400 mt-1">
-                    <a
-                      href="https://resend.com"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline"
-                    >
-                      {t('notifications.email.resendSignup')}
-                    </a>
-                  </p>
-                </div>
-              )}
-            </div>
-
-            <hr className="border-gray-100" />
-
-            {/* Telegram */}
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-sm font-medium text-gray-900">
-                  {t('notifications.telegram.label')}
-                </span>
-                {biz.telegram_chat_id ? (
-                  <Badge variant="success">
-                    <CheckCircle2 className="w-3 h-3 mr-1" />
-                    {t('notifications.telegram.connected')}
-                  </Badge>
-                ) : (
-                  <Badge variant="secondary">{t('notifications.telegram.notSet')}</Badge>
-                )}
-              </div>
-
-              <ol className="text-xs text-gray-500 space-y-1 mb-3 list-decimal list-inside">
-                <li
-                  dangerouslySetInnerHTML={{ __html: safeRawHtml('notifications.telegram.step1') }}
-                />
-                <li>{t('notifications.telegram.step2')}</li>
-                <li
-                  dangerouslySetInnerHTML={{ __html: safeRawHtml('notifications.telegram.step3') }}
-                />
-              </ol>
-
-              <div className="flex gap-2 min-w-0">
-                <input
-                  type="text"
-                  value={biz.telegram_bot_token ?? ''}
-                  onChange={(e) => setBiz((b) => ({ ...b, telegram_bot_token: e.target.value }))}
-                  placeholder={t('notifications.telegram.placeholder')}
-                  className="min-w-0 flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <Button
-                  onClick={connectTelegram}
-                  disabled={webhookStatus === 'loading' || !biz.telegram_bot_token}
-                  variant="outline"
-                  className="shrink-0"
-                >
-                  {webhookStatus === 'loading' ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    t('notifications.telegram.connectButton')
-                  )}
-                </Button>
-              </div>
-
-              {webhookStatus === 'ok' && (
-                <div className="mt-2 flex items-start gap-2 text-xs text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
-                  <CheckCircle2 className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                  {webhookMsg}
-                </div>
-              )}
-              {webhookStatus === 'error' && (
-                <div className="mt-2 flex items-start gap-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                  <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                  {webhookMsg}
-                </div>
-              )}
-            </div>
-
-            <hr className="border-gray-100" />
-
-            {/* Viber */}
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-sm font-medium text-gray-900">
-                  {t('notifications.viber.label')}
-                </span>
-                {initial.viber_chat_id ? (
-                  <Badge variant="success">
-                    <CheckCircle2 className="w-3 h-3 mr-1" />
-                    {t('notifications.viber.connected')}
-                  </Badge>
-                ) : (
-                  <Badge variant="secondary">{t('notifications.viber.notSet')}</Badge>
-                )}
-              </div>
-
-              <ol className="text-xs text-gray-500 space-y-1 mb-3 list-decimal list-inside">
-                <li
-                  dangerouslySetInnerHTML={{ __html: safeRawHtml('notifications.viber.step1') }}
-                />
-                <li>{t('notifications.viber.step2')}</li>
-                <li
-                  dangerouslySetInnerHTML={{ __html: safeRawHtml('notifications.viber.step3') }}
-                />
-              </ol>
-
-              <div className="flex gap-2 min-w-0">
-                <input
-                  type="text"
-                  value={biz.viber_bot_token ?? ''}
-                  onChange={(e) => setBiz((b) => ({ ...b, viber_bot_token: e.target.value }))}
-                  placeholder={t('notifications.viber.placeholder')}
-                  className="min-w-0 flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <Button
-                  onClick={connectViber}
-                  disabled={viberWebhookStatus === 'loading' || !biz.viber_bot_token}
-                  variant="outline"
-                  className="shrink-0"
-                >
-                  {viberWebhookStatus === 'loading' ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    t('notifications.viber.connectButton')
-                  )}
-                </Button>
-              </div>
-
-              {viberWebhookStatus === 'ok' && (
-                <div className="mt-2 flex items-start gap-2 text-xs text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
-                  <CheckCircle2 className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                  {viberWebhookMsg}
-                </div>
-              )}
-              {viberWebhookStatus === 'error' && (
-                <div className="mt-2 flex items-start gap-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                  <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                  {viberWebhookMsg}
-                </div>
-              )}
-            </div>
-
-            <hr className="border-gray-100" />
-
-            {/* WhatsApp */}
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-sm font-medium text-gray-900">
-                  {t('notifications.whatsapp.label')}
-                </span>
-                {biz.meta_whatsapp_phone_number_id && biz.meta_whatsapp_access_token ? (
-                  <Badge variant="success">
-                    <CheckCircle2 className="w-3 h-3 mr-1" />
-                    {t('notifications.whatsapp.connected')}
-                  </Badge>
-                ) : (
-                  <Badge variant="secondary">{t('notifications.whatsapp.notSet')}</Badge>
-                )}
-              </div>
-              <p className="text-xs text-gray-500 mb-3">
-                {t('notifications.whatsapp.description')}
-              </p>
-              <ol className="text-xs text-gray-500 space-y-1 mb-3 list-decimal list-inside">
-                <li
-                  dangerouslySetInnerHTML={{ __html: safeRawHtml('notifications.whatsapp.step1') }}
-                />
-                <li
-                  dangerouslySetInnerHTML={{ __html: safeRawHtml('notifications.whatsapp.step2') }}
-                />
-                <li
-                  dangerouslySetInnerHTML={{
-                    __html: safeRawHtml('notifications.whatsapp.step3').replace(
-                      '{saveButton}',
-                      `<strong>${t('notifications.whatsapp.saveButton')}</strong>`,
-                    ),
-                  }}
-                />
-                <li>{t('notifications.whatsapp.step4')}</li>
-              </ol>
-              <div className="space-y-2 mb-2">
-                <input
-                  type="text"
-                  autoComplete="off"
-                  value={biz.meta_whatsapp_phone_number_id ?? ''}
-                  onChange={(e) =>
-                    setBiz((b) => ({ ...b, meta_whatsapp_phone_number_id: e.target.value || null }))
-                  }
-                  placeholder={t('notifications.whatsapp.phoneNumberIdPlaceholder')}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <input
-                  type="password"
-                  autoComplete="new-password"
-                  value={biz.meta_whatsapp_access_token ?? ''}
-                  onChange={(e) =>
-                    setBiz((b) => ({ ...b, meta_whatsapp_access_token: e.target.value || null }))
-                  }
-                  placeholder={t('notifications.whatsapp.accessTokenPlaceholder')}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <Button
-                onClick={connectWhatsApp}
-                disabled={
-                  waStatus === 'loading' ||
-                  !biz.meta_whatsapp_phone_number_id ||
-                  !biz.meta_whatsapp_access_token
-                }
-                variant="outline"
-              >
-                {waStatus === 'loading' ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  t('notifications.whatsapp.saveButton')
-                )}
-              </Button>
-              {waStatus === 'ok' && (
-                <div className="mt-2 flex items-start gap-2 text-xs text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
-                  <CheckCircle2 className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                  {waMsg}
-                </div>
-              )}
-              {waStatus === 'error' && (
-                <div className="mt-2 flex items-start gap-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                  <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                  {waMsg}
-                </div>
-              )}
-            </div>
-
-            {!!(biz.meta_whatsapp_phone_number_id && biz.meta_whatsapp_access_token) && (
-              <div>
-                <label className="text-xs font-medium text-gray-500">
-                  {t('notifications.ownerWhatsapp.label')}
-                </label>
-                <p className="text-xs text-gray-400 mb-2">
-                  {t('notifications.ownerWhatsapp.description')}
-                </p>
-                <input
-                  type="tel"
-                  value={biz.owner_whatsapp ?? ''}
-                  onChange={(e) =>
-                    setBiz((b) => ({ ...b, owner_whatsapp: e.target.value || null }))
-                  }
-                  placeholder={t('notifications.ownerWhatsapp.placeholder')}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            )}
-
-            <hr className="border-gray-100" />
-
-            {/* WhatsApp Templates */}
-            <div>
-              <h3 className="text-sm font-medium text-gray-900 mb-1">
-                {t('notifications.waTemplates.heading')}
-              </h3>
-              <p className="text-xs text-gray-500 mb-3">
-                {t('notifications.waTemplates.description')}
-              </p>
-              <div className="space-y-3">
-                {[
-                  {
-                    field: 'wa_template_confirmation' as const,
-                    label: t('notifications.waTemplates.confirmation'),
-                    placeholder: t('notifications.waTemplates.confirmationPlaceholder'),
-                  },
-                  {
-                    field: 'wa_template_reminder' as const,
-                    label: t('notifications.waTemplates.reminder'),
-                    placeholder: t('notifications.waTemplates.reminderPlaceholder'),
-                  },
-                  {
-                    field: 'wa_template_thankyou' as const,
-                    label: t('notifications.waTemplates.thankyou'),
-                    placeholder: t('notifications.waTemplates.thankyouPlaceholder'),
-                  },
-                  {
-                    field: 'wa_template_reactivation' as const,
-                    label: t('notifications.waTemplates.reengagement'),
-                    placeholder: t('notifications.waTemplates.reengagementPlaceholder'),
-                  },
-                  {
-                    field: 'wa_template_birthday' as const,
-                    label: t('notifications.waTemplates.birthday'),
-                    placeholder: t('notifications.waTemplates.birthdayPlaceholder'),
-                  },
-                ].map(({ field, label, placeholder }) => (
-                  <div key={field}>
-                    <label className="text-xs font-medium text-gray-500">{label}</label>
-                    <input
-                      type="text"
-                      value={(biz[field] as string) ?? ''}
-                      onChange={(e) => setBiz((b) => ({ ...b, [field]: e.target.value || null }))}
-                      placeholder={placeholder}
-                      className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                ))}
-                <div>
-                  <label className="text-xs font-medium text-gray-500">
-                    {t('notifications.waTemplates.language')}
-                  </label>
-                  <input
-                    type="text"
-                    value={biz.wa_template_language ?? ''}
-                    onChange={(e) =>
-                      setBiz((b) => ({ ...b, wa_template_language: e.target.value || null }))
-                    }
-                    placeholder="en"
-                    className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <Button onClick={saveBusiness} disabled={saving}>
-              {saving
-                ? t('notifications.saving')
-                : saved
-                  ? t('notifications.saved')
-                  : t('notifications.save')}
-            </Button>
-          </div>
-          <div className="bg-gray-50 rounded-xl border border-gray-200 p-5">
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">
-              {t('notifications.triggersHeading')}
-            </h3>
-            <ul className="space-y-2 text-sm text-gray-600">
-              {triggers.map((tr) => (
-                <li key={tr} className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />
-                  {tr}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      )}
-
-      {/* Billing — self-hosted info */}
-      {tab === 'billing' && (
-        <div className="space-y-4">
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h2 className="font-semibold text-gray-900 mb-2">{t('tabs.billing')}</h2>
-            <p className="text-sm text-gray-500 mb-4">
-              You are running the self-hosted version of Pronto. All features are available without
-              subscription.
-            </p>
-            <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-              <p className="text-sm font-medium text-green-800 mb-1">
-                Self-hosted — All features unlocked
-              </p>
-              <p className="text-sm text-green-700">
-                All Pro/Agency features are available to you at no charge. Manage your instance via
-                Docker Compose.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modules */}
-      {tab === 'modules' && (
-        <div className="space-y-4">
-          <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
-            <div>
-              <h2 className="font-semibold text-gray-900">{t('modules.heading')}</h2>
-              <p className="text-sm text-gray-500 mt-1">{t('modules.description')}</p>
-            </div>
-
-            <div>
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
-                {t('modules.presetsLabel')}
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {[
-                  {
-                    labelKey: 'modules.presets.salon' as const,
-                    modules: ['bookings', 'crm', 'pos', 'inventory', 'notifications'],
-                  },
-                  {
-                    labelKey: 'modules.presets.shop' as const,
-                    modules: ['inventory', 'pos', 'notifications'],
-                  },
-                  {
-                    labelKey: 'modules.presets.cafe' as const,
-                    modules: ['pos', 'crm', 'inventory', 'notifications'],
-                  },
-                  { labelKey: 'modules.presets.all' as const, modules: DEFAULT_MODULES },
-                ].map((preset) => (
-                  <button
-                    type="button"
-                    key={preset.labelKey}
-                    onClick={() => setEnabledModules(preset.modules)}
-                    className="text-sm px-3 py-1.5 rounded-lg border border-gray-200 hover:border-blue-400 hover:text-blue-700 transition-colors"
-                  >
-                    {t(preset.labelKey)}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-4 pt-2 border-t border-gray-100">
-              {(Object.keys(MODULES) as ModuleKey[]).map((key) => {
-                const on = enabledModules.includes(key)
-                const modLabel = t(`modules.items.${key}.label` as Parameters<typeof t>[0])
-                return (
-                  <div key={key}>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">{modLabel}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">
-                          {t(`modules.items.${key}.description` as Parameters<typeof t>[0])}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (on) {
-                            setConfirmModule(key)
-                          } else {
-                            setEnabledModules((prev) => [...prev, key])
-                          }
-                        }}
-                        className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${on ? 'bg-blue-600' : 'bg-gray-200'}`}
-                      >
-                        <span
-                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${on ? 'translate-x-6' : 'translate-x-1'}`}
-                        />
-                      </button>
-                    </div>
-                    {confirmModule === key && (
-                      <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 flex items-center justify-between gap-3">
-                        <p className="text-xs text-amber-800">
-                          {t('modules.confirmOff', { label: modLabel })}
-                        </p>
-                        <div className="flex gap-2 shrink-0">
-                          <button
-                            type="button"
-                            onClick={() => setConfirmModule(null)}
-                            className="text-xs px-3 py-1.5 rounded-md border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-colors"
-                          >
-                            {t('modules.cancelButton')}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEnabledModules((prev) => prev.filter((m) => m !== key))
-                              setConfirmModule(null)
-                            }}
-                            className="text-xs px-3 py-1.5 rounded-md bg-red-600 text-white hover:bg-red-700 transition-colors"
-                          >
-                            {t('modules.turnOffButton')}
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-
-            <button
-              type="button"
-              onClick={async () => {
-                setModulesSaving(true)
-                setModulesSaved(false)
-                await fetch('/api/business/modules', {
-                  method: 'PATCH',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ enabled_modules: enabledModules }),
-                })
-                setModulesSaving(false)
-                setModulesSaved(true)
-                router.refresh()
-                setTimeout(() => setModulesSaved(false), 2500)
-              }}
-              disabled={modulesSaving}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
-            >
-              {modulesSaving ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : modulesSaved ? (
-                <Check className="w-4 h-4" />
-              ) : null}
-              {modulesSaved ? t('modules.saved') : t('modules.saveButton')}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Account */}
-      {tab === 'account' && (
-        <div className="space-y-4">
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h2 className="font-semibold text-gray-900 mb-4">{t('account.heading')}</h2>
-            <div className="space-y-3 max-w-sm">
-              <div>
-                <label className="text-xs font-medium text-gray-500">
-                  {t('account.currentEmailLabel')}
-                </label>
-                <div className="mt-1 flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-2 bg-gray-50">
-                  <span className="text-sm text-gray-700 flex-1">{userEmail}</span>
-                </div>
-              </div>
-              <div>
-                <label className="text-xs font-medium text-gray-500">
-                  {t('account.newEmailLabel')}
-                </label>
-                <input
-                  type="email"
-                  value={newEmail}
-                  onChange={(e) => {
-                    setNewEmail(e.target.value)
-                    setEmailStatus('idle')
-                  }}
-                  placeholder={t('account.newEmailPlaceholder')}
-                  className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              {emailStatus === 'ok' && (
-                <div className="flex items-start gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
-                  <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" /> {emailMsg}
-                </div>
-              )}
-              {emailStatus === 'error' && (
-                <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                  <AlertCircle className="w-4 h-4 shrink-0" /> {emailMsg}
-                </div>
-              )}
-
-              <Button
-                onClick={changeEmail}
-                variant="outline"
-                disabled={emailStatus === 'loading' || !newEmail}
-              >
-                {emailStatus === 'loading' ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    {t('account.saving')}
-                  </>
-                ) : (
-                  t('account.changeEmailButton')
-                )}
-              </Button>
-              <p className="text-xs text-gray-400">{t('account.emailHint')}</p>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h3 className="font-semibold text-gray-900 mb-4">{t('account.passwordHeading')}</h3>
-            <div className="space-y-3 max-w-sm">
-              <div>
-                <label className="text-xs font-medium text-gray-500">
-                  {t('account.newPasswordLabel')}
-                </label>
-                <div className="relative mt-1">
-                  <input
-                    type={showPw ? 'text' : 'password'}
-                    value={pwForm.newPassword}
-                    onChange={(e) => setPwForm((f) => ({ ...f, newPassword: e.target.value }))}
-                    placeholder="Min. 8 characters"
-                    className="w-full border border-gray-200 rounded-lg pl-3 pr-9 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPw((v) => !v)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-              <div>
-                <label className="text-xs font-medium text-gray-500">
-                  {t('account.confirmPasswordLabel')}
-                </label>
-                <input
-                  type={showPw ? 'text' : 'password'}
-                  value={pwForm.confirm}
-                  onChange={(e) => setPwForm((f) => ({ ...f, confirm: e.target.value }))}
-                  placeholder={t('account.confirmPasswordPlaceholder')}
-                  className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              {pwStatus === 'ok' && (
-                <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
-                  <CheckCircle2 className="w-4 h-4 shrink-0" /> {pwMsg}
-                </div>
-              )}
-              {pwStatus === 'error' && (
-                <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                  <AlertCircle className="w-4 h-4 shrink-0" /> {pwMsg}
-                </div>
-              )}
-
-              <Button
-                onClick={changePassword}
-                disabled={pwStatus === 'loading' || !pwForm.newPassword || !pwForm.confirm}
-              >
-                {pwStatus === 'loading' ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    {t('account.saving')}
-                  </>
-                ) : (
-                  t('account.changePasswordButton')
-                )}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Advanced — owner only */}
-      {tab === 'advanced' && (
-        <div className="space-y-4">
-          {!isOwner ? (
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-amber-800">{t('advanced.ownerOnly')}</p>
-                <p className="text-xs text-amber-700 mt-1">{t('advanced.ownerOnlyHint')}</p>
-              </div>
-            </div>
-          ) : (
-            <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-6">
-              <div>
-                <h2 className="font-semibold text-gray-900 flex items-center gap-2">
-                  <Settings className="w-4 h-4 text-gray-500" />
-                  {t('advanced.heading')}
-                </h2>
-                <p className="text-xs text-gray-500 mt-1">{t('advanced.description')}</p>
-              </div>
-
-              {/* Reservas — Antelación */}
-              <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-gray-900 border-t border-gray-100 pt-4">
-                  {t('advanced.bookingHeading')}
-                </h3>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">
-                      {t('advanced.bookingLeadTimeEnabledLabel')}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      {t('advanced.bookingLeadTimeEnabledHint')}
-                    </p>
-                  </div>
-                  <label className="flex items-center cursor-pointer relative shrink-0 ml-4">
-                    <input
-                      type="checkbox"
-                      checked={bookingLeadEnabled}
-                      onChange={(e) =>
-                        setBiz((b) => ({ ...b, booking_lead_time_enabled: e.target.checked }))
-                      }
-                      className="sr-only"
-                    />
-                    <div
-                      className={`w-11 h-6 rounded-full transition-colors relative ${bookingLeadEnabled ? 'bg-blue-600' : 'bg-gray-200'}`}
-                    >
-                      <div
-                        className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${bookingLeadEnabled ? 'translate-x-5' : 'translate-x-0.5'}`}
-                      />
-                    </div>
-                  </label>
-                </div>
-
-                <div>
-                  <label className="text-xs font-medium text-gray-500">
-                    {t('advanced.minAdvanceMinutesLabel')}
-                  </label>
-                  <input
-                    type="number"
-                    min={0}
-                    max={1440}
-                    value={minAdvanceValue}
-                    disabled={!bookingLeadEnabled}
-                    onChange={(e) => {
-                      const raw = e.target.value
-                      if (raw === '') {
-                        setBiz((b) => ({ ...b, min_advance_minutes: 0 }))
-                        return
-                      }
-                      const n = parseInt(raw, 10)
-                      if (Number.isNaN(n)) return
-                      const clamped = Math.max(0, Math.min(1440, n))
-                      setBiz((b) => ({ ...b, min_advance_minutes: clamped }))
-                    }}
-                    className={`w-full mt-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${!bookingLeadEnabled ? 'bg-gray-50 text-gray-400 border-gray-200' : 'border-gray-200'} ${advancedError ? 'border-red-300 focus:ring-red-400' : ''}`}
-                  />
-                  <p className="text-xs text-gray-400 mt-1">
-                    {t('advanced.minAdvanceMinutesHint')}
-                  </p>
-                  {!bookingLeadEnabled && (
-                    <p className="text-xs text-amber-600 mt-1">
-                      {t('advanced.minAdvanceDisabledHint')}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <hr className="border-gray-100" />
-
-              {/* POS — Caja */}
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-gray-900">{t('advanced.posHeading')}</h3>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">
-                      {t('advanced.requireCashRegisterLabel')}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      {t('advanced.requireCashRegisterHint')}
-                    </p>
-                  </div>
-                  <label className="flex items-center cursor-pointer relative shrink-0 ml-4">
-                    <input
-                      type="checkbox"
-                      checked={requireCashRegister}
-                      onChange={(e) =>
-                        setBiz((b) => ({ ...b, require_cash_register_for_cash: e.target.checked }))
-                      }
-                      className="sr-only"
-                    />
-                    <div
-                      className={`w-11 h-6 rounded-full transition-colors relative ${requireCashRegister ? 'bg-blue-600' : 'bg-gray-200'}`}
-                    >
-                      <div
-                        className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${requireCashRegister ? 'translate-x-5' : 'translate-x-0.5'}`}
-                      />
-                    </div>
-                  </label>
-                </div>
-                <p className="text-xs text-gray-400">
-                  {t('advanced.requireCashRegisterDescription')}
-                </p>
-              </div>
-
-              <hr className="border-gray-100" />
-
-              {/* Acceso clientes — solo owner (isOwner already true in this branch) */}
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-gray-900">Acceso clientes</h3>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">
-                      Permitir reservas sin registro (invitados)
-                    </p>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      Si está desactivado, solo clientes registrados pueden reservar online
-                    </p>
-                  </div>
-                  <label className="flex items-center cursor-pointer relative shrink-0 ml-4">
-                    <input
-                      type="checkbox"
-                      checked={allowGuestBookings}
-                      onChange={(e) =>
-                        setBiz((b) => ({ ...b, allow_guest_bookings: e.target.checked }))
-                      }
-                      className="sr-only"
-                    />
-                    <div
-                      className={`w-11 h-6 rounded-full transition-colors relative ${allowGuestBookings ? 'bg-blue-600' : 'bg-gray-200'}`}
-                    >
-                      <div
-                        className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${allowGuestBookings ? 'translate-x-5' : 'translate-x-0.5'}`}
-                      />
-                    </div>
-                  </label>
-                </div>
-              </div>
-
-              {advancedError && (
-                <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                  <AlertCircle className="w-4 h-4 shrink-0" /> {advancedError}
-                </div>
-              )}
-
-              <div className="flex items-center gap-3 pt-2">
-                <Button onClick={saveAdvanced} disabled={advancedSaving}>
-                  {advancedSaving ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      {t('advanced.saving')}
-                    </>
-                  ) : advancedSaved ? (
-                    <>
-                      <Check className="w-4 h-4 mr-1" />
-                      {t('advanced.saved')}
-                    </>
-                  ) : (
-                    t('advanced.saveButton')
-                  )}
-                </Button>
-                {advancedSaved && (
-                  <span className="text-xs text-green-600">{t('advanced.savedHint')}</span>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+      <TabNavigation tabs={tabs} active={tab} onChange={setTab} />
+      {renderActiveTab({
+        tab,
+        biz,
+        initial,
+        setBiz,
+        slugError,
+        setSlugError,
+        logoUrl,
+        logoUploading,
+        logoError,
+        onUploadLogo,
+        onRemoveLogo,
+        bookingUrl,
+        saving,
+        saved,
+        onSaveBusiness,
+        hours,
+        updateDay,
+        savingHours,
+        savedHours,
+        hoursValidationError,
+        onSaveWorkingHours,
+        services,
+        svcForm,
+        setSvcForm,
+        editingSvc,
+        setEditingSvc,
+        confirmDeleteSvcId,
+        setConfirmDeleteSvcId,
+        onSaveService,
+        onDeleteService,
+        employees,
+        empForm,
+        setEmpForm,
+        editingEmp,
+        setEditingEmp,
+        confirmDeleteEmpId,
+        setConfirmDeleteEmpId,
+        onSaveEmployee,
+        onDeleteEmployee,
+        webhookStatus,
+        webhookMsg,
+        viberWebhookStatus,
+        viberWebhookMsg,
+        waStatus,
+        waMsg,
+        onConnectTelegram,
+        onConnectViber,
+        onConnectWhatsApp,
+        enabledModules,
+        setEnabledModules,
+        confirmModule,
+        setConfirmModule,
+        modulesSaving,
+        modulesSaved,
+        onSaveModules,
+        userEmail,
+        newEmail,
+        setNewEmail,
+        emailStatus,
+        setEmailStatus,
+        emailMsg,
+        setEmailMsg,
+        onChangeEmail,
+        pwForm,
+        setPwForm,
+        showPw,
+        setShowPw,
+        pwStatus,
+        setPwStatus,
+        pwMsg,
+        setPwMsg,
+        onChangePassword,
+        isOwner,
+        advancedSaving,
+        advancedSaved,
+        advancedError,
+        onSaveAdvanced,
+      })}
     </div>
   )
 }
