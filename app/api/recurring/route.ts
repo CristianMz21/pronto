@@ -83,35 +83,81 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(data ?? [])
 }
 
-
-async function checkRecurringBusinessAccess(supabase: Awaited<ReturnType<typeof createClient>>, userId: string, businessId: string): Promise<NextResponse | null> {
-  const { data: ownedCheck } = await supabase.from('businesses').select('id').eq('id', businessId).eq('owner_id', userId).maybeSingle()
+async function checkRecurringBusinessAccess(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  businessId: string,
+): Promise<NextResponse | null> {
+  const { data: ownedCheck } = await supabase
+    .from('businesses')
+    .select('id')
+    .eq('id', businessId)
+    .eq('owner_id', userId)
+    .maybeSingle()
   if (ownedCheck) return null
-  const { data: empCheck } = await supabase.from('employees').select('id').eq('user_id', userId).eq('business_id', businessId).eq('is_active', true).maybeSingle()
+  const { data: empCheck } = await supabase
+    .from('employees')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('business_id', businessId)
+    .eq('is_active', true)
+    .maybeSingle()
   if (!empCheck) return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   return null
 }
 
-async function validateRecurringLocation(supabase: Awaited<ReturnType<typeof createClient>>, businessId: string, locationId: string | null | undefined): Promise<NextResponse | null> {
+async function validateRecurringLocation(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  businessId: string,
+  locationId: string | null | undefined,
+): Promise<NextResponse | null> {
   if (!locationId) return null
-  const { data: loc } = await supabase.from('locations').select('id').eq('id', locationId).eq('business_id', businessId).maybeSingle()
+  const { data: loc } = await supabase
+    .from('locations')
+    .select('id')
+    .eq('id', locationId)
+    .eq('business_id', businessId)
+    .maybeSingle()
   if (!loc) return NextResponse.json({ error: 'location_not_found' }, { status: 404 })
   return null
 }
 
-async function fetchRecurringPrereqs(service: ReturnType<typeof createServiceClient>, businessId: string, clientId: string, serviceId: string) {
+async function fetchRecurringPrereqs(
+  service: ReturnType<typeof createServiceClient>,
+  businessId: string,
+  clientId: string,
+  serviceId: string,
+) {
   const [{ data: client }, { data: svc }, { data: biz }] = await Promise.all([
-    service.from('clients').select('id').eq('id', clientId).eq('business_id', businessId).maybeSingle(),
-    service.from('services').select('id, duration_min, price').eq('id', serviceId).eq('business_id', businessId).maybeSingle(),
+    service
+      .from('clients')
+      .select('id')
+      .eq('id', clientId)
+      .eq('business_id', businessId)
+      .maybeSingle(),
+    service
+      .from('services')
+      .select('id, duration_min, price')
+      .eq('id', serviceId)
+      .eq('business_id', businessId)
+      .maybeSingle(),
     service.from('businesses').select('timezone').eq('id', businessId).maybeSingle(),
   ])
   return { client, svc, biz }
 }
 
-async function resolveDtstartForRecurring(data: { dtstart?: string | null; date?: string | null; time?: string | null }, timezone: string): Promise<{ dtstart?: Date; error?: NextResponse }> {
+async function resolveDtstartForRecurring(
+  data: {
+    dtstart?: string | null | undefined
+    date?: string | null | undefined
+    time?: string | null | undefined
+  },
+  timezone: string,
+): Promise<{ dtstart?: Date; error?: NextResponse }> {
   if (data.dtstart) {
     const d = new Date(data.dtstart)
-    if (Number.isNaN(d.getTime())) return { error: NextResponse.json({ error: 'invalid_dtstart' }, { status: 400 }) }
+    if (Number.isNaN(d.getTime()))
+      return { error: NextResponse.json({ error: 'invalid_dtstart' }, { status: 400 }) }
     return { dtstart: d }
   }
   if (data.date && data.time) {
@@ -122,17 +168,31 @@ async function resolveDtstartForRecurring(data: { dtstart?: string | null; date?
       return { error: NextResponse.json({ error: 'invalid_dtstart' }, { status: 400 }) }
     }
   }
-  return { error: NextResponse.json({ error: 'dtstart_required', message: 'Se requiere dtstart o date+time para la recurrencia' }, { status: 400 }) }
+  return {
+    error: NextResponse.json(
+      { error: 'dtstart_required', message: 'Se requiere dtstart o date+time para la recurrencia' },
+      { status: 400 },
+    ),
+  }
 }
 
 function mapRecurringCreateError(e: unknown): NextResponse {
   const err = e as Error & { code?: string; details?: unknown }
-  if (err.code === 'validation_failed') return NextResponse.json({ error: 'validation_failed', details: err.details }, { status: 422 })
-  if (err.code === 'invalid_rrule' || err.code === 'count_too_large' || err.code === 'until_before_dtstart' || err.code === 'no_occurrences' || err.code === 'dtstart_required') return NextResponse.json({ error: err.code, message: err.message }, { status: 422 })
-  return NextResponse.json({ error: err.code ?? 'recurring_failed', message: String(err.message ?? 'Unknown') }, { status: 500 })
+  if (err.code === 'validation_failed')
+    return NextResponse.json({ error: 'validation_failed', details: err.details }, { status: 422 })
+  if (
+    err.code === 'invalid_rrule' ||
+    err.code === 'count_too_large' ||
+    err.code === 'until_before_dtstart' ||
+    err.code === 'no_occurrences' ||
+    err.code === 'dtstart_required'
+  )
+    return NextResponse.json({ error: err.code, message: err.message }, { status: 422 })
+  return NextResponse.json(
+    { error: err.code ?? 'recurring_failed', message: String(err.message ?? 'Unknown') },
+    { status: 500 },
+  )
 }
-
-
 
 function normalizeRecurringRaw(raw: Record<string, unknown>): void {
   if (raw.businessId && !raw.business_id) raw.business_id = raw.businessId
@@ -150,7 +210,11 @@ async function handleRecurringCreate(
   normalizeRecurringRaw(rawObj)
 
   const parsed = RecurringCreateSchema.safeParse(raw)
-  if (!parsed.success) return NextResponse.json({ error: 'validation_failed', details: parsed.error.flatten().fieldErrors }, { status: 422 })
+  if (!parsed.success)
+    return NextResponse.json(
+      { error: 'validation_failed', details: parsed.error.flatten().fieldErrors },
+      { status: 422 },
+    )
   const data = parsed.data
 
   const authBusinessId = await resolveBusinessId(supabase, user.id)
@@ -163,7 +227,12 @@ async function handleRecurringCreate(
   const locErr = await validateRecurringLocation(supabase, data.business_id, data.location_id)
   if (locErr) return locErr
 
-  const { client, svc, biz } = await fetchRecurringPrereqs(service, data.business_id, data.client_id, data.service_id)
+  const { client, svc, biz } = await fetchRecurringPrereqs(
+    service,
+    data.business_id,
+    data.client_id,
+    data.service_id,
+  )
   if (!client) return NextResponse.json({ error: 'client_not_found' }, { status: 404 })
   if (!svc) return NextResponse.json({ error: 'service_not_found' }, { status: 404 })
 
@@ -172,34 +241,47 @@ async function handleRecurringCreate(
   const price = (svc as { price: number }).price ?? 0
 
   if (data.employee_id) {
-    const { data: emp } = await service.from('employees').select('id').eq('id', data.employee_id).eq('business_id', data.business_id).maybeSingle()
+    const { data: emp } = await service
+      .from('employees')
+      .select('id')
+      .eq('id', data.employee_id)
+      .eq('business_id', data.business_id)
+      .maybeSingle()
     if (!emp) return NextResponse.json({ error: 'employee_not_found' }, { status: 404 })
   }
 
   const dtRes = await resolveDtstartForRecurring(data, timezone)
   if ('error' in dtRes && dtRes.error) return dtRes.error
   const dtstart = dtRes.dtstart!
-  if (dtstart.getTime() <= Date.now()) return NextResponse.json({ error: 'in_past', message: 'La fecha de inicio debe ser futura' }, { status: 400 })
+  if (dtstart.getTime() <= Date.now())
+    return NextResponse.json(
+      { error: 'in_past', message: 'La fecha de inicio debe ser futura' },
+      { status: 400 },
+    )
 
   const validated = validateRRule(data.rrule, dtstart, data.until ? new Date(data.until) : null)
-  if (!validated.ok) return NextResponse.json({ error: validated.code, message: validated.reason }, { status: 422 })
+  if (!validated.ok)
+    return NextResponse.json({ error: validated.code, message: validated.reason }, { status: 422 })
 
   const { createSeries } = await import('@/lib/recurring')
   try {
-    const result = await createSeries(service as unknown as Parameters<typeof createSeries>[0], {
-      business_id: data.business_id,
-      location_id: data.location_id || null,
-      client_id: data.client_id,
-      service_id: data.service_id,
-      employee_id: data.employee_id || null,
-      rrule: data.rrule,
-      dtstart: dtstart.toISOString(),
-      until: data.until ?? null,
-      count: data.count,
-      timezone,
-      duration_min: durationMin,
-      price,
-    } as unknown as Parameters<typeof createSeries>[1])
+    const result = await createSeries(
+      service as unknown as Parameters<typeof createSeries>[0],
+      {
+        business_id: data.business_id,
+        location_id: data.location_id || null,
+        client_id: data.client_id,
+        service_id: data.service_id,
+        employee_id: data.employee_id || null,
+        rrule: data.rrule,
+        dtstart: dtstart.toISOString(),
+        until: data.until ?? null,
+        count: data.count,
+        timezone,
+        duration_min: durationMin,
+        price,
+      } as unknown as Parameters<typeof createSeries>[1],
+    )
     return NextResponse.json(result, { status: 201 })
   } catch (e) {
     return mapRecurringCreateError(e)
@@ -209,7 +291,8 @@ async function handleRecurringCreate(
 // POST /api/recurring — create series with occurrences
 export async function POST(req: NextRequest) {
   const ip = getIp(req)
-  if (!rateLimit(`recurring:${ip}`, { limit: 30, windowMs: 10 * 60 * 1000 })) return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
+  if (!rateLimit(`recurring:${ip}`, { limit: 30, windowMs: 10 * 60 * 1000 }))
+    return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
   const supabase = await createClient()
   const {
     data: { user },

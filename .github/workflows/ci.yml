@@ -29,10 +29,9 @@ jobs:
           cache: npm
       - run: npm ci
       # Super strict (2026-08-31): unsafe-* + no-img-element now errors (0 unsafe, 0 img).
-      # Remaining: 38 cognitive-complexity warns (proxy.ts 120 fixed). Budget 38 ratchets to 0.
-      # Next: app/api/book:111 (176), cron/notify:200 (162), booking-form:240 (138) etc.
+      # Ratchet complete 2026-09-01: 38 cognitive-complexity warns resolved → 0.
       - name: ESLint (super strict — unsafe/img errors block, cognitive ratchet)
-        run: npx eslint . --max-warnings 38
+        run: npx eslint . --max-warnings 0
       - name: Biome format check
         run: npm run format:check || echo "Biome format check has diffs — run 'npm run format' locally (non-blocking for minimal gate)"
 

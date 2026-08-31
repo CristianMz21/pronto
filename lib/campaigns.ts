@@ -426,12 +426,8 @@ async function isDuplicateWithinHour(
   }
 }
 
-export async function sendCampaign(
-  supabase: SupabaseLike,
-  campaignId: string,
-): Promise<{ sent: number; failed: number; stub: boolean }> {
-  // Fetch campaign + business whatsapp creds
-  const campRes = await (
+async function fetchCampaignOrThrow(supabase: SupabaseLike, campaignId: string): Promise<Campaign> {
+  const res = await (
     supabase.from('campaigns') as unknown as {
       select: (c: string) => {
         eq: (
@@ -446,16 +442,14 @@ export async function sendCampaign(
     )
     .eq('id', campaignId)
     .single()
-
-  if (campRes.error || !campRes.data)
-    throw Object.assign(new Error('campaign_not_found'), { status: 404 })
-  const campaign = campRes.data as Campaign
-
-  if (campaign.status !== 'draft' && campaign.status !== 'sending') {
+  if (res.error || !res.data) throw Object.assign(new Error('campaign_not_found'), { status: 404 })
+  const campaign = res.data as Campaign
+  if (campaign.status !== 'draft' && campaign.status !== 'sending')
     throw Object.assign(new Error('campaign_not_draft'), { status: 409 })
-  }
+  return campaign
+}
 
-  // Mark sending
+async function markSending(supabase: SupabaseLike, campaignId: string): Promise<void> {
   await (
     supabase.from('campaigns') as unknown as {
       update: (d: unknown) => { eq: (c: string, v: unknown) => Promise<{ error: unknown }> }
@@ -463,9 +457,13 @@ export async function sendCampaign(
   )
     .update({ status: 'sending' })
     .eq('id', campaignId)
+}
 
-  // Fetch recipients
-  const recRes = await (
+async function fetchRecipients(
+  supabase: SupabaseLike,
+  campaignId: string,
+): Promise<CampaignRecipient[]> {
+  const res = await (
     supabase.from('campaign_recipients') as unknown as {
       select: (c: string) => {
         eq: (
@@ -477,28 +475,36 @@ export async function sendCampaign(
   )
     .select('campaign_id, client_id, status')
     .eq('campaign_id', campaignId)
+  return (res.data as CampaignRecipient[] | null) ?? []
+}
 
-  const recipients = (recRes.data as CampaignRecipient[] | null) ?? []
-  if (recipients.length === 0) {
-    await (
-      supabase.from('campaigns') as unknown as {
-        update: (d: unknown) => { eq: (c: string, v: unknown) => Promise<{ error: unknown }> }
-      }
-    )
-      .update({
-        status: 'sent',
-        sent_at: new Date().toISOString(),
-        stats: { sent: 0, delivered: 0, rebooked: 0 },
-      })
-      .eq('id', campaignId)
-    return { sent: 0, failed: 0, stub: true }
-  }
+async function handleEmptyRecipients(
+  supabase: SupabaseLike,
+  campaignId: string,
+): Promise<{ sent: number; failed: number; stub: boolean }> {
+  await (
+    supabase.from('campaigns') as unknown as {
+      update: (d: unknown) => { eq: (c: string, v: unknown) => Promise<{ error: unknown }> }
+    }
+  )
+    .update({
+      status: 'sent',
+      sent_at: new Date().toISOString(),
+      stats: { sent: 0, delivered: 0, rebooked: 0 },
+    })
+    .eq('id', campaignId)
+  return { sent: 0, failed: 0, stub: true }
+}
 
-  // Fetch business whatsapp credentials
-  let waCreds: { phoneNumberId: string; accessToken: string } | undefined
-  let businessName = ''
+async function fetchBusinessInfo(
+  supabase: SupabaseLike,
+  businessId: string,
+): Promise<{
+  waCreds?: { phoneNumberId: string; accessToken: string } | undefined
+  businessName: string
+}> {
   try {
-    const bizRes = await (
+    const res = await (
       supabase.from('businesses') as unknown as {
         select: (c: string) => {
           eq: (
@@ -509,29 +515,43 @@ export async function sendCampaign(
       }
     )
       .select('name, meta_whatsapp_phone_number_id, meta_whatsapp_access_token')
-      .eq('id', campaign.business_id)
+      .eq('id', businessId)
       .single()
-    const biz = bizRes.data as {
+    const biz = res.data as {
       name: string
       meta_whatsapp_phone_number_id: string | null
       meta_whatsapp_access_token: string | null
     } | null
-    if (biz) {
-      businessName = biz.name ?? ''
-      if (biz.meta_whatsapp_phone_number_id && biz.meta_whatsapp_access_token) {
-        waCreds = {
-          phoneNumberId: biz.meta_whatsapp_phone_number_id,
-          accessToken: biz.meta_whatsapp_access_token,
-        }
-      }
-    }
+    if (!biz) return { businessName: '' }
+    const waCreds =
+      biz.meta_whatsapp_phone_number_id && biz.meta_whatsapp_access_token
+        ? {
+            phoneNumberId: biz.meta_whatsapp_phone_number_id,
+            accessToken: biz.meta_whatsapp_access_token,
+          }
+        : undefined
+    return { waCreds, businessName: biz.name ?? '' }
   } catch {
-    // no-op, stub mode
+    return { businessName: '' }
   }
+}
 
-  // Fetch client contacts in one query
-  const clientIds = recipients.map((r) => r.client_id)
-  const clientsRes = await (
+async function fetchClientsMap(
+  supabase: SupabaseLike,
+  clientIds: string[],
+): Promise<
+  Map<
+    string,
+    {
+      id: string
+      name: string
+      phone: string | null
+      email: string | null
+      whatsapp_number: string | null
+    }
+  >
+> {
+  const res = await (
     supabase.from('clients') as unknown as {
       select: (c: string) => {
         in: (col: string, vals: unknown[]) => Promise<{ data: unknown[] | null; error: unknown }>
@@ -540,8 +560,7 @@ export async function sendCampaign(
   )
     .select('id, name, phone, email, whatsapp_number')
     .in('id', clientIds)
-
-  const clientsById = new Map<
+  const map = new Map<
     string,
     {
       id: string
@@ -551,9 +570,15 @@ export async function sendCampaign(
       whatsapp_number: string | null
     }
   >()
-  for (const c of (clientsRes.data as unknown as typeof clientsById extends Map<string, infer V>
-    ? V[]
-    : unknown[]) ?? []) {
+  for (const c of (res.data as unknown as
+    | {
+        id: string
+        name: string
+        phone: string | null
+        email: string | null
+        whatsapp_number: string | null
+      }[]
+    | null) ?? []) {
     const row = c as {
       id: string
       name: string
@@ -561,112 +586,199 @@ export async function sendCampaign(
       email: string | null
       whatsapp_number: string | null
     }
-    clientsById.set(row.id, row)
+    map.set(row.id, row)
   }
+  return map
+}
 
-  // Dynamically import whatsapp to avoid circular deps and keep stub-friendly
-  let sendWhatsApp: typeof import('@/lib/whatsapp').sendWhatsAppMessage | null = null
+async function getWhatsAppSender(): Promise<
+  | ((
+      to: string,
+      body: string,
+      creds: { phoneNumberId: string; accessToken: string } | undefined,
+    ) => Promise<boolean>)
+  | null
+> {
   try {
     const mod = await import('@/lib/whatsapp')
-    sendWhatsApp = mod.sendWhatsAppMessage
+    return mod.sendWhatsAppMessage
   } catch {
-    sendWhatsApp = null
+    return null
   }
+}
 
+async function markRecipientFailed(
+  supabase: SupabaseLike,
+  campaignId: string,
+  clientId: string,
+): Promise<void> {
+  await (
+    supabase.from('campaign_recipients') as unknown as {
+      update: (d: unknown) => {
+        eq: (
+          c: string,
+          v: unknown,
+        ) => { eq: (c: string, v: unknown) => Promise<{ error: unknown }> }
+      }
+    }
+  )
+    .update({ status: 'failed' })
+    .eq('campaign_id', campaignId)
+    .eq('client_id', clientId)
+}
+
+async function updateRecipientStatus(
+  supabase: SupabaseLike,
+  campaignId: string,
+  clientId: string,
+  ok: boolean,
+): Promise<void> {
+  const status = ok ? 'sent' : 'failed'
+  await (
+    supabase.from('campaign_recipients') as unknown as {
+      update: (d: unknown) => {
+        eq: (
+          c: string,
+          v: unknown,
+        ) => { eq: (c: string, v: unknown) => Promise<{ error: unknown }> }
+      }
+    }
+  )
+    .update({ status })
+    .eq('campaign_id', campaignId)
+    .eq('client_id', clientId)
+}
+
+async function logNotification(
+  supabase: SupabaseLike,
+  businessId: string,
+  clientId: string,
+  campaignId: string,
+  channel: string,
+): Promise<void> {
+  try {
+    await (
+      supabase.from('notification_log') as unknown as {
+        insert: (d: unknown) => Promise<{ error: unknown }>
+      }
+    ).insert({ business_id: businessId, ref_id: clientId, type: `campaign:${campaignId}`, channel })
+  } catch {}
+}
+
+async function deliverViaChannel(
+  campaign: Campaign,
+  client: {
+    phone: string | null
+    email: string | null
+    whatsapp_number: string | null
+    name: string
+  },
+  _businessName: string,
+  waCreds: { phoneNumberId: string; accessToken: string } | undefined,
+  hasCreds: boolean,
+  sendWhatsApp:
+    | ((
+        to: string,
+        body: string,
+        creds: { phoneNumberId: string; accessToken: string } | undefined,
+      ) => Promise<boolean>)
+    | null,
+  body: string,
+): Promise<{ ok: boolean; stub: boolean }> {
+  if (campaign.channel === 'whatsapp') {
+    const to = client.whatsapp_number ?? client.phone
+    if (!to || !sendWhatsApp) return { ok: false, stub: false }
+    const ok = await sendWhatsApp(to, body, waCreds)
+    if (!ok && !hasCreds) return { ok: true, stub: true }
+    return { ok, stub: false }
+  }
+  if (campaign.channel === 'email') return { ok: !!client.email, stub: true }
+  if (campaign.channel === 'telegram') return { ok: true, stub: true }
+  return { ok: false, stub: false }
+}
+
+async function processSingleRecipient(
+  supabase: SupabaseLike,
+  campaign: Campaign,
+  client: {
+    id: string
+    name: string
+    phone: string | null
+    email: string | null
+    whatsapp_number: string | null
+  },
+  businessName: string,
+  waCreds: { phoneNumberId: string; accessToken: string } | undefined,
+  hasCreds: boolean,
+  sendWhatsApp:
+    | ((
+        to: string,
+        body: string,
+        creds: { phoneNumberId: string; accessToken: string } | undefined,
+      ) => Promise<boolean>)
+    | null,
+  campaignId: string,
+): Promise<{ ok: boolean; stub: boolean; skipped?: boolean }> {
+  const dedupEvent = `campaign:${campaignId}`
+  if (await isDuplicateWithinHour(supabase, campaign.business_id, client.id, dedupEvent))
+    return { ok: false, stub: false, skipped: true }
+  const body = interpolateTemplate(campaign.template, {
+    name: client.name,
+    business: businessName,
+    brand: businessName,
+  })
+  const res = await deliverViaChannel(
+    campaign,
+    client,
+    businessName,
+    waCreds,
+    hasCreds,
+    sendWhatsApp,
+    body,
+  )
+  await logNotification(supabase, campaign.business_id, client.id, campaignId, campaign.channel)
+  await updateRecipientStatus(supabase, campaignId, client.id, res.ok)
+  return { ok: res.ok, stub: res.stub }
+}
+
+export async function sendCampaign(
+  supabase: SupabaseLike,
+  campaignId: string,
+): Promise<{ sent: number; failed: number; stub: boolean }> {
+  const campaign = await fetchCampaignOrThrow(supabase, campaignId)
+  await markSending(supabase, campaignId)
+  const recipients = await fetchRecipients(supabase, campaignId)
+  if (recipients.length === 0) return handleEmptyRecipients(supabase, campaignId)
+  const { waCreds, businessName } = await fetchBusinessInfo(supabase, campaign.business_id)
+  const clientIds = recipients.map((r) => r.client_id)
+  const clientsById = await fetchClientsMap(supabase, clientIds)
+  const sendWhatsApp = await getWhatsAppSender()
   let sent = 0
   let failed = 0
   let stub = false
   const hasCreds = !!waCreds
-
   for (const r of recipients) {
     const client = clientsById.get(r.client_id)
     if (!client) {
       failed++
-      await (
-        supabase.from('campaign_recipients') as unknown as {
-          update: (d: unknown) => {
-            eq: (
-              c: string,
-              v: unknown,
-            ) => { eq: (c: string, v: unknown) => Promise<{ error: unknown }> }
-          }
-        }
-      )
-        .update({ status: 'failed' })
-        .eq('campaign_id', campaignId)
-        .eq('client_id', r.client_id)
+      await markRecipientFailed(supabase, campaignId, r.client_id)
       continue
     }
-
-    // Dedup: skip if same client+event within 1h
-    const dedupEvent = `campaign:${campaignId}`
-    if (await isDuplicateWithinHour(supabase, campaign.business_id, client.id, dedupEvent)) {
-      // Skip but count as sent (already sent within hour)
-      continue
-    }
-
-    const body = interpolateTemplate(campaign.template, {
-      name: client.name,
-      business: businessName,
-      brand: businessName,
-    })
-
-    let ok = false
-    if (campaign.channel === 'whatsapp') {
-      const to = client.whatsapp_number ?? client.phone
-      if (to && sendWhatsApp) {
-        ok = await sendWhatsApp(to, body, waCreds)
-        if (!ok && !hasCreds) {
-          // Stub mode: treat as sent but flag stub
-          stub = true
-          ok = true
-        }
-      } else if (!to) {
-        ok = false
-      }
-    } else if (campaign.channel === 'email') {
-      // Stub: email sending would go via lib/email; mark as sent without actual send if no config
-      stub = true
-      ok = !!client.email
-    } else if (campaign.channel === 'telegram') {
-      stub = true
-      ok = true
-    }
-
-    // Insert notification_log for dedup tracking (ignore unique error)
-    try {
-      await (
-        supabase.from('notification_log') as unknown as {
-          insert: (d: unknown) => Promise<{ error: unknown }>
-        }
-      ).insert({
-        business_id: campaign.business_id,
-        ref_id: client.id,
-        type: dedupEvent,
-        channel: campaign.channel,
-      })
-    } catch {
-      // ignore
-    }
-
-    const newStatus = ok ? 'sent' : 'failed'
-    await (
-      supabase.from('campaign_recipients') as unknown as {
-        update: (d: unknown) => {
-          eq: (
-            c: string,
-            v: unknown,
-          ) => { eq: (c: string, v: unknown) => Promise<{ error: unknown }> }
-        }
-      }
+    const result = await processSingleRecipient(
+      supabase,
+      campaign,
+      client,
+      businessName,
+      waCreds,
+      hasCreds,
+      sendWhatsApp,
+      campaignId,
     )
-      .update({ status: newStatus })
-      .eq('campaign_id', campaignId)
-      .eq('client_id', client.id)
-    if (ok) sent++
+    if (result.skipped) continue
+    if (result.stub) stub = true
+    if (result.ok) sent++
     else failed++
   }
-
   await (
     supabase.from('campaigns') as unknown as {
       update: (d: unknown) => { eq: (c: string, v: unknown) => Promise<{ error: unknown }> }
@@ -678,7 +790,6 @@ export async function sendCampaign(
       stats: { sent, delivered: sent, rebooked: 0, failed },
     })
     .eq('id', campaignId)
-
   return { sent, failed, stub }
 }
 

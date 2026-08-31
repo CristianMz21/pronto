@@ -69,7 +69,7 @@ async function createNewBusiness(
   await insertOwnerAsEmployee(
     admin,
     newBusiness.id,
-    user as unknown as Parameters<typeof insertOwnerAsEmployee>[1],
+    user as unknown as Parameters<typeof insertOwnerAsEmployee>[2],
   )
   return newBusiness as { id: string }
 }

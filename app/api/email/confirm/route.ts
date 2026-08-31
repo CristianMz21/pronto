@@ -247,21 +247,19 @@ async function handleEmailSend(
   if (biz?.address) emailOpts.address = biz.address
   await sendBookingConfirmation(emailOpts)
 
-  const { error: logErr } = await supabase
-    .from('notification_log')
-    .insert({
-      business_id: appt.business_id,
-      ref_id: appt.id,
-      type: 'confirm',
-      channel: 'email',
-    } as Database['public']['Tables']['notification_log']['Insert'])
+  const { error: logErr } = await supabase.from('notification_log').insert({
+    business_id: appt.business_id,
+    ref_id: appt.id,
+    type: 'confirm',
+    channel: 'email',
+  } as Database['public']['Tables']['notification_log']['Insert'])
   if (logErr && logErr.code !== '23505') void logErr.message
   return null
 }
 
 function parseConfirmBody(
   raw: unknown,
-): { appointmentId: string; formEmail?: string | null } | { error: NextResponse } {
+): { appointmentId: string; formEmail?: string | null | undefined } | { error: NextResponse } {
   const parsed = ConfirmBodySchema.safeParse(raw)
   if (parsed.success) return parsed.data
   const hasId =

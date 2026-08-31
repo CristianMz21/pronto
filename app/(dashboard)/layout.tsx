@@ -54,11 +54,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const headerRole = headersListForRole.get('x-user-role') as CanonicalRole | null
   let role: CanonicalRole | null = null
   try {
-    role = await getUserRole(
-      supabase as unknown as { from: (t: string) => unknown },
-      user.id,
-      business.id,
-    )
+    role = await getUserRole(supabase, user.id, business.id)
   } catch {
     role = null
   }

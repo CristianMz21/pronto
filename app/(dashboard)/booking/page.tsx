@@ -95,11 +95,7 @@ export default async function BookingPage(props: { searchParams: Promise<{ locat
 
   let role: string | null = null
   try {
-    role = await getUserRole(
-      supabase as unknown as { from: (t: string) => unknown },
-      user?.id ?? '',
-      business.id,
-    )
+    role = await getUserRole(supabase, user?.id ?? '', business.id)
   } catch {
     role = null
   }

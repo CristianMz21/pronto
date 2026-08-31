@@ -67,17 +67,27 @@ async function parseBody(req: NextRequest): Promise<{ body?: PosBody; error?: Ne
     const body = BodySchema.parse(json)
     return { body }
   } catch (e) {
-    return { error: NextResponse.json({ error: 'Invalid body', details: String(e) }, { status: 400 }) }
+    return {
+      error: NextResponse.json({ error: 'Invalid body', details: String(e) }, { status: 400 }),
+    }
   }
 }
 
-async function fetchBiz(supabase: Supa, businessId: string): Promise<{ biz?: BizRow; error?: NextResponse }> {
+async function fetchBiz(
+  supabase: Supa,
+  businessId: string,
+): Promise<{ biz?: BizRow; error?: NextResponse }> {
   const { data: biz } = await supabase
     .from('businesses')
-    .select('id, require_cash_register_for_cash, loyalty_earn_rate, loyalty_redeem_rate, loyalty_redeem_value')
+    .select(
+      'id, require_cash_register_for_cash, loyalty_earn_rate, loyalty_redeem_rate, loyalty_redeem_value',
+    )
     .eq('id', businessId)
     .maybeSingle()
-  if (!biz) return { error: NextResponse.json({ error: 'Business not in my_business_ids' }, { status: 403 }) }
+  if (!biz)
+    return {
+      error: NextResponse.json({ error: 'Business not in my_business_ids' }, { status: 403 }),
+    }
   return { biz: biz as BizRow }
 }
 
@@ -88,7 +98,11 @@ function validateAmount(body: PosBody): NextResponse | null {
   return null
 }
 
-async function fetchBarberoEmployeeId(supabase: Supa, userId: string, businessId: string): Promise<string | null> {
+async function fetchBarberoEmployeeId(
+  supabase: Supa,
+  userId: string,
+  businessId: string,
+): Promise<string | null> {
   const { data: emp } = await supabase
     .from('employees')
     .select('id')
@@ -100,7 +114,11 @@ async function fetchBarberoEmployeeId(supabase: Supa, userId: string, businessId
   return (emp as { id: string } | null)?.id ?? null
 }
 
-async function fetchAllowedServiceIds(supabase: Supa, employeeId: string, serviceIds: string[]): Promise<Set<string>> {
+async function fetchAllowedServiceIds(
+  supabase: Supa,
+  employeeId: string,
+  serviceIds: string[],
+): Promise<Set<string>> {
   const { data: allowed } = await supabase
     .from('employee_services')
     .select('service_id')
@@ -110,10 +128,18 @@ async function fetchAllowedServiceIds(supabase: Supa, employeeId: string, servic
   return set
 }
 
-async function enforceBarberoGuard(supabase: Supa, userId: string, body: PosBody): Promise<NextResponse | null> {
+async function enforceBarberoGuard(
+  supabase: Supa,
+  userId: string,
+  body: PosBody,
+): Promise<NextResponse | null> {
   try {
     const { getUserRole } = await import('@/lib/auth/roles')
-    const role = await getUserRole(supabase as unknown as { from: (t: string) => unknown }, userId, body.business_id)
+    const role = await getUserRole(
+      supabase as unknown as import('@/lib/supabase/typed').TypedSupabaseClient,
+      userId,
+      body.business_id,
+    )
     if (role !== 'barbero') return null
   } catch {
     return null
@@ -121,14 +147,27 @@ async function enforceBarberoGuard(supabase: Supa, userId: string, body: PosBody
   const barberEmployeeId = await fetchBarberoEmployeeId(supabase, userId, body.business_id)
   if (!barberEmployeeId) return NextResponse.json({ error: 'barbero_no_employee' }, { status: 403 })
   if (body.employee_id && body.employee_id !== barberEmployeeId) {
-    return NextResponse.json({ error: 'barbero_employee_mismatch', message: 'Barbero can only create transactions for self' }, { status: 403 })
+    return NextResponse.json(
+      {
+        error: 'barbero_employee_mismatch',
+        message: 'Barbero can only create transactions for self',
+      },
+      { status: 403 },
+    )
   }
   body.employee_id = barberEmployeeId
   const serviceIds = body.items.map((it) => it.service_id)
   const allowedSet = await fetchAllowedServiceIds(supabase, barberEmployeeId, serviceIds)
   const disallowed = serviceIds.filter((id) => !allowedSet.has(id))
   if (disallowed.length > 0) {
-    return NextResponse.json({ error: 'barbero_service_not_assigned', message: 'Service not assigned to barbero', disallowed }, { status: 403 })
+    return NextResponse.json(
+      {
+        error: 'barbero_service_not_assigned',
+        message: 'Service not assigned to barbero',
+        disallowed,
+      },
+      { status: 403 },
+    )
   }
   return null
 }
@@ -141,23 +180,46 @@ async function validateLocation(supabase: Supa, body: PosBody): Promise<NextResp
     .eq('id', body.location_id)
     .eq('business_id', body.business_id)
     .maybeSingle()
-  if (!loc) return NextResponse.json({ error: 'location_not_found', message: 'Sucursal no encontrada en este negocio' }, { status: 404 })
+  if (!loc)
+    return NextResponse.json(
+      { error: 'location_not_found', message: 'Sucursal no encontrada en este negocio' },
+      { status: 404 },
+    )
   return null
 }
 
-async function checkCashRegister(supabase: Supa, biz: BizRow, body: PosBody): Promise<NextResponse | null> {
+async function checkCashRegister(
+  supabase: Supa,
+  biz: BizRow,
+  body: PosBody,
+): Promise<NextResponse | null> {
   const requireCashRegister = biz.require_cash_register_for_cash ?? true
   if (body.payment_method !== 'cash' || !requireCashRegister) return null
-  let cashQuery = supabase.from('cash_registers').select('id').eq('business_id', body.business_id).eq('status', 'open')
+  let cashQuery = supabase
+    .from('cash_registers')
+    .select('id')
+    .eq('business_id', body.business_id)
+    .eq('status', 'open')
   if (body.location_id) {
-    cashQuery = (cashQuery as unknown as { eq: (c: string, v: string) => typeof cashQuery }).eq('location_id', body.location_id) as typeof cashQuery
+    cashQuery = (cashQuery as unknown as { eq: (c: string, v: string) => typeof cashQuery }).eq(
+      'location_id',
+      body.location_id,
+    ) as typeof cashQuery
   }
   const { data: openRegister } = await cashQuery.maybeSingle()
-  if (!openRegister) return NextResponse.json({ error: 'cash_register_closed', message: 'Debes abrir caja antes de cobrar en efectivo' }, { status: 409 })
+  if (!openRegister)
+    return NextResponse.json(
+      { error: 'cash_register_closed', message: 'Debes abrir caja antes de cobrar en efectivo' },
+      { status: 409 },
+    )
   return null
 }
 
-async function computeMembershipDiscount(supabase: Supa, body: PosBody, grossAmount: number): Promise<{ amount: number; reason: string | null; error?: NextResponse }> {
+async function computeMembershipDiscount(
+  supabase: Supa,
+  body: PosBody,
+  grossAmount: number,
+): Promise<{ amount: number; reason: string | null; error?: NextResponse }> {
   try {
     const { isEligible } = await import('@/lib/memberships')
     const { data: cm } = await supabase
@@ -168,37 +230,99 @@ async function computeMembershipDiscount(supabase: Supa, body: PosBody, grossAmo
       .maybeSingle()
     if (!cm || !isEligible(cm as { remaining: number; expires_at: string; status: string })) {
       const remaining = (cm as { remaining?: number } | null)?.remaining ?? 0
-      if (remaining <= 0) return { amount: 0, reason: null, error: NextResponse.json({ error: 'membership_no_uses_left', message: 'Membresía sin usos restantes' }, { status: 409 }) }
-      return { amount: 0, reason: null, error: NextResponse.json({ error: 'membership_expired', message: 'Membresía expirada o inválida' }, { status: 409 }) }
+      if (remaining <= 0)
+        return {
+          amount: 0,
+          reason: null,
+          error: NextResponse.json(
+            { error: 'membership_no_uses_left', message: 'Membresía sin usos restantes' },
+            { status: 409 },
+          ),
+        }
+      return {
+        amount: 0,
+        reason: null,
+        error: NextResponse.json(
+          { error: 'membership_expired', message: 'Membresía expirada o inválida' },
+          { status: 409 },
+        ),
+      }
     }
-    const { data: mem } = await supabase.from('memberships').select('benefits').eq('id', (cm as { membership_id: string }).membership_id).maybeSingle()
-    const benefitServices = (mem as { benefits?: { services?: string[] } } | null)?.benefits?.services
+    const { data: mem } = await supabase
+      .from('memberships')
+      .select('benefits')
+      .eq('id', (cm as { membership_id: string }).membership_id)
+      .maybeSingle()
+    const benefitServices = (mem as { benefits?: { services?: string[] } } | null)?.benefits
+      ?.services
     const serviceIds = body.items.map((it) => it.service_id)
-    const isBenefit = !benefitServices || benefitServices.length === 0 || serviceIds.some((id) => benefitServices.includes(id))
-    if (!isBenefit) return { amount: 0, reason: null, error: NextResponse.json({ error: 'membership_service_not_covered', message: 'Membresía no cubre este servicio' }, { status: 409 }) }
+    const isBenefit =
+      !benefitServices ||
+      benefitServices.length === 0 ||
+      serviceIds.some((id) => benefitServices.includes(id))
+    if (!isBenefit)
+      return {
+        amount: 0,
+        reason: null,
+        error: NextResponse.json(
+          { error: 'membership_service_not_covered', message: 'Membresía no cubre este servicio' },
+          { status: 409 },
+        ),
+      }
     return { amount: grossAmount, reason: `membership:${body.membership_id}` }
   } catch (e) {
     const msg = String((e as Error).message)
     if (msg.includes('no_uses_left') || msg.includes('membership_expired')) {
-      return { amount: 0, reason: null, error: NextResponse.json({ error: msg.includes('no_uses') ? 'membership_no_uses_left' : 'membership_expired', message: msg }, { status: 409 }) }
+      return {
+        amount: 0,
+        reason: null,
+        error: NextResponse.json(
+          {
+            error: msg.includes('no_uses') ? 'membership_no_uses_left' : 'membership_expired',
+            message: msg,
+          },
+          { status: 409 },
+        ),
+      }
     }
-    return { amount: 0, reason: null, error: NextResponse.json({ error: 'membership_check_failed' }, { status: 500 }) }
+    return {
+      amount: 0,
+      reason: null,
+      error: NextResponse.json({ error: 'membership_check_failed' }, { status: 500 }),
+    }
   }
 }
 
-async function computePromoDiscount(supabase: Supa, body: PosBody, grossAmount: number): Promise<{ amount: number; reason: string | null; error?: NextResponse }> {
+async function computePromoDiscount(
+  supabase: Supa,
+  body: PosBody,
+  grossAmount: number,
+): Promise<{ amount: number; reason: string | null; error?: NextResponse }> {
   try {
     const { evaluatePromotion, calculateDiscount } = await import('@/lib/promotions')
     const { data: promo } = await supabase
       .from('promotions')
-      .select('id, business_id, location_id, name, type, value, promo_code, valid_from, valid_to, rules, is_active')
+      .select(
+        'id, business_id, location_id, name, type, value, promo_code, valid_from, valid_to, rules, is_active',
+      )
       .eq('business_id', body.business_id)
       .eq('promo_code', body.promo_code!.toUpperCase())
       .maybeSingle()
     if (!promo || !(promo as { is_active: boolean }).is_active) {
-      return { amount: 0, reason: null, error: NextResponse.json({ error: 'promo_invalid', message: 'Cupón no válido' }, { status: 404 }) }
+      return {
+        amount: 0,
+        reason: null,
+        error: NextResponse.json(
+          { error: 'promo_invalid', message: 'Cupón no válido' },
+          { status: 404 },
+        ),
+      }
     }
-    const { data: client } = await supabase.from('clients').select('birthday, tags, last_visit_at, total_visits').eq('id', body.client_id!).maybeSingle()
+    const { data: client } = await supabase
+      .from('clients')
+      .select('birthday, tags, last_visit_at, total_visits')
+      .eq('id', body.client_id!)
+      .maybeSingle()
     const evalRes = evaluatePromotion(
       promo as unknown as Parameters<typeof evaluatePromotion>[0],
       // @ts-expect-error - tsc strict fix
@@ -212,33 +336,84 @@ async function computePromoDiscount(supabase: Supa, body: PosBody, grossAmount: 
         locationId: body.location_id ?? null,
       },
     )
-    if (!evalRes.eligible) return { amount: 0, reason: null, error: NextResponse.json({ error: 'promo_not_eligible', reason: evalRes.reason }, { status: 409 }) }
-    const discount = calculateDiscount(promo as unknown as Parameters<typeof calculateDiscount>[0], grossAmount)
+    if (!evalRes.eligible)
+      return {
+        amount: 0,
+        reason: null,
+        error: NextResponse.json(
+          { error: 'promo_not_eligible', reason: evalRes.reason },
+          { status: 409 },
+        ),
+      }
+    const discount = calculateDiscount(
+      promo as unknown as Parameters<typeof calculateDiscount>[0],
+      grossAmount,
+    )
     return { amount: discount, reason: `promo:${body.promo_code}` }
   } catch {
-    return { amount: 0, reason: null, error: NextResponse.json({ error: 'promo_evaluate_failed' }, { status: 500 }) }
+    return {
+      amount: 0,
+      reason: null,
+      error: NextResponse.json({ error: 'promo_evaluate_failed' }, { status: 500 }),
+    }
   }
 }
 
-async function computeLoyaltyDiscount(supabase: Supa, body: PosBody, grossAmount: number, redeemRate: number, redeemValue: number): Promise<{ amount: number; reason: string | null; error?: NextResponse }> {
+async function computeLoyaltyDiscount(
+  supabase: Supa,
+  body: PosBody,
+  grossAmount: number,
+  redeemRate: number,
+  redeemValue: number,
+): Promise<{ amount: number; reason: string | null; error?: NextResponse }> {
   const loyaltyRedeemed = body.loyalty_points_redeem ?? 0
   try {
     const { getBalance, canRedeem, calculateRedeemValue } = await import('@/lib/loyalty')
-    const bal = await getBalance(supabase as unknown as Parameters<typeof getBalance>[0], body.client_id!)
+    const bal = await getBalance(
+      supabase as unknown as Parameters<typeof getBalance>[0],
+      body.client_id!,
+    )
     if (!canRedeem(bal, loyaltyRedeemed)) {
-      return { amount: 0, reason: null, error: NextResponse.json({ error: 'loyalty_insufficient', message: `Puntos insuficientes: tienes ${bal}`, balance: bal }, { status: 409 }) }
+      return {
+        amount: 0,
+        reason: null,
+        error: NextResponse.json(
+          {
+            error: 'loyalty_insufficient',
+            message: `Puntos insuficientes: tienes ${bal}`,
+            balance: bal,
+          },
+          { status: 409 },
+        ),
+      }
     }
     let discount = calculateRedeemValue(loyaltyRedeemed, redeemRate, redeemValue)
     discount = Math.min(grossAmount, discount)
     return { amount: discount, reason: `loyalty:${loyaltyRedeemed}` }
   } catch (e) {
     const err = e as Error & { code?: string }
-    if (err.code === 'insufficient_points') return { amount: 0, reason: null, error: NextResponse.json({ error: 'loyalty_insufficient', message: String(err.message) }, { status: 409 }) }
-    return { amount: 0, reason: null, error: NextResponse.json({ error: 'loyalty_check_failed' }, { status: 500 }) }
+    if (err.code === 'insufficient_points')
+      return {
+        amount: 0,
+        reason: null,
+        error: NextResponse.json(
+          { error: 'loyalty_insufficient', message: String(err.message) },
+          { status: 409 },
+        ),
+      }
+    return {
+      amount: 0,
+      reason: null,
+      error: NextResponse.json({ error: 'loyalty_check_failed' }, { status: 500 }),
+    }
   }
 }
 
-async function computeComboDiscount(supabase: Supa, body: PosBody, grossAmount: number): Promise<{ amount: number; reason: string | null }> {
+async function computeComboDiscount(
+  supabase: Supa,
+  body: PosBody,
+  grossAmount: number,
+): Promise<{ amount: number; reason: string | null }> {
   try {
     const { findBestCombo } = await import('@/lib/service-combos')
     const { data: combos } = await supabase
@@ -247,16 +422,28 @@ async function computeComboDiscount(supabase: Supa, body: PosBody, grossAmount: 
       .eq('business_id', body.business_id)
       .eq('is_active', true)
     if (!combos || (combos as unknown[]).length === 0) return { amount: 0, reason: null }
-    const servicesWithPrice = body.items.map((it) => ({ id: it.service_id, price: Number(it.price) }))
-    const best = findBestCombo(combos as unknown as Parameters<typeof findBestCombo>[0], servicesWithPrice)
-    if (best.combo && best.discount > 0) return { amount: Math.min(grossAmount, best.discount), reason: `combo:${best.combo.id}` }
+    const servicesWithPrice = body.items.map((it) => ({
+      id: it.service_id,
+      price: Number(it.price),
+    }))
+    const best = findBestCombo(
+      combos as unknown as Parameters<typeof findBestCombo>[0],
+      servicesWithPrice,
+    )
+    if (best.combo && best.discount > 0)
+      return { amount: Math.min(grossAmount, best.discount), reason: `combo:${best.combo.id}` }
     return { amount: 0, reason: null }
   } catch {
     return { amount: 0, reason: null }
   }
 }
 
-async function computeDiscount(supabase: Supa, body: PosBody, biz: BizRow, grossAmount: number): Promise<{ discountAmount: number; discountReason: string | null; error?: NextResponse }> {
+async function computeDiscount(
+  supabase: Supa,
+  body: PosBody,
+  biz: BizRow,
+  grossAmount: number,
+): Promise<{ discountAmount: number; discountReason: string | null; error?: NextResponse }> {
   if (!body.client_id) return { discountAmount: 0, discountReason: null }
   const { redeemRate, redeemValue } = getLoyaltyRates(biz)
   if (body.membership_id) {
@@ -278,7 +465,10 @@ async function computeDiscount(supabase: Supa, body: PosBody, biz: BizRow, gross
   return { discountAmount: combo.amount, discountReason: combo.reason }
 }
 
-function finalizeDiscount(grossAmount: number, discountAmount: number): { discountAmount: number; netAmount: number } {
+function finalizeDiscount(
+  grossAmount: number,
+  discountAmount: number,
+): { discountAmount: number; netAmount: number } {
   const finalDiscount = Math.min(grossAmount, Math.max(0, Math.round(discountAmount)))
   return { discountAmount: finalDiscount, netAmount: Math.max(0, grossAmount - finalDiscount) }
 }
@@ -288,7 +478,13 @@ function computeLoyaltyEarned(netAmount: number, body: PosBody, earnRate: number
   return Math.floor(netAmount / earnRate)
 }
 
-function buildInsertPayload(body: PosBody, netAmount: number, discountAmount: number, discountReason: string | null, loyaltyEarned: number): Record<string, unknown> {
+function buildInsertPayload(
+  body: PosBody,
+  netAmount: number,
+  discountAmount: number,
+  discountReason: string | null,
+  loyaltyEarned: number,
+): Record<string, unknown> {
   return {
     business_id: body.business_id,
     location_id: body.location_id ?? null,
@@ -308,9 +504,18 @@ function buildInsertPayload(body: PosBody, netAmount: number, discountAmount: nu
   }
 }
 
-async function insertTransaction(supabase: Supa, payload: Record<string, unknown>, body: PosBody, netAmount: number): Promise<{ data?: { receipt_number: string; id: string }; error?: { message: string } }> {
+async function insertTransaction(
+  supabase: Supa,
+  payload: Record<string, unknown>,
+  body: PosBody,
+  netAmount: number,
+): Promise<{ data?: { receipt_number: string; id: string }; error?: { message: string } }> {
   try {
-    const res = await supabase.from('transactions').insert(payload as unknown as never).select('receipt_number, id').single()
+    const res = await supabase
+      .from('transactions')
+      .insert(payload as unknown as never)
+      .select('receipt_number, id')
+      .single()
     if (res.error) throw res.error
     return { data: res.data as { receipt_number: string; id: string } }
   } catch (e) {
@@ -328,19 +533,41 @@ async function insertTransaction(supabase: Supa, payload: Record<string, unknown
     items: body.items as unknown as never,
     tip_amount: body.tip_amount ?? 0,
   }
-  const res2 = await supabase.from('transactions').insert(fallback as unknown as never).select('receipt_number, id').single()
+  const res2 = await supabase
+    .from('transactions')
+    .insert(fallback as unknown as never)
+    .select('receipt_number, id')
+    .single()
   if (res2.error) return { error: res2.error as { message: string } }
   return { data: res2.data as { receipt_number: string; id: string } }
 }
 
 function fireTipInsert(supabase: Supa, body: PosBody, txId: string): void {
   if (!body.tip_amount || body.tip_amount <= 0 || !body.employee_id) return
-  void (supabase.from('tips').insert({ business_id: body.business_id, transaction_id: txId, employee_id: body.employee_id, amount: body.tip_amount, method: body.payment_method } as unknown as never) as unknown as Promise<unknown>)
+  void (
+    supabase
+      .from('tips')
+      .insert({
+        business_id: body.business_id,
+        transaction_id: txId,
+        employee_id: body.employee_id,
+        amount: body.tip_amount,
+        method: body.payment_method,
+      } as unknown as never) as unknown as Promise<unknown>
+  )
     .then(() => {})
     .catch(() => {})
 }
 
-async function handlePostTransactionEffects(supabase: Supa, body: PosBody, biz: BizRow, txId: string, netAmount: number, discountReason: string | null, loyaltyEarned: number): Promise<void> {
+async function handlePostTransactionEffects(
+  supabase: Supa,
+  body: PosBody,
+  biz: BizRow,
+  txId: string,
+  netAmount: number,
+  discountReason: string | null,
+  loyaltyEarned: number,
+): Promise<void> {
   fireTipInsert(supabase, body, txId)
   if (!body.client_id) {
     await handleAppointmentPaid(supabase, body)
@@ -350,11 +577,19 @@ async function handlePostTransactionEffects(supabase: Supa, body: PosBody, biz: 
   const loyaltyRedeemed = body.loyalty_points_redeem ?? 0
   if (loyaltyEarned > 0) await handleLoyaltyEarn(supabase, body, biz, txId, netAmount, earnRate)
   if (loyaltyRedeemed > 0) await handleLoyaltyRedeem(supabase, body, txId, redeemRate, redeemValue)
-  if (body.membership_id && discountReason?.startsWith('membership:')) await handleMembershipConsume(supabase, body)
+  if (body.membership_id && discountReason?.startsWith('membership:'))
+    await handleMembershipConsume(supabase, body)
   await handleAppointmentPaid(supabase, body)
 }
 
-async function handleLoyaltyEarn(supabase: Supa, body: PosBody, _biz: BizRow, txId: string, netAmount: number, earnRate: number): Promise<void> {
+async function handleLoyaltyEarn(
+  supabase: Supa,
+  body: PosBody,
+  _biz: BizRow,
+  txId: string,
+  netAmount: number,
+  earnRate: number,
+): Promise<void> {
   try {
     const { earnPoints } = await import('@/lib/loyalty')
     await earnPoints(supabase as unknown as Parameters<typeof earnPoints>[0], {
@@ -367,35 +602,55 @@ async function handleLoyaltyEarn(supabase: Supa, body: PosBody, _biz: BizRow, tx
   } catch {}
 }
 
-async function handleLoyaltyRedeem(supabase: Supa, body: PosBody, txId: string, redeemRate: number, redeemValue: number): Promise<void> {
+async function handleLoyaltyRedeem(
+  supabase: Supa,
+  body: PosBody,
+  txId: string,
+  redeemRate: number,
+  redeemValue: number,
+): Promise<void> {
   try {
     const { redeemPoints } = await import('@/lib/loyalty')
-    await redeemPoints(supabase as unknown as Parameters<typeof redeemPoints>[0], {
-      business_id: body.business_id,
-      client_id: body.client_id!,
-      points: body.loyalty_points_redeem ?? 0,
-      redeem_rate: redeemRate,
-      redeem_value: redeemValue,
-      reference: txId,
-    } as unknown as Parameters<typeof redeemPoints>[1])
+    await redeemPoints(
+      supabase as unknown as Parameters<typeof redeemPoints>[0],
+      {
+        business_id: body.business_id,
+        client_id: body.client_id!,
+        points: body.loyalty_points_redeem ?? 0,
+        redeem_rate: redeemRate,
+        redeem_value: redeemValue,
+        reference: txId,
+      } as unknown as Parameters<typeof redeemPoints>[1],
+    )
   } catch {}
 }
 
 async function handleMembershipConsume(supabase: Supa, body: PosBody): Promise<void> {
   try {
     const { consumeMembership } = await import('@/lib/memberships')
-    await consumeMembership(supabase as unknown as Parameters<typeof consumeMembership>[0], body.membership_id!)
+    await consumeMembership(
+      supabase as unknown as Parameters<typeof consumeMembership>[0],
+      body.membership_id!,
+    )
   } catch {}
 }
 
 async function handleAppointmentPaid(supabase: Supa, body: PosBody): Promise<void> {
   if (!body.appointment_id) return
-  void (supabase.from('appointments').update({ status: 'paid' }).eq('id', body.appointment_id) as unknown as Promise<unknown>).then(() => {}).catch(() => {})
+  void (
+    supabase
+      .from('appointments')
+      .update({ status: 'paid' })
+      .eq('id', body.appointment_id) as unknown as Promise<unknown>
+  )
+    .then(() => {})
+    .catch(() => {})
 }
 
 export async function POST(req: NextRequest) {
   const ip = getIp(req)
-  if (!rateLimit(`pos-transaction:${ip}`, { limit: 60, windowMs: 10 * 60 * 1000 })) return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
+  if (!rateLimit(`pos-transaction:${ip}`, { limit: 60, windowMs: 10 * 60 * 1000 }))
+    return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
   const supabase = await createClient()
   const {
     data: { user },
@@ -439,7 +694,15 @@ export async function POST(req: NextRequest) {
   const data = insertRes.data
   if (!data) return NextResponse.json({ error: 'transaction_failed' }, { status: 500 })
 
-  await handlePostTransactionEffects(supabase, body, biz, data.id, netAmount, discountReason, loyaltyEarned)
+  await handlePostTransactionEffects(
+    supabase,
+    body,
+    biz,
+    data.id,
+    netAmount,
+    discountReason,
+    loyaltyEarned,
+  )
 
   return NextResponse.json({
     receipt_number: data.receipt_number,

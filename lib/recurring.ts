@@ -10,7 +10,6 @@ export const RecurringCreateSchema = z.object({
   employee_id: z.string().uuid().nullable().optional().or(z.literal('')),
   rrule: z.string().min(1).max(500),
   dtstart: z.string().datetime().optional().nullable(),
-  // alternative: date + time in business timezone
   date: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/)
@@ -22,7 +21,6 @@ export const RecurringCreateSchema = z.object({
     .optional()
     .nullable(),
   until: z.string().datetime().nullable().optional(),
-  // cap to prevent runaway
   count: z.coerce.number().int().min(1).max(52).optional(),
 })
 
@@ -43,22 +41,17 @@ export interface GenerateOpts {
 
 // ── Pure helpers (unit-testable, no DB) ─────────────────────────────────────
 
-/** Validate and parse an RRULE string. Throws with code `invalid_rrule` on failure. */
 export function parseRRule(rruleText: string, dtstart: Date): RRule {
   if (!rruleText || typeof rruleText !== 'string')
     throw Object.assign(new Error('invalid_rrule: empty'), { code: 'invalid_rrule' })
   const trimmed = rruleText.trim()
   if (!trimmed) throw Object.assign(new Error('invalid_rrule: empty'), { code: 'invalid_rrule' })
-
-  // Normalize: allow "FREQ=WEEKLY;COUNT=6" or "RRULE:FREQ=WEEKLY;COUNT=6"
   const normalized = trimmed.startsWith('RRULE:')
     ? trimmed
     : trimmed.includes('FREQ=')
       ? trimmed
       : `FREQ=${trimmed}`
-  // rrulestr expects DTSTART if not in string; we provide dtstart option
   try {
-    // Use rrulestr to support full RFC5545, then wrap as RRule
     const rule = rrulestr(
       `DTSTART:${dtstart
         .toISOString()
@@ -66,16 +59,12 @@ export function parseRRule(rruleText: string, dtstart: Date): RRule {
         .replace(/\.\d+Z/, 'Z')}\nRRULE:${normalized}`,
       { forceset: false },
     ) as unknown as RRule
-    // rrulestr may return RRuleSet if forceset true; guard
-    if (!rule || typeof (rule as unknown as { all: unknown }).all !== 'function') {
+    if (!rule || typeof (rule as unknown as { all: unknown }).all !== 'function')
       throw new Error('parse_failed')
-    }
     return rule as RRule
   } catch (e) {
-    // Fallback: try RRule.fromString (handles "FREQ=..." without DTSTART handling)
     try {
       const r = RRule.fromString(normalized)
-      // RRule.fromString doesn't set dtstart, we set it via options clone
       const opts = r.origOptions
       opts.dtstart = dtstart
       return new RRule(opts)
@@ -97,15 +86,12 @@ export function validateRRule(
     const opts =
       rule.origOptions ??
       (rule as unknown as { options: { until?: Date; count?: number; dtstart: Date } }).options
-    // Guard: count <=52 (per spec)
     const count = (opts as { count?: number })?.count
     if (count != null && count > 52)
       return { ok: false, reason: 'count exceeds 52', code: 'count_too_large' }
-    // Guard: until > dtstart
     const ruleUntil = (opts as { until?: Date })?.until ?? until ?? null
     if (ruleUntil && ruleUntil.getTime() <= dtstart.getTime())
       return { ok: false, reason: 'until must be after dtstart', code: 'until_before_dtstart' }
-    // Guard: rrule must produce at least 1 occurrence
     const first = rule.all((_, i) => i < 1)
     if (first.length === 0)
       return { ok: false, reason: 'rrule yields no occurrences', code: 'no_occurrences' }
@@ -116,33 +102,18 @@ export function validateRRule(
   }
 }
 
-/**
- * Generate occurrence start Dates from an RRULE string + dtstart.
- * Caps at 52 occurrences to prevent abuse (matches tasks.md validation).
- * Throws on invalid RRULE.
- */
 export function generateOccurrences(opts: GenerateOpts): Date[] {
   const { rrule, dtstart, until, countLimit = 52 } = opts
   if (Number.isNaN(dtstart.getTime()))
     throw Object.assign(new Error('invalid_dtstart'), { code: 'invalid_dtstart' })
-
   const validated = validateRRule(rrule, dtstart, until ?? null)
   if (!validated.ok) throw Object.assign(new Error(validated.reason), { code: validated.code })
-
   const rule = validated.rule
-  // Cap occurrences to countLimit + safety for UNTIL infinite
   const all = rule.all((_, idx) => idx < countLimit)
-  // If until provided and rule has no UNTIL/COUNT, we filter beyond until
-  if (until) {
-    return all.filter((d) => d.getTime() <= until.getTime()).slice(0, countLimit)
-  }
+  if (until) return all.filter((d) => d.getTime() <= until.getTime()).slice(0, countLimit)
   return all.slice(0, countLimit)
 }
 
-/**
- * Build occurrences with ends_at given service duration.
- * Pure – no DB.
- */
 export function buildOccurrencesWithEnd(
   rruleText: string,
   dtstart: Date,
@@ -168,114 +139,70 @@ type SupabaseLike = {
   rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>
 }
 
-/**
- * createSeries — creates a recurring_appointments row and then attempts to
- * create appointments for each occurrence. Each occurrence is validated via
- * booking-availability (checkSlotWithinHours + holidays + booked slots). Conflicts are skipped.
- *
- * Returns summary { id, occurrences: total, created, skipped, errors }.
- * Uses service client (RLS bypass) when called from API that already auth'd.
- */
-export async function createSeries(
-  supabase: SupabaseLike,
-  params: RecurringInput & { duration_min?: number; timezone?: string; price?: number },
-): Promise<{
-  id: string
-  occurrences: number
-  created: number
-  skipped: { index: number; starts_at: string; reason: string }[]
-  appointmentIds: string[]
-}> {
-  const parsed = RecurringCreateSchema.safeParse(params)
-  if (!parsed.success)
-    throw Object.assign(new Error('validation_failed'), {
-      details: parsed.error.flatten().fieldErrors,
-      code: 'validation_failed',
-    })
-
-  const data = parsed.data
-  const business_id = data.business_id
-  const location_id = data.location_id || null
-  const client_id = data.client_id
-  const service_id = data.service_id
-  const employee_id = data.employee_id || null
-  const rruleText = data.rrule.trim()
-  const until = data.until ? new Date(data.until) : null
-
-  // Resolve dtstart
-  let dtstart: Date
+async function resolveDtstart(data: RecurringInput, timezone?: string): Promise<Date> {
   if (data.dtstart) {
-    dtstart = new Date(data.dtstart)
-  } else if (data.date && data.time) {
-    // dtstart as wall-clock in UTC for now; caller should convert via business timezone before calling.
-    // If timezone provided we use noon trick; otherwise parse as UTC wall-clock.
-    if (params.timezone) {
-      const { parseDateTimeInTz } = await import('./booking-availability')
-      dtstart = parseDateTimeInTz(data.date, data.time, params.timezone)
-    } else {
-      dtstart = new Date(`${data.date}T${data.time}:00.000Z`)
-    }
-  } else {
-    throw Object.assign(new Error('dtstart or date+time required'), { code: 'dtstart_required' })
+    const d = new Date(data.dtstart)
+    if (Number.isNaN(d.getTime()))
+      throw Object.assign(new Error('invalid_dtstart'), { code: 'invalid_dtstart' })
+    return d
   }
-  if (Number.isNaN(dtstart.getTime()))
-    throw Object.assign(new Error('invalid_dtstart'), { code: 'invalid_dtstart' })
+  if (data.date && data.time) {
+    if (timezone) {
+      const { parseDateTimeInTz } = await import('./booking-availability')
+      return parseDateTimeInTz(data.date, data.time, timezone)
+    }
+    return new Date(`${data.date}T${data.time}:00.000Z`)
+  }
+  throw Object.assign(new Error('dtstart or date+time required'), { code: 'dtstart_required' })
+}
 
-  // Validate RRULE
-  const validated = validateRRule(rruleText, dtstart, until)
-  if (!validated.ok) throw Object.assign(new Error(validated.reason), { code: validated.code })
-
-  // Fetch service for duration/price if not provided
-  let durationMin = params.duration_min ?? 0
-  let price = params.price ?? 0
-  if (!durationMin || !price) {
-    const { data: svc } = await (
-      supabase.from('services') as unknown as {
-        select: (c: string) => {
+async function fetchServiceDetails(
+  supabase: SupabaseLike,
+  service_id: string,
+  business_id: string,
+  durationMin: number,
+  price: number,
+): Promise<{ durationMin: number; price: number }> {
+  if (durationMin && price) return { durationMin, price }
+  const { data: svc } = await (
+    supabase.from('services') as unknown as {
+      select: (c: string) => {
+        eq: (
+          a: string,
+          b: unknown,
+        ) => {
           eq: (
-            a: string,
-            b: unknown,
+            c: string,
+            d: unknown,
           ) => {
-            eq: (
-              c: string,
-              d: unknown,
-            ) => {
-              maybeSingle: () => Promise<{
-                data: { duration_min: number; price: number } | null
-                error: unknown
-              }>
-            }
+            maybeSingle: () => Promise<{ data: { duration_min: number; price: number } | null }>
           }
         }
       }
-    )
-      .select('duration_min, price')
-      .eq('id', service_id)
-      .eq('business_id', business_id)
-      .maybeSingle()
-    if (svc) {
-      durationMin = durationMin || svc.duration_min || 60
-      price = price || svc.price || 0
-    } else {
-      durationMin = durationMin || 60
     }
-  }
+  )
+    .select('duration_min, price')
+    .eq('id', service_id)
+    .eq('business_id', business_id)
+    .maybeSingle()
+  if (svc)
+    return { durationMin: durationMin || svc.duration_min || 60, price: price || svc.price || 0 }
+  return { durationMin: durationMin || 60, price: price || 0 }
+}
 
-  // Determine next_at and until for series row: first occurrence is dtstart, last is filtered last
-  const allStarts = generateOccurrences({
-    rrule: rruleText,
-    dtstart,
-    until,
-    countLimit: data.count ?? 52,
-  })
-  if (allStarts.length === 0)
-    throw Object.assign(new Error('no_occurrences'), { code: 'no_occurrences' })
-  // @ts-expect-error - tsc strict fix
-  const nextAt = allStarts[0].toISOString()
+function buildSeriesDates(
+  allStarts: Date[],
+  until: Date | null,
+): { nextAt: string; seriesUntil: string | null } {
+  const nextAt = allStarts[0]!.toISOString()
   const lastAt = allStarts[allStarts.length - 1]?.toISOString() ?? null
-  const seriesUntil = until ? until.toISOString() : lastAt
+  return { nextAt, seriesUntil: until ? until.toISOString() : lastAt }
+}
 
-  // Create recurring_appointments row
+async function createRecurringRow(
+  supabase: SupabaseLike,
+  payload: Record<string, unknown>,
+): Promise<string> {
   const supa = supabase as unknown as {
     from: (t: string) => {
       insert: (d: unknown) => {
@@ -283,38 +210,31 @@ export async function createSeries(
           single: () => Promise<{ data: { id: string } | null; error: unknown }>
         }
       }
-      select: (c: string) => { eq: (a: string, b: unknown) => unknown }
     }
   }
-  const { data: series, error: seriesErr } = await supa
+  const { data: series, error } = await supa
     .from('recurring_appointments')
-    .insert({
-      business_id,
-      location_id,
-      client_id,
-      service_id,
-      employee_id,
-      rrule: rruleText,
-      next_at: nextAt,
-      until: seriesUntil,
-      is_active: true,
-    } as unknown as never)
+    .insert(payload as unknown as never)
     .select('id')
     .single()
-
-  if (seriesErr || !series)
+  if (error || !series)
     throw Object.assign(
       new Error(
-        'recurring_create_failed: ' +
-          String((seriesErr as { message?: string })?.message ?? seriesErr),
+        'recurring_create_failed: ' + String((error as { message?: string })?.message ?? error),
       ),
       { code: 'recurring_create_failed' },
     )
-  const seriesId = (series as { id: string }).id
+  return (series as { id: string }).id
+}
 
-  // For each occurrence, validate and insert appointment, skipping conflicts
-  // Pre-fetch businessHours + holidays for validation
-  const timezone = params.timezone ?? 'America/Bogota'
+async function fetchBusinessHoursAndHolidays(
+  supabase: SupabaseLike,
+  business_id: string,
+): Promise<{
+  businessHours: unknown[]
+  holidays: { date: string; is_open: boolean; location_id: string | null }[]
+  effectiveHours: import('./booking-availability').DayHours[]
+}> {
   let businessHours: unknown[] = []
   let holidays: { date: string; is_open: boolean; location_id: string | null }[] = []
   try {
@@ -337,210 +257,317 @@ export async function createSeries(
     )
       .select('date, is_open, location_id')
       .eq('business_id', business_id) as unknown as Promise<{ data: unknown[] | null }>)
-    // normalize date to YYYY-MM-DD
     holidays = (hol ?? []).map((h: unknown) => {
       const hh = h as { date: string; is_open: boolean; location_id: string | null }
       const d = typeof hh.date === 'string' ? hh.date.slice(0, 10) : String(hh.date)
       return { date: d, is_open: hh.is_open, location_id: hh.location_id }
     })
   } catch {}
-
-  const { computeEffectiveHours, checkSlotWithHolidays, dayOfWeekFromDateString } = await import(
-    './booking-availability'
-  )
+  const { computeEffectiveHours } = await import('./booking-availability')
   const effectiveHours = computeEffectiveHours(
     businessHours as unknown as import('./booking-availability').DayHours[],
   )
+  return { businessHours, holidays, effectiveHours }
+}
 
-  const skipped: { index: number; starts_at: string; reason: string }[] = []
-  const createdIds: string[] = []
+function toBusinessDateTime(utcDate: Date, timezone: string): { date: string; time: string } {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(utcDate)
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '00'
+  const date = `${get('year')}-${get('month')}-${get('day')}`
+  const timeParts = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(utcDate)
+  const hh = timeParts.find((p) => p.type === 'hour')?.value ?? '00'
+  const mm = timeParts.find((p) => p.type === 'minute')?.value ?? '00'
+  return { date, time: `${String(parseInt(hh, 10) % 24).padStart(2, '0')}:${mm}` }
+}
 
-  // Helper to get YYYY-MM-DD and HH:mm in business timezone for availability check
-  function toBusinessDateTime(utcDate: Date): { date: string; time: string } {
-    // Convert UTC to business TZ wall-clock
-    const parts = new Intl.DateTimeFormat('en-CA', {
-      timeZone: timezone,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    }).formatToParts(utcDate)
-    const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '00'
-    const date = `${get('year')}-${get('month')}-${get('day')}`
-    const timeParts = new Intl.DateTimeFormat('en-US', {
-      timeZone: timezone,
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    }).formatToParts(utcDate)
-    const hh = timeParts.find((p) => p.type === 'hour')?.value ?? '00'
-    const mm = timeParts.find((p) => p.type === 'minute')?.value ?? '00'
-    return { date, time: `${String(parseInt(hh, 10) % 24).padStart(2, '0')}:${mm}` }
-  }
+function isPastOccurrence(startsAt: Date): boolean {
+  return startsAt.getTime() <= Date.now()
+}
 
-  for (let idx = 0; idx < allStarts.length; idx++) {
-    const startsAt = allStarts[idx]
-    // @ts-expect-error - tsc strict fix
-    const endsAt = new Date(startsAt.getTime() + durationMin * 60_000)
-    // @ts-expect-error - tsc strict fix
-    const { date, time } = toBusinessDateTime(startsAt)
-
-    // 1) Past check
-    // @ts-expect-error - tsc strict fix
-    if (startsAt.getTime() <= Date.now()) {
-      // @ts-expect-error - tsc strict fix
-      skipped.push({ index: idx, starts_at: startsAt.toISOString(), reason: 'in_past' })
-      continue
-    }
-
-    // 2) Hours + holidays check
-    const dow = dayOfWeekFromDateString(date)
-    const dayHours = effectiveHours.find((h) => h.day_of_week === dow)
-    const slotCheck = checkSlotWithHolidays(
-      dayHours,
-      time,
-      durationMin,
-      date,
-      holidays as unknown as import('./booking-availability').HolidayCheck[],
-    )
-    if (!slotCheck.ok) {
-      // @ts-expect-error - tsc strict fix
-      skipped.push({ index: idx, starts_at: startsAt.toISOString(), reason: slotCheck.reason })
-      continue
-    }
-
-    // 3) Booked slots check via RPC (if employee provided, else skip restrictive check)
-    // For capacity>1 services we allow overbooking up to capacity, but for recurring we treat capacity=1 conservatively
-    try {
-      if (employee_id) {
-        // Use direct appointment overlap check via supabase query (avoids RPC dependency)
-        const { data: overlapping } = await ((
-          supabase.from('appointments') as unknown as {
-            select: (
+async function checkSlotConflict(
+  supabase: SupabaseLike,
+  business_id: string,
+  employee_id: string | null,
+  startsAt: Date,
+  endsAt: Date,
+  durationMin: number,
+): Promise<boolean> {
+  if (!employee_id) return false
+  try {
+    const { data: overlapping } = await ((
+      supabase.from('appointments') as unknown as {
+        select: (
+          c: string,
+          opts?: unknown,
+        ) => {
+          eq: (
+            a: string,
+            b: unknown,
+          ) => {
+            eq: (
               c: string,
-              opts?: unknown,
+              d: unknown,
             ) => {
-              eq: (
-                a: string,
-                b: unknown,
-              ) => {
-                eq: (
-                  c: string,
-                  d: unknown,
-                ) => {
-                  gte: (
-                    c: string,
-                    v: string,
-                  ) => { lte: (c: string, v: string) => Promise<{ data: unknown[] | null }> }
-                }
-              }
+              gte: (
+                c: string,
+                v: string,
+              ) => { lte: (c: string, v: string) => Promise<{ data: unknown[] | null }> }
             }
-          }
-        )
-          .select('id', { count: 'exact', head: false })
-          .eq('business_id', business_id)
-          .eq('employee_id', employee_id)
-          // @ts-expect-error - tsc strict fix
-          .gte('starts_at', new Date(startsAt.getTime() - durationMin * 60_000).toISOString())
-          .lte('starts_at', endsAt.toISOString()) as unknown as Promise<{ data: unknown[] | null }>)
-
-        // Simple overlap: check if any appointment overlaps [startsAt, endsAt)
-        // More accurate via loop over returned rows could be done, but above narrow window suffices for skip
-        const conflict = (overlapping ?? []).some((ap: unknown) => {
-          const a = ap as { starts_at: string; ends_at: string }
-          // if ap doesn't have ends_at in select, fallback to startsAt + durationMin
-          const aStart = new Date(a.starts_at).getTime()
-          const aEnd = a.ends_at ? new Date(a.ends_at).getTime() : aStart + durationMin * 60_000
-          // @ts-expect-error - tsc strict fix
-          return startsAt.getTime() < aEnd && endsAt.getTime() > aStart
-        })
-        // If we fetched without ends_at, treat any row in window as conflict (conservative)
-        if (overlapping && overlapping.length > 0) {
-          // Need precise check: if we didn't fetch ends_at, assume conflict
-          // To avoid false positives, fetch full rows for candidate window
-          if (
-            !conflict &&
-            overlapping.length > 0 &&
-            !(overlapping[0] as { ends_at?: string })?.ends_at
-          ) {
-            // @ts-expect-error - tsc strict fix
-            skipped.push({ index: idx, starts_at: startsAt.toISOString(), reason: 'slot_taken' })
-            continue
-          }
-          if (conflict) {
-            // @ts-expect-error - tsc strict fix
-            skipped.push({ index: idx, starts_at: startsAt.toISOString(), reason: 'slot_taken' })
-            continue
           }
         }
       }
-    } catch {
-      // On query failure, skip restrictive check and attempt insert (DB trigger will enforce)
+    )
+      .select('id', { count: 'exact', head: false })
+      .eq('business_id', business_id)
+      .eq('employee_id', employee_id)
+      .gte('starts_at', new Date(startsAt.getTime() - durationMin * 60_000).toISOString())
+      .lte('starts_at', endsAt.toISOString()) as unknown as Promise<{ data: unknown[] | null }>)
+    const conflict = (overlapping ?? []).some((ap: unknown) => {
+      const a = ap as { starts_at: string; ends_at: string }
+      const aStart = new Date(a.starts_at).getTime()
+      const aEnd = a.ends_at ? new Date(a.ends_at).getTime() : aStart + durationMin * 60_000
+      return startsAt.getTime() < aEnd && endsAt.getTime() > aStart
+    })
+    if (overlapping && overlapping.length > 0) {
+      if (!conflict && !(overlapping[0] as { ends_at?: string })?.ends_at) return true
+      if (conflict) return true
     }
+    return false
+  } catch {
+    return false
+  }
+}
 
-    // 4) Attempt insert
-    try {
-      const { data: appt, error } = await (
-        supabase.from('appointments') as unknown as {
-          insert: (d: unknown) => {
-            select: (c: string) => {
-              single: () => Promise<{ data: { id: string } | null; error: unknown }>
-            }
-          }
+async function tryInsertAppointment(
+  supabase: SupabaseLike,
+  payload: Record<string, unknown>,
+): Promise<{ id?: string; error?: unknown }> {
+  const { data: appt, error } = await (
+    supabase.from('appointments') as unknown as {
+      insert: (d: unknown) => {
+        select: (c: string) => {
+          single: () => Promise<{ data: { id: string } | null; error: unknown }>
         }
-      )
-        .insert({
-          business_id,
-          location_id,
-          client_id,
-          service_id,
-          employee_id,
-          // @ts-expect-error - tsc strict fix
-          starts_at: startsAt.toISOString(),
-          ends_at: endsAt.toISOString(),
-          price,
-          status: 'scheduled',
-          recurring_id: seriesId,
-          source: 'recurring',
-        } as unknown as never)
-        .select('id')
-        .single()
-
-      if (error) {
-        const msg = String((error as { message?: string })?.message ?? '')
-        if (msg.includes('slot_already_booked') || msg.includes('slot_taken')) {
-          // @ts-expect-error - tsc strict fix
-          skipped.push({ index: idx, starts_at: startsAt.toISOString(), reason: 'slot_taken' })
-        } else if (
-          msg.includes('outside_availability') ||
-          msg.includes('barber_unavailable') ||
-          msg.includes('barber_not_qualified')
-        ) {
-          skipped.push({
-            index: idx,
-            // @ts-expect-error - tsc strict fix
-            starts_at: startsAt.toISOString(),
-            reason: msg.includes('outside') ? 'outside_availability' : 'barber_unavailable',
-          })
-        } else {
-          // @ts-expect-error - tsc strict fix
-          skipped.push({ index: idx, starts_at: startsAt.toISOString(), reason: 'insert_failed' })
-        }
-        continue
       }
-      if (appt) createdIds.push((appt as { id: string }).id)
+    }
+  )
+    .insert(payload as unknown as never)
+    .select('id')
+    .single()
+  if (error) return { error }
+  if (appt) return { id: (appt as { id: string }).id }
+  return {}
+}
+
+function mapInsertErrorToReason(msg: string): string {
+  if (msg.includes('slot_already_booked') || msg.includes('slot_taken')) return 'slot_taken'
+  if (
+    msg.includes('outside_availability') ||
+    msg.includes('barber_unavailable') ||
+    msg.includes('barber_not_qualified')
+  )
+    return msg.includes('outside') ? 'outside_availability' : 'barber_unavailable'
+  return 'insert_failed'
+}
+
+async function processSingleOccurrence(
+  supabase: SupabaseLike,
+  params: {
+    idx: number
+    startsAt: Date
+    durationMin: number
+    business_id: string
+    location_id: string | null
+    client_id: string
+    service_id: string
+    employee_id: string | null
+    price: number
+    seriesId: string
+    timezone: string
+    effectiveHours: import('./booking-availability').DayHours[]
+    holidays: { date: string; is_open: boolean; location_id: string | null }[]
+  },
+  skipped: { index: number; starts_at: string; reason: string }[],
+  createdIds: string[],
+): Promise<void> {
+  const {
+    idx,
+    startsAt,
+    durationMin,
+    business_id,
+    location_id,
+    client_id,
+    service_id,
+    employee_id,
+    price,
+    seriesId,
+    timezone,
+    effectiveHours,
+    holidays,
+  } = params
+  const endsAt = new Date(startsAt.getTime() + durationMin * 60_000)
+  const { date, time } = toBusinessDateTime(startsAt, timezone)
+  if (isPastOccurrence(startsAt)) {
+    skipped.push({ index: idx, starts_at: startsAt.toISOString(), reason: 'in_past' })
+    return
+  }
+  const { dayOfWeekFromDateString, checkSlotWithHolidays } = await import('./booking-availability')
+  const dow = dayOfWeekFromDateString(date)
+  const dayHours = effectiveHours.find((h) => h.day_of_week === dow)
+  const slotCheck = checkSlotWithHolidays(
+    dayHours,
+    time,
+    durationMin,
+    date,
+    holidays as unknown as import('./booking-availability').HolidayCheck[],
+  )
+  if (!slotCheck.ok) {
+    skipped.push({ index: idx, starts_at: startsAt.toISOString(), reason: slotCheck.reason })
+    return
+  }
+  const hasConflict = await checkSlotConflict(
+    supabase,
+    business_id,
+    employee_id,
+    startsAt,
+    endsAt,
+    durationMin,
+  )
+  if (hasConflict) {
+    skipped.push({ index: idx, starts_at: startsAt.toISOString(), reason: 'slot_taken' })
+    return
+  }
+  const res = await tryInsertAppointment(supabase, {
+    business_id,
+    location_id,
+    client_id,
+    service_id,
+    employee_id,
+    starts_at: startsAt.toISOString(),
+    ends_at: endsAt.toISOString(),
+    price,
+    status: 'scheduled',
+    recurring_id: seriesId,
+    source: 'recurring',
+  })
+  if (res.error) {
+    const msg = String((res.error as { message?: string })?.message ?? '')
+    skipped.push({
+      index: idx,
+      starts_at: startsAt.toISOString(),
+      reason: mapInsertErrorToReason(msg),
+    })
+    return
+  }
+  if (res.id) createdIds.push(res.id)
+  else {
+    try {
+      throw new Error('no id')
     } catch (e) {
       skipped.push({
         index: idx,
-        // @ts-expect-error - tsc strict fix
         starts_at: startsAt.toISOString(),
         reason: String((e as Error).message ?? 'insert_failed').slice(0, 80),
       })
     }
   }
+}
 
-  // If all skipped, optionally deactivate series? Keep active for future but update next_at to last skipped? For now keep is_active true.
-  // If no appointments created, we keep series but return skipped.
-
+export async function createSeries(
+  supabase: SupabaseLike,
+  params: RecurringInput & { duration_min?: number; timezone?: string; price?: number },
+): Promise<{
+  id: string
+  occurrences: number
+  created: number
+  skipped: { index: number; starts_at: string; reason: string }[]
+  appointmentIds: string[]
+}> {
+  const parsed = RecurringCreateSchema.safeParse(params)
+  if (!parsed.success)
+    throw Object.assign(new Error('validation_failed'), {
+      details: parsed.error.flatten().fieldErrors,
+      code: 'validation_failed',
+    })
+  const data = parsed.data
+  const business_id = data.business_id
+  const location_id = data.location_id || null
+  const client_id = data.client_id
+  const service_id = data.service_id
+  const employee_id = data.employee_id || null
+  const rruleText = data.rrule.trim()
+  const until = data.until ? new Date(data.until) : null
+  const dtstart = await resolveDtstart(data, params.timezone)
+  if (Number.isNaN(dtstart.getTime()))
+    throw Object.assign(new Error('invalid_dtstart'), { code: 'invalid_dtstart' })
+  const validated = validateRRule(rruleText, dtstart, until)
+  if (!validated.ok) throw Object.assign(new Error(validated.reason), { code: validated.code })
+  const details = await fetchServiceDetails(
+    supabase,
+    service_id,
+    business_id,
+    params.duration_min ?? 0,
+    params.price ?? 0,
+  )
+  const durationMin = details.durationMin
+  const price = details.price
+  const allStarts = generateOccurrences({
+    rrule: rruleText,
+    dtstart,
+    until,
+    countLimit: data.count ?? 52,
+  })
+  if (allStarts.length === 0)
+    throw Object.assign(new Error('no_occurrences'), { code: 'no_occurrences' })
+  const { nextAt, seriesUntil } = buildSeriesDates(allStarts, until)
+  const seriesId = await createRecurringRow(supabase, {
+    business_id,
+    location_id,
+    client_id,
+    service_id,
+    employee_id,
+    rrule: rruleText,
+    next_at: nextAt,
+    until: seriesUntil,
+    is_active: true,
+  })
+  const timezone = params.timezone ?? 'America/Bogota'
+  const { effectiveHours, holidays } = await fetchBusinessHoursAndHolidays(supabase, business_id)
+  const skipped: { index: number; starts_at: string; reason: string }[] = []
+  const createdIds: string[] = []
+  for (let idx = 0; idx < allStarts.length; idx++) {
+    const startsAt = allStarts[idx]!
+    await processSingleOccurrence(
+      supabase,
+      {
+        idx,
+        startsAt,
+        durationMin,
+        business_id,
+        location_id,
+        client_id,
+        service_id,
+        employee_id,
+        price,
+        seriesId,
+        timezone,
+        effectiveHours,
+        holidays,
+      },
+      skipped,
+      createdIds,
+    )
+  }
   return {
     id: seriesId,
     occurrences: allStarts.length,
