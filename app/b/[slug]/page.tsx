@@ -129,7 +129,7 @@ export default async function BusinessLanding({ params }: { params: Promise<{ sl
     'Barbería contemporánea para hombres que entienden que los detalles hacen la diferencia.'
   const heroImage =
     (business as unknown as { hero_image_url?: string | null }).hero_image_url ??
-    `/business-assets/${business.slug}/hero.jpg`
+    `/business-assets/${business.slug}/hero.webp`
   const gallery = (business as unknown as { gallery_urls?: string[] | null }).gallery_urls ?? []
   const logoUrl = business.logo_url ?? null
   const locale = (business as unknown as { locale?: string | null }).locale ?? 'es'
@@ -348,7 +348,9 @@ export default async function BusinessLanding({ params }: { params: Promise<{ sl
           <div className="absolute inset-0">
             <div
               className="w-full h-full bg-cover bg-center opacity-60"
-              style={{ backgroundImage: `url('${heroImage}')` }}
+              style={{
+                backgroundImage: `image-set(url('/business-assets/${business.slug}/hero.avif') type('image/avif'), url('${heroImage}') type('image/webp'), url('/business-assets/${business.slug}/hero.jpg') type('image/jpeg'))`,
+              }}
             />
             <div
               className="absolute inset-0"
@@ -467,7 +469,7 @@ export default async function BusinessLanding({ params }: { params: Promise<{ sl
                   alt={`${bizName} — cuero`}
                   className="object-cover grayscale hover:grayscale-0 transition-all duration-700 border"
                   style={{ borderColor: 'color-mix(in srgb, var(--accent) 20%, transparent)' }}
-                  src={gallery[0] ?? `/business-assets/${business.slug}/cuero.png`}
+                  src={gallery[0] ?? `/business-assets/${business.slug}/cuero.webp`}
                   fill
                   sizes="(max-width: 768px) 50vw, 35vw"
                 />
@@ -477,7 +479,7 @@ export default async function BusinessLanding({ params }: { params: Promise<{ sl
                   alt={`${bizName} — tijeras`}
                   className="object-cover grayscale hover:grayscale-0 transition-all duration-700 border"
                   style={{ borderColor: 'color-mix(in srgb, var(--accent) 20%, transparent)' }}
-                  src={gallery[1] ?? `/business-assets/${business.slug}/tijeras.png`}
+                  src={gallery[1] ?? `/business-assets/${business.slug}/tijeras.webp`}
                   fill
                   sizes="(max-width: 768px) 50vw, 35vw"
                 />
@@ -718,7 +720,9 @@ export default async function BusinessLanding({ params }: { params: Promise<{ sl
             <div
               className="w-full h-full bg-cover bg-center opacity-30"
               style={{
-                backgroundImage: `url('${gallery[2] ?? `/business-assets/${business.slug}/signature.jpg`}')`,
+                backgroundImage: gallery[2]
+                  ? `url('${gallery[2]}')`
+                  : `image-set(url('/business-assets/${business.slug}/signature.avif') type('image/avif'), url('/business-assets/${business.slug}/signature.webp') type('image/webp'), url('/business-assets/${business.slug}/signature.jpg') type('image/jpeg'))`,
               }}
             />
             <div className="absolute inset-0" style={{ backgroundColor: `${brand}CC` }} />
