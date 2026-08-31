@@ -19,6 +19,231 @@ const STATUS_STRIPE: Record<string, string> = {
   no_show: '#f97316',
 }
 
+type DashboardBusiness = {
+  id: string
+  name: string
+  currency: string
+  timezone: string
+  onboarding_completed: boolean | null
+  enabled_modules: string[] | null
+}
+
+async function resolveDashboardBusiness(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string | undefined,
+): Promise<DashboardBusiness | null> {
+  const { data: ownedBiz } = await supabase
+    .from('businesses')
+    .select('id, name, currency, timezone, onboarding_completed, enabled_modules')
+    .eq('owner_id', userId ?? '')
+    .maybeSingle()
+  if (ownedBiz) return ownedBiz as unknown as DashboardBusiness
+  const { data: empBiz } = await supabase
+    .from('employees')
+    .select(
+      'business_id, businesses!inner(id, name, currency, timezone, onboarding_completed, enabled_modules)',
+    )
+    .eq('user_id', userId ?? '')
+    .eq('is_active', true)
+    .limit(1)
+    .maybeSingle()
+  if (!empBiz) return null
+  return (empBiz as unknown as { businesses: DashboardBusiness }).businesses
+}
+
+function applyLocationFilter<T>(query: T, location: string | null): T {
+  if (!location) return query
+  return (query as unknown as { eq: (c: string, v: string) => T }).eq('location_id', location) as T
+}
+
+async function fetchDashboardData(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  bizId: string,
+  todayStr: string,
+  sevenDaysAgo: string,
+  selectedLocation: string | null,
+) {
+  const clientCountQuery = applyLocationFilter(
+    supabase.from('clients').select('id', { count: 'exact', head: true }).eq('business_id', bizId),
+    selectedLocation,
+  )
+  const apptTodayQuery = applyLocationFilter(
+    supabase
+      .from('appointments')
+      .select('id, status')
+      .eq('business_id', bizId)
+      .gte('starts_at', todayStr)
+      .lt('starts_at', new Date(Date.now() + 86400000).toISOString().slice(0, 10)),
+    selectedLocation,
+  )
+  const recentTxQuery = applyLocationFilter(
+    supabase
+      .from('transactions')
+      .select('id, amount, payment_method, created_at, clients(name), employee_id, location_id')
+      .eq('business_id', bizId)
+      .eq('status', 'completed')
+      .order('created_at', { ascending: false })
+      .limit(5),
+    selectedLocation,
+  )
+  const upcomingQuery = applyLocationFilter(
+    supabase
+      .from('appointments')
+      .select('id, starts_at, status, clients(name), services(name)')
+      .eq('business_id', bizId)
+      .gte('starts_at', new Date().toISOString())
+      .in('status', ['pending', 'confirmed'])
+      .order('starts_at', { ascending: true })
+      .limit(5),
+    selectedLocation,
+  )
+  const todayRevenueQuery = applyLocationFilter(
+    supabase
+      .from('transactions')
+      .select('amount, employee_id')
+      .eq('business_id', bizId)
+      .eq('status', 'completed')
+      .gte('created_at', todayStr),
+    selectedLocation,
+  )
+  const inventoryQuery = applyLocationFilter(
+    supabase
+      .from('inventory_items')
+      .select('quantity, low_stock_threshold, location_id')
+      .eq('business_id', bizId),
+    selectedLocation,
+  )
+  const sparklineQuery = applyLocationFilter(
+    supabase
+      .from('transactions')
+      .select('amount, created_at')
+      .eq('business_id', bizId)
+      .eq('status', 'completed')
+      .gte('created_at', sevenDaysAgo),
+    selectedLocation,
+  )
+  const clientStatsQuery = applyLocationFilter(
+    supabase
+      .from('transactions')
+      .select('client_id, location_id')
+      .eq('business_id', bizId)
+      .eq('status', 'completed')
+      .limit(1000),
+    selectedLocation,
+  )
+
+  const [
+    clientCountRes,
+    apptTodayRes,
+    recentTxRes,
+    upcomingRes,
+    todayRevenueRes,
+    inventoryRes,
+    sparklineRes,
+    locationsRes,
+    clientStatsRes,
+  ] = await Promise.all([
+    clientCountQuery as unknown as Promise<{ count: number | null }>,
+    apptTodayQuery as unknown as Promise<{ data: { id: string; status: string }[] | null }>,
+    recentTxQuery as unknown as Promise<{ data: unknown }>,
+    upcomingQuery as unknown as Promise<{ data: unknown }>,
+    todayRevenueQuery as unknown as Promise<{
+      data: { amount: number; employee_id: string | null }[] | null
+    }>,
+    inventoryQuery as unknown as Promise<{
+      data: { quantity: number; low_stock_threshold: number }[] | null
+    }>,
+    sparklineQuery as unknown as Promise<{ data: { amount: number; created_at: string }[] | null }>,
+    supabase
+      .from('locations')
+      .select('id, name')
+      .eq('business_id', bizId)
+      .order('name') as unknown as Promise<{
+      data: { id: string; name: string }[] | null
+    }>,
+    clientStatsQuery as unknown as Promise<{ data: { client_id: string | null }[] | null }>,
+  ])
+
+  return {
+    clientCount: clientCountRes.count ?? 0,
+    apptToday: apptTodayRes.data,
+    recentTransactions: recentTxRes.data,
+    upcomingAppointments: upcomingRes.data,
+    todayRevenue: todayRevenueRes.data,
+    inventoryItems: inventoryRes.data,
+    sparklineRaw: sparklineRes.data,
+    locations: locationsRes.data,
+    clientStatsRaw: clientStatsRes.data,
+  }
+}
+
+function computeRevenueStats(
+  todayRevenue: { amount: number; employee_id: string | null }[] | null,
+) {
+  const revenueToday = (todayRevenue ?? []).reduce((sum, tx) => sum + Number(tx.amount), 0) ?? 0
+  const avgTicket =
+    todayRevenue && todayRevenue.length > 0
+      ? Math.round((revenueToday / todayRevenue.length) * 100) / 100
+      : 0
+  return { revenueToday, avgTicket }
+}
+
+function computeLowStock(
+  inventoryItems: { quantity: number; low_stock_threshold: number }[] | null,
+) {
+  return (
+    (inventoryItems as Array<{ quantity: number; low_stock_threshold: number }> | null) ?? []
+  ).filter((item) => Number(item.quantity) <= Number(item.low_stock_threshold)).length
+}
+
+function computeVisits(clientStatsRaw: { client_id: string | null }[] | null) {
+  const visitsByClient: Record<string, number> = {}
+  for (const r of (clientStatsRaw ?? []) as Array<{ client_id: string | null }>) {
+    if (r.client_id) visitsByClient[r.client_id] = (visitsByClient[r.client_id] ?? 0) + 1
+  }
+  return {
+    newClients: Object.values(visitsByClient).filter((v) => v < 3).length,
+    returningClients: Object.values(visitsByClient).filter((v) => v >= 3).length,
+  }
+}
+
+function computeBarberSales(todayRevenue: { amount: number; employee_id: string | null }[] | null) {
+  const barberSales: Record<string, number> = {}
+  for (const tx of (todayRevenue ?? []) as Array<{ amount: number; employee_id: string | null }>) {
+    if (tx.employee_id)
+      barberSales[tx.employee_id] = (barberSales[tx.employee_id] ?? 0) + Number(tx.amount)
+  }
+  return Object.entries(barberSales)
+    .sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0))
+    .slice(0, 3)
+}
+
+function computeSparkline(sparklineRaw: { amount: number; created_at: string }[] | null) {
+  const sparklineDays = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(Date.now() - (6 - i) * 86400000)
+    return d.toISOString().slice(0, 10)
+  })
+  const sparklineByDay: Record<string, number> = {}
+  for (const day of sparklineDays) sparklineByDay[day] = 0
+  for (const tx of (sparklineRaw ?? []) as Array<{ amount: number; created_at: string }>) {
+    const day = tx.created_at.slice(0, 10)
+    if (day in sparklineByDay) sparklineByDay[day] = (sparklineByDay[day] ?? 0) + tx.amount
+  }
+  const sparklineValues = sparklineDays.map((d) => sparklineByDay[d] ?? 0)
+  const sparklineMax = Math.max(...sparklineValues, 1)
+  return { sparklineValues, sparklineMax }
+}
+
+function computeStatusBreakdown(apptToday: { id: string; status: string }[] | null) {
+  const count = apptToday?.length ?? 0
+  const breakdown: Record<string, number> = {}
+  for (const a of apptToday ?? []) breakdown[a.status] = (breakdown[a.status] ?? 0) + 1
+  const parts = (['confirmed', 'pending', 'completed'] as const)
+    .filter((s) => (breakdown[s] ?? 0) > 0)
+    .map((s) => `${breakdown[s]} ${s}`)
+  return { count, breakdown, parts }
+}
+
 export default async function DashboardPage(props: {
   searchParams: Promise<{ location?: string }>
 }) {
@@ -27,62 +252,9 @@ export default async function DashboardPage(props: {
   const t = await getTranslations('dashboard')
   const user = await getAuthUser()
 
-  let business: {
-    id: string
-    name: string
-    currency: string
-    timezone: string
-    onboarding_completed: boolean | null
-    enabled_modules: string[] | null
-  } | null = null
-  const { data: ownedBiz } = await supabase
-    .from('businesses')
-    .select('id, name, currency, timezone, onboarding_completed, enabled_modules')
-    .eq('owner_id', user?.id ?? '')
-    .maybeSingle()
-  if (ownedBiz)
-    business = ownedBiz as unknown as {
-      id: string
-      name: string
-      currency: string
-      timezone: string
-      onboarding_completed: boolean | null
-      enabled_modules: string[] | null
-    }
-  else {
-    const { data: empBiz } = await supabase
-      .from('employees')
-      .select(
-        'business_id, businesses!inner(id, name, currency, timezone, onboarding_completed, enabled_modules)',
-      )
-      .eq('user_id', user?.id ?? '')
-      .eq('is_active', true)
-      .limit(1)
-      .maybeSingle()
-    if (empBiz)
-      business = (
-        empBiz as unknown as {
-          businesses: {
-            id: string
-            name: string
-            currency: string
-            timezone: string
-            onboarding_completed: boolean | null
-            enabled_modules: string[] | null
-          }
-        }
-      ).businesses
-  }
-
+  const business = await resolveDashboardBusiness(supabase, user?.id)
   if (!business) return null
-  const biz = business as {
-    id: string
-    name: string
-    currency: string
-    timezone: string
-    onboarding_completed: boolean | null
-    enabled_modules: string[] | null
-  }
+  const biz = business
 
   if (!biz.onboarding_completed) redirect('/onboarding')
 
@@ -90,205 +262,30 @@ export default async function DashboardPage(props: {
   const sevenDaysAgo = new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10)
   const selectedLocation = searchParams.location ?? null
 
-  const [
-    { count: clientCount },
-    { data: apptToday },
-    { data: recentTransactions },
-    { data: upcomingAppointments },
-    { data: todayRevenue },
-    { data: inventoryItems },
-    { data: sparklineRaw },
-    { data: locations },
-    { data: clientStatsRaw },
-  ] = await Promise.all([
-    (() => {
-      let q = supabase
-        .from('clients')
-        .select('id', { count: 'exact', head: true })
-        .eq('business_id', biz.id)
-      if (selectedLocation)
-        q = (q as unknown as { eq: (c: string, v: string) => typeof q }).eq(
-          'location_id',
-          selectedLocation,
-        ) as typeof q
-      return q
-    })() as unknown as Promise<{ count: number | null; data: unknown }>,
-    (() => {
-      let q = supabase
-        .from('appointments')
-        .select('id, status')
-        .eq('business_id', biz.id)
-        .gte('starts_at', todayStr)
-        .lt('starts_at', new Date(Date.now() + 86400000).toISOString().slice(0, 10))
-      if (selectedLocation)
-        q = (q as unknown as { eq: (c: string, v: string) => typeof q }).eq(
-          'location_id',
-          selectedLocation,
-        ) as typeof q
-      return q
-    })() as unknown as Promise<{ data: { id: string; status: string }[] | null }>,
-    (() => {
-      let q = supabase
-        .from('transactions')
-        .select('id, amount, payment_method, created_at, clients(name), employee_id, location_id')
-        .eq('business_id', biz.id)
-        .eq('status', 'completed')
-        .order('created_at', { ascending: false })
-        .limit(5)
-      if (selectedLocation)
-        q = (q as unknown as { eq: (c: string, v: string) => typeof q }).eq(
-          'location_id',
-          selectedLocation,
-        ) as typeof q
-      return q
-    })() as unknown as Promise<{ data: unknown }>,
-    (() => {
-      let q = supabase
-        .from('appointments')
-        .select('id, starts_at, status, clients(name), services(name)')
-        .eq('business_id', biz.id)
-        .gte('starts_at', new Date().toISOString())
-        .in('status', ['pending', 'confirmed'])
-        .order('starts_at', { ascending: true })
-        .limit(5)
-      if (selectedLocation)
-        q = (q as unknown as { eq: (c: string, v: string) => typeof q }).eq(
-          'location_id',
-          selectedLocation,
-        ) as typeof q
-      return q
-    })() as unknown as Promise<{ data: unknown }>,
-    (() => {
-      let q = supabase
-        .from('transactions')
-        .select('amount, employee_id')
-        .eq('business_id', biz.id)
-        .eq('status', 'completed')
-        .gte('created_at', todayStr)
-      if (selectedLocation)
-        q = (q as unknown as { eq: (c: string, v: string) => typeof q }).eq(
-          'location_id',
-          selectedLocation,
-        ) as typeof q
-      return q
-    })() as unknown as Promise<{ data: { amount: number; employee_id: string | null }[] | null }>,
-    (() => {
-      let q = supabase
-        .from('inventory_items')
-        .select('quantity, low_stock_threshold, location_id')
-        .eq('business_id', biz.id)
-      if (selectedLocation)
-        q = (q as unknown as { eq: (c: string, v: string) => typeof q }).eq(
-          'location_id',
-          selectedLocation,
-        ) as typeof q
-      return q
-    })() as unknown as Promise<{
-      data: { quantity: number; low_stock_threshold: number }[] | null
-    }>,
-    (() => {
-      let q = supabase
-        .from('transactions')
-        .select('amount, created_at')
-        .eq('business_id', biz.id)
-        .eq('status', 'completed')
-        .gte('created_at', sevenDaysAgo)
-      if (selectedLocation)
-        q = (q as unknown as { eq: (c: string, v: string) => typeof q }).eq(
-          'location_id',
-          selectedLocation,
-        ) as typeof q
-      return q
-    })() as unknown as Promise<{ data: { amount: number; created_at: string }[] | null }>,
-    supabase
-      .from('locations')
-      .select('id, name')
-      .eq('business_id', biz.id)
-      .order('name') as unknown as Promise<{ data: { id: string; name: string }[] | null }>,
-    // lightweight new vs returning: count transactions per client in last 90d (filtered by location when selected)
-    (() => {
-      let q = supabase
-        .from('transactions')
-        .select('client_id, location_id')
-        .eq('business_id', biz.id)
-        .eq('status', 'completed')
-        .limit(1000)
-      if (selectedLocation)
-        q = (q as unknown as { eq: (c: string, v: string) => typeof q }).eq(
-          'location_id',
-          selectedLocation,
-        ) as typeof q
-      return q
-    })() as unknown as Promise<{
-      data: { client_id: string | null; location_id: string | null }[] | null
-    }>,
-  ])
-
-  const revenueToday =
-    (
-      (todayRevenue as unknown as Array<{ amount: number; employee_id: string | null }> | null) ??
-      []
-    ).reduce((sum, tx) => sum + Number(tx.amount), 0) ?? 0
-  const avgTicket =
-    todayRevenue && todayRevenue.length > 0
-      ? Math.round((revenueToday / todayRevenue.length) * 100) / 100
-      : 0
-  const lowStock = (
-    (inventoryItems as unknown as Array<{
-      quantity: number
-      low_stock_threshold: number
-    }> | null) ?? []
-  ).filter((item) => Number(item.quantity) <= Number(item.low_stock_threshold)).length
-  // New vs returning approximation: clients with <3 visits vs >=3 using transaction counts
-  const visitsByClient: Record<string, number> = {}
-  for (const r of ((clientStatsRaw as unknown as Array<{ client_id: string | null }> | null) ??
-    []) as Array<{ client_id: string | null }>) {
-    if (r.client_id) visitsByClient[r.client_id] = (visitsByClient[r.client_id] ?? 0) + 1
-  }
-  const newClients = Object.values(visitsByClient).filter((v) => v < 3).length
-  const returningClients = Object.values(visitsByClient).filter((v) => v >= 3).length
-  // Top barbers from today's transactions
-  const barberSales: Record<string, number> = {}
-  for (const tx of ((todayRevenue as unknown as Array<{
-    amount: number
-    employee_id: string | null
-  }> | null) ?? []) as Array<{ amount: number; employee_id: string | null }>) {
-    if (tx.employee_id)
-      barberSales[tx.employee_id] = (barberSales[tx.employee_id] ?? 0) + Number(tx.amount)
-  }
-  const topBarbers = Object.entries(barberSales)
-    .sort((a, b) => b[1]! - a[1]!)
-    .slice(0, 3)
-
-  // Sparkline: sum revenue per day for last 7 days
-  const sparklineDays = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(Date.now() - (6 - i) * 86400000)
-    return d.toISOString().slice(0, 10)
-  })
-  const sparklineByDay: Record<string, number> = {}
-  for (const day of sparklineDays) sparklineByDay[day] = 0
-  for (const tx of (sparklineRaw as unknown as Array<{
-    amount: number
-    created_at: string
-  }> | null) ?? []) {
-    const day = tx.created_at.slice(0, 10)
-    // @ts-expect-error - tsc strict fix
-    if (day in sparklineByDay) sparklineByDay[day] += tx.amount
-  }
-  const sparklineValues = sparklineDays.map((d) => sparklineByDay[d])
-  // @ts-expect-error - tsc strict fix
-  const sparklineMax = Math.max(...sparklineValues, 1)
-
-  // Bookings today breakdown by status
-  const apptTodayCount =
-    (apptToday as unknown as Array<{ id: string; status: string }> | null)?.length ?? 0
-  const statusBreakdown: Record<string, number> = {}
-  for (const a of (apptToday as unknown as Array<{ id: string; status: string }> | null) ?? []) {
-    statusBreakdown[a.status] = (statusBreakdown[a.status] ?? 0) + 1
-  }
-  const breakdownParts = (['confirmed', 'pending', 'completed'] as const)
-    .filter((s) => (statusBreakdown[s] ?? 0) > 0)
-    .map((s) => `${statusBreakdown[s]} ${s}`)
+  const dashboardData = await fetchDashboardData(
+    supabase,
+    biz.id,
+    todayStr,
+    sevenDaysAgo,
+    selectedLocation,
+  )
+  const {
+    clientCount,
+    apptToday,
+    recentTransactions,
+    upcomingAppointments,
+    todayRevenue,
+    inventoryItems,
+    sparklineRaw,
+    locations,
+    clientStatsRaw,
+  } = dashboardData
+  const { revenueToday, avgTicket } = computeRevenueStats(todayRevenue)
+  const lowStock = computeLowStock(inventoryItems)
+  const { newClients, returningClients } = computeVisits(clientStatsRaw)
+  const topBarbers = computeBarberSales(todayRevenue)
+  const { sparklineValues, sparklineMax } = computeSparkline(sparklineRaw)
+  const { count: apptTodayCount, parts: breakdownParts } = computeStatusBreakdown(apptToday)
 
   const statusColors: Record<string, string> = {
     pending: 'bg-yellow-100 text-yellow-700',

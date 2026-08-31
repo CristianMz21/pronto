@@ -18,100 +18,82 @@ interface SearchParams {
   location?: string
 }
 
-export default async function POSPage(props: { searchParams: Promise<SearchParams> }) {
-  const searchParams = await props.searchParams
-  const supabase = await createClient()
-  const user = await getAuthUser()
+type PosBusiness = {
+  id: string
+  currency: string
+  timezone: string
+  require_cash_register_for_cash?: boolean | null
+  slug?: string
+}
 
-  // Resolve business: owner first, then employee (barbero) fallback
-  let business: {
-    id: string
-    currency: string
-    timezone: string
-    require_cash_register_for_cash?: boolean | null
-    slug?: string
-  } | null = null
-
+async function resolvePosBusiness(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string | undefined,
+): Promise<PosBusiness | null> {
   const { data: owned } = await supabase
     .from('businesses')
     .select('id, currency, timezone, require_cash_register_for_cash, slug')
-    .eq('owner_id', user?.id ?? '')
+    .eq('owner_id', userId ?? '')
     .maybeSingle()
+  if (owned) return owned as unknown as PosBusiness
+  const { data: empBiz } = await supabase
+    .from('employees')
+    .select(
+      'business_id, businesses!inner(id, currency, timezone, require_cash_register_for_cash, slug)',
+    )
+    .eq('user_id', userId ?? '')
+    .eq('is_active', true)
+    .limit(1)
+    .maybeSingle()
+  if (!empBiz?.businesses) return null
+  return empBiz.businesses as unknown as PosBusiness
+}
 
-  if (owned) {
-    business = owned as unknown as {
-      id: string
-      currency: string
-      timezone: string
-      require_cash_register_for_cash?: boolean | null
-      slug?: string
-    }
-  } else {
-    const { data: empBiz } = await supabase
-      .from('employees')
-      .select(
-        'business_id, businesses!inner(id, currency, timezone, require_cash_register_for_cash, slug)',
-      )
-      .eq('user_id', user?.id ?? '')
-      .eq('is_active', true)
-      .limit(1)
-      .maybeSingle()
-    if (empBiz?.businesses) {
-      business = empBiz.businesses as unknown as {
-        id: string
-        currency: string
-        timezone: string
-        require_cash_register_for_cash?: boolean | null
-        slug?: string
-      }
-    }
-  }
-
-  if (!business) return null
-  const biz = business as {
-    id: string
-    currency: string
-    timezone: string
-    require_cash_register_for_cash?: boolean | null
-    slug?: string
-  }
-
-  // Resolve role for barber scope
-  let role: string | null = null
+async function resolvePosRole(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string | undefined,
+  businessId: string,
+): Promise<string | null> {
   try {
-    role = await getUserRole(
-      supabase as unknown as { from: (t: string) => unknown },
-      user?.id ?? '',
-      biz.id,
+    return await getUserRole(
+      supabase as unknown as Parameters<typeof getUserRole>[0],
+      userId ?? '',
+      businessId,
     )
   } catch {
-    role = null
+    return null
   }
-  const isBarbero = role === 'barbero'
+}
 
-  let barberEmployeeId: string | null = null
-  if (isBarbero) {
-    const { data: emp } = await supabase
-      .from('employees')
-      .select('id')
-      .eq('user_id', user?.id ?? '')
-      .eq('business_id', biz.id)
-      .eq('is_active', true)
-      .limit(1)
-      .maybeSingle()
-    barberEmployeeId = (emp as { id: string } | null)?.id ?? null
-  }
+async function fetchBarberId(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string | undefined,
+  businessId: string,
+): Promise<string | null> {
+  const { data: emp } = await supabase
+    .from('employees')
+    .select('id')
+    .eq('user_id', userId ?? '')
+    .eq('business_id', businessId)
+    .eq('is_active', true)
+    .limit(1)
+    .maybeSingle()
+  return (emp as { id: string } | null)?.id ?? null
+}
 
-  const selectedLocation = searchParams.location ?? null
-
-  // Fetch services/employees/clients with barber + location filtering
+async function fetchPosData(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  biz: PosBusiness,
+  selectedLocation: string | null,
+  isBarbero: boolean,
+  barberEmployeeId: string | null,
+) {
   let servicesQuery = supabase
     .from('services')
     .select('id, name, price, duration_min, category, location_id')
     .eq('business_id', biz.id)
     .eq('is_active', true)
     .order('name')
-
   let employeesQuery = supabase
     .from('employees')
     .select('id, name, location_id')
@@ -120,13 +102,10 @@ export default async function POSPage(props: { searchParams: Promise<SearchParam
     .order('name')
 
   if (selectedLocation) {
-    // Include null location_id (global services/employees) plus matching location
     servicesQuery = servicesQuery.or(
       `location_id.eq.${selectedLocation},location_id.is.null`,
     ) as typeof servicesQuery
-    employeesQuery = (
-      employeesQuery as unknown as { eq: (c: string, v: string) => typeof employeesQuery }
-    ).eq('location_id', selectedLocation) as typeof employeesQuery
+    employeesQuery = employeesQuery.eq('location_id', selectedLocation) as typeof employeesQuery
   }
 
   if (isBarbero && barberEmployeeId) {
@@ -137,14 +116,13 @@ export default async function POSPage(props: { searchParams: Promise<SearchParam
       .eq('employee_id', barberEmployeeId)
     const allowedIds =
       (empServices as { service_id: string }[] | null)?.map((r) => r.service_id) ?? []
-    if (allowedIds.length > 0) {
+    if (allowedIds.length > 0)
       servicesQuery = servicesQuery.in('id', allowedIds) as typeof servicesQuery
-    } else {
+    else
       servicesQuery = servicesQuery.eq(
         'id',
         '00000000-0000-0000-0000-000000000000',
       ) as typeof servicesQuery
-    }
   }
 
   let cashQuery = supabase
@@ -153,10 +131,7 @@ export default async function POSPage(props: { searchParams: Promise<SearchParam
     .eq('business_id', biz.id)
     .eq('status', 'open')
   if (selectedLocation)
-    cashQuery = (cashQuery as unknown as { eq: (c: string, v: string) => typeof cashQuery }).eq(
-      'location_id',
-      selectedLocation,
-    ) as typeof cashQuery
+    cashQuery = cashQuery.eq('location_id', selectedLocation) as typeof cashQuery
 
   const [
     { data: services },
@@ -176,44 +151,73 @@ export default async function POSPage(props: { searchParams: Promise<SearchParam
     cashQuery.maybeSingle(),
     supabase.from('locations').select('id, name').eq('business_id', biz.id).order('name'),
   ])
+  return { services, employees, clients, openRegister, locations }
+}
 
-  // ── Booking context: prefill POS from an appointment ──────────────────────
-  let bookingContext:
-    | {
-        bookingId: string
-        clientId: string
-        serviceId: string
-        staffId: string
-        label: string
-      }
-    | undefined
-
-  if (searchParams.bookingId) {
-    const { data: appt } = await supabase
-      .from('appointments')
-      .select('id, starts_at, clients(name), services(name), employees(id, name)')
-      .eq('id', searchParams.bookingId)
-      .eq('business_id', biz.id) // security: only own business
-      .maybeSingle()
-
-    if (appt) {
-      const clientName = (appt.clients as { name: string } | null)?.name ?? 'Walk-in'
-      const serviceName = (appt.services as { name: string } | null)?.name ?? ''
-      const tz = biz.timezone ?? 'UTC'
-      bookingContext = {
-        bookingId: appt.id,
-        clientId: searchParams.clientId ?? '',
-        serviceId: searchParams.serviceId ?? '',
-        staffId:
-          isBarbero && barberEmployeeId
-            ? barberEmployeeId
-            : (searchParams.staffId ??
-              (appt.employees as { id: string; name: string } | null)?.id ??
-              ''),
-        label: `${clientName} — ${serviceName} — ${formatInBusinessTimezone(appt.starts_at, tz, 'time')}`,
-      }
-    }
+async function buildBookingContext(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  searchParams: SearchParams,
+  biz: PosBusiness,
+  isBarbero: boolean,
+  barberEmployeeId: string | null,
+) {
+  if (!searchParams.bookingId) return undefined
+  const { data: appt } = await supabase
+    .from('appointments')
+    .select('id, starts_at, clients(name), services(name), employees(id, name)')
+    .eq('id', searchParams.bookingId)
+    .eq('business_id', biz.id)
+    .maybeSingle()
+  if (!appt) return undefined
+  const clientName = (appt.clients as { name: string } | null)?.name ?? 'Walk-in'
+  const serviceName = (appt.services as { name: string } | null)?.name ?? ''
+  const tz = biz.timezone ?? 'UTC'
+  return {
+    bookingId: appt.id,
+    clientId: searchParams.clientId ?? '',
+    serviceId: searchParams.serviceId ?? '',
+    staffId:
+      isBarbero && barberEmployeeId
+        ? barberEmployeeId
+        : (searchParams.staffId ??
+          (appt.employees as { id: string; name: string } | null)?.id ??
+          ''),
+    label: `${clientName} — ${serviceName} — ${formatInBusinessTimezone(appt.starts_at, tz, 'time')}`,
   }
+}
+
+export default async function POSPage(props: { searchParams: Promise<SearchParams> }) {
+  const searchParams = await props.searchParams
+  const supabase = await createClient()
+  const user = await getAuthUser()
+
+  const business = await resolvePosBusiness(supabase, user?.id)
+  if (!business) return null
+  const biz = business
+
+  const role = await resolvePosRole(supabase, user?.id, biz.id)
+  const isBarbero = role === 'barbero'
+
+  let barberEmployeeId: string | null = null
+  if (isBarbero) barberEmployeeId = await fetchBarberId(supabase, user?.id, biz.id)
+
+  const selectedLocation = searchParams.location ?? null
+
+  const { services, employees, clients, openRegister, locations } = await fetchPosData(
+    supabase,
+    biz,
+    selectedLocation,
+    isBarbero,
+    barberEmployeeId,
+  )
+
+  const bookingContext = await buildBookingContext(
+    supabase,
+    searchParams,
+    biz,
+    isBarbero,
+    barberEmployeeId,
+  )
 
   const t = await getTranslations('pos')
 

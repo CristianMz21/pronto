@@ -4,6 +4,154 @@ import { getAuthUser } from '@/lib/auth-user'
 import { createClient } from '@/lib/supabase/server'
 import { formatCurrency } from '@/lib/utils'
 
+type PortalClient = { id: string; name: string; phone: string | null; business_id: string }
+type PortalMembership = {
+  id: string
+  remaining: number
+  expires_at: string
+  status: string
+  memberships: { name: string } | null
+}
+
+async function resolveBusinessForPortal(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  user: Awaited<ReturnType<typeof getAuthUser>>,
+): Promise<{ businessId: string | null; currency: string }> {
+  if (!user) return { businessId: null, currency: 'COP' }
+  const { data: owned } = await supabase
+    .from('businesses')
+    .select('id, currency')
+    .eq('owner_id', user.id)
+    .maybeSingle()
+  if (owned)
+    return {
+      businessId: (owned as { id: string }).id,
+      currency: (owned as { currency: string }).currency ?? 'COP',
+    }
+  const { data: emp } = await supabase
+    .from('employees')
+    .select('business_id, businesses!inner(currency)')
+    .eq('user_id', user.id)
+    .limit(1)
+    .maybeSingle()
+  if (!emp) return { businessId: null, currency: 'COP' }
+  return {
+    businessId: (emp as { business_id: string }).business_id,
+    currency:
+      (emp as unknown as { businesses: { currency: string } }).businesses?.currency ?? 'COP',
+  }
+}
+
+async function findLinkedClient(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  user: Awaited<ReturnType<typeof getAuthUser>>,
+  businessId: string | null,
+): Promise<PortalClient | null> {
+  if (!user || !businessId) return null
+  const { data: linked } = await supabase
+    .from('clients')
+    .select('id, name, phone, business_id')
+    .eq('user_id', user.id)
+    .eq('business_id', businessId)
+    .limit(1)
+    .maybeSingle()
+  return linked as unknown as PortalClient | null
+}
+
+async function findClientByPhone(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  phone: string,
+): Promise<{ client: PortalClient | null; businessId: string | null; currency: string | null }> {
+  const { data: found } = await supabase
+    .from('clients')
+    .select('id, name, phone, business_id')
+    .eq('phone', phone)
+    .limit(1)
+    .maybeSingle()
+  if (!found) return { client: null, businessId: null, currency: null }
+  const client = found as unknown as PortalClient
+  const businessId = (found as { business_id: string }).business_id
+  const { data: biz } = await supabase
+    .from('businesses')
+    .select('currency')
+    .eq('id', businessId)
+    .maybeSingle()
+  const currency = biz ? ((biz as { currency: string }).currency ?? 'COP') : null
+  return { client, businessId, currency }
+}
+
+async function findClientById(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  clientId: string,
+): Promise<PortalClient | null> {
+  const { data: c } = await supabase
+    .from('clients')
+    .select('id, name, phone, business_id')
+    .eq('id', clientId)
+    .maybeSingle()
+  return c as unknown as PortalClient | null
+}
+
+async function resolvePortalClient(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  user: Awaited<ReturnType<typeof getAuthUser>>,
+  searchParams: { phone?: string; client_id?: string },
+  initialBusinessId: string | null,
+): Promise<{ client: PortalClient | null; businessId: string | null; currency: string | null }> {
+  let businessId = initialBusinessId
+  const linked = await findLinkedClient(supabase, user, businessId)
+  if (linked) return { client: linked, businessId, currency: null }
+
+  if (searchParams.phone) {
+    const byPhone = await findClientByPhone(supabase, searchParams.phone)
+    if (byPhone.client) return byPhone
+  }
+
+  if (searchParams.client_id && businessId) {
+    const byId = await findClientById(supabase, searchParams.client_id)
+    if (byId) return { client: byId, businessId, currency: null }
+  }
+
+  return { client: null, businessId, currency: null }
+}
+
+async function fetchLoyaltyAndMemberships(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  client: PortalClient | null,
+): Promise<{ loyaltyPoints: number; memberships: PortalMembership[] }> {
+  if (!client) return { loyaltyPoints: 0, memberships: [] }
+  const [{ data: loyalty }, { data: cms }] = await Promise.all([
+    supabase.from('loyalty_accounts').select('points').eq('client_id', client.id).maybeSingle(),
+    supabase
+      .from('client_memberships')
+      .select('id, remaining, expires_at, status, memberships(name)')
+      .eq('client_id', client.id)
+      .order('expires_at', { ascending: true })
+      .limit(10),
+  ])
+  return {
+    loyaltyPoints: (loyalty as { points: number } | null)?.points ?? 0,
+    memberships: (cms as unknown as PortalMembership[]) ?? [],
+  }
+}
+
+async function resolveBookHref(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  client: PortalClient | null,
+  businessId: string | null,
+): Promise<string> {
+  let slug: string | null = null
+  const targetId = (client as { business_id?: string } | null)?.business_id ?? businessId
+  if (!targetId) return '/book'
+  const { data: biz } = await supabase
+    .from('businesses')
+    .select('slug')
+    .eq('id', targetId)
+    .maybeSingle()
+  slug = (biz as { slug: string } | null)?.slug ?? null
+  return slug ? `/book/${slug}` : '/book'
+}
+
 export default async function ClientPortalPage(props: {
   searchParams: Promise<{ phone?: string; client_id?: string }>
 }) {
@@ -11,128 +159,19 @@ export default async function ClientPortalPage(props: {
   const supabase = await createClient()
   const user = await getAuthUser()
 
-  // Try to resolve business via owner or employee
-  let businessId: string | null = null
-  let currency = 'COP'
-  if (user) {
-    const { data: owned } = await supabase
-      .from('businesses')
-      .select('id, currency')
-      .eq('owner_id', user.id)
-      .maybeSingle()
-    if (owned) {
-      businessId = (owned as { id: string }).id
-      currency = (owned as { currency: string }).currency ?? 'COP'
-    } else {
-      const { data: emp } = await supabase
-        .from('employees')
-        .select('business_id, businesses!inner(currency)')
-        .eq('user_id', user.id)
-        .limit(1)
-        .maybeSingle()
-      if (emp) {
-        businessId = (emp as { business_id: string }).business_id
-        currency =
-          (emp as unknown as { businesses: { currency: string } }).businesses?.currency ?? 'COP'
-      }
-    }
-  }
-  // Fallback: if not logged in, try to find business via first client matching phone (service query)
-  let client: { id: string; name: string; phone: string | null; business_id: string } | null = null
-  let loyaltyPoints = 0
-  let memberships: {
-    id: string
-    remaining: number
-    expires_at: string
-    status: string
-    memberships: { name: string } | null
-  }[] = []
+  const businessInit = await resolveBusinessForPortal(supabase, user)
+  let businessId = businessInit.businessId
+  let currency = businessInit.currency
 
-  // If authenticated, try linked client
-  if (user && businessId) {
-    const { data: linked } = await supabase
-      .from('clients')
-      .select('id, name, phone, business_id')
-      .eq('user_id', user.id)
-      .eq('business_id', businessId)
-      .limit(1)
-      .maybeSingle()
-    if (linked) client = linked as unknown as typeof client
-  }
+  const resolved = await resolvePortalClient(supabase, user, searchParams, businessId)
+  let client: PortalClient | null = resolved.client
+  if (resolved.businessId) businessId = resolved.businessId
+  if (resolved.currency) currency = resolved.currency
 
-  // If phone search provided, try to find client (works for public without auth via service? we use anon with RLS maybe limited, try service fallback)
-  if (!client && searchParams.phone) {
-    // Use supabase with RLS - try to find by phone (may require business context)
-    // First try to find any business matching phone (inefficient but ok for demo)
-    // We'll try to query clients where phone = searchParams.phone (needs business_id, so we search across all businesses visible)
-    const { data: found } = await supabase
-      .from('clients')
-      .select('id, name, phone, business_id')
-      .eq('phone', searchParams.phone)
-      .limit(1)
-      .maybeSingle()
-    if (found) {
-      client = found as unknown as typeof client
-      businessId = (found as { business_id: string }).business_id
-      // Try to get currency for that business
-      const { data: biz } = await supabase
-        .from('businesses')
-        .select('currency')
-        .eq('id', businessId)
-        .maybeSingle()
-      if (biz) currency = (biz as { currency: string }).currency ?? 'COP'
-    }
-  }
-
-  if (!client && searchParams.client_id && businessId) {
-    const { data: c } = await supabase
-      .from('clients')
-      .select('id, name, phone, business_id')
-      .eq('id', searchParams.client_id)
-      .maybeSingle()
-    if (c) client = c as unknown as typeof client
-  }
-
+  const { loyaltyPoints, memberships } = await fetchLoyaltyAndMemberships(supabase, client)
+  const renderClient = client
   const nowMs = Date.now()
-  if (client) {
-    const c = client as { id: string; name: string; phone: string | null; business_id: string }
-    const [{ data: loyalty }, { data: cms }] = await Promise.all([
-      supabase.from('loyalty_accounts').select('points').eq('client_id', c.id).maybeSingle(),
-      supabase
-        .from('client_memberships')
-        .select('id, remaining, expires_at, status, memberships(name)')
-        .eq('client_id', c.id)
-        .order('expires_at', { ascending: true })
-        .limit(10),
-    ])
-    loyaltyPoints = (loyalty as { points: number } | null)?.points ?? 0
-    memberships = (cms as unknown as typeof memberships) ?? []
-  }
-
-  const renderClient = client as {
-    id: string
-    name: string
-    phone: string | null
-    business_id: string
-  } | null
-  let businessSlug: string | null = null
-  const clientBusinessId = (client as { business_id?: string } | null)?.business_id
-  if (clientBusinessId) {
-    const { data: biz } = await supabase
-      .from('businesses')
-      .select('slug')
-      .eq('id', clientBusinessId)
-      .maybeSingle()
-    businessSlug = (biz as { slug: string } | null)?.slug ?? null
-  } else if (businessId) {
-    const { data: biz } = await supabase
-      .from('businesses')
-      .select('slug')
-      .eq('id', businessId)
-      .maybeSingle()
-    businessSlug = (biz as { slug: string } | null)?.slug ?? null
-  }
-  const bookHref = businessSlug ? `/book/${businessSlug}` : '/book'
+  const bookHref = await resolveBookHref(supabase, client, businessId)
   return (
     <div className="min-h-screen bg-[#FBF8F5] p-4">
       <div className="max-w-lg mx-auto">
