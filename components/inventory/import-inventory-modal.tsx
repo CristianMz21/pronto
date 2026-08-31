@@ -41,26 +41,68 @@ function detectDelimiter(firstLine: string): string {
 
 // ─── CSV parser (RFC 4180, no external libraries) ────────────────────────────
 
+function handleInvInQuotes(
+  ch: string,
+  next: string | undefined,
+  field: string,
+): { field: string; advance: number; stay: boolean } | null {
+  if (ch === '"' && next === '"') return { field: field + '"', advance: 2, stay: true }
+  if (ch === '"') return { field, advance: 1, stay: false }
+  return null
+}
+
+function handleInvDelimiter(
+  ch: string,
+  delimiter: string,
+  field: string,
+  row: string[],
+): { row: string[]; field: string } | null {
+  if (ch !== delimiter) return null
+  return { row: [...row, field.trim()], field: '' }
+}
+
+function handleInvNewline(
+  ch: string,
+  next: string | undefined,
+  field: string,
+  row: string[],
+  rows: string[][],
+): { row: string[]; field: string; rows: string[][]; advance: number } | null {
+  if (ch === '\r' && next === '\n') {
+    const nr = [...row, field.trim()]
+    return { row: [], field: '', rows: nr.some((c) => c !== '') ? [...rows, nr] : rows, advance: 2 }
+  }
+  if (ch === '\n' || ch === '\r') {
+    const nr = [...row, field.trim()]
+    return { row: [], field: '', rows: nr.some((c) => c !== '') ? [...rows, nr] : rows, advance: 1 }
+  }
+  return null
+}
+
+function pushInvLastRow(field: string, row: string[], rows: string[][]): string[][] {
+  if (field.length === 0 && row.length === 0) return rows
+  const nr = [...row, field.trim()]
+  if (!nr.some((c) => c !== '')) return rows
+  return [...rows, nr]
+}
+
 function parseCSV(text: string, delimiter = ','): string[][] {
-  const rows: string[][] = []
+  let rows: string[][] = []
   let row: string[] = []
   let field = ''
   let inQuotes = false
   let i = 0
 
   while (i < text.length) {
-    const ch = text[i]
+    const ch = text[i] as string
     const next = text[i + 1]
 
     if (inQuotes) {
-      if (ch === '"' && next === '"') {
-        field += '"'
-        i += 2
-        continue
-      }
-      if (ch === '"') {
-        inQuotes = false
-        i++
+      const res = handleInvInQuotes(ch, next, field)
+      if (res) {
+        field = res.field
+        inQuotes = res.stay
+        i += res.advance
         continue
       }
       field += ch
@@ -74,28 +116,20 @@ function parseCSV(text: string, delimiter = ','): string[][] {
       continue
     }
 
-    if (ch === delimiter) {
-      row.push(field.trim())
-      field = ''
+    const delim = handleInvDelimiter(ch, delimiter, field, row)
+    if (delim) {
+      row = delim.row
+      field = delim.field
       i++
       continue
     }
 
-    if (ch === '\r' && next === '\n') {
-      row.push(field.trim())
-      if (row.some((c) => c !== '')) rows.push(row)
-      row = []
-      field = ''
-      i += 2
-      continue
-    }
-
-    if (ch === '\n' || ch === '\r') {
-      row.push(field.trim())
-      if (row.some((c) => c !== '')) rows.push(row)
-      row = []
-      field = ''
-      i++
+    const nl = handleInvNewline(ch, next, field, row, rows)
+    if (nl) {
+      row = nl.row
+      field = nl.field
+      rows = nl.rows
+      i += nl.advance
       continue
     }
 
@@ -103,12 +137,7 @@ function parseCSV(text: string, delimiter = ','): string[][] {
     i++
   }
 
-  if (field.length > 0 || row.length > 0) {
-    row.push(field.trim())
-    if (row.some((c) => c !== '')) rows.push(row)
-  }
-
-  return rows
+  return pushInvLastRow(field, row, rows)
 }
 
 // ─── File parser — CSV + XLSX/XLS ─────────────────────────────────────────────

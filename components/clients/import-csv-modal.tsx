@@ -45,32 +45,75 @@ const PLATFORMS = [
 
 // ─── CSV parser (no external libraries) ─────────────────────────────────────
 
+function handleInQuotes(
+  ch: string,
+  next: string | undefined,
+  field: string,
+): { field: string; advance: number; stayInQuotes: boolean } | null {
+  if (ch === '"' && next === '"') return { field: field + '"', advance: 2, stayInQuotes: true }
+  if (ch === '"') return { field, advance: 1, stayInQuotes: false }
+  return null
+}
+
+function handleDelimiter(
+  ch: string,
+  field: string,
+  row: string[],
+): { row: string[]; field: string; consumed: boolean } | null {
+  if (ch !== ',') return null
+  const nextRow = [...row, field.trim()]
+  return { row: nextRow, field: '', consumed: true }
+}
+
+function handleNewline(
+  ch: string,
+  next: string | undefined,
+  field: string,
+  row: string[],
+  rows: string[][],
+): { row: string[]; field: string; rows: string[][]; advance: number } | null {
+  if (ch === '\r' && next === '\n') {
+    const nextRow = [...row, field.trim()]
+    const nextRows = nextRow.some((c) => c !== '') ? [...rows, nextRow] : rows
+    return { row: [], field: '', rows: nextRows, advance: 2 }
+  }
+  if (ch === '\n' || ch === '\r') {
+    const nextRow = [...row, field.trim()]
+    const nextRows = nextRow.some((c) => c !== '') ? [...rows, nextRow] : rows
+    return { row: [], field: '', rows: nextRows, advance: 1 }
+  }
+  return null
+}
+
+function pushLastRow(field: string, row: string[], rows: string[][]): string[][] {
+  if (field.length === 0 && row.length === 0) return rows
+  const nextRow = [...row, field.trim()]
+  if (!nextRow.some((c) => c !== '')) return rows
+  return [...rows, nextRow]
+}
+
 function parseCSV(text: string): string[][] {
-  const rows: string[][] = []
+  let rows: string[][] = []
   let row: string[] = []
   let field = ''
   let inQuotes = false
   let i = 0
 
   while (i < text.length) {
-    const ch = text[i]
+    const ch = text[i] as string
     const next = text[i + 1]
 
     if (inQuotes) {
-      if (ch === '"' && next === '"') {
-        // escaped quote
-        field += '"'
-        i += 2
-        continue
-      } else if (ch === '"') {
-        inQuotes = false
-        i++
-        continue
-      } else {
-        field += ch
-        i++
+      const res = handleInQuotes(ch, next, field)
+      if (res) {
+        field = res.field
+        inQuotes = res.stayInQuotes
+        i += res.advance
         continue
       }
+      field += ch
+      i++
+      continue
     }
 
     if (ch === '"') {
@@ -79,28 +122,20 @@ function parseCSV(text: string): string[][] {
       continue
     }
 
-    if (ch === ',') {
-      row.push(field.trim())
-      field = ''
+    const delim = handleDelimiter(ch, field, row)
+    if (delim) {
+      row = delim.row
+      field = delim.field
       i++
       continue
     }
 
-    if (ch === '\r' && next === '\n') {
-      row.push(field.trim())
-      if (row.some((c) => c !== '')) rows.push(row)
-      row = []
-      field = ''
-      i += 2
-      continue
-    }
-
-    if (ch === '\n' || ch === '\r') {
-      row.push(field.trim())
-      if (row.some((c) => c !== '')) rows.push(row)
-      row = []
-      field = ''
-      i++
+    const nl = handleNewline(ch, next, field, row, rows)
+    if (nl) {
+      row = nl.row
+      field = nl.field
+      rows = nl.rows
+      i += nl.advance
       continue
     }
 
@@ -108,13 +143,7 @@ function parseCSV(text: string): string[][] {
     i++
   }
 
-  // last row
-  if (field.length > 0 || row.length > 0) {
-    row.push(field.trim())
-    if (row.some((c) => c !== '')) rows.push(row)
-  }
-
-  return rows
+  return pushLastRow(field, row, rows)
 }
 
 // ─── Column detection ─────────────────────────────────────────────────────────
