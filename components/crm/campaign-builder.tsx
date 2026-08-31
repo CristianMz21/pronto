@@ -4,6 +4,19 @@ import { Eye, Loader2, Send } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
+import { isRecord } from '@/lib/validation/guard'
+
+function getStringField(obj: unknown, key: string): string | undefined {
+  if (!isRecord(obj)) return undefined
+  const v = obj[key]
+  return typeof v === 'string' ? v : undefined
+}
+
+function getNumberField(obj: unknown, key: string): number | undefined {
+  if (!isRecord(obj)) return undefined
+  const v = obj[key]
+  return typeof v === 'number' && Number.isFinite(v) ? v : undefined
+}
 
 type Segment = 'inactive_30' | 'inactive_42' | 'inactive_60' | 'birthday_7' | 'vip' | 'new' | 'all'
 type Channel = 'whatsapp' | 'email' | 'telegram'
@@ -55,9 +68,12 @@ export function CampaignBuilder({ initialLocationId, onCreated }: Props) {
     let cancelled = false
     setLoadingCount(true)
     fetch(previewUrl)
-      .then((r) => r.json())
-      .then((j) => {
-        if (!cancelled) setCount(j.count ?? 0)
+      .then((r) => r.json() as Promise<unknown>)
+      .then((j: unknown) => {
+        if (!cancelled) {
+          const cnt = getNumberField(j, 'count') ?? 0
+          setCount(cnt)
+        }
       })
       .catch(() => {
         if (!cancelled) setCount(null)
@@ -65,12 +81,12 @@ export function CampaignBuilder({ initialLocationId, onCreated }: Props) {
       .finally(() => {
         if (!cancelled) setLoadingCount(false)
       })
-    return () => {
+    return (): void => {
       cancelled = true
     }
   }, [previewUrl])
 
-  async function create() {
+  async function create(): Promise<void> {
     setSaving(true)
     setError(null)
     try {
@@ -87,12 +103,12 @@ export function CampaignBuilder({ initialLocationId, onCreated }: Props) {
           location_id: locationId || null,
         }),
       })
-      const j = await res.json()
+      const j: unknown = (await res.json()) as unknown
       if (!res.ok) {
-        setError(j.error ?? 'Error creando campaña')
+        setError(getStringField(j, 'error') ?? 'Error creando campaña')
         return
       }
-      setCreatedId(j.id)
+      setCreatedId(getStringField(j, 'id') ?? null)
       onCreated?.()
     } catch (e) {
       setError(String((e as Error).message ?? e))
@@ -101,18 +117,31 @@ export function CampaignBuilder({ initialLocationId, onCreated }: Props) {
     }
   }
 
-  async function send() {
+  async function send(): Promise<void> {
     if (!createdId) return
     setSending(true)
     setError(null)
     try {
       const res = await fetch(`/api/campaigns/${createdId}/send`, { method: 'POST' })
-      const j = await res.json()
+      const j: unknown = (await res.json()) as unknown
       if (!res.ok) {
-        setError(j.error ?? 'Error enviando')
+        setError(getStringField(j, 'error') ?? 'Error enviando')
         return
       }
-      setPreviewSent(j)
+      if (
+        isRecord(j) &&
+        typeof j['sent'] === 'number' &&
+        typeof j['failed'] === 'number' &&
+        typeof j['stub'] === 'boolean'
+      ) {
+        setPreviewSent({
+          sent: j['sent'],
+          failed: j['failed'],
+          stub: j['stub'],
+        })
+      } else {
+        setPreviewSent(null)
+      }
     } catch (e) {
       setError(String((e as Error).message ?? e))
     } finally {

@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 
 import { createClient } from '@/lib/supabase/client'
+import { isRecord } from '@/lib/supabase/typed'
 
 interface ClientRow {
   id: string
@@ -113,21 +114,27 @@ export function DashboardClient({
     setTimeout(() => setSaved(false), 2000)
   }
 
-  async function handleCancel(id: string) {
+  async function handleCancel(id: string): Promise<void> {
     const res = await fetch(`/api/client/appointments/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'cancel' }),
     })
     if (!res.ok) {
-      const j = await res.json().catch(() => ({}))
-      alert(j.message ?? j.error ?? 'No se pudo cancelar')
+      const j: unknown = await res.json().catch(() => ({}) as unknown)
+      const message =
+        isRecord(j) && typeof j['message'] === 'string'
+          ? (j['message'] as string)
+          : isRecord(j) && typeof j['error'] === 'string'
+            ? (j['error'] as string)
+            : 'No se pudo cancelar'
+      alert(message)
       return
     }
     location.reload()
   }
 
-  async function handleReschedule(id: string) {
+  async function handleReschedule(id: string): Promise<void> {
     const date = prompt('Nueva fecha (YYYY-MM-DD):')
     if (!date) return
     const time = prompt('Nueva hora (HH:MM 24h):')
@@ -138,8 +145,14 @@ export function DashboardClient({
       body: JSON.stringify({ date, time }),
     })
     if (!res.ok) {
-      const j = await res.json().catch(() => ({}))
-      alert(j.message ?? j.error ?? 'No se pudo reprogramar')
+      const j: unknown = await res.json().catch(() => ({}) as unknown)
+      const message =
+        isRecord(j) && typeof j['message'] === 'string'
+          ? (j['message'] as string)
+          : isRecord(j) && typeof j['error'] === 'string'
+            ? (j['error'] as string)
+            : 'No se pudo reprogramar'
+      alert(message)
       return
     }
     location.reload()

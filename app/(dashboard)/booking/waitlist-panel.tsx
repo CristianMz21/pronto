@@ -4,6 +4,13 @@ import { Bell, Check, Clock, RefreshCw, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
+import { isRecord } from '@/lib/validation/guard'
+
+function getStringField(obj: unknown, key: string): string | undefined {
+  if (!isRecord(obj)) return undefined
+  const v = obj[key]
+  return typeof v === 'string' ? v : undefined
+}
 
 interface WaitlistEntry {
   id: string
@@ -36,7 +43,7 @@ export function WaitlistPanel({ businessId, locationId }: Props) {
   const [error, setError] = useState<string | null>(null)
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  async function load() {
+  async function load(): Promise<void> {
     setLoading(true)
     setError(null)
     try {
@@ -53,8 +60,12 @@ export function WaitlistPanel({ businessId, locationId }: Props) {
           : `/api/waitlist?${params.toString()}`
       const res = await fetch(url)
       if (!res.ok) throw new Error(await res.text())
-      const data = (await res.json()) as WaitlistEntry[]
-      setEntries(data)
+      const data: unknown = (await res.json()) as unknown
+      if (Array.isArray(data)) {
+        setEntries(data as WaitlistEntry[])
+      } else {
+        setEntries([])
+      }
     } catch (e) {
       setError(String((e as Error).message).slice(0, 300))
     } finally {
@@ -66,7 +77,7 @@ export function WaitlistPanel({ businessId, locationId }: Props) {
     void load()
   }, [load])
 
-  async function notifyNext() {
+  async function notifyNext(): Promise<void> {
     setActionId('notify')
     setError(null)
     try {
@@ -80,8 +91,10 @@ export function WaitlistPanel({ businessId, locationId }: Props) {
         }),
       })
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}))
-        throw new Error(body.message ?? body.error ?? `HTTP ${res.status}`)
+        const body: unknown = await res.json().catch(() => ({}) as unknown)
+        const msg =
+          getStringField(body, 'message') ?? getStringField(body, 'error') ?? `HTTP ${res.status}`
+        throw new Error(msg)
       }
       await load()
     } catch (e) {
@@ -91,7 +104,7 @@ export function WaitlistPanel({ businessId, locationId }: Props) {
     }
   }
 
-  async function convert(id: string) {
+  async function convert(id: string): Promise<void> {
     setActionId(id)
     setError(null)
     try {
@@ -100,8 +113,12 @@ export function WaitlistPanel({ businessId, locationId }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'convert', waitlist_id: id, business_id: businessId }),
       })
-      const body = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(body.message ?? body.error ?? `HTTP ${res.status}`)
+      const body: unknown = await res.json().catch(() => ({}) as unknown)
+      if (!res.ok) {
+        const msg =
+          getStringField(body, 'message') ?? getStringField(body, 'error') ?? `HTTP ${res.status}`
+        throw new Error(msg)
+      }
       await load()
     } catch (e) {
       setError(String((e as Error).message))
@@ -110,7 +127,7 @@ export function WaitlistPanel({ businessId, locationId }: Props) {
     }
   }
 
-  async function cancel(id: string) {
+  async function cancel(id: string): Promise<void> {
     setActionId(id)
     try {
       const res = await fetch(`/api/waitlist?id=${id}`, { method: 'DELETE' })
@@ -123,7 +140,7 @@ export function WaitlistPanel({ businessId, locationId }: Props) {
     }
   }
 
-  async function expireStale() {
+  async function expireStale(): Promise<void> {
     setActionId('expire')
     try {
       const res = await fetch('/api/waitlist', {
@@ -140,7 +157,7 @@ export function WaitlistPanel({ businessId, locationId }: Props) {
     }
   }
 
-  function formatDate(iso: string, tz = 'America/Bogota') {
+  function formatDate(iso: string, tz = 'America/Bogota'): string {
     try {
       return new Intl.DateTimeFormat('es-CO', {
         timeZone: tz,

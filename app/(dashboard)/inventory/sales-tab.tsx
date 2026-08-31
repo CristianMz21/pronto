@@ -75,7 +75,10 @@ export function SalesTab() {
         ? `/api/inventory/sales?from=${range.from}&to=${range.to}`
         : `/api/inventory/sales?period=${p}`
       const res = await fetch(url)
-      if (res.ok) setData(await res.json())
+      if (res.ok) {
+        const json: unknown = await res.json()
+        setData(json as SalesData)
+      }
     } finally {
       setLoading(false)
     }
@@ -116,8 +119,7 @@ export function SalesTab() {
       a.href = objUrl
       const cd = res.headers.get('Content-Disposition') ?? ''
       const match = cd.match(/filename="([^"]+)"/)
-      // @ts-expect-error - tsc strict fix
-      a.download = match ? match[1] : 'sales.xlsx'
+      a.download = match?.[1] ?? 'sales.xlsx'
       a.click()
       URL.revokeObjectURL(objUrl)
     } finally {

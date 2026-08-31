@@ -4,6 +4,7 @@ import { AlertCircle, CheckCircle2, Loader2, Save } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
+import { isRecord } from '@/lib/supabase/typed'
 
 interface Props {
   _businessId?: string
@@ -52,14 +53,24 @@ export function ConfigSection({ businessId, initial, locations = [] }: Props) {
   const [hoursLoading, setHoursLoading] = useState(false)
   const [hoursMsg, setHoursMsg] = useState<string | null>(null)
 
-  const loadHours = useCallback(async (loc: string) => {
+  const loadHours = useCallback(async (loc: string): Promise<void> => {
     setHoursLoading(true)
     try {
       const url = loc ? `/api/business/hours?location_id=${loc}` : '/api/business/hours'
       const res = await fetch(url)
-      const data = await res.json()
-      if (Array.isArray(data) && data.length > 0) setHours(data)
-      else
+      const data: unknown = (await res.json()) as unknown
+      if (Array.isArray(data) && data.length > 0) {
+        // data is validated as array; inner items assumed to match BusinessHours shape from API
+        type HoursRow = {
+          day_of_week: number
+          is_open: boolean
+          open_time: string
+          close_time: string
+          break_start: string | null
+          break_end: string | null
+        }
+        setHours(data as HoursRow[])
+      } else
         setHours(
           [0, 1, 2, 3, 4, 5, 6].map((dow) => ({
             day_of_week: dow,
@@ -81,7 +92,7 @@ export function ConfigSection({ businessId, initial, locations = [] }: Props) {
     void loadHours(selectedLoc)
   }, [selectedLoc, loadHours])
 
-  async function saveHours() {
+  async function saveHours(): Promise<void> {
     if (!hours) return
     setHoursLoading(true)
     setHoursMsg(null)
@@ -104,7 +115,7 @@ export function ConfigSection({ businessId, initial, locations = [] }: Props) {
     setTimeout(() => setHoursMsg(null), 2500)
   }
 
-  async function save() {
+  async function save(): Promise<void> {
     setSaving(true)
     setMsg(null)
     const payload = {
@@ -122,9 +133,13 @@ export function ConfigSection({ businessId, initial, locations = [] }: Props) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     })
-    const j = await res.json().catch(() => ({}))
+    const j: unknown = await res.json().catch(() => ({}) as unknown)
     if (res.ok) setMsg({ type: 'ok', text: 'Configuración guardada ✓' })
-    else setMsg({ type: 'error', text: j.error ?? 'Error' })
+    else {
+      const errText =
+        isRecord(j) && typeof j['error'] === 'string' ? (j['error'] as string) : 'Error'
+      setMsg({ type: 'error', text: errText })
+    }
     setSaving(false)
     setTimeout(() => setMsg(null), 3000)
   }

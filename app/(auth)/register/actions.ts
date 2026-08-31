@@ -4,6 +4,7 @@ import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { redirect } from 'next/navigation'
 
 import { insertOwnerAsEmployee } from '@/lib/create-business'
+import type { Database } from '@/lib/supabase/database.types'
 import { createClient } from '@/lib/supabase/server'
 import { slugify } from '@/lib/utils'
 
@@ -34,7 +35,7 @@ export async function register(formData: FormData) {
 
   // Используем service role чтобы создать бизнес сразу,
   // не дожидаясь подтверждения email (обходим RLS)
-  const admin = createAdminClient(
+  const admin = createAdminClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
   )

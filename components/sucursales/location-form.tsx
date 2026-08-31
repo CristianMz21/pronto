@@ -6,6 +6,13 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatLocationSlug } from '@/lib/locations'
+import { isRecord } from '@/lib/validation/guard'
+
+function getStringField(obj: unknown, key: string): string | undefined {
+  if (!isRecord(obj)) return undefined
+  const v = obj[key]
+  return typeof v === 'string' ? v : undefined
+}
 
 interface Location {
   id: string
@@ -34,7 +41,7 @@ export function LocationForm({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  function handleNameChange(value: string) {
+  function handleNameChange(value: string): void {
     setForm((prev) => ({
       ...prev,
       name: value,
@@ -42,7 +49,7 @@ export function LocationForm({
     }))
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent): Promise<void> {
     e.preventDefault()
     setSaving(true)
     setError(null)
@@ -69,11 +76,11 @@ export function LocationForm({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     })
-    const j = await res.json().catch(() => ({}))
+    const j: unknown = await res.json().catch(() => ({}) as unknown)
     if (!res.ok) {
-      const msg = j.error ?? j.message ?? 'Error al guardar'
-      if (j.details) {
-        setError(`${msg}: ${JSON.stringify(j.details)}`)
+      const msg = getStringField(j, 'error') ?? getStringField(j, 'message') ?? 'Error al guardar'
+      if (isRecord(j) && j['details'] !== undefined) {
+        setError(`${msg}: ${JSON.stringify(j['details'])}`)
       } else {
         setError(msg)
       }

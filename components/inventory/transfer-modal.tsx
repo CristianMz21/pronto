@@ -4,6 +4,7 @@ import { useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { isRecord } from '@/lib/supabase/typed'
 
 export function TransferModal({
   items,
@@ -24,7 +25,7 @@ export function TransferModal({
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent): Promise<void> {
     e.preventDefault()
     setSaving(true)
     setError(null)
@@ -39,9 +40,15 @@ export function TransferModal({
         note: form.note || null,
       }),
     })
-    const j = await res.json().catch(() => ({}))
+    const j: unknown = await res.json().catch(() => ({}) as unknown)
     if (!res.ok) {
-      setError(j.message ?? j.error ?? 'Error')
+      const message =
+        isRecord(j) && typeof j['message'] === 'string'
+          ? (j['message'] as string)
+          : isRecord(j) && typeof j['error'] === 'string'
+            ? (j['error'] as string)
+            : 'Error'
+      setError(message)
       setSaving(false)
       return
     }

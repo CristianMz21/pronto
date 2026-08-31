@@ -13,6 +13,7 @@ import {
   Trash2,
   Users,
 } from 'lucide-react'
+import Image from 'next/image'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { useEffect, useMemo, useState } from 'react'
@@ -21,8 +22,20 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { MODULES, type ModuleKey } from '@/lib/modules'
 import { createClient } from '@/lib/supabase/client'
+import { isRecord } from '@/lib/validation/guard'
 
 import { HolidaysSection } from './holidays-section'
+
+function getStringField(obj: unknown, key: string): string | undefined {
+  if (!isRecord(obj)) return undefined
+  const v = obj[key]
+  return typeof v === 'string' ? v : undefined
+}
+function getBooleanField(obj: unknown, key: string): boolean | undefined {
+  if (!isRecord(obj)) return undefined
+  const v = obj[key]
+  return typeof v === 'boolean' ? v : undefined
+}
 
 const clean = (s: string, max = 500) => s?.trim().slice(0, max) ?? ''
 
@@ -232,24 +245,26 @@ export function SettingsTabs({
     router.refresh()
   }
 
-  async function uploadLogo(file: File) {
+  async function uploadLogo(file: File): Promise<void> {
     setLogoError('')
     setLogoUploading(true)
     try {
       const form = new FormData()
       form.append('logo', file)
       const res = await fetch('/api/business/logo', { method: 'POST', body: form })
-      let data: { logo_url?: string; error?: string } = {}
+      let json: unknown = {}
       try {
-        data = await res.json()
+        json = await res.json()
       } catch {
         /* non-JSON response */
       }
       if (!res.ok) {
-        setLogoError(data.error ?? `Upload failed (HTTP ${res.status})`)
+        const err = getStringField(json, 'error')
+        setLogoError(err ?? `Upload failed (HTTP ${res.status})`)
         return
       }
-      setLogoUrl(data.logo_url ?? null)
+      const logoUrlVal = getStringField(json, 'logo_url')
+      setLogoUrl(logoUrlVal ?? null)
     } catch (e) {
       setLogoError(
         t('general.logoErrorNetwork', {
@@ -295,13 +310,13 @@ export function SettingsTabs({
   function findBreakValidationError(dayHours: DayHours[]): string | null {
     for (const day of dayHours) {
       if (!day.is_open || !day.break_start || !day.break_end) continue
-      const dayName = (t.raw('workingHours.dayNames') as string[])[day.day_of_week]
+      const rawNames: unknown = t.raw('workingHours.dayNames')
+      const dayNames: string[] = Array.isArray(rawNames) ? (rawNames as string[]) : []
+      const dayName: string = dayNames[day.day_of_week] ?? String(day.day_of_week)
       if (day.break_start >= day.break_end) {
-        // @ts-expect-error - tsc strict fix
         return t('workingHours.breakInvalidRange', { day: dayName })
       }
       if (day.break_start < day.open_time || day.break_end > day.close_time) {
-        // @ts-expect-error - tsc strict fix
         return t('workingHours.breakOutsideHours', { day: dayName })
       }
     }
@@ -532,7 +547,7 @@ export function SettingsTabs({
     }
   }
 
-  async function connectViber() {
+  async function connectViber(): Promise<void> {
     setViberWebhookStatus('loading')
     setViberWebhookMsg('')
     await supabase
@@ -540,19 +555,22 @@ export function SettingsTabs({
       .update({ viber_bot_token: biz.viber_bot_token })
       .eq('id', biz.id)
     const res = await fetch('/api/viber/set-webhook', { method: 'POST' })
-    const json = await res.json()
-    if (json.ok) {
+    const json: unknown = await res.json()
+    const ok = getBooleanField(json, 'ok') ?? false
+    if (ok) {
+      const botName = getStringField(json, 'botName') ?? 'Viber Bot'
       setViberWebhookStatus('ok')
       setViberWebhookMsg(
-        `Connected! Bot: ${json.botName}. Now open your Viber bot and start a conversation.`,
+        `Connected! Bot: ${botName}. Now open your Viber bot and start a conversation.`,
       )
     } else {
       setViberWebhookStatus('error')
-      setViberWebhookMsg(json.error ?? 'Unknown error')
+      const err = getStringField(json, 'error')
+      setViberWebhookMsg(err ?? 'Unknown error')
     }
   }
 
-  async function connectTelegram() {
+  async function connectTelegram(): Promise<void> {
     setWebhookStatus('loading')
     setWebhookMsg('')
     await supabase
@@ -560,19 +578,22 @@ export function SettingsTabs({
       .update({ telegram_bot_token: biz.telegram_bot_token })
       .eq('id', biz.id)
     const res = await fetch('/api/telegram/set-webhook', { method: 'POST' })
-    const json = await res.json()
-    if (json.ok) {
+    const json: unknown = await res.json()
+    const ok = getBooleanField(json, 'ok') ?? false
+    if (ok) {
+      const botUsername = getStringField(json, 'botUsername') ?? 'bot'
       setWebhookStatus('ok')
       setWebhookMsg(
-        `Connected! Bot: @${json.botUsername}. Now open your bot in Telegram and send /start.`,
+        `Connected! Bot: @${botUsername}. Now open your bot in Telegram and send /start.`,
       )
     } else {
       setWebhookStatus('error')
-      setWebhookMsg(json.error ?? 'Unknown error')
+      const err = getStringField(json, 'error')
+      setWebhookMsg(err ?? 'Unknown error')
     }
   }
 
-  async function deleteEmployee(id: string) {
+  async function deleteEmployee(id: string): Promise<void> {
     await supabase.from('employees').delete().eq('id', id)
     setEmployees((prev) => prev.filter((e) => e.id !== id))
     setConfirmDeleteEmpId(null)
@@ -688,6 +709,11 @@ export function SettingsTabs({
     t('notifications.triggers.birthday'),
     t('notifications.triggers.lowStock'),
   ]
+
+  function safeRawHtml(key: Parameters<typeof t.raw>[0]): string {
+    const val: unknown = t.raw(key)
+    return typeof val === 'string' ? val : ''
+  }
 
   return (
     <div className="p-3 sm:p-6 max-w-3xl">
@@ -851,10 +877,12 @@ export function SettingsTabs({
               {logoUrl ? (
                 <div className="flex items-center gap-3">
                   <div className="w-16 h-16 rounded-lg border border-gray-200 bg-white flex items-center justify-center overflow-hidden">
-                    <img
+                    <Image
                       src={logoUrl}
                       alt="Business logo"
-                      style={{ width: 52, height: 52, objectFit: 'contain' }}
+                      width={52}
+                      height={52}
+                      style={{ objectFit: 'contain' }}
                     />
                   </div>
                   <button
@@ -943,7 +971,9 @@ export function SettingsTabs({
             <div className="space-y-2">
               {[1, 2, 3, 4, 5, 6, 0].map((dow) => {
                 const day = hours.find((h) => h.day_of_week === dow)!
-                const dayName = (t.raw('workingHours.dayNames') as string[])[dow]
+                const rawNames2: unknown = t.raw('workingHours.dayNames')
+                const dayNames2: string[] = Array.isArray(rawNames2) ? (rawNames2 as string[]) : []
+                const dayName: string = dayNames2[dow] ?? String(dow)
                 return (
                   <div key={dow}>
                     <div className="flex items-center gap-3">
@@ -1541,9 +1571,13 @@ export function SettingsTabs({
               </div>
 
               <ol className="text-xs text-gray-500 space-y-1 mb-3 list-decimal list-inside">
-                <li dangerouslySetInnerHTML={{ __html: t.raw('notifications.telegram.step1') }} />
+                <li
+                  dangerouslySetInnerHTML={{ __html: safeRawHtml('notifications.telegram.step1') }}
+                />
                 <li>{t('notifications.telegram.step2')}</li>
-                <li dangerouslySetInnerHTML={{ __html: t.raw('notifications.telegram.step3') }} />
+                <li
+                  dangerouslySetInnerHTML={{ __html: safeRawHtml('notifications.telegram.step3') }}
+                />
               </ol>
 
               <div className="flex gap-2 min-w-0">
@@ -1601,9 +1635,13 @@ export function SettingsTabs({
               </div>
 
               <ol className="text-xs text-gray-500 space-y-1 mb-3 list-decimal list-inside">
-                <li dangerouslySetInnerHTML={{ __html: t.raw('notifications.viber.step1') }} />
+                <li
+                  dangerouslySetInnerHTML={{ __html: safeRawHtml('notifications.viber.step1') }}
+                />
                 <li>{t('notifications.viber.step2')}</li>
-                <li dangerouslySetInnerHTML={{ __html: t.raw('notifications.viber.step3') }} />
+                <li
+                  dangerouslySetInnerHTML={{ __html: safeRawHtml('notifications.viber.step3') }}
+                />
               </ol>
 
               <div className="flex gap-2 min-w-0">
@@ -1663,11 +1701,15 @@ export function SettingsTabs({
                 {t('notifications.whatsapp.description')}
               </p>
               <ol className="text-xs text-gray-500 space-y-1 mb-3 list-decimal list-inside">
-                <li dangerouslySetInnerHTML={{ __html: t.raw('notifications.whatsapp.step1') }} />
-                <li dangerouslySetInnerHTML={{ __html: t.raw('notifications.whatsapp.step2') }} />
+                <li
+                  dangerouslySetInnerHTML={{ __html: safeRawHtml('notifications.whatsapp.step1') }}
+                />
+                <li
+                  dangerouslySetInnerHTML={{ __html: safeRawHtml('notifications.whatsapp.step2') }}
+                />
                 <li
                   dangerouslySetInnerHTML={{
-                    __html: (t.raw('notifications.whatsapp.step3') as string).replace(
+                    __html: safeRawHtml('notifications.whatsapp.step3').replace(
                       '{saveButton}',
                       `<strong>${t('notifications.whatsapp.saveButton')}</strong>`,
                     ),

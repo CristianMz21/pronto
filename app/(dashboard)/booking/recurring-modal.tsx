@@ -4,6 +4,7 @@ import { RefreshCw } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
+import { isRecord } from '@/lib/supabase/typed'
 
 interface Props {
   open: boolean
@@ -103,7 +104,7 @@ export function RecurringModal({
     byday,
   })
 
-  async function submit() {
+  async function submit(): Promise<void> {
     if (!clientId || !serviceId || !date || !time) {
       setError('Cliente, servicio, fecha y hora son requeridos')
       return
@@ -127,10 +128,45 @@ export function RecurringModal({
           until: until ? new Date(until).toISOString() : null,
         }),
       })
-      const body = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(body.message ?? body.error ?? `HTTP ${res.status}`)
-      setResult(body)
-      onCreated?.(body)
+      const body: unknown = await res.json().catch(() => ({}) as unknown)
+      if (!res.ok) {
+        const message =
+          isRecord(body) && typeof body['message'] === 'string'
+            ? (body['message'] as string)
+            : isRecord(body) && typeof body['error'] === 'string'
+              ? (body['error'] as string)
+              : `HTTP ${res.status}`
+        throw new Error(message)
+      }
+      if (
+        isRecord(body) &&
+        typeof body['id'] === 'string' &&
+        typeof body['created'] === 'number' &&
+        Array.isArray(body['skipped'])
+      ) {
+        const typed = body as unknown as {
+          id: string
+          created: number
+          skipped: { reason: string; starts_at: string }[]
+        }
+        setResult(typed)
+        onCreated?.(typed as { id: string; created: number; skipped: unknown[] })
+      } else if (isRecord(body)) {
+        // Fallback: treat any record as result shape when API returns loosely typed success
+        const fallback: {
+          id: string
+          created: number
+          skipped: { reason: string; starts_at: string }[]
+        } = {
+          id: typeof body['id'] === 'string' ? (body['id'] as string) : '',
+          created: typeof body['created'] === 'number' ? (body['created'] as number) : 0,
+          skipped: Array.isArray(body['skipped'])
+            ? (body['skipped'] as { reason: string; starts_at: string }[])
+            : [],
+        }
+        setResult(fallback)
+        onCreated?.(fallback as { id: string; created: number; skipped: unknown[] })
+      }
     } catch (e) {
       setError(String((e as Error).message))
     } finally {

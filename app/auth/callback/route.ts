@@ -1,7 +1,9 @@
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 
+import { getAdminSecretPath } from '@/lib/admin-secret'
 import { insertOwnerAsEmployee } from '@/lib/create-business'
+import type { Database } from '@/lib/supabase/database.types'
 import { createClient } from '@/lib/supabase/server'
 import { slugify } from '@/lib/utils'
 
@@ -9,7 +11,7 @@ export async function GET(request: Request) {
   const { searchParams, origin: requestOrigin } = new URL(request.url)
   const origin = process.env.NEXT_PUBLIC_SITE_URL || requestOrigin
   const code = searchParams.get('code')
-  const next = searchParams.get('next') ?? '/dashboard'
+  const next = searchParams.get('next') ?? `${getAdminSecretPath()}/dashboard`
 
   if (code) {
     const supabase = await createClient()
@@ -22,7 +24,7 @@ export async function GET(request: Request) {
       }
 
       // Проверяем — есть ли уже бизнес у пользователя
-      const admin = createAdminClient(
+      const admin = createAdminClient<Database>(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.SUPABASE_SERVICE_ROLE_KEY!,
       )
@@ -69,17 +71,32 @@ export async function GET(request: Request) {
           await insertOwnerAsEmployee(admin, newBusiness.id, data.user)
         }
 
-        return NextResponse.redirect(`${origin}/onboarding`)
+        return NextResponse.redirect(`${origin}${getAdminSecretPath()}/onboarding`)
       }
 
       // Бизнес есть, но онбординг не завершён — отправляем на онбординг
       if (!existing.onboarding_completed) {
-        return NextResponse.redirect(`${origin}/onboarding`)
+        return NextResponse.redirect(`${origin}${getAdminSecretPath()}/onboarding`)
       }
 
-      return NextResponse.redirect(`${origin}${next}`)
+      // Resolve next — ensure admin routes are under secret
+      let resolvedNext = next
+      const secret = getAdminSecretPath()
+      if (!resolvedNext.startsWith(secret) && resolvedNext.startsWith('/')) {
+        const needsSecret =
+          resolvedNext.startsWith('/dashboard') ||
+          resolvedNext.startsWith('/pos') ||
+          resolvedNext.startsWith('/caja') ||
+          resolvedNext.startsWith('/crm') ||
+          resolvedNext.startsWith('/onboarding') ||
+          resolvedNext.startsWith('/inventory') ||
+          resolvedNext.startsWith('/booking') ||
+          resolvedNext.startsWith('/settings')
+        if (needsSecret) resolvedNext = `${secret}${resolvedNext}`
+      }
+      return NextResponse.redirect(`${origin}${resolvedNext}`)
     }
   }
 
-  return NextResponse.redirect(`${origin}/login?error=Authentication+failed`)
+  return NextResponse.redirect(`${origin}${getAdminSecretPath()}/login?error=Authentication+failed`)
 }

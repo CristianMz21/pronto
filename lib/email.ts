@@ -97,9 +97,9 @@ export async function sendBookingConfirmation(opts: {
   serviceName: string
   date: string
   time: string
-  employeeName?: string
-  address?: string
-  calendarUrl?: string
+  employeeName?: string | undefined
+  address?: string | undefined
+  calendarUrl?: string | undefined
 }) {
   const safeCalendarUrl = opts.calendarUrl ? escapeAttr(opts.calendarUrl) : ''
   const body = `
@@ -132,9 +132,9 @@ export async function sendReminder(opts: {
   serviceName: string
   date: string
   time: string
-  employeeName?: string
-  address?: string
-  isOneHour?: boolean
+  employeeName?: string | undefined
+  address?: string | undefined
+  isOneHour?: boolean | undefined
 }) {
   const when = opts.isOneHour ? 'in 1 hour' : 'tomorrow'
   const body = `
@@ -164,7 +164,7 @@ export async function sendThankYou(opts: {
   clientName: string
   businessName: string
   serviceName: string
-  bookingUrl?: string
+  bookingUrl?: string | undefined
 }) {
   const body = `
     ${h1('Thank you for your visit!')}
@@ -186,7 +186,7 @@ export async function sendReactivation(opts: {
   to: string
   clientName: string
   businessName: string
-  bookingUrl?: string
+  bookingUrl?: string | undefined
 }) {
   const body = `
     ${h1('We miss you!')}
@@ -208,7 +208,7 @@ export async function sendBirthday(opts: {
   to: string
   clientName: string
   businessName: string
-  bookingUrl?: string
+  bookingUrl?: string | undefined
 }) {
   const body = `
     ${h1('🎂 Happy Birthday!')}

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
 import { getIp, rateLimit } from '@/lib/rate-limit'
+import { isRecord } from '@/lib/supabase/typed'
 
 const SUPPORTED = ['en', 'es', 'it', 'pt'] as const
 
@@ -14,8 +15,8 @@ export async function POST(request: Request) {
     if (!_b.success) return NextResponse.json({ error: 'validation_failed' }, { status: 422 })
   }
 
-  const body = await request.json().catch(() => ({}))
-  const locale: string = body.locale ?? ''
+  const body: unknown = await request.json().catch(() => ({}) as Record<string, unknown>)
+  const locale: string = isRecord(body) && typeof body.locale === 'string' ? body.locale : ''
   if (!(SUPPORTED as readonly string[]).includes(locale)) {
     return NextResponse.json({ error: 'Invalid locale' }, { status: 400 })
   }

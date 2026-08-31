@@ -7,6 +7,8 @@
  *   META_WHATSAPP_ACCESS_TOKEN     — постоянный или временный токен доступа
  */
 
+import { isRecord } from '@/lib/supabase/typed'
+
 const BASE = 'https://graph.facebook.com/v20.0'
 
 // ─── Нормализация номера ──────────────────────────────────────────────────────
@@ -30,12 +32,14 @@ export async function sendWhatsAppMessage(
   message: string,
   credentials?: { phoneNumberId: string; accessToken: string },
 ): Promise<boolean> {
-  const phoneNumberId = credentials?.phoneNumberId ?? process.env.META_WHATSAPP_PHONE_NUMBER_ID
-  const accessToken = credentials?.accessToken ?? process.env.META_WHATSAPP_ACCESS_TOKEN
+  const phoneNumberId: string | undefined =
+    credentials?.phoneNumberId ?? process.env.META_WHATSAPP_PHONE_NUMBER_ID
+  const accessToken: string | undefined =
+    credentials?.accessToken ?? process.env.META_WHATSAPP_ACCESS_TOKEN
 
   if (!phoneNumberId || !accessToken) return false
 
-  const normalizedTo = normalizePhone(to)
+  const normalizedTo: string = normalizePhone(to)
   if (!normalizedTo) return false
 
   try {
@@ -52,15 +56,14 @@ export async function sendWhatsAppMessage(
         text: { body: message },
       }),
     })
-    const _json = await res.json()
-    void _json
-    void _json
+    // Consume body to avoid leaking connection, but typed safely
+    const _raw: unknown = (await res.json()) as unknown
+    void _raw
     if (!res.ok) {
-      // console.error('[whatsapp] sendMessage error:', json?.error?.message ?? json)
       return false
     }
     return true
-  } catch (_err) {
+  } catch (_err: unknown) {
     // console.error('[whatsapp] sendMessage exception:', err)
     return false
   }
@@ -74,8 +77,8 @@ export function tplBookingConfirmation(opts: {
   date: string
   time: string
   businessName: string
-  employeeName?: string
-  address?: string
+  employeeName?: string | undefined
+  address?: string | undefined
 }): string {
   const lines = [
     `✅ Booking confirmed!`,
@@ -98,7 +101,7 @@ export function tplReminder(opts: {
   date: string
   time: string
   businessName: string
-  isOneHour?: boolean
+  isOneHour?: boolean | undefined
 }): string {
   const when = opts.isOneHour ? 'in 1 hour ⏰' : 'tomorrow 📅'
   return [
@@ -118,7 +121,7 @@ export function tplThankYou(opts: {
   clientName: string
   serviceName: string
   businessName: string
-  bookingUrl?: string
+  bookingUrl?: string | undefined
 }): string {
   const lines = [
     `✅ Thank you for your visit!`,
@@ -138,7 +141,7 @@ export function tplThankYou(opts: {
 export function tplReactivation(opts: {
   clientName: string
   businessName: string
-  bookingUrl?: string
+  bookingUrl?: string | undefined
 }): string {
   const lines = [
     `👋 We miss you, ${opts.clientName}!`,
@@ -155,7 +158,7 @@ export function tplReactivation(opts: {
 export function tplBirthday(opts: {
   clientName: string
   businessName: string
-  bookingUrl?: string
+  bookingUrl?: string | undefined
 }): string {
   const lines = [
     `🎂 Happy Birthday, ${opts.clientName}!`,
@@ -201,12 +204,20 @@ export async function verifyWhatsAppCredentials(credentials: {
         headers: { Authorization: `Bearer ${credentials.accessToken}` },
       },
     )
-    const json = await res.json()
+    const raw: unknown = (await res.json()) as unknown
     if (!res.ok) {
-      return { ok: false, error: json?.error?.message ?? `HTTP ${res.status}` }
+      let errorMessage: string = `HTTP ${res.status}`
+      if (isRecord(raw)) {
+        const errorField: unknown = raw['error']
+        if (isRecord(errorField) && typeof errorField['message'] === 'string') {
+          errorMessage = errorField['message']
+        }
+      }
+      return { ok: false, error: errorMessage }
     }
     return { ok: true }
-  } catch (e) {
-    return { ok: false, error: String((e as Error).message ?? e) }
+  } catch (e: unknown) {
+    const message: string = e instanceof Error ? e.message : String(e)
+    return { ok: false, error: message }
   }
 }

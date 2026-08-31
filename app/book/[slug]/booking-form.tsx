@@ -16,6 +16,7 @@ import {
 import { buildGCalUrl } from '@/lib/gcal'
 import { createClient } from '@/lib/supabase/client'
 import { formatCurrency, uses12HourClock } from '@/lib/utils'
+import { isRecord } from '@/lib/validation/guard'
 
 interface Service {
   id: string
@@ -63,6 +64,27 @@ interface Props {
 }
 
 type Step = 'service' | 'employee' | 'datetime' | 'contact' | 'done'
+
+interface HolidayRow {
+  date: string
+  is_open: boolean
+  location_id: string | null
+}
+
+function getStringField(obj: unknown, key: string): string | undefined {
+  if (!isRecord(obj)) return undefined
+  const v = obj[key]
+  return typeof v === 'string' ? v : undefined
+}
+
+function extractErrorMessage(json: unknown): string | undefined {
+  if (!isRecord(json)) return undefined
+  const msg = json['message']
+  if (typeof msg === 'string' && msg.length > 0) return msg
+  const err = json['error']
+  if (typeof err === 'string' && err.length > 0) return err
+  return undefined
+}
 
 function generateSlots(openTime: string, closeTime: string, durationMin: number): string[] {
   const [oh, om] = openTime.split(':').map(Number)
@@ -320,20 +342,25 @@ export function PublicBookingForm({
   // US7: fetch holidays for business and respect location_id if multi-sede
   useEffect(() => {
     let cancelled = false
-    async function fetchHolidays() {
+    async function fetchHolidays(): Promise<void> {
       try {
         const url = selectedLocation
           ? `/api/holidays?business_id=${business.id}&location_id=${selectedLocation}`
           : `/api/holidays?business_id=${business.id}`
         const res = await fetch(url)
         if (!res.ok) return
-        const data = (await res.json()) as {
-          date: string
-          is_open: boolean
-          location_id: string | null
-        }[]
+        const json: unknown = await res.json()
+        const rows: HolidayRow[] = Array.isArray(json)
+          ? (json as HolidayRow[]).filter(
+              (h): h is HolidayRow =>
+                isRecord(h) &&
+                typeof h['date'] === 'string' &&
+                typeof h['is_open'] === 'boolean' &&
+                (typeof h['location_id'] === 'string' || h['location_id'] === null),
+            )
+          : []
         if (cancelled) return
-        const closed = data.filter((h) => h.is_open === false)
+        const closed = rows.filter((h) => h.is_open === false)
         setHolidaysForLocation(closed)
         setHolidayDates(closed.map((h) => h.date.slice(0, 10)))
       } catch {}
@@ -345,7 +372,7 @@ export function PublicBookingForm({
   }, [business.id, selectedLocation])
 
   // US7 waitlist helper: join waitlist for desired date+time
-  async function joinWaitlist() {
+  async function joinWaitlist(): Promise<void> {
     if (!selectedService || !date || !contact.name) {
       setBookingError('Completá nombre y elegí fecha/horario para unirte a la lista')
       return
@@ -372,7 +399,8 @@ export function PublicBookingForm({
           .eq('business_id', business.id)
           .or(`phone.eq.${contact.phone},email.eq.${contact.email}`)
           .maybeSingle()
-        if (existing) cid = (existing as { id: string }).id
+        const existingTyped: { id: string } | null = existing as { id: string } | null
+        if (existingTyped) cid = existingTyped.id
         else {
           const { data: newClient } = await supabase
             .from('clients')
@@ -384,7 +412,8 @@ export function PublicBookingForm({
             })
             .select('id')
             .single()
-          if (newClient) cid = (newClient as { id: string }).id
+          const newTyped: { id: string } | null = newClient as { id: string } | null
+          if (newTyped) cid = newTyped.id
         }
       }
       if (!cid) throw new Error('No se pudo crear cliente')
@@ -404,8 +433,11 @@ export function PublicBookingForm({
           desired_at: desiredAt,
         }),
       })
-      const body = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(body.message ?? body.error ?? `HTTP ${res.status}`)
+      const body: unknown = await res.json().catch(() => ({}) as unknown)
+      if (!res.ok) {
+        const msg = extractErrorMessage(body) ?? `HTTP ${res.status}`
+        throw new Error(msg)
+      }
       setWaitlistJoined(true)
       setBookingError(null)
     } catch (e) {
@@ -605,7 +637,7 @@ export function PublicBookingForm({
     setLoadingSlots(false)
   }
 
-  async function submit() {
+  async function submit(): Promise<void> {
     if (!selectedService || !date || !time || !contact.name) return
     if (!contact.phone && !contact.email) {
       setBookingError(
@@ -665,21 +697,23 @@ export function PublicBookingForm({
 
       if (res.status === 409) {
         setSaving(false)
-        const body = await res.json().catch(() => null)
-        if (body?.error === 'no_staff_available') {
+        const body: unknown = await res.json().catch(() => null as unknown)
+        const err = getStringField(body, 'error')
+        if (err === 'no_staff_available') {
           setBookingError(t('noStaffAvailable'))
           return
         }
         if (
-          body?.error === 'promo_stack_guard' ||
-          body?.error === 'membership_expired' ||
-          body?.error === 'no_uses_left' ||
-          body?.error === 'promo_not_eligible' ||
-          body?.error === 'insufficient_points' ||
-          body?.error === 'promo_not_found' ||
-          body?.error === 'membership_not_found'
+          err === 'promo_stack_guard' ||
+          err === 'membership_expired' ||
+          err === 'no_uses_left' ||
+          err === 'promo_not_eligible' ||
+          err === 'insufficient_points' ||
+          err === 'promo_not_found' ||
+          err === 'membership_not_found'
         ) {
-          setBookingError(body.message ?? body.error ?? 'Beneficio no válido')
+          const msg = getStringField(body, 'message')
+          setBookingError(msg ?? err ?? 'Beneficio no válido')
           return
         }
         setSlotTakenError(true)
@@ -691,9 +725,11 @@ export function PublicBookingForm({
 
       if (res.status === 401) {
         setSaving(false)
-        const body = await res.json().catch(() => null)
-        if (body?.error === 'guest_not_allowed') {
-          setBookingError(body.message ?? 'Debes registrarte para reservar en este negocio')
+        const body: unknown = await res.json().catch(() => null as unknown)
+        const err = getStringField(body, 'error')
+        if (err === 'guest_not_allowed') {
+          const msg = getStringField(body, 'message')
+          setBookingError(msg ?? 'Debes registrarte para reservar en este negocio')
           return
         }
         setBookingError('Debes iniciar sesión para reservar.')
@@ -708,24 +744,30 @@ export function PublicBookingForm({
 
       if (res.status === 400) {
         setSaving(false)
-        const body = await res.json().catch(() => null)
-        if (body?.error === 'in_past') {
+        const body: unknown = await res.json().catch(() => null as unknown)
+        const err = getStringField(body, 'error')
+        if (err === 'in_past') {
           setBookingError('No se puede reservar en el pasado. Elegí una fecha y hora futuras.')
           return
         }
-        if (body?.error === 'too_soon') {
-          setBookingError(
-            body.message ?? `Reservá con al menos ${minAdvance} minutos de anticipación.`,
-          )
+        if (err === 'too_soon') {
+          const msg = getStringField(body, 'message')
+          setBookingError(msg ?? `Reservá con al menos ${minAdvance} minutos de anticipación.`)
           return
         }
       }
 
       if (!res.ok) throw new Error(await res.text())
 
-      const data = await res.json()
-      setClientId(data.clientId ?? null)
-      setClientHasTelegram(data.hasTelegram ?? false)
+      const data: unknown = await res.json()
+      const clientIdVal: string | null =
+        isRecord(data) && typeof data['clientId'] === 'string' ? (data['clientId'] as string) : null
+      const hasTelegramVal: boolean =
+        isRecord(data) && typeof data['hasTelegram'] === 'boolean'
+          ? (data['hasTelegram'] as boolean)
+          : false
+      setClientId(clientIdVal)
+      setClientHasTelegram(hasTelegramVal)
       setStep('done')
       setSaving(false)
     } catch {

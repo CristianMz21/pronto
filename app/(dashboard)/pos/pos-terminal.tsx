@@ -30,6 +30,7 @@ import {
 } from '@/lib/offline-db'
 import { createClient } from '@/lib/supabase/client'
 import { formatCurrency } from '@/lib/utils'
+import { isRecord } from '@/lib/validation/guard'
 
 interface Service {
   id: string
@@ -74,6 +75,24 @@ interface POSTerminalProps {
   isBarbero?: boolean
   currentEmployeeId?: string | null
   locationId?: string | null
+}
+
+// ─── Strict JSON helpers ────────────────────────────────────────────────────
+
+function getStringField(obj: unknown, key: string): string | undefined {
+  if (!isRecord(obj)) return undefined
+  const v = obj[key]
+  return typeof v === 'string' ? v : undefined
+}
+function getNumberField(obj: unknown, key: string): number | undefined {
+  if (!isRecord(obj)) return undefined
+  const v = obj[key]
+  return typeof v === 'number' && Number.isFinite(v) ? v : undefined
+}
+function getBooleanField(obj: unknown, key: string): boolean | undefined {
+  if (!isRecord(obj)) return undefined
+  const v = obj[key]
+  return typeof v === 'boolean' ? v : undefined
 }
 
 export function POSTerminal({
@@ -163,13 +182,14 @@ export function POSTerminal({
   }, [businessId, supabase])
 
   // ─── Fetch cash register status ────────────────────────────────────────────
-  const fetchRegisterStatus = useCallback(async () => {
+  const fetchRegisterStatus = useCallback(async (): Promise<void> => {
     if (!navigator.onLine) return
     try {
       const res = await fetch('/api/cash/current')
       if (res.ok) {
-        const json = await res.json()
-        setHasOpenRegister(!!json.register)
+        const json: unknown = await res.json()
+        const hasRegister = isRecord(json) ? Boolean(json['register']) : false
+        setHasOpenRegister(hasRegister)
       }
     } catch {}
   }, [])
@@ -219,10 +239,11 @@ export function POSTerminal({
     }
     // loyalty balance
     fetch(`/api/loyalty?client_id=${selectedClient}`)
-      .then(async (r) => {
+      .then(async (r): Promise<void> => {
         if (r.ok) {
-          const j = await r.json()
-          setLoyaltyBalance(j.points ?? 0)
+          const j: unknown = await r.json()
+          const pts = getNumberField(j, 'points') ?? 0
+          setLoyaltyBalance(pts)
         } else setLoyaltyBalance(0)
       })
       .catch(() => setLoyaltyBalance(0))
@@ -302,7 +323,7 @@ export function POSTerminal({
   }, [isOnline, activeServices.length])
 
   // ─── Sync queue when coming back online ──────────────────────────────────
-  const syncQueue = useCallback(async () => {
+  const syncQueue = useCallback(async (): Promise<void> => {
     setSyncing(true)
     setSyncError('')
     try {
@@ -324,9 +345,10 @@ export function POSTerminal({
         if (res.ok) {
           await markTransactionSynced(tx.id)
         } else if (res.status === 409) {
-          const j = await res.json().catch(() => ({}))
+          const j: unknown = await res.json().catch(() => ({}) as unknown)
+          const msg = getStringField(j, 'message')
           setSyncError(
-            j.message ?? 'Caja cerrada: abre caja para sincronizar ventas en efectivo pendientes.',
+            msg ?? 'Caja cerrada: abre caja para sincronizar ventas en efectivo pendientes.',
           )
           break
         }
@@ -379,7 +401,7 @@ export function POSTerminal({
   const total = Math.max(0, subtotal - effectiveDiscount)
   const categories = Array.from(new Set(activeServices.map((s) => s.category ?? 'Other')))
 
-  async function evaluatePromo() {
+  async function evaluatePromo(): Promise<void> {
     if (!promoCode.trim()) {
       setPromoError('Ingresa código')
       return
@@ -397,15 +419,19 @@ export function POSTerminal({
           date: new Date().toISOString().slice(0, 10),
         }),
       })
-      const j = await res.json()
-      if (res.ok && j.eligible) {
-        setPromoDiscount(j.discount)
+      const j: unknown = await res.json()
+      const eligible = getBooleanField(j, 'eligible') ?? false
+      if (res.ok && eligible) {
+        const discountVal = getNumberField(j, 'discount') ?? 0
+        setPromoDiscount(discountVal)
         setPromoError('')
         setSelectedMembership('')
         setLoyaltyRedeem(0)
       } else {
         setPromoDiscount(0)
-        setPromoError(j.reason ?? j.error ?? 'No elegible')
+        const reason = getStringField(j, 'reason')
+        const err = getStringField(j, 'error')
+        setPromoError(reason ?? err ?? 'No elegible')
       }
     } catch {
       setPromoError('Error evaluando promo')
@@ -415,7 +441,7 @@ export function POSTerminal({
   // ─── Checkout ─────────────────────────────────────────────────────────────
   // Cash register requirement is configurable per business (055): when requireCashRegister false, cash allowed without caja
   const cashRegisterRequired = requireCashRegister
-  async function checkout() {
+  async function checkout(): Promise<void> {
     if (cart.length === 0) return
     if (paymentMethod === 'cash' && cashRegisterRequired && !hasOpenRegister) {
       setCheckoutError('Debes abrir caja antes de cobrar en efectivo. Ve a Caja → Abrir caja.')
@@ -423,12 +449,14 @@ export function POSTerminal({
     }
     setCheckoutError('')
     setLoading(true)
-    const items = cart.map((i) => ({
-      service_id: i.service.id,
-      name: i.service.name,
-      price: i.service.price,
-      qty: i.qty,
-    }))
+    const items: { service_id: string; name: string; price: number; qty: number }[] = cart.map(
+      (i) => ({
+        service_id: i.service.id,
+        name: i.service.name,
+        price: i.service.price,
+        qty: i.qty,
+      }),
+    )
 
     // US5: stack guard for checkout (only one benefit)
     const benefitCount = [
@@ -490,26 +518,29 @@ export function POSTerminal({
             appointment_id: activeBookingId || null,
           }),
         })
-        const json = await res.json().catch(() => ({}))
+        const json: unknown = await res.json().catch(() => ({}) as unknown)
         if (!res.ok) {
-          if (json.error === 'cash_register_closed') {
-            setCheckoutError(json.message ?? 'Debes abrir caja antes de cobrar en efectivo')
+          const errCode = getStringField(json, 'error')
+          const msg = getStringField(json, 'message')
+          if (errCode === 'cash_register_closed') {
+            setCheckoutError(msg ?? 'Debes abrir caja antes de cobrar en efectivo')
             setHasOpenRegister(false)
-            throw new Error(json.message)
+            throw new Error(msg ?? errCode ?? 'cash_register_closed')
           }
-          throw new Error(json.error ?? 'transaction failed')
+          throw new Error(errCode ?? msg ?? 'transaction failed')
         }
-        const data = json as { receipt_number: string; id: string }
-        setReceiptNumber(data.receipt_number ?? '')
+        const receiptNumberVal = getStringField(json, 'receipt_number') ?? ''
+        const txId = getStringField(json, 'id') ?? ''
+        setReceiptNumber(receiptNumberVal)
         router.refresh()
 
         // ── If came from Booking: mark appointment as paid ────────────────
         if (activeBookingId) {
-          supabase
+          void supabase
             .from('appointments')
             .update({ status: 'paid' })
             .eq('id', activeBookingId)
-            .then(({ error: apptErr }) => {
+            .then(({ error: apptErr }: { error: { message: string } | null }) => {
               if (apptErr) {
                 // Booking status update is best-effort; POS transaction already succeeded.
                 // Logged via checkoutError state if needed; avoid console in production.
@@ -517,8 +548,8 @@ export function POSTerminal({
             })
         }
 
-        if (wasWalkin && data.id) {
-          setWalkinTxId(data.id)
+        if (wasWalkin && txId) {
+          setWalkinTxId(txId)
           setSaveForm({ name: '', phone: '', email: '', notes: '' })
           setShowSaveModal(true)
         }

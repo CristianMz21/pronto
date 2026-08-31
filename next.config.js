@@ -52,11 +52,9 @@ if (appHost && !allowedOrigins.includes(appHost)) {
 const nextConfig = {
   output: 'standalone', // required for Docker multi-stage build
   agentRules: false, // repo has no CLAUDE.md convention; don't let Next scaffold one
-  // TODO(quality-gates): remove ignoreBuildErrors once Supabase generated types + vitest global
-  // augmentations no longer leak into the build. At present `tsc --noEmit` is run in CI as a
-  // non-blocking gate; setting this to false would break `next build` in Docker without fixing
-  // the underlying type drift first. Tracked in docs/linting-roadmap.md.
-  typescript: { ignoreBuildErrors: true },
+  // Super strict 2026-08-31: typecheck is now blocking (tsc --noEmit 0, noImplicitReturns).
+  // Fail build on type errors — guarantees Docker standalone never ships with type drift.
+  typescript: { ignoreBuildErrors: false },
   // Escudería: single barbería ahora, headers críticos (HSTS, CSP, etc.)
   async headers() {
     return [

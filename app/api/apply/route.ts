@@ -3,7 +3,9 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 
 import { getIp, rateLimit } from '@/lib/rate-limit'
+import type { Database } from '@/lib/supabase/database.types'
 import { getSupabaseUrl } from '@/lib/supabase/getUrl'
+import { isRecord } from '@/lib/supabase/typed'
 
 const ApplySchema = z.object({
   business_name: z.string().min(2).max(100),
@@ -30,8 +32,8 @@ async function verifyTurnstile(token: string | null | undefined): Promise<boolea
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ secret, response: token }),
     })
-    const data = await res.json()
-    return !!data.success
+    const data: unknown = await res.json()
+    return isRecord(data) && data.success === true
   } catch {
     return false
   }
@@ -72,13 +74,16 @@ export async function POST(req: NextRequest) {
   }
 
   // Use service_role to bypass RLS (public form must work for anon)
-  const supabase = createAdminClient(getSupabaseUrl(), process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  const supabase = createAdminClient<Database>(
+    getSupabaseUrl(),
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  )
   const { data: existing } = await supabase
     .from('barbershop_applications')
     .select('id, status')
     .eq('email', data.email)
     .maybeSingle()
-  if (existing && (existing as { status: string }).status === 'pending') {
+  if (existing && existing.status === 'pending') {
     return NextResponse.json(
       { error: 'already_pending', message: 'Ya tienes una solicitud pendiente' },
       { status: 409 },
@@ -107,7 +112,7 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json(
-    { id: (inserted as { id: string }).id, message: 'Solicitud recibida, te contactaremos pronto' },
+    { id: inserted.id, message: 'Solicitud recibida, te contactaremos pronto' },
     { status: 201 },
   )
 }

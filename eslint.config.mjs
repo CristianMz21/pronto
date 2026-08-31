@@ -100,16 +100,24 @@ const eslintConfig = tseslint.config(
       ],
       '@typescript-eslint/no-explicit-any': 'error',
       'react-hooks/exhaustive-deps': 'error',
-      // Progressive strictness (React Doctor Step 5): re-enabled as warn, not error,
-      // so `eslint --max-warnings 0` still passes via CI but local `eslint .` surfaces them.
-      // Next slice: promote these three to error once the current ~N violations are fixed.
-      '@typescript-eslint/no-unsafe-assignment': 'warn',
-      '@typescript-eslint/no-unsafe-member-access': 'warn',
-      '@typescript-eslint/no-unsafe-call': 'warn',
-      '@typescript-eslint/no-unsafe-argument': 'warn',
-      '@typescript-eslint/no-unsafe-return': 'warn',
+      // Progressive strictness (React Doctor Step 5): unsafe promoted to error (PR10 done);
+      // cognitive remains warn (39 warnings) so `eslint --max-warnings 0` still surfaces them locally
+      // but CI will now fail on any new unsafe usage.
+      // PR0 Cimientos: super-strict typing foundations (typed.ts + validation/schemas + guard).
+      // Roadmap — PR10 done: unsafe rules promoted to error; img fixed.
+      //  PR1-2: FormData / JSON borders → zod parseOrThrow + guard helpers
+      //  PR3-4: Supabase borders → Tables<T> / Insert<T> / Update<T> from lib/supabase/typed.ts
+      //  PR5-6: Proxy / headers / cookies → HeadersSchema
+      //  PR7-8: noUncheckedIndexedAccess + noPropertyAccessFromIndexSignature clean-up
+      //  PR9:   noImplicitReturns + remaining strict flags
+      //  PR10:  flip all @typescript-eslint/no-unsafe-* warn → error + max-warnings 0 — DONE
+      '@typescript-eslint/no-unsafe-assignment': 'error',
+      '@typescript-eslint/no-unsafe-member-access': 'error',
+      '@typescript-eslint/no-unsafe-call': 'error',
+      '@typescript-eslint/no-unsafe-argument': 'error',
+      '@typescript-eslint/no-unsafe-return': 'error',
       'sonarjs/cognitive-complexity': ['warn', 20],
-      '@next/next/no-img-element': 'warn',
+      '@next/next/no-img-element': 'error',
       // Disable noisy for PR1 feasibility
       '@typescript-eslint/no-unnecessary-type-assertion': 'off',
       '@typescript-eslint/no-unnecessary-condition': 'off',

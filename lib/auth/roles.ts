@@ -3,6 +3,9 @@
  * Proxy, layout and sidebar all consume this module; no duplication allowed.
  */
 
+import { isRecord } from '@/lib/supabase/typed'
+import type { TypedSupabaseClient } from '@/lib/supabase/typed'
+
 export type CanonicalRole = 'owner' | 'admin' | 'staff' | 'barbero'
 
 /**
@@ -97,15 +100,18 @@ export function isSuperAdmin(
     | undefined,
 ): boolean {
   if (!user) return false
-  const metaRole = (user.user_metadata as Record<string, unknown> | undefined)?.role as
-    | string
-    | undefined
-  if (metaRole && metaRole.toLowerCase() === 'super_admin') return true
-  const superAdmins = (process.env.SUPER_ADMINS ?? '')
+  const meta: unknown = user.user_metadata
+  if (isRecord(meta)) {
+    const rawRole: unknown = meta['role']
+    if (typeof rawRole === 'string' && rawRole.toLowerCase() === 'super_admin') return true
+  }
+  const superAdminsEnv: string = process.env.SUPER_ADMINS ?? ''
+  const superAdmins: string[] = superAdminsEnv
     .split(',')
-    .map((s) => s.trim().toLowerCase())
+    .map((s: string) => s.trim().toLowerCase())
     .filter(Boolean)
-  if (user.email && superAdmins.includes(user.email.toLowerCase())) return true
+  const email: string | null | undefined = user.email
+  if (typeof email === 'string' && superAdmins.includes(email.toLowerCase())) return true
   return false
 }
 
@@ -154,12 +160,26 @@ export function canAccessRoute(
 
 function normalizeRole(raw: string | null | undefined): CanonicalRole | null {
   if (!raw) return null
-  const v = raw.toLowerCase().trim()
+  const v: string = raw.toLowerCase().trim()
   if (v === 'owner') return 'owner'
   if (v === 'admin' || v === 'manager') return 'admin'
   if (v === 'staff' || v === 'employee' || v === 'receptionist') return 'staff'
   if (v === 'barbero' || v === 'barber') return 'barbero'
   return null
+}
+
+// ── Typed helpers for Supabase rows ───────────────────────────────────────────
+
+interface BusinessOwnerRow {
+  id: string
+}
+
+interface EmployeeRoleRow {
+  role: string
+}
+
+interface LocationIdRow {
+  id: string
 }
 
 /**
@@ -168,7 +188,7 @@ function normalizeRole(raw: string | null | undefined): CanonicalRole | null {
  * When businessId is omitted, first owned business wins, then first active employee row.
  */
 export async function getUserRole(
-  supabase: { from: (table: string) => unknown },
+  supabase: TypedSupabaseClient,
   userId: string,
   businessId?: string | null,
 ): Promise<CanonicalRole | null> {
@@ -177,27 +197,27 @@ export async function getUserRole(
   // 1) Owner check
   if (businessId) {
     try {
-      // @ts-expect-error - tsc strict fix
       const { data: owned } = await supabase
         .from('businesses')
         .select('id')
         .eq('id', businessId)
         .eq('owner_id', userId)
         .maybeSingle()
-      if (owned) return 'owner'
+      const typedOwned: BusinessOwnerRow | null = owned as BusinessOwnerRow | null
+      if (typedOwned) return 'owner'
     } catch {
       // fall through to employee check
     }
   } else {
     try {
-      // @ts-expect-error - tsc strict fix
       const { data: ownedAny } = await supabase
         .from('businesses')
         .select('id')
         .eq('owner_id', userId)
         .limit(1)
         .maybeSingle()
-      if (ownedAny) return 'owner'
+      const typedOwnedAny: BusinessOwnerRow | null = ownedAny as BusinessOwnerRow | null
+      if (typedOwnedAny) return 'owner'
     } catch {
       // fall through
     }
@@ -205,23 +225,25 @@ export async function getUserRole(
 
   // 2) Employee check
   try {
-    // @ts-expect-error - tsc strict fix - supabase chain typing
-    let q = supabase.from('employees').select('role').eq('user_id', userId).eq('is_active', true)
-    if (businessId) q = q.eq('business_id', businessId)
-    q = q.limit(1).maybeSingle()
-    const { data: emp } = await q
-    if (!emp) return null
-    const normalized = normalizeRole((emp as { role: string }).role)
+    let query = supabase
+      .from('employees')
+      .select('role')
+      .eq('user_id', userId)
+      .eq('is_active', true)
+    if (businessId) {
+      query = query.eq('business_id', businessId)
+    }
+    const { data: emp } = await query.limit(1).maybeSingle()
+    const typedEmp: EmployeeRoleRow | null = emp as EmployeeRoleRow | null
+    if (!typedEmp) return null
+    const rawRole: unknown = typedEmp.role
+    const roleString: string | null = typeof rawRole === 'string' ? rawRole : null
+    const normalized: CanonicalRole | null = normalizeRole(roleString)
     return normalized
   } catch {
     return null
   }
 }
-
-/**
- * Helper to fetch the active employee_id for a barber (used to scope booking/pos queries).
- * Returns null if not a barber or no active employee row.
- */
 
 /**
  * V1 stub for per-user location access.
@@ -237,39 +259,23 @@ export async function getUserRole(
  * interpret empty array as no access. For explicit allow-all we return full list.
  */
 export async function getUserLocationIds(
-  supabase: { from: (table: string) => unknown },
+  supabase: TypedSupabaseClient,
   userId: string,
   businessId: string,
 ): Promise<string[] | null> {
   if (!userId || !businessId) return null
   try {
-    void (await getUserRole(
-      supabase as unknown as { from: (t: string) => unknown },
-      userId,
-      businessId,
-    ))
+    void (await getUserRole(supabase, userId, businessId))
     // V1: owner/admin/staff/barbero all get full list (no per-location restriction)
-    // Future: if role === 'manager' (mapped to admin), check employees.location_id single vs all
-    // TODO V2: SELECT id FROM locations WHERE business_id = $1 AND (role in ('owner','admin') OR id IN (SELECT my_location_ids()))
-    const { data } = await ((
-      supabase as unknown as {
-        from: (t: string) => {
-          select: (c: string) => {
-            eq: (
-              a: string,
-              b: unknown,
-            ) => { eq: (c: string, d: unknown) => Promise<{ data: { id: string }[] | null }> }
-          }
-        }
-      }
-    )
+    const { data } = await supabase
       .from('locations')
       .select('id')
       .eq('business_id', businessId)
-      .eq('is_active', true) as unknown as Promise<{ data: { id: string }[] | null }>)
+      .eq('is_active', true)
 
-    if (!data || data.length === 0) return null
-    return data.map((r: { id: string }) => r.id)
+    const typedData: LocationIdRow[] | null = data as LocationIdRow[] | null
+    if (!typedData || typedData.length === 0) return null
+    return typedData.map((r: LocationIdRow) => r.id)
   } catch {
     return null
   }

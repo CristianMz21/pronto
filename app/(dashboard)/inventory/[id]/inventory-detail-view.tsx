@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { createClient } from '@/lib/supabase/client'
+import { isRecord } from '@/lib/supabase/typed'
 import { formatCurrency, formatInBusinessTimezone } from '@/lib/utils'
 
 import { CategoryCombobox } from '../category-combobox'
@@ -78,7 +79,7 @@ export function InventoryDetailView({
 
   const isLow = item.quantity <= item.low_stock_threshold
 
-  async function saveItem() {
+  async function saveItem(): Promise<void> {
     setSaving(true)
     setSkuError('')
     const res = await fetch(`/api/inventory/${item.id}`, {
@@ -95,14 +96,18 @@ export function InventoryDetailView({
       }),
     })
     if (res.status === 409) {
-      const json = await res.json()
-      if (json.error === 'sku_taken') setSkuError(json.message)
+      const json: unknown = (await res.json()) as unknown
+      if (isRecord(json) && json['error'] === 'sku_taken' && typeof json['message'] === 'string') {
+        setSkuError(json['message'] as string)
+      }
       setSaving(false)
       return
     }
     if (res.ok) {
-      const data = await res.json()
-      setItem({ ...item, ...data })
+      const data: unknown = (await res.json()) as unknown
+      if (isRecord(data)) {
+        setItem({ ...item, ...(data as Partial<Item>) })
+      }
       setEditing(false)
       router.refresh()
     }

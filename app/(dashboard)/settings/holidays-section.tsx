@@ -4,6 +4,7 @@ import { CalendarOff, Plus, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
+import { isRecord } from '@/lib/supabase/typed'
 
 interface Holiday {
   id: string
@@ -68,7 +69,7 @@ export function HolidaysSection({ businessId, locations: initialLocations = [] }
     void load()
   }, [load])
 
-  async function add() {
+  async function add(): Promise<void> {
     if (!form.date) return
     setSaving(true)
     setError(null)
@@ -85,8 +86,14 @@ export function HolidaysSection({ businessId, locations: initialLocations = [] }
         }),
       })
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}))
-        throw new Error(body.message ?? body.error ?? `HTTP ${res.status}`)
+        const body: unknown = await res.json().catch(() => ({}) as unknown)
+        const message =
+          isRecord(body) && typeof body['message'] === 'string'
+            ? (body['message'] as string)
+            : isRecord(body) && typeof body['error'] === 'string'
+              ? (body['error'] as string)
+              : `HTTP ${res.status}`
+        throw new Error(message)
       }
       setForm({ date: '', reason: '', location_id: '', is_open: false })
       await load()

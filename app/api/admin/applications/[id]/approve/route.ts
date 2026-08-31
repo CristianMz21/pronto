@@ -4,6 +4,7 @@ import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { type NextRequest, NextResponse } from 'next/server'
 
 import { isSuperAdmin } from '@/lib/auth/roles'
+import type { Database } from '@/lib/supabase/database.types'
 import { getSupabaseUrl } from '@/lib/supabase/getUrl'
 import { createClient } from '@/lib/supabase/server'
 
@@ -22,14 +23,17 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   }
 
-  const admin = createAdminClient(getSupabaseUrl(), process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  const admin = createAdminClient<Database>(
+    getSupabaseUrl(),
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  )
 
   const { data: app } = await admin
     .from('barbershop_applications')
     .select('*')
     .eq('id', id)
     .maybeSingle()
-  if (!app || (app as { status: string }).status !== 'pending') {
+  if (!app || app.status !== 'pending') {
     return NextResponse.json({ error: 'not_pending' }, { status: 400 })
   }
 
@@ -40,11 +44,9 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     .eq('id', id)
   if (updErr) return NextResponse.json({ error: updErr.message }, { status: 500 })
 
-  const email = (app as { email: string; business_name: string; requested_plan?: string | null })
-    .email
-  const businessName = (app as { business_name: string }).business_name
-  const requestedPlan = ((app as { requested_plan?: string | null }).requested_plan ??
-    'starter') as string
+  const email = app.email
+  const businessName = app.business_name
+  const requestedPlan = (app.requested_plan ?? 'starter') as string
   const allowedPlans = new Set(['free', 'starter', 'pro', 'agency'])
   const plan = allowedPlans.has(requestedPlan) ? requestedPlan : 'starter'
 
@@ -118,7 +120,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
         const { insertOwnerAsEmployee } = await import('@/lib/create-business')
         await insertOwnerAsEmployee(
           admin as unknown as Parameters<typeof insertOwnerAsEmployee>[0],
-          (biz as { id: string }).id,
+          biz.id,
           { email } as unknown as Parameters<typeof insertOwnerAsEmployee>[2],
         )
       } catch {}

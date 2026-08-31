@@ -9,6 +9,25 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/empty-state'
 import { formatCurrency } from '@/lib/utils'
+import { isRecord } from '@/lib/validation/guard'
+
+function getStringField(obj: unknown, key: string): string | undefined {
+  if (!isRecord(obj)) return undefined
+  const v = obj[key]
+  return typeof v === 'string' ? v : undefined
+}
+
+function getNumberField(obj: unknown, key: string): number | undefined {
+  if (!isRecord(obj)) return undefined
+  const v = obj[key]
+  return typeof v === 'number' && Number.isFinite(v) ? v : undefined
+}
+
+function getBooleanField(obj: unknown, key: string): boolean | undefined {
+  if (!isRecord(obj)) return undefined
+  const v = obj[key]
+  return typeof v === 'boolean' ? v : undefined
+}
 
 interface Promotion {
   id: string
@@ -123,7 +142,7 @@ export function PromocionesClient({
     setTestResult(null)
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent): Promise<void> {
     e.preventDefault()
     setSaving(true)
     setError(null)
@@ -151,9 +170,9 @@ export function PromocionesClient({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     })
-    const j = await res.json().catch(() => ({}))
+    const j: unknown = await res.json().catch(() => ({}) as unknown)
     if (!res.ok) {
-      setError(j.error ?? 'Error')
+      setError(getStringField(j, 'error') ?? 'Error')
       setSaving(false)
       return
     }
@@ -163,13 +182,13 @@ export function PromocionesClient({
     router.refresh()
   }
 
-  async function handleDelete(id: string) {
+  async function handleDelete(id: string): Promise<void> {
     if (!confirm('¿Desactivar promoción?')) return
     await fetch(`/api/promotions/${id}`, { method: 'DELETE' })
     router.refresh()
   }
 
-  async function handleEvaluate(p: Promotion) {
+  async function handleEvaluate(p: Promotion): Promise<void> {
     setTestResult(null)
     const res = await fetch('/api/promotions/evaluate', {
       method: 'POST',
@@ -180,12 +199,19 @@ export function PromocionesClient({
         date: new Date().toISOString().slice(0, 10),
       }),
     })
-    const j = await res.json().catch(() => ({}))
-    if (res.ok && j.eligible)
+    const j: unknown = await res.json().catch(() => ({}) as unknown)
+    const eligible = getBooleanField(j, 'eligible') ?? false
+    if (res.ok && eligible) {
+      const discount = getNumberField(j, 'discount') ?? 0
+      const finalAmount = getNumberField(j, 'finalAmount') ?? 0
       setTestResult(
-        `Eligible: descuento ${formatCurrency(j.discount, 'COP')} (final ${formatCurrency(j.finalAmount, 'COP')})`,
+        `Eligible: descuento ${formatCurrency(discount, 'COP')} (final ${formatCurrency(finalAmount, 'COP')})`,
       )
-    else setTestResult(`No elegible: ${j.reason ?? j.error}`)
+    } else {
+      const reason = getStringField(j, 'reason')
+      const err = getStringField(j, 'error')
+      setTestResult(`No elegible: ${reason ?? err ?? 'Error'}`)
+    }
   }
 
   return (

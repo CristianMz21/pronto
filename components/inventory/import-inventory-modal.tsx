@@ -7,6 +7,7 @@ import { useCallback, useRef, useState } from 'react'
 import * as XLSX from 'xlsx'
 
 import { Button } from '@/components/ui/button'
+import { isRecord } from '@/lib/validation/guard'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -112,15 +113,36 @@ function parseCSV(text: string, delimiter = ','): string[][] {
 
 // ─── File parser — CSV + XLSX/XLS ─────────────────────────────────────────────
 
+function isXlsxWorkbook(
+  value: unknown,
+): value is { SheetNames: string[]; Sheets: Record<string, unknown> } {
+  if (!isRecord(value)) return false
+  const names = value['SheetNames']
+  const sheets = value['Sheets']
+  return Array.isArray(names) && isRecord(sheets)
+}
+
+function sheetToRowsSafe(worksheet: unknown): string[][] {
+  // Isolate external-library `any` into a typed wrapper with explicit unknown guard
+  if (worksheet == null || typeof worksheet !== 'object') return []
+  // XLSX.utils.sheet_to_json expects WorkSheet; we narrow via branded unknown
+  const ws = worksheet as XLSX.WorkSheet
+  const rows: unknown = XLSX.utils.sheet_to_json<string[]>(ws, { header: 1, defval: '' })
+  if (!Array.isArray(rows)) return []
+  return rows as string[][]
+}
+
 async function parseFile(file: File): Promise<string[][]> {
   const ext = file.name.split('.').pop()?.toLowerCase()
 
   if (ext === 'xlsx' || ext === 'xls') {
     const buffer = await file.arrayBuffer()
-    const wb = XLSX.read(buffer, { type: 'array' })
-    // @ts-expect-error - tsc strict fix
-    const ws = wb.Sheets[wb.SheetNames[0]]
-    return XLSX.utils.sheet_to_json<string[]>(ws, { header: 1, defval: '' })
+    const wbUnknown: unknown = XLSX.read(buffer, { type: 'array' })
+    if (!isXlsxWorkbook(wbUnknown)) return []
+    const firstName: unknown = wbUnknown.SheetNames[0]
+    if (typeof firstName !== 'string') return []
+    const ws: unknown = wbUnknown.Sheets[firstName]
+    return sheetToRowsSafe(ws)
   }
 
   // CSV
@@ -190,22 +212,22 @@ function rowsToParsed(rows: string[][], colMap: Record<keyof ParsedRow, number>)
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function ImportInventoryModal({ open, onClose, onImported }: Props) {
+export function ImportInventoryModal({ open, onClose, onImported }: Props): React.JSX.Element {
   const t = useTranslations('inventory')
 
   const [step, setStep] = useState<Step>('upload')
-  const [dragging, setDragging] = useState(false)
+  const [dragging, setDragging] = useState<boolean>(false)
   const [parsedRows, setParsedRows] = useState<ParsedRow[]>([])
   const [colMap, setColMap] = useState<Record<keyof ParsedRow, number> | null>(null)
   const [headers, setHeaders] = useState<string[]>([])
-  const [rowCount, setRowCount] = useState(0)
-  const [loading, setLoading] = useState(false)
-  const [resultImported, setResultImported] = useState(0)
-  const [resultSkipped, setResultSkipped] = useState(0)
+  const [rowCount, setRowCount] = useState<number>(0)
+  const [loading, setLoading] = useState<boolean>(false)
+  const [resultImported, setResultImported] = useState<number>(0)
+  const [resultSkipped, setResultSkipped] = useState<number>(0)
   const [importError, setImportError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  function handleClose() {
+  function handleClose(): void {
     setStep('upload')
     setParsedRows([])
     setColMap(null)
@@ -216,8 +238,8 @@ export function ImportInventoryModal({ open, onClose, onImported }: Props) {
     onClose()
   }
 
-  function downloadTemplate() {
-    const headers = [
+  function downloadTemplate(): void {
+    const tmplHeaders = [
       [
         'Name',
         'SKU',
@@ -230,8 +252,9 @@ export function ImportInventoryModal({ open, onClose, onImported }: Props) {
         'Description',
       ],
     ]
-    const ws = XLSX.utils.aoa_to_sheet(headers)
-    ws['!cols'] = [
+    const ws = XLSX.utils.aoa_to_sheet(tmplHeaders)
+    // `!cols` is a library-specific extension property; assign via unknown-safe cast
+    const colsValue: unknown = [
       { wch: 30 },
       { wch: 15 },
       { wch: 18 },
@@ -242,23 +265,24 @@ export function ImportInventoryModal({ open, onClose, onImported }: Props) {
       { wch: 12 },
       { wch: 40 },
     ]
+    ;(ws as Record<string, unknown>)['!cols'] = colsValue
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Products')
     XLSX.writeFile(wb, 'pronto-products-template.xlsx')
   }
 
-  const processFile = useCallback(async (file: File) => {
+  const processFile = useCallback(async (file: File): Promise<void> => {
     setImportError(null)
     try {
-      const matrix = await parseFile(file)
+      const matrix: string[][] = await parseFile(file)
       if (matrix.length < 2) {
         setImportError('File appears empty or could not be parsed.')
         return
       }
-      // @ts-expect-error - tsc strict fix
-      const hdrs = matrix[0].map(String)
-      const dataRows = matrix.slice(1).map((r) => r.map(String))
-      const map = detectColumns(hdrs)
+      const rawHdrs: string[] = matrix[0] ?? []
+      const hdrs: string[] = rawHdrs.map((c) => String(c))
+      const dataRows: string[][] = matrix.slice(1).map((r) => r.map((c) => String(c)))
+      const map: Record<keyof ParsedRow, number> = detectColumns(hdrs)
 
       if (map.name === -1) {
         setImportError('No "name" column found. Please check your file headers.')
@@ -275,20 +299,31 @@ export function ImportInventoryModal({ open, onClose, onImported }: Props) {
     }
   }, [])
 
-  function handleFileInput(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
+  function handleFileInput(e: React.ChangeEvent<HTMLInputElement>): void {
+    const file: File | undefined = e.target.files?.[0]
     if (file) void processFile(file)
     e.target.value = ''
   }
 
-  function handleDrop(e: React.DragEvent) {
+  function handleDrop(e: React.DragEvent<HTMLDivElement>): void {
     e.preventDefault()
     setDragging(false)
-    const file = e.dataTransfer.files?.[0]
+    const file: File | undefined = e.dataTransfer.files?.[0]
     if (file) void processFile(file)
   }
 
-  async function handleImport() {
+  function getStringField(json: unknown, key: string): string | undefined {
+    if (!isRecord(json)) return undefined
+    const v = json[key]
+    return typeof v === 'string' ? v : undefined
+  }
+  function getNumberField(json: unknown, key: string): number | undefined {
+    if (!isRecord(json)) return undefined
+    const v = json[key]
+    return typeof v === 'number' && Number.isFinite(v) ? v : undefined
+  }
+
+  async function handleImport(): Promise<void> {
     setLoading(true)
     setImportError(null)
     try {
@@ -297,18 +332,21 @@ export function ImportInventoryModal({ open, onClose, onImported }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ rows: parsedRows }),
       })
-      const data = await res.json()
+      const json: unknown = await res.json()
 
       if (!res.ok) {
-        setImportError(data.error ?? 'Import failed. Please try again.')
+        const err = getStringField(json, 'error')
+        setImportError(err ?? 'Import failed. Please try again.')
         setLoading(false)
         return
       }
 
-      setResultImported(data.imported)
-      setResultSkipped(data.skipped)
+      const imported = getNumberField(json, 'imported') ?? 0
+      const skipped = getNumberField(json, 'skipped') ?? 0
+      setResultImported(imported)
+      setResultSkipped(skipped)
       setStep('result')
-      onImported(data.imported)
+      onImported(imported)
     } catch {
       setImportError('Network error. Please try again.')
     } finally {

@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { useState } from 'react'
 
+import { isRecord } from '@/lib/supabase/typed'
+
 import { CategoryCombobox } from '../category-combobox'
 import { UnitSelect } from '../unit-select'
 
@@ -20,7 +22,7 @@ export function NewInventoryForm({ categories }: Props) {
   const [skuError, setSkuError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>): Promise<void> {
     e.preventDefault()
     setSkuError('')
     setSubmitting(true)
@@ -40,11 +42,16 @@ export function NewInventoryForm({ categories }: Props) {
       }),
     })
     if (res.status === 409) {
-      const json = await res.json()
-      if (json.error === 'sku_taken') setSkuError(json.message)
+      const json: unknown = (await res.json()) as unknown
+      if (isRecord(json) && json['error'] === 'sku_taken' && typeof json['message'] === 'string') {
+        setSkuError(json['message'] as string)
+      }
     } else if (res.ok) {
-      const { id } = await res.json()
-      router.push(`/inventory/${id}`)
+      const data: unknown = (await res.json()) as unknown
+      if (isRecord(data) && typeof data['id'] === 'string') {
+        const id = data['id'] as string
+        router.push(`/inventory/${id}`)
+      }
       router.refresh()
     }
     setSubmitting(false)

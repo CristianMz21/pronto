@@ -8,7 +8,30 @@
  * В отличие от Telegram, аутентификация через заголовок X-Viber-Auth-Token.
  */
 
+import { isRecord } from '@/lib/supabase/typed'
+
 const BASE = 'https://chatapi.viber.com/pa'
+
+interface ViberApiResponse {
+  status: number
+  status_message?: string | undefined
+  name?: string | undefined
+  uri?: string | undefined
+}
+
+function parseViberResponse(raw: unknown): ViberApiResponse | null {
+  if (!isRecord(raw)) return null
+  const status: unknown = raw['status']
+  if (typeof status !== 'number') return null
+  const statusMessage: unknown = raw['status_message']
+  const name: unknown = raw['name']
+  const uri: unknown = raw['uri']
+  const result: ViberApiResponse = { status }
+  if (typeof statusMessage === 'string') result.status_message = statusMessage
+  if (typeof name === 'string') result.name = name
+  if (typeof uri === 'string') result.uri = uri
+  return result
+}
 
 // ─── Отправить текстовое сообщение ────────────────────────────────────────────
 
@@ -32,14 +55,14 @@ export async function sendViberMessage(
         text,
       }),
     })
-    const json = await res.json()
-    // Viber возвращает status=0 при успехе (0 = ok, остальное = ошибка)
-    if (json.status !== 0) {
-      // console.error('[viber] sendMessage error:', json.status_message)
+    const raw: unknown = (await res.json()) as unknown
+    const parsed: ViberApiResponse | null = parseViberResponse(raw)
+    // Viber returns status=0 on success (0 = ok, other = error)
+    if (parsed === null || parsed.status !== 0) {
       return false
     }
     return true
-  } catch (_err) {
+  } catch (_err: unknown) {
     // console.error('[viber] sendMessage exception:', err)
     return false
   }
@@ -65,13 +88,16 @@ export async function setViberWebhook(
         send_name: true,
       }),
     })
-    const json = await res.json()
-    if (json.status !== 0) {
-      return { ok: false, description: json.status_message ?? 'Unknown error' }
+    const raw: unknown = (await res.json()) as unknown
+    const parsed: ViberApiResponse | null = parseViberResponse(raw)
+    if (parsed === null || parsed.status !== 0) {
+      const description: string = parsed?.status_message ?? 'Unknown error'
+      return { ok: false, description }
     }
     return { ok: true }
-  } catch (err) {
-    return { ok: false, description: String(err) }
+  } catch (err: unknown) {
+    const message: string = err instanceof Error ? err.message : String(err)
+    return { ok: false, description: message }
   }
 }
 
@@ -89,12 +115,16 @@ export async function getViberBotInfo(
       },
       body: JSON.stringify({}),
     })
-    const json = await res.json()
-    if (json.status !== 0) {
+    const raw: unknown = (await res.json()) as unknown
+    const parsed: ViberApiResponse | null = parseViberResponse(raw)
+    if (parsed === null || parsed.status !== 0) {
       return { ok: false }
     }
-    return { ok: true, name: json.name, uri: json.uri }
-  } catch {
+    const out: { ok: boolean; name?: string; uri?: string } = { ok: true }
+    if (parsed.name) out.name = parsed.name
+    if (parsed.uri) out.uri = parsed.uri
+    return out
+  } catch (_err: unknown) {
     return { ok: false }
   }
 }
@@ -107,8 +137,8 @@ export function tplNewBooking(opts: {
   serviceName: string
   date: string
   time: string
-  employeeName?: string
-  source?: string
+  employeeName?: string | undefined
+  source?: string | undefined
 }): string {
   const source = opts.source === 'online' ? ' (online)' : ''
   return [
@@ -128,7 +158,7 @@ export function tplReminder(opts: {
   serviceName: string
   date: string
   time: string
-  isOneHour?: boolean
+  isOneHour?: boolean | undefined
 }): string {
   const when = opts.isOneHour ? 'in 1 hour ⏰' : 'tomorrow 📅'
   return [
@@ -172,8 +202,8 @@ export function tplReminderClient(opts: {
   date: string
   time: string
   businessName: string
-  address?: string
-  isOneHour?: boolean
+  address?: string | undefined
+  isOneHour?: boolean | undefined
 }): string {
   const when = opts.isOneHour ? 'через 1 час ⏰' : 'завтра 📅'
   const lines = [
@@ -192,7 +222,7 @@ export function tplThankYouClient(opts: {
   clientName: string
   serviceName: string
   businessName: string
-  bookingUrl?: string
+  bookingUrl?: string | undefined
 }): string {
   const lines = [
     `✅ Спасибо за визит, ${opts.clientName}!`,
@@ -209,7 +239,7 @@ export function tplThankYouClient(opts: {
 export function tplReactivation(opts: {
   clientName: string
   businessName: string
-  bookingUrl?: string
+  bookingUrl?: string | undefined
 }): string {
   const lines = [
     `👋 ${opts.clientName}, давно не виделись!`,
@@ -223,7 +253,7 @@ export function tplReactivation(opts: {
 export function tplBirthday(opts: {
   clientName: string
   businessName: string
-  bookingUrl?: string
+  bookingUrl?: string | undefined
 }): string {
   const lines = [
     `🎂 С днём рождения, ${opts.clientName}!`,

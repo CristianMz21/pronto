@@ -7,8 +7,11 @@ type Locale = (typeof SUPPORTED)[number]
 export default getRequestConfig(async () => {
   const raw = (await cookies()).get('dashboard_locale')?.value ?? 'en'
   const locale: Locale = (SUPPORTED as readonly string[]).includes(raw) ? (raw as Locale) : 'en'
+  const mod = (await import(`../messages/${locale}.json`)) as unknown as {
+    default: Record<string, unknown>
+  }
   return {
     locale,
-    messages: (await import(`../messages/${locale}.json`)).default,
+    messages: mod.default,
   }
 })

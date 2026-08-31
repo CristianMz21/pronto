@@ -1,5 +1,8 @@
 import type { Config } from 'tailwindcss'
 
+type TailwindPlugin = NonNullable<Config['plugins']>[number]
+const animatePlugin = require('tailwindcss-animate') as unknown as TailwindPlugin
+
 const config: Config = {
   darkMode: ['class'],
   content: [
@@ -71,7 +74,7 @@ const config: Config = {
       },
     },
   },
-  plugins: [require('tailwindcss-animate')],
+  plugins: [animatePlugin],
 }
 
 export default config

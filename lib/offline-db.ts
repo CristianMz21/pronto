@@ -9,6 +9,8 @@
  *  - clients_cache         — client list
  */
 
+import { isRecord } from '@/lib/supabase/typed'
+
 const DB_NAME = 'pronto-offline'
 const DB_VERSION = 1
 
@@ -144,8 +146,11 @@ export async function markTransactionSynced(id: string): Promise<void> {
     const store = t.objectStore('pending_transactions')
     const getReq = store.get(id)
     getReq.onsuccess = () => {
-      const record: PendingTransaction = getReq.result
-      if (record) store.put({ ...record, synced: true })
+      const record: unknown = getReq.result
+      if (isRecord(record) && 'synced' in record) {
+        const typed = record as unknown as PendingTransaction
+        store.put({ ...typed, synced: true })
+      }
     }
     t.oncomplete = () => resolve()
     t.onerror = () => reject(t.error)

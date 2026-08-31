@@ -28,12 +28,11 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      # Progressive strictness (React Doctor): new warns (no-unsafe-*, cognitive-complexity,
-      # no-img-element) are enabled as warn to surface debt without breaking the current build.
-      # Baseline is ~530 warnings (2026-08-30). Budget is 600 to allow CI green while preventing
-      # regression; ratchet down as debt is paid. Errors still block (import/order, etc. fixed).
-      - name: ESLint (progressive — errors block, warns ratchet)
-        run: npx eslint . --max-warnings 600
+      # Super strict (2026-08-31): unsafe-* + no-img-element now errors (0 unsafe, 0 img).
+      # Remaining: 38 cognitive-complexity warns (proxy.ts 120 fixed). Budget 38 ratchets to 0.
+      # Next: app/api/book:111 (176), cron/notify:200 (162), booking-form:240 (138) etc.
+      - name: ESLint (super strict — unsafe/img errors block, cognitive ratchet)
+        run: npx eslint . --max-warnings 38
       - name: Biome format check
         run: npm run format:check || echo "Biome format check has diffs — run 'npm run format' locally (non-blocking for minimal gate)"
 
@@ -47,10 +46,8 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      # TODO(quality-gates): make this blocking by removing the fallback once ignoreBuildErrors is
-      # removed from next.config.js and Supabase type drift is fixed. See docs/linting-roadmap.md.
-      # Until then it stays non-blocking so `next build` remains green in Docker.
-      - run: npm run typecheck || echo "typecheck has known Supabase type drift — see TODO(quality-gates) (non-blocking minimal gate)"
+      # Super strict: typecheck is now blocking (tsc --noEmit 0, ignoreBuildErrors removed).
+      - run: npm run typecheck
 
   test:
     name: Test (vitest)

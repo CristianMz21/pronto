@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl'
 import { useEffect, useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
+import { isRecord } from '@/lib/supabase/typed'
 
 import { completeOnboarding } from './actions'
 
@@ -108,8 +109,9 @@ export function OnboardingWizard({ initialSlug, initialName, isSaas, rootDomain 
     debounceRef.current = setTimeout(async () => {
       try {
         const res = await fetch(`/api/check-slug?slug=${encodeURIComponent(slug)}`)
-        const data = await res.json()
-        setSlugStatus(data.available ? 'available' : 'taken')
+        const data: unknown = await res.json()
+        const available = isRecord(data) && data.available === true
+        setSlugStatus(available ? 'available' : 'taken')
       } catch {
         setSlugStatus('idle')
       }

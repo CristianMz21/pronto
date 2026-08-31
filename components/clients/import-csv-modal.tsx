@@ -5,6 +5,7 @@ import { AlertCircle, CheckCircle, Upload, X } from 'lucide-react'
 import { useCallback, useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
+import { isRecord } from '@/lib/validation/guard'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -149,25 +150,37 @@ function rowsToClients(rows: string[][], colMap: ReturnType<typeof detectColumns
   }))
 }
 
+// ─── Helpers for strict JSON borders ──────────────────────────────────────────
+function getStringField(json: unknown, key: string): string | undefined {
+  if (!isRecord(json)) return undefined
+  const v = json[key]
+  return typeof v === 'string' ? v : undefined
+}
+function getNumberField(json: unknown, key: string): number | undefined {
+  if (!isRecord(json)) return undefined
+  const v = json[key]
+  return typeof v === 'number' && Number.isFinite(v) ? v : undefined
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function ImportCsvModal({ open, onClose, onImported }: Props) {
+export function ImportCsvModal({ open, onClose, onImported }: Props): React.JSX.Element {
   const [step, setStep] = useState<Step>('platform')
   const [platform, setPlatform] = useState<string | null>(null)
-  const [dragging, setDragging] = useState(false)
+  const [dragging, setDragging] = useState<boolean>(false)
   const [parsedRows, setParsedRows] = useState<ParsedRow[]>([])
   const [colMap, setColMap] = useState<ReturnType<typeof detectColumns> | null>(null)
   const [headers, setHeaders] = useState<string[]>([])
-  const [rowCount, setRowCount] = useState(0)
-  const [noPhoneWarn, setNoPhoneWarn] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [resultImported, setResultImported] = useState(0)
-  const [resultSkipped, setResultSkipped] = useState(0)
+  const [rowCount, setRowCount] = useState<number>(0)
+  const [noPhoneWarn, setNoPhoneWarn] = useState<boolean>(false)
+  const [loading, setLoading] = useState<boolean>(false)
+  const [resultImported, setResultImported] = useState<number>(0)
+  const [resultSkipped, setResultSkipped] = useState<number>(0)
   const [importError, setImportError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Reset state when closed
-  function handleClose() {
+  function handleClose(): void {
     setStep('platform')
     setPlatform(null)
     setParsedRows([])
@@ -181,20 +194,23 @@ export function ImportCsvModal({ open, onClose, onImported }: Props) {
   }
 
   // Process file
-  const processFile = useCallback((file: File) => {
+  const processFile = useCallback((file: File): void => {
     const reader = new FileReader()
-    reader.onload = (e) => {
-      const text = e.target?.result as string
-      const matrix = parseCSV(text)
+    reader.onload = (e: ProgressEvent<FileReader>): void => {
+      const raw = e.target?.result
+      if (typeof raw !== 'string') {
+        setImportError('Failed to read file.')
+        return
+      }
+      const text: string = raw
+      const matrix: string[][] = parseCSV(text)
       if (matrix.length < 2) {
         setImportError('File appears empty or could not be parsed.')
         return
       }
-      const hdrs = matrix[0]
-      const dataRows = matrix.slice(1)
-      // @ts-expect-error - tsc strict fix
-      const map = detectColumns(hdrs)
-      // @ts-expect-error - tsc strict fix
+      const hdrs: string[] = (matrix[0] ?? []).map((c) => String(c))
+      const dataRows: string[][] = matrix.slice(1)
+      const map: ReturnType<typeof detectColumns> = detectColumns(hdrs)
       setHeaders(hdrs)
       setColMap(map)
       setRowCount(dataRows.length)
@@ -203,24 +219,26 @@ export function ImportCsvModal({ open, onClose, onImported }: Props) {
       setImportError(null)
       setStep('upload')
     }
-    reader.onerror = () => setImportError('Failed to read file.')
+    reader.onerror = (): void => {
+      setImportError('Failed to read file.')
+    }
     reader.readAsText(file, 'UTF-8')
   }, [])
 
-  function handleFileInput(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
+  function handleFileInput(e: React.ChangeEvent<HTMLInputElement>): void {
+    const file: File | undefined = e.target.files?.[0]
     if (file) processFile(file)
     e.target.value = ''
   }
 
-  function handleDrop(e: React.DragEvent) {
+  function handleDrop(e: React.DragEvent<HTMLDivElement>): void {
     e.preventDefault()
     setDragging(false)
-    const file = e.dataTransfer.files?.[0]
+    const file: File | undefined = e.dataTransfer.files?.[0]
     if (file) processFile(file)
   }
 
-  async function handleImport() {
+  async function handleImport(): Promise<void> {
     setLoading(true)
     setImportError(null)
     try {
@@ -229,25 +247,30 @@ export function ImportCsvModal({ open, onClose, onImported }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ clients: parsedRows }),
       })
-      const data = await res.json()
+      const json: unknown = await res.json()
 
       if (res.status === 402) {
+        const limit = getNumberField(json, 'limit')
+        const limitStr = limit !== undefined ? String(limit) : 'client'
         setImportError(
-          `You've reached the ${data.limit}-client limit on the Free plan. Upgrade to Starter to import unlimited clients.`,
+          `You've reached the ${limitStr}-client limit on the Free plan. Upgrade to Starter to import unlimited clients.`,
         )
         setLoading(false)
         return
       }
       if (!res.ok) {
-        setImportError(data.error ?? 'Import failed. Please try again.')
+        const err = getStringField(json, 'error')
+        setImportError(err ?? 'Import failed. Please try again.')
         setLoading(false)
         return
       }
 
-      setResultImported(data.imported)
-      setResultSkipped(data.skipped)
+      const imported = getNumberField(json, 'imported') ?? 0
+      const skipped = getNumberField(json, 'skipped') ?? 0
+      setResultImported(imported)
+      setResultSkipped(skipped)
       setStep('result')
-      onImported(data.imported)
+      onImported(imported)
     } catch {
       setImportError('Network error. Please try again.')
     } finally {

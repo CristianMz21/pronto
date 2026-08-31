@@ -9,6 +9,13 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/empty-state'
 import { formatCurrency } from '@/lib/utils'
+import { isRecord } from '@/lib/validation/guard'
+
+function getStringField(obj: unknown, key: string): string | undefined {
+  if (!isRecord(obj)) return undefined
+  const v = obj[key]
+  return typeof v === 'string' ? v : undefined
+}
 
 interface Membership {
   id: string
@@ -89,7 +96,7 @@ export function MembresiasClient({
     setCreating(true)
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent): Promise<void> {
     e.preventDefault()
     setSaving(true)
     setError(null)
@@ -108,9 +115,9 @@ export function MembresiasClient({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     })
-    const j = await res.json().catch(() => ({}))
+    const j: unknown = await res.json().catch(() => ({}) as unknown)
     if (!res.ok) {
-      setError(j.error ?? 'Error')
+      setError(getStringField(j, 'error') ?? 'Error')
       setSaving(false)
       return
     }
@@ -120,13 +127,13 @@ export function MembresiasClient({
     router.refresh()
   }
 
-  async function handleDelete(id: string) {
+  async function handleDelete(id: string): Promise<void> {
     if (!confirm('¿Desactivar membresía?')) return
     await fetch(`/api/memberships/${id}`, { method: 'DELETE' })
     router.refresh()
   }
 
-  async function handlePurchase(membershipId: string) {
+  async function handlePurchase(membershipId: string): Promise<void> {
     if (!purchaseClient) {
       alert('Selecciona cliente')
       return
@@ -136,9 +143,9 @@ export function MembresiasClient({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ client_id: purchaseClient, membership_id: membershipId }),
     })
-    const j = await res.json().catch(() => ({}))
+    const j: unknown = await res.json().catch(() => ({}) as unknown)
     if (!res.ok) {
-      alert(j.error ?? 'Error al vender')
+      alert(getStringField(j, 'error') ?? 'Error al vender')
       return
     }
     setShowPurchase(null)
@@ -146,16 +153,16 @@ export function MembresiasClient({
     router.refresh()
   }
 
-  async function handleConsume(cmId: string) {
+  async function handleConsume(cmId: string): Promise<void> {
     if (!confirm('¿Consumir 1 uso?')) return
     const res = await fetch('/api/memberships/consume', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ client_membership_id: cmId }),
     })
-    const j = await res.json().catch(() => ({}))
+    const j: unknown = await res.json().catch(() => ({}) as unknown)
     if (!res.ok) {
-      alert(j.error ?? j.message ?? 'Error')
+      alert(getStringField(j, 'error') ?? getStringField(j, 'message') ?? 'Error')
       return
     }
     router.refresh()

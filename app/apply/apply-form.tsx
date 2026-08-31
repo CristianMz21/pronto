@@ -1,6 +1,8 @@
 'use client'
 import { useEffect, useState } from 'react'
 
+import { isRecord } from '@/lib/supabase/typed'
+
 export function ApplyForm() {
   const [form, setForm] = useState({
     business_name: '',
@@ -30,7 +32,7 @@ export function ApplyForm() {
     }
   }, [])
 
-  async function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent): Promise<void> {
     e.preventDefault()
     setStatus('loading')
     setMsg('')
@@ -40,8 +42,16 @@ export function ApplyForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       })
-      const j = await res.json()
-      if (!res.ok) throw new Error(j.message ?? j.error ?? 'Error')
+      const j: unknown = (await res.json()) as unknown
+      if (!res.ok) {
+        const message =
+          isRecord(j) && typeof j['message'] === 'string'
+            ? (j['message'] as string)
+            : isRecord(j) && typeof j['error'] === 'string'
+              ? (j['error'] as string)
+              : 'Error'
+        throw new Error(message)
+      }
       setStatus('success')
       setMsg('Solicitud enviada. Te contactaremos pronto.')
     } catch (err) {

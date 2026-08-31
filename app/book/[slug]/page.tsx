@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import { Montserrat, Playfair_Display } from 'next/font/google'
+import Image from 'next/image'
 import { notFound } from 'next/navigation'
 
 import { createServiceClient } from '@/lib/supabase/service'
@@ -119,10 +120,12 @@ export default async function PublicBookingPage(props: {
           }}
         >
           {business.logo_url ? (
-            <img
+            <Image
               src={business.logo_url}
               alt={business.name}
-              style={{ width: 38, height: 38, borderRadius: 10, objectFit: 'cover' }}
+              width={38}
+              height={38}
+              style={{ borderRadius: 10, objectFit: 'cover' }}
             />
           ) : (
             <div

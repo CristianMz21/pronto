@@ -8,6 +8,13 @@ import {
 } from '@/lib/booking-availability'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
+import { isRecord } from '@/lib/validation/guard'
+
+function getStringField(obj: unknown, key: string): string | undefined {
+  if (!isRecord(obj)) return undefined
+  const v = obj[key]
+  return typeof v === 'string' ? v : undefined
+}
 
 export async function PATCH(req: NextRequest, props: { params: Promise<{ id: string }> }) {
   const { id } = await props.params
@@ -48,8 +55,8 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
     )
   }
 
-  const body = await req.json().catch(() => ({}))
-  if (body.action !== 'cancel') {
+  const body: unknown = await req.json().catch(() => ({}) as unknown)
+  if (getStringField(body, 'action') !== 'cancel') {
     return NextResponse.json({ error: 'invalid_action' }, { status: 400 })
   }
 
@@ -70,9 +77,17 @@ export async function PUT(req: NextRequest, props: { params: Promise<{ id: strin
 
   let date: string, time: string
   try {
-    const body = await req.json()
-    date = body.date
-    time = body.time
+    const body: unknown = (await req.json()) as unknown
+    const rawDate = getStringField(body, 'date')
+    const rawTime = getStringField(body, 'time')
+    if (rawDate === undefined || rawTime === undefined) {
+      return NextResponse.json(
+        { error: 'validation_failed', message: 'Invalid date or time' },
+        { status: 422 },
+      )
+    }
+    date = rawDate
+    time = rawTime
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(time)) {
       return NextResponse.json(
         { error: 'validation_failed', message: 'Invalid date or time' },

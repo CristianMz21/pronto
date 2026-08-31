@@ -1,6 +1,7 @@
 import { Calendar, Clock, History } from 'lucide-react'
 import type { Metadata } from 'next'
 import { Montserrat, Playfair_Display } from 'next/font/google'
+import Image from 'next/image'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
@@ -257,7 +258,13 @@ export default async function BusinessLanding({ params }: { params: Promise<{ sl
             style={{ color: accent }}
           >
             {logoUrl ? (
-              <img src={logoUrl} alt={bizName} className="w-8 h-8 object-contain" />
+              <Image
+                src={logoUrl}
+                alt={bizName}
+                width={32}
+                height={32}
+                className="w-8 h-8 object-contain"
+              />
             ) : null}
             {bizName.toUpperCase()}
           </Link>
@@ -455,22 +462,24 @@ export default async function BusinessLanding({ params }: { params: Promise<{ sl
               </div>
             </div>
             <div className="md:col-span-7 grid grid-cols-2 gap-4 h-[420px] md:h-[600px]">
-              <div className="pt-8 md:pt-12 h-full">
-                <img
+              <div className="pt-8 md:pt-12 h-full relative">
+                <Image
                   alt={`${bizName} — cuero`}
-                  className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-700 border"
+                  className="object-cover grayscale hover:grayscale-0 transition-all duration-700 border"
                   style={{ borderColor: 'color-mix(in srgb, var(--accent) 20%, transparent)' }}
                   src={gallery[0] ?? `/business-assets/${business.slug}/cuero.png`}
-                  loading="lazy"
+                  fill
+                  sizes="(max-width: 768px) 50vw, 35vw"
                 />
               </div>
-              <div className="pb-8 md:pb-12 h-full">
-                <img
+              <div className="pb-8 md:pb-12 h-full relative">
+                <Image
                   alt={`${bizName} — tijeras`}
-                  className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-700 border"
+                  className="object-cover grayscale hover:grayscale-0 transition-all duration-700 border"
                   style={{ borderColor: 'color-mix(in srgb, var(--accent) 20%, transparent)' }}
                   src={gallery[1] ?? `/business-assets/${business.slug}/tijeras.png`}
-                  loading="lazy"
+                  fill
+                  sizes="(max-width: 768px) 50vw, 35vw"
                 />
               </div>
             </div>

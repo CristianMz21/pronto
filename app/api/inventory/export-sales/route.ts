@@ -179,7 +179,7 @@ export async function GET(req: NextRequest) {
     { wch: 16 },
   ]
 
-  const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' })
+  const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }) as unknown as BodyInit
   const filename = `pronto-sales-${fileFrom}-${fileTo}.xlsx`
 
   return new NextResponse(buffer, {

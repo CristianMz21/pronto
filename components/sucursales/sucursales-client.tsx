@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/empty-state'
+import { isRecord } from '@/lib/supabase/typed'
 
 import { LocationForm } from './location-form'
 
@@ -30,8 +31,9 @@ export function SucursalesClient({ locations }: { locations: Location[] }) {
     if (!confirm('¿Desactivar sucursal? No se borrará, solo se marca inactiva.')) return
     const res = await fetch(`/api/locations/${id}`, { method: 'DELETE' })
     if (!res.ok) {
-      const j = await res.json().catch(() => ({}))
-      alert(j.error ?? 'Error al desactivar')
+      const j: unknown = await res.json().catch(() => ({}) as Record<string, unknown>)
+      const msg = isRecord(j) && typeof j.error === 'string' ? j.error : 'Error al desactivar'
+      alert(msg)
       return
     }
     router.refresh()
@@ -44,8 +46,9 @@ export function SucursalesClient({ locations }: { locations: Location[] }) {
       body: JSON.stringify({ is_active: !loc.is_active }),
     })
     if (!res.ok) {
-      const j = await res.json().catch(() => ({}))
-      alert(j.error ?? 'Error')
+      const j: unknown = await res.json().catch(() => ({}) as Record<string, unknown>)
+      const msg = isRecord(j) && typeof j.error === 'string' ? j.error : 'Error'
+      alert(msg)
       return
     }
     router.refresh()

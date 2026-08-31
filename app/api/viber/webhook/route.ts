@@ -17,9 +17,45 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 
 import { getIp, rateLimit } from '@/lib/rate-limit'
+import type { Database } from '@/lib/supabase/database.types'
 import { sendViberMessage } from '@/lib/viber'
-export async function POST(req: NextRequest) {
-  const _ipPOST = getIp(req as unknown as Request)
+
+const ViberWebhookSchema = z
+  .object({
+    event: z.string().optional(),
+    sender: z.object({ id: z.string(), name: z.string().optional() }).passthrough().optional(),
+    user: z.object({ id: z.string(), name: z.string().optional() }).passthrough().optional(),
+    context: z.string().optional(),
+    message: z
+      .object({ text: z.string().optional(), type: z.string().optional() })
+      .passthrough()
+      .optional(),
+  })
+  .passthrough()
+
+type ViberWebhookPayload = z.infer<typeof ViberWebhookSchema>
+
+interface BusinessViberRow {
+  id: string
+  name: string
+  viber_bot_token: string | null
+  viber_chat_id: string | null
+}
+
+interface ClientViberRow {
+  id: string
+  name: string
+}
+
+interface AppointmentTodayRow {
+  starts_at: string
+  status: string
+  clients: { name: string } | null
+  services: { name: string } | null
+}
+
+export async function POST(req: NextRequest): Promise<NextResponse> {
+  const _ipPOST: string = getIp(req as unknown as Request)
   if (!rateLimit(`webhook-route:post:${_ipPOST}`, { limit: 60, windowMs: 10 * 60 * 1000 }))
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
   {
@@ -28,51 +64,65 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const businessId = req.nextUrl.searchParams.get('bid')
+    const businessId: string | null = req.nextUrl.searchParams.get('bid')
     if (!businessId) return NextResponse.json({ status: 0 })
 
-    const body = await req.json()
-    const event: string = body?.event ?? ''
+    const raw: unknown = (await req.json()) as unknown
+    const parsed = ViberWebhookSchema.safeParse(raw)
+    const body: ViberWebhookPayload = parsed.success ? parsed.data : {}
+    const event: string = body.event ?? ''
 
     if (!event) return NextResponse.json({ status: 0 })
 
-    const supabase = createClient(
+    const supabase = createClient<Database>(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
     )
 
-    const { data: biz } = await supabase
+    const { data: bizData } = await supabase
       .from('businesses')
       .select('id, name, viber_bot_token, viber_chat_id')
       .eq('id', businessId)
-      .single()
+      .single<BusinessViberRow>()
+
+    const biz: BusinessViberRow | null = (bizData as unknown as BusinessViberRow | null) ?? null
 
     if (!biz?.viber_bot_token) return NextResponse.json({ status: 0 })
 
-    const senderId: string = body?.sender?.id ?? body?.user?.id ?? ''
-    const senderName: string = body?.sender?.name ?? body?.user?.name ?? 'there'
+    const viberToken: string = biz.viber_bot_token
+
+    const senderId: string = body.sender?.id ?? body.user?.id ?? ''
+    const senderName: string = body.sender?.name ?? body.user?.name ?? 'there'
 
     // ── conversation_started ───────────────────────────────────────────────────
     if (event === 'conversation_started') {
-      const context: string = body?.context ?? ''
+      const context: string = body.context ?? ''
 
       // Client opt-in: context = "client_{uuid}"
       if (context.startsWith('client_') && senderId) {
-        const clientId = context.replace('client_', '')
+        const clientId: string = context.replace('client_', '')
 
         if (/^[0-9a-f-]{36}$/i.test(clientId)) {
-          const { data: client } = await supabase
+          const { data: clientData } = await supabase
             .from('clients')
             .select('id, name')
             .eq('id', clientId)
             .eq('business_id', businessId)
-            .maybeSingle()
+            .maybeSingle<ClientViberRow>()
+
+          const client: ClientViberRow | null =
+            (clientData as unknown as ClientViberRow | null) ?? null
 
           if (client) {
-            await supabase.from('clients').update({ viber_user_id: senderId }).eq('id', clientId)
+            await supabase
+              .from('clients')
+              .update({
+                viber_user_id: senderId,
+              } as Database['public']['Tables']['clients']['Update'])
+              .eq('id', clientId)
 
             await sendViberMessage(
-              biz.viber_bot_token,
+              viberToken,
               senderId,
               [
                 `✅ Hi ${client.name}!`,
@@ -85,7 +135,7 @@ export async function POST(req: NextRequest) {
             )
           } else {
             await sendViberMessage(
-              biz.viber_bot_token,
+              viberToken,
               senderId,
               `❌ Link not found. Please use the link from your booking confirmation.`,
             )
@@ -96,10 +146,15 @@ export async function POST(req: NextRequest) {
 
       // Owner connect — first time (no viber_chat_id yet)
       if (!biz.viber_chat_id && senderId) {
-        await supabase.from('businesses').update({ viber_chat_id: senderId }).eq('id', businessId)
+        await supabase
+          .from('businesses')
+          .update({
+            viber_chat_id: senderId,
+          } as Database['public']['Tables']['businesses']['Update'])
+          .eq('id', businessId)
 
         await sendViberMessage(
-          biz.viber_bot_token,
+          viberToken,
           senderId,
           [
             `👋 Hi ${senderName}!`,
@@ -121,14 +176,19 @@ export async function POST(req: NextRequest) {
 
     // ── message ───────────────────────────────────────────────────────────────
     if (event === 'message') {
-      const text: string = body?.message?.text ?? ''
+      const text: string = body.message?.text ?? ''
 
       // /start — owner re-connect
       if (text.startsWith('/start') && senderId) {
-        await supabase.from('businesses').update({ viber_chat_id: senderId }).eq('id', businessId)
+        await supabase
+          .from('businesses')
+          .update({
+            viber_chat_id: senderId,
+          } as Database['public']['Tables']['businesses']['Update'])
+          .eq('id', businessId)
 
         await sendViberMessage(
-          biz.viber_bot_token,
+          viberToken,
           senderId,
           `✅ Connected to ${biz.name}! You will receive notifications here.`,
         )
@@ -137,26 +197,34 @@ export async function POST(req: NextRequest) {
 
       // /link {phone} — fallback client opt-in by phone
       if (text.startsWith('/link') && senderId) {
-        const phone = text.replace('/link', '').trim()
+        const phone: string = text.replace('/link', '').trim()
         if (phone) {
-          const { data: client } = await supabase
+          const { data: clientData } = await supabase
             .from('clients')
             .select('id, name')
             .eq('business_id', businessId)
             .eq('phone', phone)
-            .maybeSingle()
+            .maybeSingle<ClientViberRow>()
+
+          const client: ClientViberRow | null =
+            (clientData as unknown as ClientViberRow | null) ?? null
 
           if (client) {
-            await supabase.from('clients').update({ viber_user_id: senderId }).eq('id', client.id)
+            await supabase
+              .from('clients')
+              .update({
+                viber_user_id: senderId,
+              } as Database['public']['Tables']['clients']['Update'])
+              .eq('id', client.id)
 
             await sendViberMessage(
-              biz.viber_bot_token,
+              viberToken,
               senderId,
               `✅ Hi ${client.name}! Your Viber is now linked. You'll receive appointment reminders here.`,
             )
           } else {
             await sendViberMessage(
-              biz.viber_bot_token,
+              viberToken,
               senderId,
               `❌ Phone number not found. Make sure it matches the number you used when booking.`,
             )
@@ -166,30 +234,35 @@ export async function POST(req: NextRequest) {
       }
 
       // /today — owner only
-      if (text.startsWith('/today') && senderId === biz.viber_chat_id) {
-        const today = new Date()
-        const start = new Date(today.setHours(0, 0, 0, 0)).toISOString()
-        const end = new Date(today.setHours(23, 59, 59, 999)).toISOString()
+      const isOwner: boolean = senderId === (biz.viber_chat_id ?? '')
+      if (text.startsWith('/today') && isOwner) {
+        const today: Date = new Date()
+        const start: string = new Date(today.setHours(0, 0, 0, 0)).toISOString()
+        const end: string = new Date(today.setHours(23, 59, 59, 999)).toISOString()
 
-        const { data: appts } = await supabase
+        const { data: apptsData } = await supabase
           .from('appointments')
           .select('starts_at, status, clients(name), services(name)')
           .eq('business_id', businessId)
           .gte('starts_at', start)
           .lte('starts_at', end)
           .order('starts_at')
+          .returns<AppointmentTodayRow[]>()
+
+        const appts: AppointmentTodayRow[] | null =
+          (apptsData as unknown as AppointmentTodayRow[] | null) ?? null
 
         if (!appts || appts.length === 0) {
-          await sendViberMessage(biz.viber_bot_token, senderId, '📅 No appointments today.')
+          await sendViberMessage(viberToken, senderId, '📅 No appointments today.')
         } else {
-          const lines = appts.map((a) => {
-            const time = new Date(a.starts_at).toLocaleTimeString('en-US', {
+          const lines: string[] = appts.map((a: AppointmentTodayRow): string => {
+            const time: string = new Date(a.starts_at).toLocaleTimeString('en-US', {
               hour: '2-digit',
               minute: '2-digit',
               hour12: false,
             })
-            const client = (a.clients as unknown as { name: string } | null)?.name ?? 'Walk-in'
-            const service = (a.services as unknown as { name: string } | null)?.name ?? '—'
+            const client: string = a.clients?.name ?? 'Walk-in'
+            const service: string = a.services?.name ?? '—'
             const statusEmoji: Record<string, string> = {
               confirmed: '🔵',
               pending: '🟡',
@@ -197,12 +270,13 @@ export async function POST(req: NextRequest) {
               cancelled: '⛔',
               no_show: '❌',
             }
-            return `${statusEmoji[a.status] ?? '⚪'} ${time} — ${client} (${service})`
+            const emoji: string = statusEmoji[a.status] ?? '⚪'
+            return `${emoji} ${time} — ${client} (${service})`
           })
           await sendViberMessage(
-            biz.viber_bot_token,
+            viberToken,
             senderId,
-            `📅 Today's appointments (${appts.length})\n\n${lines.join('\n')}`,
+            `📅 Today's appointments (${String(appts.length)})\n\n${lines.join('\n')}`,
           )
         }
         return NextResponse.json({ status: 0 })
@@ -210,33 +284,32 @@ export async function POST(req: NextRequest) {
 
       // /help
       if (text.startsWith('/help')) {
-        await sendViberMessage(
-          biz.viber_bot_token,
-          senderId,
-          [
-            `Pronto Bot — available commands:`,
-            ``,
-            `/today — today's appointments (owner only)`,
-            `/link {phone} — link your Viber to your client profile`,
-            `  Example: /link +79001234567`,
-            `/help — this message`,
-          ].join('\n'),
-        )
+        const targetId: string = senderId || (biz.viber_chat_id ?? '')
+        if (targetId) {
+          await sendViberMessage(
+            viberToken,
+            targetId,
+            [
+              `Pronto Bot — available commands:`,
+              ``,
+              `/today — today's appointments (owner only)`,
+              `/link {phone} — link your Viber to your client profile`,
+              `  Example: /link +79001234567`,
+              `/help — this message`,
+            ].join('\n'),
+          )
+        }
         return NextResponse.json({ status: 0 })
       }
 
       // Fallback
       if (senderId) {
-        await sendViberMessage(
-          biz.viber_bot_token,
-          senderId,
-          'Send /help to see available commands.',
-        )
+        await sendViberMessage(viberToken, senderId, 'Send /help to see available commands.')
       }
     }
 
     return NextResponse.json({ status: 0 })
-  } catch (_err) {
+  } catch (_err: unknown) {
     // console.error('[viber/webhook]', err)
     return NextResponse.json({ status: 0 })
   }

@@ -5,6 +5,13 @@ import { useEffect, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { isRecord } from '@/lib/validation/guard'
+
+function getStringField(obj: unknown, key: string): string | undefined {
+  if (!isRecord(obj)) return undefined
+  const v = obj[key]
+  return typeof v === 'string' ? v : undefined
+}
 
 interface Employee {
   id: string
@@ -60,15 +67,23 @@ export function EmployeeForm({
   useEffect(() => {
     if (employee?.id) {
       fetch(`/api/employee-services?employee_id=${employee.id}`)
-        .then((r) => r.json())
-        .then((j) => {
-          if (Array.isArray(j)) setAssigned(j.map((x: { service_id: string }) => x.service_id))
+        .then((r) => r.json() as Promise<unknown>)
+        .then((j: unknown) => {
+          if (Array.isArray(j)) {
+            const ids: string[] = []
+            for (const item of j) {
+              if (isRecord(item) && typeof item['service_id'] === 'string') {
+                ids.push(item['service_id'])
+              }
+            }
+            setAssigned(ids)
+          }
         })
         .catch(() => {})
     }
   }, [employee?.id])
 
-  async function toggleService(serviceId: string) {
+  async function toggleService(serviceId: string): Promise<void> {
     if (!employee?.id) {
       setAssigned((prev) =>
         prev.includes(serviceId) ? prev.filter((id) => id !== serviceId) : [...prev, serviceId],
@@ -94,7 +109,7 @@ export function EmployeeForm({
     )
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent): Promise<void> {
     e.preventDefault()
     setSaving(true)
     setError(null)
@@ -122,18 +137,19 @@ export function EmployeeForm({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     })
-    const j = await res.json().catch(() => ({}))
+    const j: unknown = await res.json().catch(() => ({}) as unknown)
     if (!res.ok) {
-      setError(j.error ?? j.message ?? 'Error al guardar')
+      setError(getStringField(j, 'error') ?? getStringField(j, 'message') ?? 'Error al guardar')
       setSaving(false)
       return
     }
-    if (!employee?.id && j.id && assigned.length > 0) {
+    const newId = getStringField(j, 'id')
+    if (!employee?.id && newId !== undefined && assigned.length > 0) {
       for (const sid of assigned) {
         await fetch('/api/employee-services', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ employee_id: j.id, service_id: sid, action: 'assign' }),
+          body: JSON.stringify({ employee_id: newId, service_id: sid, action: 'assign' }),
         })
       }
     }

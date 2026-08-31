@@ -4,6 +4,19 @@ import { AlertCircle, CheckCircle2, Loader2 } from 'lucide-react'
 import { useState } from 'react'
 
 import { Button } from '@/components/ui/button'
+import { isRecord } from '@/lib/validation/guard'
+
+function getStringField(obj: unknown, key: string): string | undefined {
+  if (!isRecord(obj)) return undefined
+  const v = obj[key]
+  return typeof v === 'string' ? v : undefined
+}
+
+function getBooleanField(obj: unknown, key: string): boolean | undefined {
+  if (!isRecord(obj)) return undefined
+  const v = obj[key]
+  return typeof v === 'boolean' ? v : undefined
+}
 
 interface Props {
   businessId: string
@@ -19,7 +32,7 @@ export function WhatsAppSection({ businessId, initialPhoneNumberId, initialAcces
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
-  async function save() {
+  async function save(): Promise<void> {
     setSaving(true)
     setStatus('idle')
     setMsg('')
@@ -33,10 +46,10 @@ export function WhatsAppSection({ businessId, initialPhoneNumberId, initialAcces
           access_token: accessToken.trim(),
         }),
       })
-      const j = await res.json()
+      const j: unknown = (await res.json()) as unknown
       if (!res.ok) {
         setStatus('error')
-        setMsg(j.error ?? 'Failed to save')
+        setMsg(getStringField(j, 'error') ?? 'Failed to save')
         setSaving(false)
         return
       }
@@ -53,13 +66,16 @@ export function WhatsAppSection({ businessId, initialPhoneNumberId, initialAcces
             verify: true,
           }),
         })
-        const v = await verifyRes.json()
-        if (v.ok) {
+        const v: unknown = (await verifyRes.json()) as unknown
+        const ok = getBooleanField(v, 'ok') ?? false
+        if (ok) {
           setStatus('ok')
           setMsg('Verificado con Meta Cloud v20 ✓ — listo para campañas')
         } else {
           setStatus('error')
-          setMsg(v.error ?? 'No verificado — revisa phone_number_id / access_token')
+          setMsg(
+            getStringField(v, 'error') ?? 'No verificado — revisa phone_number_id / access_token',
+          )
         }
       } else {
         setStatus('ok')

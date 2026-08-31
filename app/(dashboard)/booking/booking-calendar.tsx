@@ -32,6 +32,7 @@ import {
   isPastInTz,
 } from '@/lib/booking-availability'
 import { createClient } from '@/lib/supabase/client'
+import { isRecord } from '@/lib/supabase/typed'
 import { formatInBusinessTimezone, uses12HourClock } from '@/lib/utils'
 
 import { RecurringModal } from './recurring-modal'
@@ -707,7 +708,7 @@ export function BookingCalendar({
     router.refresh()
   }
 
-  async function assignEmployee(apptId: string, employeeId: string) {
+  async function assignEmployee(apptId: string, employeeId: string): Promise<void> {
     setAssignError(null)
     const res = await fetch(`/api/appointments/${apptId}`, {
       method: 'PATCH',
@@ -718,8 +719,14 @@ export function BookingCalendar({
       setAssignError('Failed to update employee. Please try again.')
       return
     }
-    const updated = await res.json()
-    const newEmployee = updated.employees ?? null
+    const updated: unknown = (await res.json()) as unknown
+    const employeesRaw: unknown = isRecord(updated) ? updated['employees'] : null
+    const newEmployee: { id: string; name: string } | null =
+      isRecord(employeesRaw) &&
+      typeof employeesRaw['id'] === 'string' &&
+      typeof employeesRaw['name'] === 'string'
+        ? { id: employeesRaw['id'] as string, name: employeesRaw['name'] as string }
+        : null
     setAppointments((prev) =>
       prev.map((a) => (a.id === apptId ? { ...a, employees: newEmployee } : a)),
     )

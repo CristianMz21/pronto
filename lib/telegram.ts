@@ -3,6 +3,8 @@
  * Telegram Bot API — отправка сообщений и регистрация вебхука.
  */
 
+import { isRecord } from '@/lib/supabase/typed'
+
 const BASE = 'https://api.telegram.org/bot'
 
 // ─── Отправить текстовое сообщение ────────────────────────────────────────────
@@ -24,13 +26,11 @@ export async function sendTelegramMessage(
         disable_web_page_preview: true,
       }),
     })
-    const json = await res.json()
-    if (!json.ok) {
-      // console.error('[telegram] sendMessage error:', json.description)
-      return false
-    }
-    return true
-  } catch (_err) {
+    const raw: unknown = (await res.json()) as unknown
+    if (!isRecord(raw)) return false
+    const ok: unknown = raw['ok']
+    return ok === true
+  } catch (_err: unknown) {
     // console.error('[telegram] sendMessage exception:', err)
     return false
   }
@@ -48,9 +48,23 @@ export async function setTelegramWebhook(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url: webhookUrl }),
     })
-    return await res.json()
-  } catch (err) {
-    return { ok: false, description: String(err) }
+    const raw: unknown = (await res.json()) as unknown
+    if (isRecord(raw) && typeof raw['ok'] === 'boolean') {
+      const ok: boolean = raw['ok']
+      const description: unknown = raw['description']
+      if (typeof description === 'string') {
+        return { ok, description }
+      }
+      return { ok }
+    }
+    // Fallback if shape unexpected but ok
+    if (isRecord(raw)) {
+      return { ok: false, description: 'Invalid response shape' }
+    }
+    return { ok: false, description: 'Invalid response' }
+  } catch (err: unknown) {
+    const message: string = err instanceof Error ? err.message : String(err)
+    return { ok: false, description: message }
   }
 }
 
@@ -61,8 +75,26 @@ export async function getTelegramBotInfo(
 ): Promise<{ ok: boolean; result?: { username: string; first_name: string } }> {
   try {
     const res = await fetch(`${BASE}${token}/getMe`)
-    return await res.json()
-  } catch {
+    const raw: unknown = (await res.json()) as unknown
+    if (!isRecord(raw) || typeof raw['ok'] !== 'boolean') {
+      return { ok: false }
+    }
+    const ok: boolean = raw['ok']
+    if (!ok) return { ok: false }
+    const result: unknown = raw['result']
+    if (
+      isRecord(result) &&
+      typeof result['username'] === 'string' &&
+      typeof result['first_name'] === 'string'
+    ) {
+      return {
+        ok: true,
+        result: { username: result['username'], first_name: result['first_name'] },
+      }
+    }
+    // If result missing but ok true, return ok true without result
+    return { ok: true }
+  } catch (_err: unknown) {
     return { ok: false }
   }
 }
@@ -86,8 +118,8 @@ export function tplNewBooking(opts: {
   serviceName: string
   date: string
   time: string
-  employeeName?: string
-  source?: string
+  employeeName?: string | undefined
+  source?: string | undefined
 }): string {
   const source = opts.source === 'online' ? ' 🌐 online' : ''
   return [
@@ -107,7 +139,7 @@ export function tplReminder(opts: {
   serviceName: string
   date: string
   time: string
-  isOneHour?: boolean
+  isOneHour?: boolean | undefined
 }): string {
   const when = opts.isOneHour ? 'in 1 hour ⏰' : 'tomorrow 📅'
   return [
@@ -169,8 +201,8 @@ export function tplReminderClient(opts: {
   date: string
   time: string
   businessName: string
-  address?: string
-  isOneHour?: boolean
+  address?: string | undefined
+  isOneHour?: boolean | undefined
 }): string {
   const when = opts.isOneHour ? 'in 1 hour ⏰' : 'tomorrow 📅'
   const lines = [
@@ -189,7 +221,7 @@ export function tplThankYouClient(opts: {
   clientName: string
   serviceName: string
   businessName: string
-  bookingUrl?: string
+  bookingUrl?: string | undefined
 }): string {
   const lines = [
     `✅ <b>Thank you for your visit, ${escapeHtml(opts.clientName)}!</b>`,
@@ -206,7 +238,7 @@ export function tplThankYouClient(opts: {
 export function tplReactivationClient(opts: {
   clientName: string
   businessName: string
-  bookingUrl?: string
+  bookingUrl?: string | undefined
 }): string {
   const lines = [
     `👋 <b>${escapeHtml(opts.clientName)}, it's been a while!</b>`,
@@ -220,7 +252,7 @@ export function tplReactivationClient(opts: {
 export function tplBirthdayClient(opts: {
   clientName: string
   businessName: string
-  bookingUrl?: string
+  bookingUrl?: string | undefined
 }): string {
   const lines = [
     `🎂 <b>Happy Birthday, ${escapeHtml(opts.clientName)}!</b>`,
