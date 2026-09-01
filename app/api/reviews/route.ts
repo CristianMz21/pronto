@@ -97,7 +97,6 @@ export async function POST(req: NextRequest) {
     // Use supabase.rpc('pg_advisory_xact_lock', { key: hash }) if function exists.
     // We attempt but ignore failure (not critical for tests).
     const hash = parseInt(appointment_id.replace(/-/g, '').slice(0, 8), 16) // 32-bit int
-    // @ts-expect-error — rpc may not exist in types
 
     await (supabase as unknown as { rpc: (a: string, b: unknown) => Promise<unknown> })
       .rpc('pg_advisory_xact_lock', { key: hash })
