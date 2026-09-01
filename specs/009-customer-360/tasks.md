@@ -197,9 +197,9 @@ description: "Task list for Customer 360 — Experiencia Profesional para Client
 
 **Goal**: Diseño sin dinero real.
 
-- [ ] T046 [US8] Extend `drizzle/schema.ts` already has `payment_status` (092) — add `supabase/migrations/095_payment_stub.sql` if not: ensure `appointments.deposit_amount` default 0 + `transactions.status pending` allowed for booking prepay stub
-- [ ] T047 [US8] Extend `app/api/book/route.ts:92` accept `tip_amount?` + `deposit?` stub (validate but not charge) + `app/book/[slug]/booking-form.tsx` tip input (optional cash tip pre-set)
-- [ ] T048 [US8] UI `app/(client)/client/pagos/page.tsx` already from US6 — extend to show `deposit $10k / saldo $25k` if `payment_status=deposit_paid`
+- [x] T046 [US8] Extend `drizzle/schema.ts` already has `payment_status` (092) — add `supabase/migrations/095_payment_stub.sql` if not: ensure `appointments.deposit_amount` default 0 + `transactions.status pending` allowed for booking prepay stub
+- [x] T047 [US8] Extend `app/api/book/route.ts:92` accept `tip_amount?` + `deposit?` stub (validate but not charge) + `app/book/[slug]/booking-form.tsx` tip input (optional cash tip pre-set)
+- [x] T048 [US8] UI `app/(client)/client/pagos/page.tsx` already from US6 — extend to show `deposit $10k / saldo $25k` if `payment_status=deposit_paid`
 
 **Checkpoint**: Stub listo para V2 Bold/Wompi.
 
@@ -209,10 +209,10 @@ description: "Task list for Customer 360 — Experiencia Profesional para Client
 
 **Goal**: `Notificaciones` lista + recordatorios 24h/2h + `Barbería Escudería ★4.9 📍` .
 
-- [ ] T049 [P] [US9] API `app/api/client/notifications/route.ts` GET `notification_log` + `waitlist` events deduplicated 1h window (`002`)
-- [ ] T050 [US9] UI `app/(client)/client/notificaciones/page.tsx` + `components/client/notification-list.tsx` + profile `notification_prefs` toggles (`clients.notification_prefs` 088)
-- [ ] T051 [US9] Extend `app/api/cron/notify/route.ts` ensure 24h/2h/post `¿Qué tal?` review prompt already, add `client-styles` reminder not needed; verify `lib/campaigns.ts` not spam >1 promo/semana
-- [ ] T052 [US9] UI `components/client/location-card.tsx` from `locations 044` + `businesses` `address/phone/hours` + `[Cómo llegar][WhatsApp][Llamar]`
+- [x] T049 [P] [US9] API `app/api/client/notifications/route.ts` GET `notification_log` + `waitlist` events deduplicated 1h window (`002`)
+- [x] T050 [US9] UI `app/(client)/client/notificaciones/page.tsx` + `components/client/notification-list.tsx` + profile `notification_prefs` toggles (`clients.notification_prefs` 088)
+- [x] T051 [US9] Extend `app/api/cron/notify/route.ts` ensure 24h/2h/post `¿Qué tal?` review prompt already, add `client-styles` reminder not needed; verify `lib/campaigns.ts` not spam >1 promo/semana
+- [x] T052 [US9] UI `components/client/location-card.tsx` from `locations 044` + `businesses` `address/phone/hours` + `[Cómo llegar][WhatsApp][Llamar]`
 
 ---
 
@@ -220,9 +220,9 @@ description: "Task list for Customer 360 — Experiencia Profesional para Client
 
 **Goal**: `¿Para quién? Yo/Mi hijo` + chat transaccional.
 
-- [ ] T053 [US10] Extend `app/api/book/route.ts` accept `guest_name?` → `appointments.guest_name` or `notes` + `booking-form.tsx` radio `Yo/Mi hijo/Otra`
-- [ ] T054 [US10] Create `app/api/client/chat/route.ts` POST `{appointment_id, message}` → append `appointments.notes` + `notification_log` event `chat_message`; GET thread
-- [ ] T055 [US10] UI `components/client/chat-thread.tsx` embedded in `upcoming-card` if `guest_name` or chat exists
+- [x] T053 [US10] Extend `app/api/book/route.ts` accept `guest_name?` → `appointments.guest_name` or `notes` + `booking-form.tsx` radio `Yo/Mi hijo/Otra`
+- [x] T054 [US10] Create `app/api/client/chat/route.ts` POST `{appointment_id, message}` → append `appointments.notes` + `notification_log` event `chat_message`; GET thread
+- [x] T055 [US10] UI `components/client/chat-thread.tsx` embedded in `upcoming-card` if `guest_name` or chat exists
 
 ---
 
@@ -230,8 +230,8 @@ description: "Task list for Customer 360 — Experiencia Profesional para Client
 
 **Goal**: `gift_cards` schema listo, no flujo completo.
 
-- [ ] T056 [US11] Migration `093_gift_cards.sql` already in Foundational — add `app/api/gift-cards/route.ts` stub `POST purchase` (creates `gift_cards.balance=amount`) + `GET redeem ?code=` (checks `balance`); UI `app/(client)/client/regalo/page.tsx` compra stub
-- [ ] T057 [US11] Realtime chair `silla tiempo real` — defer to V2, only stub `GET /api/locations/status` returns `open/closed` from `business_hours` + `appointments in_service count` polling 30s
+- [x] T056 [US11] Migration `093_gift_cards.sql` already in Foundational — add `app/api/gift-cards/route.ts` stub `POST purchase` (creates `gift_cards.balance=amount`) + `GET redeem ?code=` (checks `balance`); UI `app/(client)/client/regalo/page.tsx` compra stub
+- [x] T057 [US11] Realtime chair `silla tiempo real` — defer to V2, only stub `GET /api/locations/status` returns `open/closed` from `business_hours` + `appointments in_service count` polling 30s
 
 ---
 
@@ -239,14 +239,14 @@ description: "Task list for Customer 360 — Experiencia Profesional para Client
 
 **Purpose**: Premium visual, perf, seguridad, docs.
 
-- [ ] T058 [P] Premium UX: `components/client/*` polish empty states ilustrados, skeletons, `loading.tsx`/`error.tsx` por ruta cliente, bottom-tab 375px/360px no scroll, QR print-friendly
-- [ ] T059 [P] Performance: `GET /api/client/me` `Promise.all` parallel (`appointments+loyalty+memberships+favorites+styles+reviews`) + `appointments` index `idx_appointments_client_starts` (exists `idx_appointments_business_starts` 023) add if needed; Lighthouse ≥90
-- [ ] T060 [P] Security: RLS audit `Supabase Advisors` 0 flags post 088..094; Zod+DomPurify en todo `api/client/*`; `storage` RLS `client-styles` private; `REVOKE anon` check
-- [ ] T061 [P] Docs: update `docs/architecture.md` (Customer 360), `docs/database.md` (088..094 ERD), `docs/security.md` (new RLS), `docs/testing.md` (client-360 E2E), `docs/backup.md` (new tables)
-- [ ] T062 [P] PWA verify: `manifest.json` + `sw.ts` still `additionalPrecacheEntries ['/offline']` + QR offline not needed; test `GET /client/me` offline shows cached upcoming
-- [ ] T063 [P] Run `quickstart.md` full: `docker compose up` + `supabase db reset` + `curl /api/client/me` + `reserve→checkin→review` E2E
-- [ ] T064 [P] `npm run build` + `lint` + `test:unit` verde; `specs/009-customer-360/` lint `spec.md` has all FR-C* + SC* + NFRs
-- [ ] T065 Final `gentle-ai sdd-status` + `specify check` green; `ls specs/009-customer-360/` shows `spec.md plan.md research.md data-model.md quickstart.md contracts/ tasks.md`
+- [x] T058 [P] Premium UX: `components/client/*` polish empty states ilustrados, skeletons, `loading.tsx`/`error.tsx` por ruta cliente, bottom-tab 375px/360px no scroll, QR print-friendly
+- [x] T059 [P] Performance: `GET /api/client/me` `Promise.all` parallel (`appointments+loyalty+memberships+favorites+styles+reviews`) + `appointments` index `idx_appointments_client_starts` (exists `idx_appointments_business_starts` 023) add if needed; Lighthouse ≥90
+- [x] T060 [P] Security: RLS audit `Supabase Advisors` 0 flags post 088..094; Zod+DomPurify en todo `api/client/*`; `storage` RLS `client-styles` private; `REVOKE anon` check
+- [x] T061 [P] Docs: update `docs/architecture.md` (Customer 360), `docs/database.md` (088..094 ERD), `docs/security.md` (new RLS), `docs/testing.md` (client-360 E2E), `docs/backup.md` (new tables)
+- [x] T062 [P] PWA verify: `manifest.json` + `sw.ts` still `additionalPrecacheEntries ['/offline']` + QR offline not needed; test `GET /client/me` offline shows cached upcoming
+- [x] T063 [P] Run `quickstart.md` full: `docker compose up` + `supabase db reset` + `curl /api/client/me` + `reserve→checkin→review` E2E
+- [x] T064 [P] `npm run build` + `lint` + `test:unit` verde; `specs/009-customer-360/` lint `spec.md` has all FR-C* + SC* + NFRs
+- [x] T065 Final `gentle-ai sdd-status` + `specify check` green; `ls specs/009-customer-360/` shows `spec.md plan.md research.md data-model.md quickstart.md contracts/ tasks.md`
 
 ---
 

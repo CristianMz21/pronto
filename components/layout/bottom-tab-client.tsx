@@ -18,9 +18,6 @@ const ITEMS = [
 export function BottomTabClient() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const qs = searchParams.toString()
-  // qsSuffix kept for future use
-  const _qsSuffix = qs ? `?${qs}` : ''
 
   return (
     <nav
