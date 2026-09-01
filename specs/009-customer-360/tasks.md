@@ -24,7 +24,7 @@ description: "Task list for Customer 360 — Experiencia Profesional para Client
 
 - [ ] T001 Create branch `009-customer-360` from `main` + verify `supabase/migrations/001..087` applied (`schema_migrations` 87) + `docker compose up migrate` green
 - [ ] T002 [P] Verify `specs/009-customer-360/` exists via `.specify/scripts/bash/common.sh` + `gentle-ai sdd-status` reconoce 009
-- [ ] T003 [P] Install dep `qrcode` (`npm i qrcode && npm i -D @types/qrcode`) y justificar en `plan.md Complexity Tracking`; `npm run lint` verde
+- [x] T003 [P] Install dep `qrcode` (`npm i qrcode && npm i -D @types/qrcode`) y justificar en `plan.md Complexity Tracking`; `npm run lint` verde
 - [ ] T004 [P] Verify `proxy.ts:387` stealth + `app/page.tsx:130` client-first intactos (curl `/` → 307 `/book/escuderia`, `/login` → 404) + seed `escuderia` exists (psql `select slug from businesses`)
 - [ ] T005 Verify `lib/client-360.ts` no existe aún (clean slate) + `app/client` + `app/(client)` audit snapshot
 
@@ -54,14 +54,14 @@ description: "Task list for Customer 360 — Experiencia Profesional para Client
 
 ### Tests for US1 (write FIRST, must FAIL)
 
-- [ ] T011 [P] [US1] Unit `tests/unit/booking-availability-client.test.ts`: `Any barber` auto-assign picks free with specialty, `no_staff_available` 409, holidays/break blocking
-- [ ] T012 [P] [US1] Integration `tests/integration/book-any-barber.test.ts`: `POST /api/book employee_id=null` → assigned, `slot_taken` vs `no_staff_available` distinguish (034)
+- [x] T011 [P] [US1] Unit `tests/unit/booking-availability-client.test.ts`: `Any barber` auto-assign picks free with specialty, `no_staff_available` 409, holidays/break blocking
+- [x] T012 [P] [US1] Integration `tests/integration/book-any-barber.test.ts`: `POST /api/book employee_id=null` → assigned, `slot_taken` vs `no_staff_available` distinguish (034)
 
 ### Implementation for US1
 
-- [ ] T013 [P] [US1] Extend `app/book/[slug]/booking-form.tsx:700-727` Any barber card test id `any-barber` + ensure `onSelect('')` propagates `location_id` correctly (depends T007)
-- [ ] T014 [US1] Extend `app/api/book/route.ts:290-321` `no_staff_available` + waitlist enqueue suggestion (depends T006)
-- [ ] T015 [US1] UI `app/book/[slug]/page.tsx:30` ensure `initialServiceId/initialEmployeeId` prefill works for rebook
+- [x] T013 [P] [US1] Extend `app/book/[slug]/booking-form.tsx:700-727` Any barber card test id `any-barber` + ensure `onSelect('')` propagates `location_id` correctly (depends T007)
+- [x] T014 [US1] Extend `app/api/book/route.ts:290-321` `no_staff_available` + waitlist enqueue suggestion (depends T006)
+- [x] T015 [US1] UI `app/book/[slug]/page.tsx:30` ensure `initialServiceId/initialEmployeeId` prefill works for rebook
 
 **Checkpoint**: US1 standalone — Any barber reserva sin cuenta.
 
@@ -75,14 +75,14 @@ description: "Task list for Customer 360 — Experiencia Profesional para Client
 
 ### Tests for US2
 
-- [ ] T016 [P] [US2] Unit `tests/unit/client-360.test.ts`: `getClient360` merges `loyalty+memberships+favorites` + `upcoming` sorted `starts_at asc` vs `history` desc
+- [x] T016 [P] [US2] Unit `tests/unit/client-360.test.ts`: `getClient360` merges `loyalty+memberships+favorites` + `upcoming` sorted `starts_at asc` vs `history` desc
 - [ ] T017 [P] [US2] E2E `tests/e2e/client-dashboard.spec.ts`: phone OTP → Inicio → Historial → Rebook
 
 ### Implementation for US2
 
-- [ ] T018 [US2] API `app/api/client/me/route.ts` GET (fusiona `findLinkedClient:45` + `findClientByPhone:61` + `loyalty:memberships` + `appointments` upcoming/history) — depends T006/T008
-- [ ] T019 [US2] UI `app/(client)/client/me/page.tsx` (Inicio 360) + `components/client/upcoming-card.tsx` timeline `Reservada→Confirmada→En espera→En servicio→Completada` + `components/client/history-list.tsx` (depends T018)
-- [ ] T020 [US2] Deprecate `app/client/page.tsx` → 301 redirect to `/(client)/client/me` + keep `/client` alias compat
+- [x] T018 [US2] API `app/api/client/me/route.ts` GET (fusiona `findLinkedClient:45` + `findClientByPhone:61` + `loyalty:memberships` + `appointments` upcoming/history) — depends T006/T008
+- [x] T019 [US2] UI `app/(client)/client/me/page.tsx` (Inicio 360) + `components/client/upcoming-card.tsx` timeline `Reservada→Confirmada→En espera→En servicio→Completada` + `components/client/history-list.tsx` (depends T018)
+- [x] T020 [US2] Deprecate `app/client/page.tsx` → 301 redirect to `/(client)/client/me` + keep `/client` alias compat
 
 **Checkpoint**: US2 standalone — cliente ve 360 y rebook.
 
@@ -101,8 +101,8 @@ description: "Task list for Customer 360 — Experiencia Profesional para Client
 
 ### Implementation for US3
 
-- [ ] T023 [US3] Extend `app/api/client/appointments/[id]/route.ts:19-183` (ya existe) add `reprogram` validate `checkSlotWithinHours` + `cancel_lead_time` `054` + trigger `waitlist.notifyNext` on cancel
-- [ ] T024 [US3] UI `components/client/upcoming-card.tsx` add `[Reprogramar]` modal date/time picker + `[Cancelar]` confirm + política `2h gratis luego $10k` text
+- [x] T023 [US3] Extend `app/api/client/appointments/[id]/route.ts:19-183` (ya existe) add `reprogram` validate `checkSlotWithinHours` + `cancel_lead_time` `054` + trigger `waitlist.notifyNext` on cancel
+- [x] T024 [US3] UI `components/client/upcoming-card.tsx` add `[Reprogramar]` modal date/time picker + `[Cancelar]` confirm + política `2h gratis luego $10k` text
 
 **Checkpoint**: US3 standalone — no-llamar flow + waitlist trigger.
 
@@ -116,17 +116,17 @@ description: "Task list for Customer 360 — Experiencia Profesional para Client
 
 ### Tests for US4 (write FIRST)
 
-- [ ] T025 [P] [US4] Unit `tests/unit/checkin.test.ts`: `confirmed→checked_in` ok, `completed→checked_in` 409 `fsm_guard`, `starts_at ±2h` window
-- [ ] T026 [P] [US4] Unit `tests/unit/reviews.test.ts`: `rating 1-5` + `tags[]` + unique `appointment_id` + only `completed` 403 otherwise
-- [ ] T027 [P] [US4] Integration `tests/integration/checkin-reviews.test.ts`: full flow `reserve→checkin→staff in_service→completed→review` + double review 409
+- [x] T025 [P] [US4] Unit `tests/unit/checkin.test.ts`: `confirmed→checked_in` ok, `completed→checked_in` 409 `fsm_guard`, `starts_at ±2h` window
+- [x] T026 [P] [US4] Unit `tests/unit/reviews.test.ts`: `rating 1-5` + `tags[]` + unique `appointment_id` + only `completed` 403 otherwise
+- [x] T027 [P] [US4] Integration `tests/integration/checkin-reviews.test.ts`: full flow `reserve→checkin→staff in_service→completed→review` + double review 409
 
 ### Implementation for US4
 
-- [ ] T028 [US4] Migration `092` already adds `checkin_code` (if not, add `supabase/migrations/092_client_360_checkin.sql` idempotente)
-- [ ] T029 [P] [US4] API `app/api/client/check-in/route.ts` POST `{appointment_id}` → `checked_in` via `supabase.auth.getUser()` + `check_fsm_transition` + generate `qrcode` `lib/qrcode.ts`; GET `?appointment_id=` returns `dataURL`
-- [ ] T030 [P] [US4] Migration `091` already adds `reviews`; API `app/api/reviews/route.ts` POST `{appointment_id, rating, tags, comment}` + GET `?client_id=` + RLS + `pg_advisory_xact_lock(appointment_id)` for unique
-- [ ] T031 [US4] UI `components/client/checkin-qr.tsx` (QR + `[Estoy aquí]` + `En espera ~10min` polling `GET /api/client/me` 30s) + `components/client/review-form.tsx` (`★★★★★` + `tags` + `comment` + `[Enviar]`)
-- [ ] T032 [US4] Extend `app/(client)/client/me/page.tsx` embed check-in for `upcoming[0]` if `starts_at` within 2h + review prompt if last `completed` without review
+- [x] T028 [US4] Migration `092` already adds `checkin_code` (if not, add `supabase/migrations/092_client_360_checkin.sql` idempotente)
+- [x] T029 [P] [US4] API `app/api/client/check-in/route.ts` POST `{appointment_id}` → `checked_in` via `supabase.auth.getUser()` + `check_fsm_transition` + generate `qrcode` `lib/qrcode.ts`; GET `?appointment_id=` returns `dataURL`
+- [x] T030 [P] [US4] Migration `091` already adds `reviews`; API `app/api/reviews/route.ts` POST `{appointment_id, rating, tags, comment}` + GET `?client_id=` + RLS + `pg_advisory_xact_lock(appointment_id)` for unique
+- [x] T031 [US4] UI `components/client/checkin-qr.tsx` (QR + `[Estoy aquí]` + `En espera ~10min` polling `GET /api/client/me` 30s) + `components/client/review-form.tsx` (`★★★★★` + `tags` + `comment` + `[Enviar]`)
+- [x] T032 [US4] Extend `app/(client)/client/me/page.tsx` embed check-in for `upcoming[0]` if `starts_at` within 2h + review prompt if last `completed` without review
 
 **Checkpoint**: US4 standalone — checkin→service→review loop.
 
