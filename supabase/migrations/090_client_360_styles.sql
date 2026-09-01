@@ -102,7 +102,6 @@ begin
     begin
       -- Only attempt if we have privileges
       perform 1;
-    end;
     exception when others then null;
     end;
 
