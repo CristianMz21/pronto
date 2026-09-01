@@ -2023,7 +2023,7 @@ export function PublicBookingForm({
   const [promoCode, setPromoCode] = useState('')
   const [loyaltyPoints, setLoyaltyPoints] = useState('')
   const [membershipId, setMembershipId] = useState('')
-  const [loyaltyBalance] = useState<number | null>(null)
+  const [loyaltyBalance, setLoyaltyBalance] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
   const [slotTakenError, setSlotTakenError] = useState(false)
   const [bookingError, setBookingError] = useState<string | null>(null)
@@ -2147,6 +2147,62 @@ export function PublicBookingForm({
       cancelled = true
     }
   }, [business.id, supabase])
+
+  // Fix T042: fetch GET /api/loyalty?client_id to show loyaltyBalance real (dead code before)
+  useEffect(() => {
+    let cancelled = false
+    async function fetchLoyalty(): Promise<void> {
+      try {
+        // Resolve client_id via linked client or via phone/email candidate
+        let cid: string | null = clientId
+        if (!cid && authUser?.id) {
+          const { data: linked } = await supabase
+            .from('clients')
+            .select('id')
+            .eq('business_id', business.id)
+            .eq('user_id', authUser.id)
+            .maybeSingle()
+          const row = linked as { id: string } | null
+          if (row?.id) cid = row.id
+        }
+        if (!cid && (contact.phone || contact.email)) {
+          const orParts: string[] = []
+          if (contact.phone) orParts.push(`phone.eq.${contact.phone}`)
+          if (contact.email) orParts.push(`email.eq.${contact.email}`)
+          if (orParts.length > 0) {
+            try {
+              const { data: cand } = await supabase
+                .from('clients')
+                .select('id')
+                .eq('business_id', business.id)
+                .or(orParts.join(','))
+                .limit(1)
+                .maybeSingle()
+              const crow = cand as { id: string } | null
+              if (crow?.id) cid = crow.id
+            } catch {}
+          }
+        }
+        if (!cid) {
+          if (!cancelled) setLoyaltyBalance(null)
+          return
+        }
+        const res = await fetch(`/api/loyalty?client_id=${cid}`)
+        if (!res.ok) {
+          if (!cancelled) setLoyaltyBalance(null)
+          return
+        }
+        const j = (await res.json()) as { points?: number }
+        if (!cancelled) setLoyaltyBalance(typeof j.points === 'number' ? j.points : null)
+      } catch {
+        if (!cancelled) setLoyaltyBalance(null)
+      }
+    }
+    void fetchLoyalty()
+    return () => {
+      cancelled = true
+    }
+  }, [business.id, authUser?.id, contact.phone, contact.email, clientId, supabase])
 
   const loadSlots = useCallback(
     async (selectedDate: string, svc: Service, employeeId: string): Promise<void> => {
