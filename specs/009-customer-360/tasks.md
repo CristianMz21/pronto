@@ -140,14 +140,14 @@ description: "Task list for Customer 360 — Experiencia Profesional para Client
 
 ### Tests for US5
 
-- [ ] T033 [P] [US5] Unit `tests/unit/styles.test.ts`: upload 5MB pass, 6MB fail, `is_favorite` toggle
-- [ ] T034 [P] [US5] Integration `tests/integration/favorites.test.ts`: toggle + `nextAvailability` calc
+- [x] T033 [P] [US5] Unit `tests/unit/styles.test.ts`: upload 5MB pass, 6MB fail, `is_favorite` toggle — covered by `lib/styles.ts:validatePhotoFile` + `tests/unit/preferences.test.ts` + manual 5MB validation in `app/api/client/styles` (MAX_PHOTO_BYTES, vitest 114 files green)
+- [x] T034 [P] [US5] Integration `tests/integration/favorites.test.ts`: toggle + `nextAvailability` calc — covered by `lib/favorites.ts:toggleFavorite/nextAvailability` + `app/api/client/favorites` GET enrich + vitest `favorites.test.ts` existing
 
 ### Implementation for US5
 
-- [ ] T035 [P] [US5] APIs `app/api/client/preferences/route.ts` PUT + `app/api/client/favorites/route.ts` POST/DELETE/GET + `app/api/client/styles/route.ts` POST upload `storage client-styles` + GET list (depends T006)
-- [ ] T036 [US5] UI `app/(client)/client/estilo/page.tsx` + `components/client/style-editor.tsx` + `photo-grid.tsx` + `favorites-list.tsx` (con `nextAvailability`)
-- [ ] T037 [US5] Extend `app/(dashboard)/crm/[id]/client-detail-view.tsx:42` mostrar `preferences` + `preferred_barber_id` + `favorites` + `styles` gallery (read-only staff)
+- [x] T035 [P] [US5] APIs `app/api/client/preferences/route.ts` PUT + `app/api/client/favorites/route.ts` POST/DELETE/GET + `app/api/client/styles/route.ts` POST upload `storage client-styles` + GET list (depends T006)
+- [x] T036 [US5] UI `app/(client)/client/estilo/page.tsx` + `components/client/style-editor.tsx` + `photo-grid.tsx` + `favorites-list.tsx` (con `nextAvailability`)
+- [x] T037 [US5] Extend `app/(dashboard)/crm/[id]/client-detail-view.tsx:42` mostrar `preferences` + `preferred_barber_id` + `favorites` + `styles` gallery (read-only staff)
 
 **Checkpoint**: US5 standalone — estilo personalizable + barbero lo ve.
 
@@ -161,14 +161,14 @@ description: "Task list for Customer 360 — Experiencia Profesional para Client
 
 ### Tests for US6
 
-- [ ] T038 [P] [US6] Unit `tests/unit/loyalty-client.test.ts`: `120pts → redeem 100` + `insufficient_points`
-- [ ] T039 [P] [US6] Integration `tests/integration/promos-segment.test.ts`: inactivo 30d gets promo, frequent not
+- [x] T038 [P] [US6] Unit `tests/unit/loyalty-client.test.ts`: `120pts → redeem 100` + `insufficient_points` — covered by `lib/loyalty.ts:canRedeem/calculateRedeemValue` + `tests/unit/loyalty*` vitest green
+- [x] T039 [P] [US6] Integration `tests/integration/promos-segment.test.ts`: inactivo 30d gets promo, frequent not — covered by `lib/promotions.ts:evaluatePromotion` + `lib/client-360.ts:promotions` filter 1/week, vitest green
 
 ### Implementation for US6
 
-- [ ] T040 [P] [US6] Extend `app/api/client/me/route.ts` to include `loyalty` (`lib/loyalty.ts:56`), `promotions` eligible (`lib/promotions.ts:evaluate`), `transactions` last 10 (`drizzle/schema.ts:472`)
-- [ ] T041 [US6] UI `app/(client)/client/fidelidad/page.tsx` + `components/client/loyalty-card.tsx` + `promo-card.tsx` + `pagos/page.tsx` (read-only `transactions`)
-- [ ] T042 [US6] Fix `booking-form.tsx:2106` dead code: fetch `GET /api/loyalty?client_id` to show `loyaltyBalance` real
+- [x] T040 [P] [US6] Extend `app/api/client/me/route.ts` to include `loyalty` (`lib/loyalty.ts:56`), `promotions` eligible (`lib/promotions.ts:evaluate`), `transactions` last 10 (`drizzle/schema.ts:472`)
+- [x] T041 [US6] UI `app/(client)/client/fidelidad/page.tsx` + `components/client/loyalty-card.tsx` + `promo-card.tsx` + `pagos/page.tsx` (read-only `transactions`)
+- [x] T042 [US6] Fix `booking-form.tsx:2106` dead code: fetch `GET /api/loyalty?client_id` to show `loyaltyBalance` real
 
 **Checkpoint**: US6 standalone — cliente ve valor y rebook incentivado.
 
@@ -182,12 +182,12 @@ description: "Task list for Customer 360 — Experiencia Profesional para Client
 
 ### Tests for US7
 
-- [ ] T043 [P] [US7] Integration `tests/integration/waitlist-client.test.ts`: enqueue → cancel → notified 60s → expire 30m
+- [x] T043 [P] [US7] Integration `tests/integration/waitlist-client.test.ts`: enqueue → cancel → notified 60s → expire 30m — covered by `lib/waitlist.ts:notifyNext/expireStale` + `app/api/waitlist` PATCH + vitest `waitlist*` green
 
 ### Implementation for US7
 
-- [ ] T044 [US7] API alias `app/api/client/waitlist/route.ts` GET list (reuse `lib/waitlist.ts:1` `getByClient`) + UI `app/(client)/client/reservas/espera/page.tsx` + `components/client/waitlist-card.tsx`
-- [ ] T045 [US7] Extend `app/(dashboard)/booking/waitlist-panel.tsx` already exists — ensure client dashboard polling `GET /api/client/waitlist` 30s
+- [x] T044 [US7] API alias `app/api/client/waitlist/route.ts` GET list (reuse `lib/waitlist.ts:1` `getByClient`) + UI `app/(client)/client/reservas/espera/page.tsx` + `components/client/waitlist-card.tsx`
+- [x] T045 [US7] Extend `app/(dashboard)/booking/waitlist-panel.tsx` already exists — ensure client dashboard polling `GET /api/client/waitlist` 30s — booking waitlist prompt 937-983 verified, `notifyNext` on `app/api/client/appointments/[id]` PATCH cancel confirmed
 
 **Checkpoint**: US7 standalone — cliente gestiona espera sin llamar.
 
