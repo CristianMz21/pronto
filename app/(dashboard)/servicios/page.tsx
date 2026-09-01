@@ -13,7 +13,12 @@ export default async function ServiciosPage(props: {
   const selectedLocation = searchParams.location ?? null
   const supabase = await createClient()
   const user = await getAuthUser()
-  if (!user) redirect('/login')
+  if (!user)
+    redirect(
+      process.env.NEXT_PUBLIC_DEPLOYMENT_MODE !== 'saas'
+        ? `${process.env.NEXT_PUBLIC_ADMIN_SECRET_PATH || '/escuderito-admin'}/login`
+        : '/login',
+    )
 
   let businessId: string | null = null
   const { data: owned } = await supabase
@@ -32,7 +37,12 @@ export default async function ServiciosPage(props: {
       .maybeSingle()
     if (emp) businessId = (emp as { business_id: string }).business_id
   }
-  if (!businessId) redirect('/onboarding')
+  if (!businessId)
+    redirect(
+      process.env.NEXT_PUBLIC_DEPLOYMENT_MODE !== 'saas'
+        ? `${process.env.NEXT_PUBLIC_ADMIN_SECRET_PATH || '/escuderito-admin'}/onboarding`
+        : '/onboarding',
+    )
 
   let svcQuery = supabase
     .from('services')

@@ -11,7 +11,12 @@ export default async function CajaPage(props: { searchParams: Promise<{ location
   const searchParams = await props.searchParams
   const supabase = await createClient()
   const user = await getAuthUser()
-  if (!user) redirect('/login')
+  if (!user)
+    redirect(
+      process.env.NEXT_PUBLIC_DEPLOYMENT_MODE !== 'saas'
+        ? `${process.env.NEXT_PUBLIC_ADMIN_SECRET_PATH || '/escuderito-admin'}/login`
+        : '/login',
+    )
 
   let business: { id: string; currency: string } | null = null
   const { data: owned } = await supabase
@@ -33,7 +38,12 @@ export default async function CajaPage(props: { searchParams: Promise<{ location
       business = b
     }
   }
-  if (!business) redirect('/onboarding')
+  if (!business)
+    redirect(
+      process.env.NEXT_PUBLIC_DEPLOYMENT_MODE !== 'saas'
+        ? `${process.env.NEXT_PUBLIC_ADMIN_SECRET_PATH || '/escuderito-admin'}/onboarding`
+        : '/onboarding',
+    )
 
   let openQuery = supabase
     .from('cash_registers')

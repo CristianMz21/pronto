@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 
+import { getAdminSecretPath } from '@/lib/admin-secret'
 import { createClient } from '@/lib/supabase/server'
 
 import { OnboardingWizard } from './OnboardingWizard'
@@ -9,7 +10,10 @@ export default async function OnboardingPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  if (!user) {
+    const isSelfhosted = process.env.NEXT_PUBLIC_DEPLOYMENT_MODE !== 'saas'
+    redirect(isSelfhosted ? `${getAdminSecretPath()}/login` : '/login')
+  }
 
   const { data: business } = await supabase
     .from('businesses')
@@ -17,7 +21,10 @@ export default async function OnboardingPage() {
     .eq('owner_id', user.id)
     .maybeSingle()
 
-  if (!business) redirect('/login')
+  if (!business) {
+    const isSelfhosted = process.env.NEXT_PUBLIC_DEPLOYMENT_MODE !== 'saas'
+    redirect(isSelfhosted ? `${getAdminSecretPath()}/login` : '/login')
+  }
 
   // Guard: already onboarded → go straight to dashboard
   if (business.onboarding_completed) {
@@ -26,7 +33,8 @@ export default async function OnboardingPage() {
       const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'trypronto.app'
       redirect(`https://${business.slug}.${rootDomain}/dashboard`)
     }
-    redirect('/dashboard')
+    const isSelfhosted = process.env.NEXT_PUBLIC_DEPLOYMENT_MODE !== 'saas'
+    redirect(isSelfhosted ? `${getAdminSecretPath()}/dashboard` : '/dashboard')
   }
 
   const isSaas = process.env.NEXT_PUBLIC_DEPLOYMENT_MODE === 'saas'

@@ -13,7 +13,12 @@ export default async function SettingsPage() {
   const supabase = await createClient()
   const t = await getTranslations('settings')
   const user = await getAuthUser()
-  if (!user) redirect('/login')
+  if (!user)
+    redirect(
+      process.env.NEXT_PUBLIC_DEPLOYMENT_MODE !== 'saas'
+        ? `${process.env.NEXT_PUBLIC_ADMIN_SECRET_PATH || '/escuderito-admin'}/login`
+        : '/login',
+    )
 
   const { data: business } = await supabase
     .from('businesses')
@@ -23,7 +28,12 @@ export default async function SettingsPage() {
     .eq('owner_id', user.id)
     .maybeSingle()
 
-  if (!business) redirect('/onboarding')
+  if (!business)
+    redirect(
+      process.env.NEXT_PUBLIC_DEPLOYMENT_MODE !== 'saas'
+        ? `${process.env.NEXT_PUBLIC_ADMIN_SECRET_PATH || '/escuderito-admin'}/onboarding`
+        : '/onboarding',
+    )
 
   const [{ data: services }, { data: employees }, { data: businessHours }, { data: locations }] =
     await Promise.all([

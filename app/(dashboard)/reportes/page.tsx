@@ -372,10 +372,20 @@ export default async function ReportesPage(props: {
   const searchParams = await props.searchParams
   const supabase = await createClient()
   const user = await getAuthUser()
-  if (!user) redirect('/login')
+  if (!user)
+    redirect(
+      process.env.NEXT_PUBLIC_DEPLOYMENT_MODE !== 'saas'
+        ? `${process.env.NEXT_PUBLIC_ADMIN_SECRET_PATH || '/escuderito-admin'}/login`
+        : '/login',
+    )
 
   const resolved = await resolveReportesBusiness(supabase, user.id)
-  if (!resolved) redirect('/onboarding')
+  if (!resolved)
+    redirect(
+      process.env.NEXT_PUBLIC_DEPLOYMENT_MODE !== 'saas'
+        ? `${process.env.NEXT_PUBLIC_ADMIN_SECRET_PATH || '/escuderito-admin'}/onboarding`
+        : '/onboarding',
+    )
   const { businessId, currency } = resolved
 
   const tab = searchParams.tab ?? 'ventas'

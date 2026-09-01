@@ -195,7 +195,7 @@ function FeatureCell({ value }: { value: FeatureValue }) {
 
 export default function EsPreciosPage() {
   if (process.env.NEXT_PUBLIC_DEPLOYMENT_MODE !== 'saas') {
-    redirect('/login')
+    redirect('/client')
   }
 
   return (

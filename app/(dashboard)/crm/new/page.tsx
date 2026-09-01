@@ -13,14 +13,24 @@ export default async function NewClientPage() {
   const supabase = await createClient()
   const t = await getTranslations('newClient')
   const user = await getAuthUser()
-  if (!user) redirect('/login')
+  if (!user)
+    redirect(
+      process.env.NEXT_PUBLIC_DEPLOYMENT_MODE !== 'saas'
+        ? `${process.env.NEXT_PUBLIC_ADMIN_SECRET_PATH || '/escuderito-admin'}/login`
+        : '/login',
+    )
 
   const { data: business } = await supabase
     .from('businesses')
     .select('id')
     .eq('owner_id', user.id)
     .maybeSingle()
-  if (!business) redirect('/dashboard')
+  if (!business)
+    redirect(
+      process.env.NEXT_PUBLIC_DEPLOYMENT_MODE !== 'saas'
+        ? `${process.env.NEXT_PUBLIC_ADMIN_SECRET_PATH || '/escuderito-admin'}/dashboard`
+        : '/dashboard',
+    )
 
   return (
     <>

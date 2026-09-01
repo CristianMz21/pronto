@@ -127,9 +127,139 @@ const organizationJsonLd = {
   sameAs: ['https://github.com/SGrappelli/pronto'],
 }
 
-export default function RootPage() {
+export default async function RootPage() {
   if (process.env.NEXT_PUBLIC_DEPLOYMENT_MODE !== 'saas') {
-    redirect('/login')
+    try {
+      const { createClient } = await import('@/lib/supabase/server')
+      const supabase = await createClient()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (user) {
+        const { getAdminSecretPath } = await import('@/lib/admin-secret')
+        redirect(getAdminSecretPath())
+      }
+    } catch {}
+    // Anonymous selfhosted: Escudería landing (cliente primero, no redirect a booking)
+    return (
+      <div className={`${styles.page} ${bricolage.variable} ${dmSans.variable}`}>
+        <nav className={styles.nav}>
+          <Link href="/" className={styles.navBrand}>
+            Escudería<span>.</span>
+          </Link>
+          <div className={styles.navRight}>
+            <Link href="/book/escuderia" className={styles.btnNav}>
+              Reservar
+            </Link>
+            <Link href="/client/me" className={styles.navLink}>
+              Mi cuenta
+            </Link>
+            <Link href="/es/" className={`${styles.navLink} lang-switcher`}>
+              ES
+            </Link>
+          </div>
+        </nav>
+        <main>
+          <section className={styles.hero}>
+            <h1>
+              Tu estilo,
+              <br />
+              <em>nuestra escudería</em>
+            </h1>
+            <p className={styles.heroDesc}>
+              Barbería contemporánea en Bogotá — Centro y Norte. Reserva en 30s con tu barbero
+              favorito. Sin registro, solo nombre y teléfono.
+            </p>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 24 }}>
+              <Link
+                href="/book/escuderia"
+                className={styles.btnNav}
+                style={{ padding: '12px 24px' }}
+              >
+                Reservar cita
+              </Link>
+              <Link
+                href="/client/me"
+                className={styles.navLink}
+                style={{ border: '1px solid #e5e7eb', padding: '12px 24px', borderRadius: 8 }}
+              >
+                Ver mis citas
+              </Link>
+            </div>
+          </section>
+          <section className={`${styles.sec} ${styles.secWhite}`}>
+            <div className={styles.secHead}>
+              <h2>Servicios</h2>
+              <p>Corte, barba y combos con acabado profesional. Para cualquier estilo.</p>
+            </div>
+            <div className={styles.cardsWrap}>
+              <div className={styles.featGrid}>
+                <div className={styles.featCard}>
+                  <h4>Corte Clásico</h4>
+                  <p>30 min · $30.000 — Degradado limpio, styling final.</p>
+                </div>
+                <div className={styles.featCard}>
+                  <h4>Corte + Barba</h4>
+                  <p>50 min · $45.000 — Combo completo con toalla caliente.</p>
+                </div>
+                <div className={styles.featCard}>
+                  <h4>Barba Premium</h4>
+                  <p>35 min · $30.000 — Perfilado navaja + aceites.</p>
+                </div>
+                <div className={styles.featCard}>
+                  <h4>Color</h4>
+                  <p>90 min · $80.000 — Tinte y matizado profesional.</p>
+                </div>
+              </div>
+            </div>
+          </section>
+          <section className={`${styles.sec} ${styles.secWarm}`}>
+            <div className={styles.secHead}>
+              <h2>Barberos</h2>
+              <p>Elige tu favorito o deja que asignemos al disponible con tu estilo.</p>
+            </div>
+            <div className={styles.cardsWrap}>
+              <div className={styles.featGrid}>
+                <div className={styles.featCard}>
+                  <h4>Carlos · ★4.9</h4>
+                  <p>Fade · Corte clásico · 247 servicios</p>
+                </div>
+                <div className={styles.featCard}>
+                  <h4>Andrés · ★4.8</h4>
+                  <p>Barba · Afeitado · Combo</p>
+                </div>
+                <div className={styles.featCard}>
+                  <h4>Sofía · ★4.9</h4>
+                  <p>Color · Cejas · Tratamiento</p>
+                </div>
+              </div>
+            </div>
+          </section>
+          <section className={`${styles.sec} ${styles.secWhite}`}>
+            <div className={styles.secHead}>
+              <h2>Ubicación</h2>
+              <p>Centro y Norte. Lun-Sáb 09:00–20:00, Dom cerrado. Break 13:00–14:00.</p>
+            </div>
+            <div style={{ textAlign: 'center', color: '#6b7280', fontSize: 14 }}>
+              <p>Escudería Centro — Cra 7 #12-34, Bogotá · +57 300 123 4567</p>
+              <p>Escudería Norte — Cl 100 #15-20, Bogotá · +57 301 987 6543</p>
+            </div>
+          </section>
+        </main>
+        <footer className={styles.footer}>
+          <div className={styles.footerBrand}>
+            Escudería<span>.</span>
+          </div>
+          <div className={styles.footerCopy}>© 2026 Escudería. Todos los derechos reservados.</div>
+          <div className={styles.footerLinks}>
+            <Link href="/book/escuderia">Reservar</Link>
+            <Link href="/client/me">Mi cuenta</Link>
+            <Link href="/terms">Términos</Link>
+            <Link href="/privacy">Privacidad</Link>
+          </div>
+        </footer>
+      </div>
+    )
   }
 
   return (

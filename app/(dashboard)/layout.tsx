@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 
 import { BottomTab } from '@/components/layout/bottom-tab'
 import { Sidebar } from '@/components/layout/sidebar'
+import { getAdminSecretPath } from '@/lib/admin-secret'
 import { type CanonicalRole, canAccessRoute, getUserRole } from '@/lib/auth/roles'
 import { getAuthUser } from '@/lib/auth-user'
 import { createClient } from '@/lib/supabase/server'
@@ -11,7 +12,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const supabase = await createClient()
   const user = await getAuthUser()
 
-  if (!user) redirect('/login')
+  if (!user) {
+    const isSelfhosted = process.env.NEXT_PUBLIC_DEPLOYMENT_MODE !== 'saas'
+    redirect(isSelfhosted ? `${getAdminSecretPath()}/login` : '/login')
+  }
 
   // Single barbería now (Escudería), multi-sede ready: business → locations (1 default)
   // Owner check first, then employee check via my_business_ids() (RLS helper) for future barber logins
@@ -47,7 +51,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
     }
   }
 
-  if (!business) redirect('/onboarding')
+  if (!business) {
+    const isSelfhosted = process.env.NEXT_PUBLIC_DEPLOYMENT_MODE !== 'saas'
+    redirect(isSelfhosted ? `${getAdminSecretPath()}/onboarding` : '/onboarding')
+  }
 
   // Resolve canonical role (owner > employee) and validate x-user-role header (proxy overwrites, but we verify against DB)
   const headersListForRole = await headers()
@@ -64,7 +71,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
   // Second gate: any role denied via canAccessRoute is redirected even if proxy was bypassed
   const pathnameForGuard = headersListForRole.get('x-pathname') ?? ''
   if (effectiveRole && pathnameForGuard && !canAccessRoute(effectiveRole, pathnameForGuard)) {
-    redirect('/dashboard')
+    const isSelfhosted = process.env.NEXT_PUBLIC_DEPLOYMENT_MODE !== 'saas'
+    redirect(isSelfhosted ? `${getAdminSecretPath()}/dashboard` : '/dashboard')
   }
 
   // Resolve employeeId for barbero scope (used by booking/pos filters downstream via header propagation)

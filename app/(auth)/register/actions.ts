@@ -15,7 +15,11 @@ export async function register(formData: FormData) {
   const businessName = (formData.get('business_name') as string).trim()
 
   if (!businessName) {
-    redirect('/register?error=Business+name+is+required')
+    redirect(
+      (process.env.NEXT_PUBLIC_DEPLOYMENT_MODE !== 'saas'
+        ? `${process.env.NEXT_PUBLIC_ADMIN_SECRET_PATH || '/escuderito-admin'}/register`
+        : '/register') + '?error=Business+name+is+required',
+    )
   }
 
   // Sign up
@@ -30,7 +34,9 @@ export async function register(formData: FormData) {
   })
 
   if (signUpError || !authData.user) {
-    redirect(`/register?error=${encodeURIComponent(signUpError?.message ?? 'Sign up failed')}`)
+    redirect(
+      `${process.env.NEXT_PUBLIC_DEPLOYMENT_MODE !== 'saas' ? `${process.env.NEXT_PUBLIC_ADMIN_SECRET_PATH || '/escuderito-admin'}/register` : '/register'}?error=${encodeURIComponent(signUpError?.message ?? 'Sign up failed')}`,
+    )
   }
 
   // Используем service role чтобы создать бизнес сразу,
@@ -75,13 +81,17 @@ export async function register(formData: FormData) {
   if (process.env.NEXT_PUBLIC_DEPLOYMENT_MODE === 'selfhosted' && !authData.session) {
     const { data: signInData } = await supabase.auth.signInWithPassword({ email, password })
     if (signInData.session) {
-      redirect('/onboarding')
+      redirect(`${process.env.NEXT_PUBLIC_ADMIN_SECRET_PATH || '/escuderito-admin'}/onboarding`)
     }
   }
 
   // SaaS или selfhosted уже с сессией (Supabase "Confirm email" отключён)
   if (authData.session) {
-    redirect('/onboarding')
+    redirect(
+      process.env.NEXT_PUBLIC_DEPLOYMENT_MODE !== 'saas'
+        ? `${process.env.NEXT_PUBLIC_ADMIN_SECRET_PATH || '/escuderito-admin'}/onboarding`
+        : '/onboarding',
+    )
   } else {
     redirect('/check-email')
   }
@@ -89,7 +99,11 @@ export async function register(formData: FormData) {
 
 export async function loginWithGoogle(formData: FormData) {
   const supabase = await createClient()
-  const redirectTo = (formData.get('redirectTo') as string) || '/dashboard'
+  const redirectTo =
+    (formData.get('redirectTo') as string) ||
+    (process.env.NEXT_PUBLIC_DEPLOYMENT_MODE !== 'saas'
+      ? `${process.env.NEXT_PUBLIC_ADMIN_SECRET_PATH || '/escuderito-admin'}/dashboard`
+      : '/dashboard')
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
@@ -99,7 +113,9 @@ export async function loginWithGoogle(formData: FormData) {
   })
 
   if (error || !data.url) {
-    redirect(`/login?error=${encodeURIComponent('Google sign-in failed')}`)
+    redirect(
+      `${process.env.NEXT_PUBLIC_DEPLOYMENT_MODE !== 'saas' ? `${process.env.NEXT_PUBLIC_ADMIN_SECRET_PATH || '/escuderito-admin'}/login` : '/login'}?error=${encodeURIComponent('Google sign-in failed')}`,
+    )
   }
 
   redirect(data.url)

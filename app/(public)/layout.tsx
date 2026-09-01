@@ -16,6 +16,7 @@ const dmSans = DM_Sans({
 })
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
+  const isSelfhosted = process.env.NEXT_PUBLIC_DEPLOYMENT_MODE !== 'saas'
   return (
     <div className={`${styles.page} ${bricolage.variable} ${dmSans.variable}`}>
       <nav className={styles.nav}>
@@ -23,15 +24,28 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
           Pronto<span>.</span>
         </Link>
         <div className={styles.navRight}>
-          <Link href="/login" className={styles.navLink}>
-            Sign in
-          </Link>
-          <Link href="/es/precios" className={`${styles.navLink} lang-switcher`}>
-            ES
-          </Link>
-          <Link href="/register" className={styles.btnNav}>
-            Start free
-          </Link>
+          {isSelfhosted ? (
+            <>
+              <Link href="/client" className={styles.navLink}>
+                Mi cuenta
+              </Link>
+              <Link href="/book/escuderia" className={styles.btnNav}>
+                Reservar
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link href="/login" className={styles.navLink}>
+                Sign in
+              </Link>
+              <Link href="/es/precios" className={`${styles.navLink} lang-switcher`}>
+                ES
+              </Link>
+              <Link href="/register" className={styles.btnNav}>
+                Start free
+              </Link>
+            </>
+          )}
         </div>
       </nav>
 

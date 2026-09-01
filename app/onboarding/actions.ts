@@ -3,6 +3,7 @@
 import DOMPurify from 'isomorphic-dompurify'
 import { redirect } from 'next/navigation'
 
+import { getAdminSecretPath } from '@/lib/admin-secret'
 import { createClient } from '@/lib/supabase/server'
 
 function sanitize(s: string): string {
@@ -22,7 +23,10 @@ export async function completeOnboarding(data: {
     data: { user },
   } = await supabase.auth.getUser()
 
-  if (!user) redirect('/login')
+  if (!user) {
+    const isSelfhosted = process.env.NEXT_PUBLIC_DEPLOYMENT_MODE !== 'saas'
+    redirect(isSelfhosted ? `${getAdminSecretPath()}/login` : '/login')
+  }
 
   const { data: business } = await supabase
     .from('businesses')
@@ -30,7 +34,10 @@ export async function completeOnboarding(data: {
     .eq('owner_id', user.id)
     .maybeSingle()
 
-  if (!business) redirect('/login')
+  if (!business) {
+    const isSelfhosted = process.env.NEXT_PUBLIC_DEPLOYMENT_MODE !== 'saas'
+    redirect(isSelfhosted ? `${getAdminSecretPath()}/login` : '/login')
+  }
 
   // Sanitize and validate text fields
   const bizName = data.bizName ? sanitize(data.bizName).slice(0, 100) : undefined
@@ -78,5 +85,6 @@ export async function completeOnboarding(data: {
     redirect(`https://${finalSlug}.${rootDomain}/dashboard`)
   }
 
-  redirect('/dashboard')
+  const isSelfhosted = process.env.NEXT_PUBLIC_DEPLOYMENT_MODE !== 'saas'
+  redirect(isSelfhosted ? `${getAdminSecretPath()}/dashboard` : '/dashboard')
 }

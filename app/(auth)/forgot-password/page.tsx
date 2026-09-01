@@ -15,7 +15,14 @@ export default async function ForgotPasswordPage(props: {
           We sent a password reset link to <strong>{searchParams.email}</strong>. Click it to set a
           new password.
         </p>
-        <Link href="/login" className="text-sm text-blue-600 hover:underline">
+        <Link
+          href={
+            process.env.NEXT_PUBLIC_DEPLOYMENT_MODE !== 'saas'
+              ? `${process.env.NEXT_PUBLIC_ADMIN_SECRET_PATH || '/escuderito-admin'}/login`
+              : '/login'
+          }
+          className="text-sm text-blue-600 hover:underline"
+        >
           ← Back to sign in
         </Link>
       </div>
@@ -48,7 +55,14 @@ export default async function ForgotPasswordPage(props: {
       </form>
 
       <div className="mt-6">
-        <Link href="/login" className="text-sm text-blue-600 hover:underline">
+        <Link
+          href={
+            process.env.NEXT_PUBLIC_DEPLOYMENT_MODE !== 'saas'
+              ? `${process.env.NEXT_PUBLIC_ADMIN_SECRET_PATH || '/escuderito-admin'}/login`
+              : '/login'
+          }
+          className="text-sm text-blue-600 hover:underline"
+        >
           ← Back to sign in
         </Link>
       </div>

@@ -256,7 +256,12 @@ export default async function DashboardPage(props: {
   if (!business) return null
   const biz = business
 
-  if (!biz.onboarding_completed) redirect('/onboarding')
+  if (!biz.onboarding_completed)
+    redirect(
+      process.env.NEXT_PUBLIC_DEPLOYMENT_MODE !== 'saas'
+        ? `${process.env.NEXT_PUBLIC_ADMIN_SECRET_PATH || '/escuderito-admin'}/onboarding`
+        : '/onboarding',
+    )
 
   const todayStr = new Date().toISOString().slice(0, 10)
   const sevenDaysAgo = new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10)

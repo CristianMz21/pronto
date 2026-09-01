@@ -71,7 +71,14 @@ export default async function RegisterPage(props: { searchParams: Promise<{ erro
 
       <p className="text-sm text-gray-500 text-center mt-4">
         {t('alreadyHaveAccount')}{' '}
-        <Link href="/login" className="text-blue-600 hover:underline">
+        <Link
+          href={
+            process.env.NEXT_PUBLIC_DEPLOYMENT_MODE !== 'saas'
+              ? `${process.env.NEXT_PUBLIC_ADMIN_SECRET_PATH || '/escuderito-admin'}/login`
+              : '/login'
+          }
+          className="text-blue-600 hover:underline"
+        >
           {t('signIn')}
         </Link>
       </p>

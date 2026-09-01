@@ -9,7 +9,12 @@ import { createServiceClient } from '@/lib/supabase/service'
 export default async function SucursalesPage() {
   const supabase = await createClient()
   const user = await getAuthUser()
-  if (!user) redirect('/login')
+  if (!user)
+    redirect(
+      process.env.NEXT_PUBLIC_DEPLOYMENT_MODE !== 'saas'
+        ? `${process.env.NEXT_PUBLIC_ADMIN_SECRET_PATH || '/escuderito-admin'}/login`
+        : '/login',
+    )
 
   // Resolve business: owner > employee
   let business: { id: string; slug: string } | null = null
@@ -33,7 +38,12 @@ export default async function SucursalesPage() {
       business = b
     }
   }
-  if (!business) redirect('/onboarding')
+  if (!business)
+    redirect(
+      process.env.NEXT_PUBLIC_DEPLOYMENT_MODE !== 'saas'
+        ? `${process.env.NEXT_PUBLIC_ADMIN_SECRET_PATH || '/escuderito-admin'}/onboarding`
+        : '/onboarding',
+    )
 
   // Fetch locations
   let { data: locations } = await supabase

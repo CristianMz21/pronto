@@ -85,7 +85,14 @@ export default async function LoginPage(props: {
             autoComplete="current-password"
           />
           <div className="text-right mt-1">
-            <Link href="/forgot-password" className="text-xs text-blue-600 hover:underline">
+            <Link
+              href={
+                process.env.NEXT_PUBLIC_DEPLOYMENT_MODE !== 'saas'
+                  ? `${process.env.NEXT_PUBLIC_ADMIN_SECRET_PATH || '/escuderito-admin'}/forgot-password`
+                  : '/forgot-password'
+              }
+              className="text-xs text-blue-600 hover:underline"
+            >
               Forgot password?
             </Link>
           </div>
@@ -100,7 +107,14 @@ export default async function LoginPage(props: {
 
       <p className="text-sm text-gray-500 text-center mt-6">
         {t('noAccount')}{' '}
-        <Link href="/register" className="text-blue-600 hover:underline">
+        <Link
+          href={
+            process.env.NEXT_PUBLIC_DEPLOYMENT_MODE !== 'saas'
+              ? `${process.env.NEXT_PUBLIC_ADMIN_SECRET_PATH || '/escuderito-admin'}/register`
+              : '/register'
+          }
+          className="text-blue-600 hover:underline"
+        >
           {t('createAccount')}
         </Link>
       </p>
