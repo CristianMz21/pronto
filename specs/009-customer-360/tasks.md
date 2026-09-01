@@ -22,11 +22,11 @@ description: "Task list for Customer 360 — Experiencia Profesional para Client
 
 **Purpose**: Preparación rama y baseline 001..087 verificado.
 
-- [ ] T001 Create branch `009-customer-360` from `main` + verify `supabase/migrations/001..087` applied (`schema_migrations` 87) + `docker compose up migrate` green
-- [ ] T002 [P] Verify `specs/009-customer-360/` exists via `.specify/scripts/bash/common.sh` + `gentle-ai sdd-status` reconoce 009
+- [x] T001 Create branch `009-customer-360` from `main` + verify `supabase/migrations/001..087` applied (`schema_migrations` 87) + `docker compose up migrate` green
+- [x] T002 [P] Verify `specs/009-customer-360/` exists via `.specify/scripts/bash/common.sh` + `gentle-ai sdd-status` reconoce 009
 - [x] T003 [P] Install dep `qrcode` (`npm i qrcode && npm i -D @types/qrcode`) y justificar en `plan.md Complexity Tracking`; `npm run lint` verde
-- [ ] T004 [P] Verify `proxy.ts:387` stealth + `app/page.tsx:130` client-first intactos (curl `/` → 307 `/book/escuderia`, `/login` → 404) + seed `escuderia` exists (psql `select slug from businesses`)
-- [ ] T005 Verify `lib/client-360.ts` no existe aún (clean slate) + `app/client` + `app/(client)` audit snapshot
+- [x] T004 [P] Verify `proxy.ts:387` stealth + `app/page.tsx:130` client-first intactos (curl `/` → 307 `/book/escuderia`, `/login` → 404) + seed `escuderia` exists (psql `select slug from businesses`)
+- [x] T005 Verify `lib/client-360.ts` no existe aún (clean slate) + `app/client` + `app/(client)` audit snapshot
 
 **Checkpoint**: Baseline intacto — 87 migraciones, booking funciona, QR dep instalada.
 
@@ -76,7 +76,7 @@ description: "Task list for Customer 360 — Experiencia Profesional para Client
 ### Tests for US2
 
 - [x] T016 [P] [US2] Unit `tests/unit/client-360.test.ts`: `getClient360` merges `loyalty+memberships+favorites` + `upcoming` sorted `starts_at asc` vs `history` desc
-- [ ] T017 [P] [US2] E2E `tests/e2e/client-dashboard.spec.ts`: phone OTP → Inicio → Historial → Rebook
+- [x] T017 [P] [US2] E2E `tests/e2e/client-dashboard.spec.ts`: phone OTP → Inicio → Historial → Rebook
 
 ### Implementation for US2
 
@@ -96,8 +96,8 @@ description: "Task list for Customer 360 — Experiencia Profesional para Client
 
 ### Tests for US3
 
-- [ ] T021 [P] [US3] Unit `tests/unit/appointment-policy.test.ts`: `isTooSoonInTz(2h)` + `isPastInTz` + `lib/booking-availability` break
-- [ ] T022 [P] [US3] Integration `tests/integration/client-appointments.test.ts`: `PATCH cancel` libera slot + `PUT reprogram` `slot_taken 409`
+- [x] T021 [P] [US3] Unit `tests/unit/appointment-policy.test.ts`: `isTooSoonInTz(2h)` + `isPastInTz` + `lib/booking-availability` break
+- [x] T022 [P] [US3] Integration `tests/integration/client-appointments.test.ts`: `PATCH cancel` libera slot + `PUT reprogram` `slot_taken 409`
 
 ### Implementation for US3
 

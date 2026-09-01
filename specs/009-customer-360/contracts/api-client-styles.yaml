@@ -1,0 +1,11 @@
+openapi: 3.0.3
+info:
+  title: Customer 360
+  version: 1.0.0
+paths:
+  /test:
+    get:
+      summary: placeholder
+      responses:
+        '200':
+          description: ok
