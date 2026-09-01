@@ -110,11 +110,27 @@ export function UpcomingCard({
       <div className="text-sm font-medium text-gray-900">
         {appointment.service_name ?? 'Servicio'}{' '}
         {appointment.employee_name ? `· ${appointment.employee_name}` : ''}
+        {appointment.guest_name ? (
+          <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+            Para: {appointment.guest_name}
+          </span>
+        ) : null}
       </div>
       <div className="text-sm text-gray-600 mt-1">{formatBogota(appointment.starts_at)}</div>
       {appointment.price != null && (
         <div className="text-sm text-gray-700 mt-1">
           ${Number(appointment.price).toLocaleString('es-CO')} COP
+          {appointment.deposit_amount ? (
+            <span className="ml-2 text-xs text-amber-700">
+              · Anticipo {Number(appointment.deposit_amount).toLocaleString('es-CO')} / saldo{' '}
+              {(Number(appointment.price) - Number(appointment.deposit_amount)).toLocaleString(
+                'es-CO',
+              )}
+            </span>
+          ) : null}
+          {appointment.payment_status === 'deposit_paid' ? (
+            <span className="ml-1 text-xs text-green-700">· ✓ Anticipo pagado (stub)</span>
+          ) : null}
         </div>
       )}
 

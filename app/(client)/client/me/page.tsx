@@ -3,6 +3,7 @@
 import { useSearchParams } from 'next/navigation'
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 
+import { ChatThread } from '@/components/client/chat-thread'
 import { CheckinQR } from '@/components/client/checkin-qr'
 import { HistoryList } from '@/components/client/history-list'
 import { LocationCard } from '@/components/client/location-card'
@@ -291,6 +292,11 @@ function ClientMeInner() {
             status={upcoming.status}
           />
         )}
+
+        {upcoming &&
+          (upcoming.guest_name ||
+            upcoming.status === 'confirmed' ||
+            upcoming.status === 'checked_in') && <ChatThread appointmentId={upcoming.id} />}
 
         {reviewCandidate && <ReviewForm appointmentId={reviewCandidate.id} onSuccess={reload} />}
 
