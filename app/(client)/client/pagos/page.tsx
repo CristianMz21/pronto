@@ -57,8 +57,13 @@ function PagosInner() {
   if (!data) return null
 
   const txs = data.transactions
-  // Detect deposit vs saldo via appointment payment_status? For now stub deposit view
-  const hasDeposit = data.upcoming.some((a) => a.payment_status === 'deposit_paid')
+  const deposits = data.upcoming.filter((a) => a.payment_status === 'deposit_paid')
+  const hasDeposit = deposits.length > 0
+  const firstDeposit = deposits[0] as (typeof deposits)[number] | undefined
+  const depositAmt =
+    typeof firstDeposit?.deposit_amount === 'number' ? firstDeposit.deposit_amount : 10000
+  const servicePrice = typeof firstDeposit?.price === 'number' ? firstDeposit.price : 35000
+  const saldo = Math.max(0, servicePrice - depositAmt)
 
   return (
     <div className="min-h-screen bg-[#FBF8F5] p-4">
@@ -70,9 +75,18 @@ function PagosInner() {
           </p>
         </div>
 
-        {hasDeposit && (
+        {hasDeposit && firstDeposit && (
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-xs text-amber-800">
-            Anticipo: $10.000 pagado · saldo $25.000 en caja (stub V1, sin PSP)
+            Anticipo: {formatCurrency(depositAmt, 'COP')} pagado · saldo{' '}
+            {formatCurrency(saldo, 'COP')} en caja (stub V1, sin PSP)
+            <div className="text-[11px] text-amber-700 mt-1">
+              Cita{' '}
+              {new Date(firstDeposit.starts_at).toLocaleDateString('es-CO', {
+                timeZone: 'America/Bogota',
+              })}{' '}
+              · {firstDeposit.guest_name ? `para ${firstDeposit.guest_name} · ` : ''}
+              {formatCurrency(servicePrice, 'COP')} total
+            </div>
           </div>
         )}
 

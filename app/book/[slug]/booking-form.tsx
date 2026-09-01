@@ -1360,6 +1360,12 @@ function ContactFormStep({
   setLoyaltyPoints,
   setMembershipId,
   loyaltyBalance,
+  tipAmount,
+  setTipAmount,
+  guestMode,
+  setGuestMode,
+  guestName,
+  setGuestName,
   onSubmit,
   onJoinWaitlist,
   saving,
@@ -1393,6 +1399,12 @@ function ContactFormStep({
   setLoyaltyPoints: (s: string) => void
   setMembershipId: (s: string) => void
   loyaltyBalance: number | null
+  tipAmount: string
+  setTipAmount: (s: string) => void
+  guestMode: 'self' | 'child' | 'other'
+  setGuestMode: (s: 'self' | 'child' | 'other') => void
+  guestName: string
+  setGuestName: (s: string) => void
   onSubmit: () => void
   onJoinWaitlist: () => void
   saving: boolean
@@ -1438,6 +1450,90 @@ function ContactFormStep({
           inputBorder={inputBorder}
           inputRadius={inputRadius}
         />
+        {/* T046-T048: Propina stub + T053 Guest selector */}
+        <div style={{ borderTop: '0.5px solid #E8E0D8', paddingTop: 14, marginTop: 4 }}>
+          <p
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+              color: cardText,
+              marginBottom: 8,
+              letterSpacing: '0.05em',
+            }}
+          >
+            PARA QUIÉN ES LA CITA
+          </p>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+            {(['self', 'child', 'other'] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setGuestMode(mode)}
+                style={{
+                  flex: 1,
+                  padding: '8px 6px',
+                  borderRadius: isEsc ? 0 : 8,
+                  border:
+                    guestMode === mode
+                      ? `1px solid ${isEsc ? '#C5A059' : 'var(--brand)'}`
+                      : inputBorder,
+                  background:
+                    guestMode === mode
+                      ? isEsc
+                        ? 'rgba(197,160,89,0.15)'
+                        : 'var(--brand-light)'
+                      : inputBg,
+                  color: guestMode === mode ? (isEsc ? '#C5A059' : 'var(--brand)') : cardMuted,
+                  fontSize: 12,
+                  fontWeight: guestMode === mode ? 600 : 400,
+                  cursor: 'pointer',
+                }}
+              >
+                {mode === 'self' ? '● Yo' : mode === 'child' ? '○ Mi hijo' : '○ Otra persona'}
+              </button>
+            ))}
+          </div>
+          {guestMode !== 'self' && (
+            <input
+              value={guestName}
+              onChange={(e) => setGuestName(e.target.value)}
+              placeholder={guestMode === 'child' ? 'Nombre de tu hijo' : 'Nombre del invitado'}
+              maxLength={80}
+              style={{
+                border: inputBorder,
+                borderRadius: inputRadius as number,
+                padding: '10px 12px',
+                fontSize: 13,
+                width: '100%',
+                background: inputBg,
+                marginTop: 4,
+              }}
+            />
+          )}
+        </div>
+        <div style={{ borderTop: '0.5px solid #E8E0D8', paddingTop: 14, marginTop: 4 }}>
+          <label style={{ fontSize: 12, color: cardMuted }}>Propina (opcional, COP)</label>
+          <input
+            type="number"
+            min={0}
+            max={1000000}
+            value={tipAmount}
+            onChange={(e) => setTipAmount(e.target.value)}
+            placeholder="0"
+            style={{
+              border: inputBorder,
+              borderRadius: inputRadius as number,
+              padding: '10px 12px',
+              fontSize: 13,
+              width: '100%',
+              background: inputBg,
+              marginTop: 4,
+            }}
+          />
+          <div style={{ fontSize: 11, color: cardMuted, marginTop: 4 }}>
+            Stub V1: se valida pero no se cobra online (Bold/Wompi V2)
+          </div>
+        </div>
       </div>
       {bookingError && (
         <div
@@ -1820,6 +1916,12 @@ function BookingSteps({
   setLoyaltyPoints,
   setMembershipId,
   loyaltyBalance,
+  tipAmount,
+  setTipAmount,
+  guestMode,
+  setGuestMode,
+  guestName,
+  setGuestName,
   submit,
   joinWaitlist,
   saving,
@@ -1877,6 +1979,12 @@ function BookingSteps({
   setLoyaltyPoints: (s: string) => void
   setMembershipId: (s: string) => void
   loyaltyBalance: number | null
+  tipAmount: string
+  setTipAmount: (s: string) => void
+  guestMode: 'self' | 'child' | 'other'
+  setGuestMode: (s: 'self' | 'child' | 'other') => void
+  guestName: string
+  setGuestName: (s: string) => void
   submit: () => void
   joinWaitlist: () => void
   saving: boolean
@@ -1965,6 +2073,12 @@ function BookingSteps({
           setLoyaltyPoints={setLoyaltyPoints}
           setMembershipId={setMembershipId}
           loyaltyBalance={loyaltyBalance}
+          tipAmount={tipAmount}
+          setTipAmount={setTipAmount}
+          guestMode={guestMode}
+          setGuestMode={setGuestMode}
+          guestName={guestName}
+          setGuestName={setGuestName}
           onSubmit={submit}
           onJoinWaitlist={joinWaitlist}
           saving={saving}
@@ -2024,6 +2138,9 @@ export function PublicBookingForm({
   const [loyaltyPoints, setLoyaltyPoints] = useState('')
   const [membershipId, setMembershipId] = useState('')
   const [loyaltyBalance, setLoyaltyBalance] = useState<number | null>(null)
+  const [tipAmount, setTipAmount] = useState('')
+  const [guestMode, setGuestMode] = useState<'self' | 'child' | 'other'>('self')
+  const [guestName, setGuestName] = useState('')
   const [saving, setSaving] = useState(false)
   const [slotTakenError, setSlotTakenError] = useState(false)
   const [bookingError, setBookingError] = useState<string | null>(null)
@@ -2365,6 +2482,12 @@ export function PublicBookingForm({
     setSlotTakenError(false)
     setBookingError(null)
     try {
+      // guest_name: when guestMode != self, use guestName else null; validate if other requires name
+      if (guestMode !== 'self' && !guestName.trim()) {
+        setBookingError('Ingresá el nombre de la otra persona')
+        setSaving(false)
+        return
+      }
       const res = await fetch('/api/book', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2381,6 +2504,8 @@ export function PublicBookingForm({
           promo_code: promoCode.trim() || null,
           loyalty_redeem_points: loyaltyPoints ? Number(loyaltyPoints) : null,
           membership_id: membershipId || null,
+          tip_amount: tipAmount ? Number(tipAmount) : null,
+          guest_name: guestMode !== 'self' ? guestName.trim() : null,
         }),
       })
       const reload = () => {
@@ -2429,6 +2554,9 @@ export function PublicBookingForm({
     promoCode,
     loyaltyPoints,
     membershipId,
+    tipAmount,
+    guestMode,
+    guestName,
     loadSlots,
     t,
   ])
@@ -2463,6 +2591,9 @@ export function PublicBookingForm({
     setPromoCode('')
     setLoyaltyPoints('')
     setMembershipId('')
+    setTipAmount('')
+    setGuestMode('self')
+    setGuestName('')
     setAvailableSlots([])
     setClientId(null)
     setClientHasTelegram(false)
@@ -2561,6 +2692,12 @@ export function PublicBookingForm({
       setLoyaltyPoints={setLoyaltyPoints}
       setMembershipId={setMembershipId}
       loyaltyBalance={loyaltyBalance}
+      tipAmount={tipAmount}
+      setTipAmount={setTipAmount}
+      guestMode={guestMode}
+      setGuestMode={setGuestMode}
+      guestName={guestName}
+      setGuestName={setGuestName}
       submit={submit}
       joinWaitlist={joinWaitlist}
       saving={saving}
