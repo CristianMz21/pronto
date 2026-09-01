@@ -31,6 +31,7 @@ import {
   parseDateTimeInTz,
 } from '@/lib/booking-availability'
 import { db, tryDrizzle } from '@/lib/db'
+import { generateCheckinCode } from '@/lib/qrcode'
 import { getIp, rateLimit } from '@/lib/rate-limit'
 import { createClient as createAuthClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
@@ -1144,6 +1145,7 @@ function mapBookingInsertError(msg: string, minAdvance: number): NextResponse {
         error: 'no_staff_available',
         message:
           'This business has no staff available to take bookings right now. Please contact them directly.',
+        suggest_waitlist: true,
       },
       { status: 409 },
     )
@@ -1226,6 +1228,7 @@ async function createAppointment(params: {
   minAdvance: number
   supabaseFallback: ReturnType<typeof createServiceClient>
 }): Promise<{ apptId?: string; error?: NextResponse }> {
+  const checkinCode = generateCheckinCode()
   try {
     const apptRes = (await tryDrizzle(
       () =>
@@ -1243,7 +1246,8 @@ async function createAppointment(params: {
             status: 'confirmed',
             source: params.campaign_id ? 'campaign' : ((params.source as string) ?? 'online'),
             campaignId: params.campaign_id ?? null,
-          })
+            checkinCode,
+          } as unknown as typeof appointments.$inferInsert)
           .returning({ id: appointments.id }),
       async (): Promise<unknown> => {
         const { data, error } = await params.supabaseFallback
@@ -1260,6 +1264,7 @@ async function createAppointment(params: {
             status: 'confirmed',
             source: params.campaign_id ? 'campaign' : ((params.source as string) ?? 'online'),
             campaign_id: params.campaign_id ?? null,
+            checkin_code: checkinCode,
           } as never)
           .select('id')
           .single()

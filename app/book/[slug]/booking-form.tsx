@@ -629,6 +629,7 @@ function EmployeeSelectionStep({
       </p>
       <button
         type="button"
+        data-testid="any-barber"
         onClick={() => onSelect('')}
         style={{
           ...baseCard,
