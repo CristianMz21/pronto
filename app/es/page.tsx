@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
-import { Bricolage_Grotesque, DM_Sans } from 'next/font/google'
+import { Bricolage_Grotesque, DM_Sans, Montserrat, Playfair_Display } from 'next/font/google'
+import Image from 'next/image'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 
@@ -15,6 +16,20 @@ const dmSans = DM_Sans({
   subsets: ['latin'],
   weight: ['400', '500'],
   variable: '--font-dm-sans',
+})
+
+const playfair = Playfair_Display({
+  subsets: ['latin'],
+  weight: ['500', '600', '700'],
+  variable: '--font-playfair',
+  display: 'swap',
+})
+
+const montserrat = Montserrat({
+  subsets: ['latin'],
+  weight: ['400', '500', '600'],
+  variable: '--font-montserrat',
+  display: 'swap',
 })
 
 export const metadata: Metadata = {
@@ -144,6 +159,602 @@ const organizationJsonLd = {
   sameAs: ['https://github.com/SGrappelli/pronto'],
 }
 
+function EscuderiaPremium() {
+  return (
+    <div
+      className={`${playfair.variable} ${montserrat.variable} antialiased`}
+      style={{ background: '#0A0A0A', color: '#ffffff', fontFamily: 'var(--font-montserrat)' }}
+    >
+      <style>{`
+        .esc-nav-link { position: relative; }
+        .esc-nav-link::after {
+          content: '';
+          position: absolute;
+          width: 0; height: 1px;
+          bottom: -2px; left: 50%;
+          background-color: #C5A059;
+          transition: all 0.3s ease;
+          transform: translateX(-50%);
+        }
+        .esc-nav-link:hover::after { width: 100%; }
+        .esc-service-item { border-bottom: 1px dashed rgba(142,121,94,0.2); }
+        .esc-service-item:last-child { border-bottom: none; }
+      `}</style>
+
+      <nav className="fixed top-0 w-full z-50 bg-[#0A0A0A]/40 backdrop-blur-xl border-b border-[#8E795E]/20">
+        <div className="flex justify-between items-center px-5 md:px-16 h-20 w-full mx-auto max-w-[1280px]">
+          <Link
+            href="/"
+            className="flex items-center gap-3 shrink-0"
+            style={{
+              fontFamily: 'var(--font-playfair)',
+              fontWeight: 700,
+              letterSpacing: '-0.02em',
+            }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/business-assets/escuderia/icono.svg"
+              alt="Escudería"
+              className="w-8 h-8 object-contain"
+              width={32}
+              height={32}
+            />
+            <span
+              className="text-[22px] md:text-[26px] font-bold text-[#C5A059] tracking-tight"
+              style={{ fontFamily: 'var(--font-playfair)' }}
+            >
+              ESCUDERÍA
+            </span>
+          </Link>
+
+          <ul className="hidden md:flex gap-8 items-center">
+            <li>
+              <a
+                href="#experience"
+                className="esc-nav-link text-[12px] font-semibold tracking-[0.2em] text-[#d0c5b9] hover:text-[#C5A059] transition-colors"
+                style={{ fontFamily: 'var(--font-montserrat)' }}
+              >
+                EXPERIENCE
+              </a>
+            </li>
+            <li>
+              <a
+                href="#services"
+                className="esc-nav-link text-[12px] font-semibold tracking-[0.2em] text-[#d0c5b9] hover:text-[#C5A059] transition-colors"
+                style={{ fontFamily: 'var(--font-montserrat)' }}
+              >
+                SERVICES
+              </a>
+            </li>
+            <li>
+              <a
+                href="#gallery"
+                className="esc-nav-link text-[12px] font-semibold tracking-[0.2em] text-[#d0c5b9] hover:text-[#C5A059] transition-colors"
+                style={{ fontFamily: 'var(--font-montserrat)' }}
+              >
+                GALLERY
+              </a>
+            </li>
+            <li>
+              <a
+                href="#location"
+                className="esc-nav-link text-[12px] font-semibold tracking-[0.2em] text-[#d0c5b9] hover:text-[#C5A059] transition-colors"
+                style={{ fontFamily: 'var(--font-montserrat)' }}
+              >
+                LOCATION
+              </a>
+            </li>
+          </ul>
+
+          <div className="flex items-center gap-3">
+            <Link
+              href="/book/escuderia"
+              className="hidden md:inline-flex border border-[#C5A059] text-[#C5A059] px-6 py-3 text-[14px] font-medium tracking-[0.15em] hover:bg-[#C5A059] hover:text-black transition-colors duration-300"
+              style={{ fontFamily: 'var(--font-montserrat)', borderRadius: 0 }}
+            >
+              BOOK NOW
+            </Link>
+            <button
+              aria-label="Open Menu"
+              className="md:hidden text-[#d0c5b9] p-2 hover:text-[#C5A059] transition-colors"
+            >
+              <svg
+                width="28"
+                height="28"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                aria-hidden="true"
+              >
+                <line x1="3" y1="7" x2="21" y2="7" />
+                <line x1="3" y1="12" x2="21" y2="12" />
+                <line x1="3" y1="17" x2="21" y2="17" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </nav>
+
+      <main>
+        <section className="relative h-screen min-h-[640px] w-full flex items-center justify-center overflow-hidden">
+          <div className="absolute inset-0 w-full h-full">
+            <Image
+              src="/business-assets/escuderia/hero-1.jpeg"
+              alt="Barbero de Escudería trabajando con precisión"
+              fill
+              priority
+              className="object-cover opacity-60"
+              sizes="100vw"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-[#0A0A0A]/20 to-transparent" />
+            <div className="absolute inset-0 bg-[#0A0A0A]/10" />
+          </div>
+
+          <div className="relative z-10 flex flex-col items-center text-center px-5 md:px-16 max-w-[1280px] mx-auto mt-20">
+            <h1
+              className="text-white mb-6 max-w-3xl"
+              style={{
+                fontFamily: 'var(--font-playfair)',
+                fontSize: 'clamp(36px, 7vw, 72px)',
+                lineHeight: '1.05',
+                letterSpacing: '-0.02em',
+                fontWeight: 700,
+              }}
+            >
+              Tu estilo. Nuestra precisión.
+            </h1>
+            <p
+              className="mb-10 max-w-xl mx-auto text-[#d0c5b9]"
+              style={{
+                fontFamily: 'var(--font-montserrat)',
+                fontSize: '18px',
+                lineHeight: '28px',
+                letterSpacing: '0.01em',
+              }}
+            >
+              Barbería contemporánea para hombres que entienden que los detalles hacen la
+              diferencia.
+            </p>
+            <Link
+              href="/book/escuderia"
+              className="group inline-flex items-center gap-3 border border-[#C5A059] text-[#C5A059] px-10 py-4 text-[14px] font-medium tracking-[0.15em] hover:bg-[#C5A059] hover:text-black transition-colors duration-300 bg-transparent"
+              style={{ fontFamily: 'var(--font-montserrat)', borderRadius: 0 }}
+            >
+              RESERVAR CITA
+              <span aria-hidden="true" className="transition-transform group-hover:translate-x-1">
+                →
+              </span>
+            </Link>
+          </div>
+        </section>
+
+        <section
+          id="experience"
+          className="py-20 md:py-[120px] px-5 md:px-16 max-w-[1280px] mx-auto"
+        >
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+            <div className="md:col-span-5">
+              <span
+                className="block mb-4 text-[#C5A059] text-[12px] font-semibold tracking-[0.2em]"
+                style={{ fontFamily: 'var(--font-montserrat)' }}
+              >
+                EL ENTORNO
+              </span>
+              <h2
+                className="text-white mb-6"
+                style={{
+                  fontFamily: 'var(--font-playfair)',
+                  fontSize: 'clamp(32px, 4vw, 48px)',
+                  lineHeight: '1.15',
+                  fontWeight: 600,
+                }}
+              >
+                Mucho más que una barbería.
+              </h2>
+              <p
+                className="text-[#d0c5b9] mb-8"
+                style={{
+                  fontFamily: 'var(--font-montserrat)',
+                  fontSize: '16px',
+                  lineHeight: '26px',
+                }}
+              >
+                Diseñado como un santuario para el caballero moderno. Nuestro espacio combina
+                texturas crudas —cuero envejecido, acero oscuro y maderas nobles— con una atmósfera
+                de absoluta privacidad y confort. Un ritual donde el tiempo se detiene.
+              </p>
+              <Link
+                href="/book/escuderia"
+                className="inline-flex border-b border-[#8E795E] pb-1 text-white hover:text-[#C5A059] hover:border-[#C5A059] transition-colors text-[14px] font-medium tracking-[0.15em]"
+                style={{ fontFamily: 'var(--font-montserrat)' }}
+              >
+                DESCUBRIR EXPERIENCIA
+              </Link>
+            </div>
+
+            <div className="md:col-span-7 grid grid-cols-2 gap-4 h-[520px] md:h-[600px]">
+              <div className="col-span-1 h-full pt-12">
+                <div className="relative w-full h-full overflow-hidden border border-[#8E795E]/10">
+                  <Image
+                    src="/business-assets/escuderia/chair.jpeg"
+                    alt="Sillón de cuero premium Escudería"
+                    fill
+                    className="object-cover grayscale hover:grayscale-0 transition-all duration-700"
+                    sizes="(max-width: 768px) 50vw, 33vw"
+                  />
+                </div>
+              </div>
+              <div className="col-span-1 h-full pb-12">
+                <div className="relative w-full h-full overflow-hidden border border-[#8E795E]/10">
+                  <Image
+                    src="/business-assets/escuderia/tools.jpeg"
+                    alt="Herramientas profesionales de barbería"
+                    fill
+                    className="object-cover grayscale hover:grayscale-0 transition-all duration-700"
+                    sizes="(max-width: 768px) 50vw, 33vw"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="services" className="py-20 md:py-[120px] px-5 md:px-16 bg-[#0e0e0e]">
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center mb-12 md:mb-16">
+              <span
+                className="block mb-4 text-[#C5A059] text-[12px] font-semibold tracking-[0.2em]"
+                style={{ fontFamily: 'var(--font-montserrat)' }}
+              >
+                MENÚ DE SERVICIOS
+              </span>
+              <h2
+                className="text-white"
+                style={{
+                  fontFamily: 'var(--font-playfair)',
+                  fontSize: 'clamp(32px, 4vw, 48px)',
+                  lineHeight: '1.15',
+                  fontWeight: 600,
+                }}
+              >
+                El ritual comienza aquí.
+              </h2>
+            </div>
+
+            <div className="flex flex-col">
+              <div className="esc-service-item py-6 flex justify-between items-baseline gap-6 group">
+                <div className="pr-4">
+                  <h3
+                    className="text-white group-hover:text-[#C5A059] transition-colors text-[14px] font-medium tracking-[0.12em]"
+                    style={{ fontFamily: 'var(--font-montserrat)' }}
+                  >
+                    CORTE CLÁSICO
+                  </h3>
+                  <p
+                    className="mt-2 text-[#d0c5b9] text-[14px] leading-6"
+                    style={{ fontFamily: 'var(--font-montserrat)' }}
+                  >
+                    Asesoría de imagen, lavado, corte a tijera o máquina, y peinado final.
+                  </p>
+                </div>
+                <div
+                  className="shrink-0 text-[#C5A059] text-[20px] font-medium"
+                  style={{ fontFamily: 'var(--font-playfair)' }}
+                >
+                  $30.000
+                </div>
+              </div>
+
+              <div className="esc-service-item py-6 flex justify-between items-baseline gap-6 group">
+                <div className="pr-4">
+                  <h3
+                    className="text-white group-hover:text-[#C5A059] transition-colors text-[14px] font-medium tracking-[0.12em]"
+                    style={{ fontFamily: 'var(--font-montserrat)' }}
+                  >
+                    CORTE + BARBA
+                  </h3>
+                  <p
+                    className="mt-2 text-[#d0c5b9] text-[14px] leading-6"
+                    style={{ fontFamily: 'var(--font-montserrat)' }}
+                  >
+                    El servicio completo. Corte preciso y arreglo de barba con toalla caliente.
+                  </p>
+                </div>
+                <div
+                  className="shrink-0 text-[#C5A059] text-[20px] font-medium"
+                  style={{ fontFamily: 'var(--font-playfair)' }}
+                >
+                  $45.000
+                </div>
+              </div>
+
+              <div className="esc-service-item py-6 flex justify-between items-baseline gap-6 group">
+                <div className="pr-4">
+                  <h3
+                    className="text-white group-hover:text-[#C5A059] transition-colors text-[14px] font-medium tracking-[0.12em]"
+                    style={{ fontFamily: 'var(--font-montserrat)' }}
+                  >
+                    BARBA PREMIUM
+                  </h3>
+                  <p
+                    className="mt-2 text-[#d0c5b9] text-[14px] leading-6"
+                    style={{ fontFamily: 'var(--font-montserrat)' }}
+                  >
+                    Diseño y perfilado, vapor ozono, toalla caliente y aceites esenciales.
+                  </p>
+                </div>
+                <div
+                  className="shrink-0 text-[#C5A059] text-[20px] font-medium"
+                  style={{ fontFamily: 'var(--font-playfair)' }}
+                >
+                  $30.000
+                </div>
+              </div>
+
+              <div className="esc-service-item py-6 flex justify-between items-baseline gap-6 group">
+                <div className="pr-4">
+                  <h3
+                    className="text-white group-hover:text-[#C5A059] transition-colors text-[14px] font-medium tracking-[0.12em]"
+                    style={{ fontFamily: 'var(--font-montserrat)' }}
+                  >
+                    CAMUFLAJE DE CANAS
+                  </h3>
+                  <p
+                    className="mt-2 text-[#d0c5b9] text-[14px] leading-6"
+                    style={{ fontFamily: 'var(--font-montserrat)' }}
+                  >
+                    Coloración sutil y natural para un aspecto rejuvenecido sin perder masculinidad.
+                  </p>
+                </div>
+                <div
+                  className="shrink-0 text-[#C5A059] text-[20px] font-medium"
+                  style={{ fontFamily: 'var(--font-playfair)' }}
+                >
+                  $80.000
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-10 text-center">
+              <Link
+                href="/book/escuderia"
+                className="inline-flex border-b border-[#8E795E] pb-1 text-white hover:text-[#C5A059] hover:border-[#C5A059] transition-colors text-[14px] font-medium tracking-[0.15em]"
+                style={{ fontFamily: 'var(--font-montserrat)' }}
+              >
+                VER TODOS LOS SERVICIOS
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        <section id="gallery" className="py-20 md:py-[120px] relative overflow-hidden">
+          <div className="absolute inset-0 w-full h-full z-0">
+            <Image
+              src="/business-assets/escuderia/hero-2.png"
+              alt="Experiencia signature Escudería"
+              fill
+              className="object-cover opacity-30"
+              sizes="100vw"
+            />
+            <div className="absolute inset-0 bg-[#0A0A0A]/80" />
+          </div>
+
+          <div className="relative z-10 max-w-[1280px] mx-auto px-5 md:px-16 text-center">
+            <div className="inline-block border border-[#C5A059]/30 px-6 py-2 mb-8">
+              <span
+                className="text-[#C5A059] text-[12px] font-semibold tracking-[0.3em]"
+                style={{ fontFamily: 'var(--font-montserrat)' }}
+              >
+                THE SIGNATURE EXPERIENCE
+              </span>
+            </div>
+
+            <h2
+              className="text-white mb-6 max-w-2xl mx-auto"
+              style={{
+                fontFamily: 'var(--font-playfair)',
+                fontSize: 'clamp(32px, 5vw, 48px)',
+                lineHeight: '1.15',
+                fontWeight: 700,
+                letterSpacing: '-0.02em',
+              }}
+            >
+              El máximo nivel de cuidado personal.
+            </h2>
+
+            <p
+              className="text-[#d0c5b9] mb-10 max-w-xl mx-auto"
+              style={{ fontFamily: 'var(--font-montserrat)', fontSize: '18px', lineHeight: '28px' }}
+            >
+              Una inmersión total de 90 minutos. Incluye corte impecable, afeitado tradicional con
+              navaja y toallas calientes, tratamiento facial express, exfoliación y masaje capilar,
+              acompañado de su bebida premium de elección.
+            </p>
+
+            <Link
+              href="/book/escuderia"
+              className="inline-block border border-[#C5A059] text-[#C5A059] px-8 py-3 text-[14px] font-medium tracking-[0.15em] hover:bg-[#C5A059] hover:text-black transition-colors duration-300 bg-[#121212]"
+              style={{ fontFamily: 'var(--font-montserrat)', borderRadius: 0 }}
+            >
+              RESERVAR EXPERIENCIA | $70.000
+            </Link>
+
+            <div
+              className="mt-6 flex justify-center items-center gap-3 text-[#8E795E] text-[12px] tracking-[0.2em]"
+              style={{ fontFamily: 'var(--font-montserrat)' }}
+            >
+              <span>90 MIN</span>
+              <span className="w-1 h-1 bg-[#8E795E] rounded-full inline-block" />
+              <span>VIP</span>
+            </div>
+          </div>
+        </section>
+
+        <section
+          id="location"
+          className="py-16 md:py-20 px-5 md:px-16 max-w-[1280px] mx-auto border-t border-[#8E795E]/10"
+        >
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
+            <div className="md:col-span-7">
+              <span
+                className="block mb-4 text-[#C5A059] text-[12px] font-semibold tracking-[0.2em]"
+                style={{ fontFamily: 'var(--font-montserrat)' }}
+              >
+                UBICACIÓN
+              </span>
+              <h3
+                className="text-white mb-4"
+                style={{
+                  fontFamily: 'var(--font-playfair)',
+                  fontSize: '32px',
+                  lineHeight: '40px',
+                  fontWeight: 500,
+                }}
+              >
+                Centro y Norte — Bogotá
+              </h3>
+              <p
+                className="text-[#d0c5b9] leading-7 text-[14px] mb-6"
+                style={{ fontFamily: 'var(--font-montserrat)' }}
+              >
+                Lun–Sáb 09:00–20:00 · Dom cerrado · Break 13:00–14:00
+                <br />
+                <span className="text-[#8E795E]">
+                  Escudería Centro — Cra 7 #12-34 · +57 300 123 4567
+                </span>
+                <br />
+                <span className="text-[#8E795E]">
+                  Escudería Norte — Cl 100 #15-20 · +57 301 987 6543
+                </span>
+              </p>
+              <div className="flex gap-3 flex-wrap">
+                <a
+                  href="https://maps.google.com/?q=Cra+7+%2312-34+Bogotá"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-white text-[#0A0A0A] px-5 py-2.5 text-[13px] font-semibold hover:bg-[#C5A059] transition-colors"
+                  style={{ fontFamily: 'var(--font-montserrat)', borderRadius: 0 }}
+                >
+                  Cómo llegar
+                </a>
+                <a
+                  href="https://wa.me/573001234567"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="border border-white/20 text-white px-5 py-2.5 text-[13px] hover:border-[#C5A059] hover:text-[#C5A059] transition-colors"
+                  style={{ fontFamily: 'var(--font-montserrat)', borderRadius: 0 }}
+                >
+                  WhatsApp
+                </a>
+              </div>
+            </div>
+
+            <div className="md:col-span-5">
+              <div className="bg-[#121212] border border-[#C5A059]/20 p-8 text-center">
+                <div
+                  className="text-[#C5A059] text-[12px] font-semibold tracking-[0.15em] mb-3"
+                  style={{ fontFamily: 'var(--font-montserrat)' }}
+                >
+                  ¿LISTO?
+                </div>
+                <div
+                  className="text-white text-[22px] font-semibold mb-3"
+                  style={{ fontFamily: 'var(--font-playfair)' }}
+                >
+                  Reserva en 30 segundos
+                </div>
+                <div
+                  className="text-[#8E795E] text-[13px] mb-6"
+                  style={{ fontFamily: 'var(--font-montserrat)' }}
+                >
+                  Sin registro. Elige servicio, barbero y hora.
+                </div>
+                <Link
+                  href="/book/escuderia"
+                  className="inline-block bg-[#C5A059] text-black px-8 py-3 text-[14px] font-semibold tracking-[0.08em] hover:bg-white transition-colors"
+                  style={{ fontFamily: 'var(--font-montserrat)', borderRadius: 0 }}
+                >
+                  Reservar ahora →
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer className="w-full py-16 bg-[#0e0e0e] border-t border-[#8E795E]/10">
+        <div className="flex flex-col md:flex-row justify-between items-center px-5 md:px-16 gap-8 w-full max-w-[1280px] mx-auto">
+          <Link
+            href="/"
+            className="flex items-center gap-2 text-[#C5A059]"
+            style={{ fontFamily: 'var(--font-playfair)' }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/business-assets/escuderia/icono.svg"
+              alt=""
+              className="w-7 h-7 object-contain opacity-80"
+              width={28}
+              height={28}
+            />
+            <span className="text-[22px] font-bold tracking-tight">ESCUDERÍA</span>
+          </Link>
+
+          <ul className="flex flex-wrap justify-center gap-8">
+            <li>
+              <a
+                href="#"
+                className="text-[12px] font-semibold tracking-[0.2em] text-[#d0c5b9] hover:text-[#C5A059] transition-colors"
+                style={{ fontFamily: 'var(--font-montserrat)' }}
+              >
+                PRIVACIDAD
+              </a>
+            </li>
+            <li>
+              <a
+                href="#"
+                className="text-[12px] font-semibold tracking-[0.2em] text-[#d0c5b9] hover:text-[#C5A059] transition-colors"
+                style={{ fontFamily: 'var(--font-montserrat)' }}
+              >
+                TÉRMINOS
+              </a>
+            </li>
+            <li>
+              <a
+                href="https://instagram.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[12px] font-semibold tracking-[0.2em] text-[#d0c5b9] hover:text-[#C5A059] transition-colors"
+                style={{ fontFamily: 'var(--font-montserrat)' }}
+              >
+                INSTAGRAM
+              </a>
+            </li>
+            <li>
+              <Link
+                href="/book/escuderia"
+                className="text-[12px] font-semibold tracking-[0.2em] text-[#d0c5b9] hover:text-[#C5A059] transition-colors"
+                style={{ fontFamily: 'var(--font-montserrat)' }}
+              >
+                RESERVAR
+              </Link>
+            </li>
+          </ul>
+
+          <div
+            className="text-[12px] font-semibold tracking-[0.2em] text-[#d0c5b9]/60 text-center md:text-right"
+            style={{ fontFamily: 'var(--font-montserrat)' }}
+          >
+            © 2026 ESCUDERÍA. TODOS LOS DERECHOS RESERVADOS.
+          </div>
+        </div>
+      </footer>
+    </div>
+  )
+}
+
 export default async function EsPage() {
   if (process.env.NEXT_PUBLIC_DEPLOYMENT_MODE !== 'saas') {
     try {
@@ -157,603 +768,7 @@ export default async function EsPage() {
         redirect(getAdminSecretPath())
       }
     } catch {}
-    return (
-      <div
-        className={`${styles.page} ${bricolage.variable} ${dmSans.variable}`}
-        style={{ background: '#FBF8F5' }}
-      >
-        <nav
-          style={{
-            position: 'sticky',
-            top: 0,
-            zIndex: 100,
-            background: 'rgba(10,10,10,0.92)',
-            backdropFilter: 'blur(16px)',
-            borderBottom: '1px solid rgba(197,160,89,0.18)',
-            padding: '0 24px',
-            height: 64,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}
-        >
-          <Link
-            href="/"
-            style={{
-              fontFamily: 'var(--font-bricolage)',
-              fontSize: 22,
-              fontWeight: 800,
-              color: '#C5A059',
-              textDecoration: 'none',
-              letterSpacing: '0.04em',
-            }}
-          >
-            ESCUDERÍA<span style={{ color: '#fff' }}>.</span>
-          </Link>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <Link
-              href="/client/me"
-              style={{ fontSize: 14, color: '#d0c5b9', textDecoration: 'none', fontWeight: 500 }}
-            >
-              Mi cuenta
-            </Link>
-            <Link
-              href="/book/escuderia"
-              style={{
-                background: '#C5A059',
-                color: '#0A0A0A',
-                fontSize: 14,
-                fontWeight: 700,
-                padding: '10px 22px',
-                borderRadius: 8,
-                textDecoration: 'none',
-              }}
-            >
-              Reservar
-            </Link>
-            <Link
-              href="/"
-              style={{
-                fontSize: 13,
-                color: '#9A8E85',
-                textDecoration: 'none',
-                border: '1px solid rgba(197,160,89,0.25)',
-                padding: '6px 10px',
-                borderRadius: 6,
-              }}
-            >
-              EN
-            </Link>
-          </div>
-        </nav>
-        <section
-          style={{
-            background: '#0A0A0A',
-            color: '#fff',
-            padding: '72px 24px 64px',
-            textAlign: 'center',
-            position: 'relative',
-            overflow: 'hidden',
-          }}
-        >
-          <div
-            style={{
-              position: 'absolute',
-              top: -80,
-              left: '50%',
-              transform: 'translateX(-50%)',
-              width: 800,
-              height: 400,
-              background:
-                'radial-gradient(ellipse at center, rgba(197,160,89,0.12) 0%, transparent 70%)',
-              pointerEvents: 'none',
-            }}
-          />
-          <div style={{ maxWidth: 720, margin: '0 auto', position: 'relative' }}>
-            <div
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 8,
-                background: 'rgba(197,160,89,0.12)',
-                border: '1px solid rgba(197,160,89,0.22)',
-                color: '#C5A059',
-                fontSize: 12,
-                fontWeight: 700,
-                letterSpacing: '0.12em',
-                padding: '6px 14px',
-                borderRadius: 20,
-                marginBottom: 20,
-              }}
-            >
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#C5A059' }} />{' '}
-              BOGOTÁ · CENTRO Y NORTE
-            </div>
-            <h1
-              style={{
-                fontFamily: 'var(--font-bricolage)',
-                fontSize: 'clamp(36px, 6vw, 56px)',
-                fontWeight: 800,
-                lineHeight: 0.95,
-                letterSpacing: '-0.03em',
-                marginBottom: 16,
-              }}
-            >
-              Tu estilo,
-              <br />
-              <span style={{ color: '#C5A059', fontStyle: 'italic', fontWeight: 700 }}>
-                nuestra escudería
-              </span>
-            </h1>
-            <p
-              style={{
-                fontSize: 17,
-                color: '#d0c5b9',
-                lineHeight: 1.6,
-                maxWidth: 560,
-                margin: '0 auto 28px',
-              }}
-            >
-              Barbería contemporánea. Reserva en 30s con tu barbero favorito. Sin registro.
-            </p>
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <Link
-                href="/book/escuderia"
-                style={{
-                  background: '#C5A059',
-                  color: '#0A0A0A',
-                  fontWeight: 700,
-                  padding: '14px 28px',
-                  borderRadius: 10,
-                  textDecoration: 'none',
-                  fontSize: 15,
-                  boxShadow: '0 4px 20px rgba(197,160,89,0.3)',
-                }}
-              >
-                Reservar cita →
-              </Link>
-              <Link
-                href="/client/me"
-                style={{
-                  color: '#fff',
-                  border: '1px solid rgba(255,255,255,0.2)',
-                  padding: '14px 24px',
-                  borderRadius: 10,
-                  textDecoration: 'none',
-                  fontSize: 14,
-                  fontWeight: 500,
-                }}
-              >
-                Ver mis citas
-              </Link>
-            </div>
-            <div
-              style={{
-                display: 'flex',
-                gap: 18,
-                justifyContent: 'center',
-                marginTop: 28,
-                color: '#9A8E85',
-                fontSize: 13,
-              }}
-            >
-              <span>★ 4.9 · 1.200+ clientes</span>
-              <span>·</span>
-              <span>✓ Sin comisión</span>
-            </div>
-          </div>
-        </section>
-        <section
-          style={{ padding: '64px 24px', background: '#fff', borderTop: '1px solid #E8E0D8' }}
-        >
-          <div style={{ maxWidth: 960, margin: '0 auto' }}>
-            <div style={{ textAlign: 'center', marginBottom: 40 }}>
-              <div
-                style={{
-                  fontSize: 11,
-                  fontWeight: 700,
-                  letterSpacing: '0.14em',
-                  color: '#C5A059',
-                  marginBottom: 8,
-                }}
-              >
-                SERVICIOS
-              </div>
-              <h2
-                style={{
-                  fontFamily: 'var(--font-bricolage)',
-                  fontSize: 32,
-                  fontWeight: 700,
-                  color: '#0A0A0A',
-                  marginBottom: 10,
-                }}
-              >
-                Corte preciso. Acabado premium.
-              </h2>
-            </div>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-                gap: 16,
-              }}
-            >
-              {[
-                {
-                  name: 'Corte Clásico',
-                  price: '$30.000',
-                  dur: '30 min',
-                  desc: 'Degradado limpio, lavado y styling.',
-                },
-                {
-                  name: 'Corte + Barba',
-                  price: '$45.000',
-                  dur: '50 min',
-                  desc: 'Combo completo con toalla caliente.',
-                  featured: true,
-                },
-                {
-                  name: 'Barba Premium',
-                  price: '$30.000',
-                  dur: '35 min',
-                  desc: 'Perfilado navaja, vapor y after shave.',
-                },
-                {
-                  name: 'Color · Tinte',
-                  price: '$80.000',
-                  dur: '90 min',
-                  desc: 'Matizado profesional.',
-                },
-              ].map((s) => (
-                <div
-                  key={s.name}
-                  style={{
-                    background: s.featured ? '#0A0A0A' : '#fff',
-                    color: s.featured ? '#fff' : '#0A0A0A',
-                    border: `1px solid ${s.featured ? '#0A0A0A' : '#E8E0D8'}`,
-                    borderRadius: 16,
-                    padding: 24,
-                    position: 'relative',
-                  }}
-                >
-                  {s.featured && (
-                    <div
-                      style={{
-                        position: 'absolute',
-                        top: 12,
-                        right: 12,
-                        background: '#C5A059',
-                        color: '#0A0A0A',
-                        fontSize: 10,
-                        fontWeight: 700,
-                        padding: '4px 8px',
-                        borderRadius: 6,
-                      }}
-                    >
-                      MÁS POPULAR
-                    </div>
-                  )}
-                  <div
-                    style={{
-                      fontSize: 12,
-                      fontWeight: 700,
-                      letterSpacing: '0.08em',
-                      color: s.featured ? '#C5A059' : '#9A8E85',
-                      marginBottom: 6,
-                    }}
-                  >
-                    {s.dur}
-                  </div>
-                  <div
-                    style={{
-                      fontFamily: 'var(--font-bricolage)',
-                      fontSize: 18,
-                      fontWeight: 700,
-                      marginBottom: 6,
-                    }}
-                  >
-                    {s.name}
-                  </div>
-                  <div
-                    style={{
-                      fontSize: 14,
-                      color: s.featured ? '#d0c5b9' : '#6b7280',
-                      marginBottom: 12,
-                    }}
-                  >
-                    {s.desc}
-                  </div>
-                  <div
-                    style={{
-                      fontWeight: 800,
-                      fontSize: 18,
-                      color: s.featured ? '#C5A059' : '#0A0A0A',
-                    }}
-                  >
-                    {s.price}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-        <section
-          style={{ padding: '64px 24px', background: '#FBF8F5', borderTop: '1px solid #E8E0D8' }}
-        >
-          <div style={{ maxWidth: 960, margin: '0 auto' }}>
-            <div style={{ textAlign: 'center', marginBottom: 32 }}>
-              <div
-                style={{
-                  fontSize: 11,
-                  fontWeight: 700,
-                  letterSpacing: '0.14em',
-                  color: '#C5A059',
-                  marginBottom: 8,
-                }}
-              >
-                BARBEROS
-              </div>
-              <h2
-                style={{
-                  fontFamily: 'var(--font-bricolage)',
-                  fontSize: 32,
-                  fontWeight: 700,
-                  color: '#0A0A0A',
-                }}
-              >
-                Elige tu escudero
-              </h2>
-            </div>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-                gap: 16,
-              }}
-            >
-              {[
-                {
-                  name: 'Carlos',
-                  rating: '4.9',
-                  jobs: '247',
-                  spec: 'Fade · Corte clásico',
-                  color: '#0A0A0A',
-                },
-                {
-                  name: 'Andrés',
-                  rating: '4.8',
-                  jobs: '189',
-                  spec: 'Barba · Afeitado',
-                  color: '#1a1a1a',
-                },
-                {
-                  name: 'Sofía',
-                  rating: '4.9',
-                  jobs: '203',
-                  spec: 'Color · Cejas',
-                  color: '#2a2a2a',
-                },
-              ].map((b) => (
-                <div
-                  key={b.name}
-                  style={{
-                    background: '#fff',
-                    border: '1px solid #E8E0D8',
-                    borderRadius: 16,
-                    padding: 24,
-                    textAlign: 'center',
-                  }}
-                >
-                  <div
-                    style={{
-                      width: 64,
-                      height: 64,
-                      borderRadius: '50%',
-                      background: b.color,
-                      color: '#C5A059',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontWeight: 700,
-                      fontSize: 20,
-                      margin: '0 auto 12px',
-                      border: '2px solid #C5A059',
-                    }}
-                  >
-                    {b.name[0]}
-                  </div>
-                  <div style={{ fontWeight: 700, fontSize: 16 }}>
-                    {b.name} · ★{b.rating}
-                  </div>
-                  <div style={{ fontSize: 12, color: '#9A8E85', marginBottom: 8 }}>
-                    {b.jobs} servicios · {b.spec}
-                  </div>
-                  <Link
-                    href="/book/escuderia"
-                    style={{
-                      fontSize: 13,
-                      color: '#0A0A0A',
-                      fontWeight: 600,
-                      textDecoration: 'none',
-                      border: '1px solid #E8E0D8',
-                      padding: '8px 16px',
-                      borderRadius: 8,
-                      display: 'inline-block',
-                      marginTop: 8,
-                    }}
-                  >
-                    Reservar con {b.name}
-                  </Link>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-        <section
-          style={{
-            padding: '56px 24px',
-            background: '#0A0A0A',
-            color: '#fff',
-            borderTop: '1px solid rgba(197,160,89,0.18)',
-          }}
-        >
-          <div
-            style={{
-              maxWidth: 960,
-              margin: '0 auto',
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-              gap: 32,
-              alignItems: 'center',
-            }}
-          >
-            <div>
-              <div
-                style={{
-                  fontSize: 11,
-                  fontWeight: 700,
-                  letterSpacing: '0.14em',
-                  color: '#C5A059',
-                  marginBottom: 8,
-                }}
-              >
-                UBICACIÓN
-              </div>
-              <h3
-                style={{
-                  fontFamily: 'var(--font-bricolage)',
-                  fontSize: 26,
-                  fontWeight: 700,
-                  marginBottom: 12,
-                }}
-              >
-                Centro y Norte
-              </h3>
-              <p style={{ color: '#d0c5b9', lineHeight: 1.7, fontSize: 14, marginBottom: 16 }}>
-                Lun–Sáb 09:00–20:00 · Dom cerrado
-              </p>
-              <div style={{ fontSize: 13, color: '#9A8E85', lineHeight: 1.8 }}>
-                <div>Centro — Cra 7 #12-34 · Norte — Cl 100 #15-20</div>
-              </div>
-              <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-                <a
-                  href="https://maps.google.com/?q=Cra+7+%2312-34+Bogotá"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    background: '#fff',
-                    color: '#0A0A0A',
-                    padding: '10px 16px',
-                    borderRadius: 8,
-                    fontSize: 13,
-                    fontWeight: 600,
-                    textDecoration: 'none',
-                  }}
-                >
-                  Cómo llegar
-                </a>
-                <a
-                  href="https://wa.me/573001234567"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    border: '1px solid rgba(255,255,255,0.2)',
-                    color: '#fff',
-                    padding: '10px 16px',
-                    borderRadius: 8,
-                    fontSize: 13,
-                    textDecoration: 'none',
-                  }}
-                >
-                  WhatsApp
-                </a>
-              </div>
-            </div>
-            <div
-              style={{
-                background: '#121212',
-                border: '1px solid rgba(197,160,89,0.18)',
-                borderRadius: 16,
-                padding: 24,
-                textAlign: 'center',
-              }}
-            >
-              <div
-                style={{
-                  fontSize: 13,
-                  color: '#C5A059',
-                  fontWeight: 700,
-                  letterSpacing: '0.08em',
-                  marginBottom: 8,
-                }}
-              >
-                ¿LISTO?
-              </div>
-              <div
-                style={{
-                  fontFamily: 'var(--font-bricolage)',
-                  fontSize: 20,
-                  fontWeight: 700,
-                  marginBottom: 8,
-                }}
-              >
-                Reserva en 30 segundos
-              </div>
-              <div style={{ fontSize: 13, color: '#9A8E85', marginBottom: 16 }}>
-                Sin registro. Elige servicio, barbero y hora.
-              </div>
-              <Link
-                href="/book/escuderia"
-                style={{
-                  background: '#C5A059',
-                  color: '#0A0A0A',
-                  padding: '12px 24px',
-                  borderRadius: 10,
-                  fontWeight: 700,
-                  textDecoration: 'none',
-                  display: 'inline-block',
-                }}
-              >
-                Reservar ahora →
-              </Link>
-            </div>
-          </div>
-        </section>
-        <footer
-          style={{
-            background: '#0A0A0A',
-            borderTop: '1px solid rgba(255,255,255,0.08)',
-            padding: '24px',
-            display: 'flex',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: 12,
-            color: '#6b7280',
-            fontSize: 13,
-          }}
-        >
-          <div
-            style={{
-              fontFamily: 'var(--font-bricolage)',
-              fontWeight: 800,
-              color: '#C5A059',
-              letterSpacing: '0.04em',
-            }}
-          >
-            ESCUDERÍA<span style={{ color: '#fff' }}>.</span>
-          </div>
-          <div>© 2026 Escudería.</div>
-          <div style={{ display: 'flex', gap: 16 }}>
-            <Link href="/book/escuderia" style={{ color: '#9A8E85', textDecoration: 'none' }}>
-              Reservar
-            </Link>
-            <Link href="/client/me" style={{ color: '#9A8E85', textDecoration: 'none' }}>
-              Mi cuenta
-            </Link>
-          </div>
-        </footer>
-      </div>
-    )
+    return <EscuderiaPremium />
   }
 
   return (
@@ -1242,9 +1257,6 @@ export default async function EsPage() {
         </div>
       </section>
 
-      {/* FOOTER — keep in sync with all other pages
-          ES standard: /es/ · /es/precios · /es/para · /es/para/salones · legal · GitHub
-          EN standard: / · /pricing · /for · /for/salons · legal · GitHub */}
       <footer className={styles.footer}>
         <div className={styles.footerBrand}>
           Pronto<span>.</span>
