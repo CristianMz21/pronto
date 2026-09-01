@@ -845,6 +845,16 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     now,
     debug,
     results,
+    105 * 60_000,
+    135 * 60_000,
+    'reminder_2h',
+    false,
+  )
+  await processReminderWindow(
+    supabase,
+    now,
+    debug,
+    results,
     45 * 60_000,
     75 * 60_000,
     'reminder_1h',

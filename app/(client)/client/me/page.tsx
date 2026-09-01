@@ -5,6 +5,7 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 
 import { CheckinQR } from '@/components/client/checkin-qr'
 import { HistoryList } from '@/components/client/history-list'
+import { LocationCard } from '@/components/client/location-card'
 import { ReviewForm } from '@/components/client/review-form'
 import { UpcomingCard } from '@/components/client/upcoming-card'
 import type { Client360 } from '@/lib/client-360'
@@ -335,6 +336,8 @@ function ClientMeInner() {
             )}
           </div>
         )}
+
+        <LocationCard businessSlug={businessSlug} />
 
         <div className="text-center">
           <a href={`/book/${businessSlug}`} className="text-xs text-gray-500 underline">
