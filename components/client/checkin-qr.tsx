@@ -64,8 +64,8 @@ export function CheckinQR({
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-5">
-      <h3 className="text-sm font-semibold text-gray-900 mb-2">Check-in</h3>
+    <div className="bg-white rounded-xl border border-gray-200 p-5 print:border-2 print:border-black print:shadow-none">
+      <h3 className="text-sm font-semibold text-gray-900 mb-2 print:text-black">Check-in</h3>
       {checkinCode && (
         <div className="text-xs text-gray-500 mb-3">
           Código: <span className="font-mono font-medium text-gray-900">{checkinCode}</span>
@@ -73,16 +73,25 @@ export function CheckinQR({
       )}
       {loading && !dataUrl && <div className="text-xs text-gray-500">Cargando QR…</div>}
       {dataUrl && (
-        <div className="flex flex-col items-center gap-3">
+        <div className="flex flex-col items-center gap-3 print:gap-4">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={dataUrl}
             alt="QR check-in"
             width={180}
             height={180}
-            className="rounded-lg border border-gray-200"
+            className="rounded-lg border border-gray-200 print:border-black print:w-[320px] print:h-[320px]"
           />
-          <div className="text-[11px] text-gray-400">Mostrá este QR en recepción</div>
+          <div className="text-[11px] text-gray-400 print:text-black print:text-sm">
+            Mostrá este QR en recepción
+          </div>
+          <button
+            type="button"
+            onClick={() => typeof window !== 'undefined' && window.print()}
+            className="text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 print:hidden"
+          >
+            Imprimir QR
+          </button>
         </div>
       )}
       {error && <div className="text-xs text-red-600 mt-2">{error}</div>}
