@@ -61,7 +61,7 @@ export default async function ClientDetailPage(props: { params: Promise<{ id: st
     }
   )
     .select(
-      'id, name, phone, email, birthday, notes, tags, total_visits, total_spent, last_visit_at, created_at, telegram_id, viber_user_id, whatsapp_number, location_id',
+      'id, name, phone, email, birthday, notes, tags, total_visits, total_spent, last_visit_at, created_at, telegram_id, viber_user_id, whatsapp_number, location_id, preferences, preferred_barber_id, notification_prefs, status',
     )
     .eq('id', params.id)
     .eq('business_id', (business as { id: string }).id)
@@ -99,7 +99,13 @@ export default async function ClientDetailPage(props: { params: Promise<{ id: st
     ? ((telegramInfo as { ok: true; result?: { username: string } }).result?.username ?? null)
     : null
 
-  const [{ data: appointments }, { data: loyalty }, { data: memberships }] = await Promise.all([
+  const [
+    { data: appointments },
+    { data: loyalty },
+    { data: memberships },
+    { data: favorites },
+    { data: styles },
+  ] = await Promise.all([
     supabase
       .from('appointments')
       .select('id, starts_at, ends_at, status, price, services(name), employees(name)')
@@ -115,6 +121,16 @@ export default async function ClientDetailPage(props: { params: Promise<{ id: st
       .eq('business_id', business.id)
       .order('expires_at', { ascending: true })
       .limit(10),
+    supabase
+      .from('favorites')
+      .select('client_id, employee_id, created_at, employees(id, name)')
+      .eq('client_id', client.id),
+    supabase
+      .from('client_styles')
+      .select('id, photo_url, service_id, employee_id, notes, is_favorite, created_at')
+      .eq('client_id', client.id)
+      .order('created_at', { ascending: false })
+      .limit(12),
   ])
 
   return (
@@ -151,6 +167,8 @@ export default async function ClientDetailPage(props: { params: Promise<{ id: st
             preferences?: unknown
             preferred_barber_id?: string | null
             location_id?: string | null
+            status?: string
+            notification_prefs?: unknown
           }
         }
         appointments={appointments ?? []}
@@ -169,6 +187,29 @@ export default async function ClientDetailPage(props: { params: Promise<{ id: st
                 expires_at: string
                 status: string
                 memberships: { name: string } | null
+              }[]
+            | null) ?? []
+        }
+        favorites={
+          (favorites as unknown as
+            | {
+                client_id: string
+                employee_id: string
+                created_at: string
+                employees: { id: string; name: string } | null
+              }[]
+            | null) ?? []
+        }
+        styles={
+          (styles as unknown as
+            | {
+                id: string
+                photo_url: string
+                service_id: string | null
+                employee_id: string | null
+                notes: string | null
+                is_favorite: boolean
+                created_at: string
               }[]
             | null) ?? []
         }

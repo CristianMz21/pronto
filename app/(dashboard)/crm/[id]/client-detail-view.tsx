@@ -40,6 +40,8 @@ interface Client {
   preferences?: unknown
   preferred_barber_id?: string | null
   location_id?: string | null
+  status?: string
+  notification_prefs?: unknown
 }
 
 interface Props {
@@ -58,6 +60,21 @@ interface Props {
     expires_at: string
     status: string
     memberships: { name: string } | null
+  }[]
+  favorites?: {
+    client_id: string
+    employee_id: string
+    created_at: string
+    employees: { id: string; name: string } | null
+  }[]
+  styles?: {
+    id: string
+    photo_url: string
+    service_id: string | null
+    employee_id: string | null
+    notes: string | null
+    is_favorite: boolean
+    created_at: string
   }[]
 }
 
@@ -602,12 +619,12 @@ export function ClientDetailView({
   timezone,
   businessId,
   telegramBotUsername,
-  businessId: _businessIdVoid,
   preferredBarber,
-  businessId: _bizId,
   location,
   loyaltyPoints = 0,
   memberships = [],
+  favorites = [],
+  styles = [],
 }: Props) {
   void businessId
   const supabase = createClient()
@@ -780,6 +797,128 @@ export function ClientDetailView({
           </CardContent>
         </Card>
       </div>
+
+      {/* T037: Mi estilo + Favoritos + Fotos (staff read-only) */}
+      <div className="grid lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Mi estilo & Preferencias</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            {preferredBarber && (
+              <div className="flex gap-2">
+                <span className="text-gray-400 w-24 shrink-0">Barbero pref</span>
+                <span className="text-gray-700 font-medium">{preferredBarber.name}</span>
+              </div>
+            )}
+            {(() => {
+              const p = client.preferences as Record<string, unknown> | null
+              if (!p || typeof p !== 'object' || Object.keys(p).length === 0) {
+                return <div className="text-xs text-gray-400">Sin preferencias guardadas</div>
+              }
+              const parts: string[] = []
+              if (typeof p.cut === 'string' && p.cut) parts.push(p.cut)
+              if (typeof p.length === 'string' && p.length) parts.push(`longitud ${p.length}`)
+              if (typeof p.clipper === 'string' && p.clipper) parts.push(`Máquina ${p.clipper}`)
+              if (typeof p.beard === 'string' && p.beard) parts.push(`Barba ${p.beard}`)
+              if (typeof p.notes === 'string' && p.notes) parts.push(`— ${p.notes}`)
+              const summary = parts.join(' · ') || JSON.stringify(p)
+              return <div className="text-xs bg-gray-50 border rounded-lg px-3 py-2">{summary}</div>
+            })()}
+            {client.status && (
+              <div className="flex gap-2">
+                <span className="text-gray-400 w-24 shrink-0">Estado</span>
+                <Badge
+                  variant="outline"
+                  className={
+                    client.status === 'VIP' ? 'bg-amber-50 text-amber-800 border-amber-200' : ''
+                  }
+                >
+                  {client.status}
+                </Badge>
+              </div>
+            )}
+            <div className="text-[11px] text-gray-400">
+              Fuente: clients.preferences jsonb · Notification prefs:{' '}
+              {JSON.stringify(
+                (client as unknown as { notification_prefs?: unknown }).notification_prefs ?? {},
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Favoritos ({favorites.length})</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {favorites.length === 0 ? (
+              <div className="text-xs text-gray-400">Sin barberos favoritos</div>
+            ) : (
+              <div className="space-y-2">
+                {favorites.map((f) => (
+                  <div
+                    key={f.employee_id}
+                    className="flex items-center justify-between border border-gray-100 rounded-lg px-3 py-2"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="w-7 h-7 rounded-full bg-gray-900 text-white flex items-center justify-center text-xs font-bold">
+                        {(f.employees?.name?.[0] ?? '?').toUpperCase()}
+                      </span>
+                      <span className="text-sm font-medium text-gray-900">
+                        ★ {f.employees?.name ?? f.employee_id.slice(0, 8)}
+                      </span>
+                    </div>
+                    <span className="text-xs text-gray-500">
+                      {new Date(f.created_at).toLocaleDateString('es-CO')}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Gallery de estilos */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Mis cortes — Fotos ({styles.length})</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {styles.length === 0 ? (
+            <div className="text-xs text-gray-400">
+              Sin fotos aún (bucket client-styles privado)
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+              {styles.map((s) => (
+                <div
+                  key={s.id}
+                  className="border border-gray-200 rounded-lg overflow-hidden bg-gray-50"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={s.photo_url}
+                    alt={s.notes ?? 'Corte'}
+                    className="w-full h-24 object-cover"
+                  />
+                  <div className="p-2">
+                    <div className="text-[11px] text-gray-600 line-clamp-2">{s.notes ?? '—'}</div>
+                    <div className="text-[10px] text-gray-400">
+                      {new Date(s.created_at).toLocaleDateString('es-CO')}{' '}
+                      {s.is_favorite ? '★' : ''}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="text-[11px] text-gray-400 mt-2">
+            Storage: client-styles · signed URL 1h · RLS cliente
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

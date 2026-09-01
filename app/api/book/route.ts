@@ -31,6 +31,7 @@ import {
   parseDateTimeInTz,
 } from '@/lib/booking-availability'
 import { db, tryDrizzle } from '@/lib/db'
+import { generateCheckinCode } from '@/lib/qrcode'
 import { getIp, rateLimit } from '@/lib/rate-limit'
 import { createClient as createAuthClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
@@ -107,6 +108,18 @@ const BookingSchema = z.object({
     .optional()
     .nullable(),
   campaign_id: z.string().uuid().optional().nullable(),
+  tip_amount: z.coerce.number().int().min(0).max(1_000_000).optional().nullable(),
+  deposit_amount: z.coerce.number().int().min(0).max(10_000_000).optional().nullable(),
+  guest_name: z
+    .string()
+    .trim()
+    .min(1)
+    .max(80)
+    .optional()
+    .nullable()
+    .or(z.literal(''))
+    .transform((v) => (v === '' ? null : (v?.trim() ?? null)))
+    .optional(),
 })
 
 // ── Small helpers (<20 each) ───────────────────────────────────────────────
@@ -1144,6 +1157,7 @@ function mapBookingInsertError(msg: string, minAdvance: number): NextResponse {
         error: 'no_staff_available',
         message:
           'This business has no staff available to take bookings right now. Please contact them directly.',
+        suggest_waitlist: true,
       },
       { status: 409 },
     )
@@ -1224,8 +1238,20 @@ async function createAppointment(params: {
   source: string | null
   campaign_id: string | null
   minAdvance: number
+  deposit_amount?: number | null
+  payment_status?: string | null
+  guest_name?: string | null
+  tip_amount?: number | null
   supabaseFallback: ReturnType<typeof createServiceClient>
 }): Promise<{ apptId?: string; error?: NextResponse }> {
+  const checkinCode = generateCheckinCode()
+  const deposit =
+    typeof params.deposit_amount === 'number' && params.deposit_amount > 0
+      ? Math.floor(params.deposit_amount)
+      : 0
+  const pStatus = deposit > 0 ? 'deposit_paid' : (params.payment_status ?? 'unpaid')
+  const guest = params.guest_name ? sanitize(params.guest_name).slice(0, 80) : null
+  // tip_amount stub: validated but not charged; stored via appointments.notes suffix if needed, no financial side-effect V1
   try {
     const apptRes = (await tryDrizzle(
       () =>
@@ -1243,7 +1269,11 @@ async function createAppointment(params: {
             status: 'confirmed',
             source: params.campaign_id ? 'campaign' : ((params.source as string) ?? 'online'),
             campaignId: params.campaign_id ?? null,
-          })
+            checkinCode,
+            depositAmount: deposit,
+            paymentStatus: pStatus,
+            guestName: guest,
+          } as unknown as typeof appointments.$inferInsert)
           .returning({ id: appointments.id }),
       async (): Promise<unknown> => {
         const { data, error } = await params.supabaseFallback
@@ -1260,6 +1290,10 @@ async function createAppointment(params: {
             status: 'confirmed',
             source: params.campaign_id ? 'campaign' : ((params.source as string) ?? 'online'),
             campaign_id: params.campaign_id ?? null,
+            checkin_code: checkinCode,
+            deposit_amount: deposit,
+            payment_status: pStatus,
+            guest_name: guest,
           } as never)
           .select('id')
           .single()
@@ -1386,6 +1420,9 @@ export async function POST(req: NextRequest) {
   const location_id = (parsed.data as { location_id?: string | null }).location_id ?? null
   const source = (parsed.data as { source?: string | null }).source ?? 'online'
   const campaign_id = (parsed.data as { campaign_id?: string | null }).campaign_id ?? null
+  const tip_amount = (parsed.data as { tip_amount?: number | null }).tip_amount ?? null
+  const deposit_amount = (parsed.data as { deposit_amount?: number | null }).deposit_amount ?? null
+  const guest_name = (parsed.data as { guest_name?: string | null }).guest_name ?? null
   const name = sanitize(parsed.data.name)
 
   const stackErr = checkPromoStack(membership_id, promo_code, loyalty_redeem_points)
@@ -1490,6 +1527,9 @@ export async function POST(req: NextRequest) {
     source,
     campaign_id,
     minAdvance,
+    deposit_amount: deposit_amount ?? null,
+    guest_name: guest_name ?? null,
+    tip_amount: tip_amount ?? null,
     supabaseFallback,
   })
   if (apptRes.error) return apptRes.error

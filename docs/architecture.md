@@ -159,6 +159,18 @@ POS → IndexedDB queue → syncQueue → transactions → trigger 008 → clien
 
 - `app/sw.ts` Serwist `fallbacks /offline` + `next.config.js additionalPrecacheEntries ['/offline']` + `public/sw.js` build check.
 
+### Customer 360 (009) — Experiencia Profesional para Clientes
+
+- **Unificación portales**: `app/client/page.tsx:1` anon `?phone=` + `app/(client)/client/dashboard` auth `user_id` → `GET /api/client/me` 360 (`lib/client-360.ts:176 getClient360`) que resuelve por `phone` (normalizePhoneCO +57) o `user_id` link `056_clients_auth.sql` y retorna `client, upcoming (5 asc), history (20 desc), loyalty, memberships, favorites, styles, reviews, transactions, promotions` en **Promise.all parallel** p95 <1.5s. `app/(client)/client/me/page.tsx` poll 30s + timeline `Reservada→Confirmada→En espera→En servicio→Completada`.
+- **Reserva 7 pasos**: `app/book/[slug]/booking-form.tsx:700-727` Any barber `data-testid=any-barber` → `app/api/book:290-321` auto-assign `no_staff_available 409` + `deposit_amount/payment_status` stub + `tip_amount` validado no cobrado + `guest_name` (`Yo/Mi hijo/Otra` radio) + `waitlist.enqueue` CTA.
+- **Cancel/Reprogram**: `PUT /api/client/appointments/[id]` `checkSlotWithinHours` + `cancel_lead_time 2h` + `waitlist.notifyNext` en `PATCH cancel`; `components/client/upcoming-card` modal date/time + política `2h gratis luego $10k`.
+- **Check-in QR + Reseñas**: `lib/qrcode.ts:59 generateCheckinCode nanoid(8)` + `toDataURL` → `GET /api/client/check-in` QR + `POST checked_in` FSM guard `confirmed→checked_in` + `components/client/checkin-qr.tsx` print-friendly + `POST /api/reviews` 1 por `appointment_id UNIQUE` + `pg_advisory_xact_lock`.
+- **Mi estilo/Favoritos/Fotos**: `lib/preferences.ts` Zod `cut/length/clipper/beard`, `lib/favorites.ts:toggleFavorite+nextAvailability`, `lib/styles.ts:validatePhotoFile 5MB`, `app/api/client/{preferences,favorites,styles}` con RLS `tenant_access_* + client_self_*`, `storage client-styles private` signed URL 1h.
+- **Fidelización/Promos/Pagos**: `loyalty_accounts/movements 062` + `memberships 072` + `promotions 061` `evaluatePromotion 1/week` + `transactions completed` historial + `appointments.payment_status deposit_paid` stub (`095_payment_stub.sql`).
+- **Lista espera**: `lib/waitlist.ts` TTL 30m + `app/api/client/waitlist` GET + `components/client/waitlist-card` polling 30s.
+- **Notificaciones/Ubicación/Chat/Gift/Realtime**: `app/api/client/notifications` dedup 1h window (type|channel) + `app/api/client/chat` transaccional (DomPurify 500 + notes JSON 20 + notification_log chat_message) + `components/client/chat-thread` + `components/client/location-card` desde `locations 044` + `app/api/cron/notify` 24h/2h/1h/post (`reminder_2h 105-135m`) + `app/api/gift-cards` stub `code` 10 + `app/api/locations/status` silla tiempo real (`in_service` count polling 30s).
+- **Layout cliente**: `app/(client)/layout.tsx` header Escudería + `components/layout/bottom-tab-client.tsx` 6 tabs Inicio/Reservas/Estilo/Fidelidad/Pagos/Notifs @ 375px max-w 375, `loading.tsx/error.tsx` por ruta, QR print, bottom-tab 360px no scroll.
+
 ## Infra
 
 - `docker-compose.yml`: `migrate` (one-shot `scripts/migrate.js` con retry + `certs/supabase-ca.crt` verify) → `app` (3000, `NEXT_PUBLIC_DEPLOYMENT_MODE=selfhosted` hardcodeado)

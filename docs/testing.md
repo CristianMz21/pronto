@@ -10,6 +10,7 @@
 - `memberships.test.ts` / `promotions.test.ts` / `loyalty.test.ts` / `tips.test.ts` / `cash-register.test.ts` / `commission-strict.test.ts` / `inventory-transfer.test.ts`.
 - `reports.test.ts`: `avgTicket = sum/ count`, `topBarbers` sort, `newVsReturning`.
 - `campaigns` + `auth-user-strict` + `rate-limit-strict` + `offline-db-strict`.
+- **Customer 360 (009)**: `preferences.test.ts` (cut/length/clipper/beard merge, validate), `favorites.test.ts` (toggle + nextAvailability), `qrcode.test.ts` (nanoid 8, toDataURL), `client-360.test.ts` (getClient360 Promise.all upcoming/history/loyalty/memberships/favorites/styles/reviews/transactions/promotions), `checkin.test.ts` (FSM confirmed→checked_in, completed→checked_in 409), `reviews.test.ts` (rating 1-5, tags, unique), `styles.test.ts` (5MB pass, 6MB fail, is_favorite), `loyalty-client.test.ts` (canRedeem, 120pts→redeem 100), `booking-availability-client.test.ts` (Any barber auto-assign, no_staff_available 409).
 
 ```bash
 npm run test:unit          # all suites, coverage thresholds lines 80 / branches 75
@@ -29,6 +30,7 @@ vitest run --coverage       # coverage dir
 ```bash
 npx playwright install --with-deps
 npm run test:e2e
+npm run test:e2e -- tests/e2e/client-360.spec.ts
 ```
 
 Flujos:
@@ -37,6 +39,7 @@ Flujos:
 - `dashboard.spec.ts`: GET /dashboard p95 <2s SSR; filtro `?location=centro` sin cross-leak; reportes export xlsx.
 - `waitlist-recurring.spec.ts`: waitlist enqueue→cancel→notify ≤60s → convert; `rrule FREQ=WEEKLYx6` con skip; holiday bloquea picker; tips report.
 - `multilocation.spec.ts`: create location → inventory transfer Centro→Norte atómico → manager Norte 403 en Centro → reportes breakdown.
+- **Customer 360 (009) `client-360.spec.ts`**: phone OTP → Inicio 360 (`GET /api/client/me` upcoming+history) → Historial → Rebook `?service=&employee=` prefill → Reprogram/Cancel 2h → Check-in `Estoy aquí` → staff `in_service→completed` → Review 5★ → Estilo/Favoritos → waitlist notified → pagos deposit stub.
 
 Manual cuando Playwright no disponible: `specs/006-barberia-saas-integral/quickstart.md` US1..US7 + `docker compose up` + `curl /api/health`.
 
@@ -49,10 +52,17 @@ npx tsc --noEmit
 supabase gen types typescript --local > lib/supabase/database.types.ts
 ```
 
+## Customer 360 quickstart (009)
+
+Ver `specs/009-customer-360/quickstart.md`: `supabase db reset --local` → `curl /api/client/me?phone=+57..` → `POST /api/book Any barber` → `POST /api/client/check-in` → `POST /api/reviews` → `PUT /api/client/preferences` → `POST /api/client/favorites` → `POST /api/client/styles` → `npm run test:e2e -- tests/e2e/client-360.spec.ts`.
+
 ## Coverage gate
 
-`vitest.config.ts` thresholds `lines 80 / branches 75` sobre `lib/**/*.ts, app/**/*.ts, proxy.ts`. Fallo bloquea `specify check` en `sdd-verify`.
+`vitest.config.ts` thresholds `lines 80 / branches 75` sobre `lib/**/*.ts, app/**/*.ts, proxy.ts`. Fallo bloquea `specify check` en `sdd-verify`. 009 Foundational `preferences+favorites+qrcode+client-360` ≥80%.
 
-## Offline POS
+## Offline POS + PWA
+
+- `GET /client/me` offline via `sw.ts` `supabase-data NetworkFirst` + `additionalPrecacheEntries ['/offline']` muestra cached `upcoming` (Serwist fallbacks `/offline`). QR offline not needed (signed `toDataURL` generated client-side, print-friendly).
+- 5 ventas offline → online → `syncQueue` sin pérdida (`lib/offline-db.ts:pending_transactions` IndexedDB). Ver `app/offline/page.tsx` + `sw.ts` + `pos-terminal.tsx` online listener. Test manual: DevTools → offline → POS 5 ventas → online → check `transactions` + `pending_transactions` cleared.
 
 5 ventas offline → online → `syncQueue` sin pérdida (`lib/offline-db.ts:pending_transactions` IndexedDB). Ver `app/offline/page.tsx` + `sw.ts` + `pos-terminal.tsx` online listener. Test manual: DevTools → offline → POS 5 ventas → online → check `transactions` + `pending_transactions` cleared.

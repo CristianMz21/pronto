@@ -61,7 +61,7 @@ businesses 1──N locations 1──N employees (location_id nullable)
 | 085 | config completeness (business_hours location_id + businesses tax/payment/loyalty cols) |
 | 086 | polish indexes (idx_appointments_employee_starts, idx_transactions_business_created, etc.) |
 
-## Índices críticos (059..086)
+## Índices críticos (059..086, 088..095)
 
 - `idx_waitlist_desired (business_id, location_id, desired_at) WHERE status='waiting'`
 - `idx_recurring_business (business_id, next_at) WHERE is_active`
@@ -72,6 +72,31 @@ businesses 1──N locations 1──N employees (location_id nullable)
 - `idx_inventory_business_qty_threshold (business_id, quantity, low_stock_threshold)`
 - `idx_campaign_recipients_client_status (campaign_id, client_id, status)`
 - `idx_client_memberships_active (business_id, status, expires_at) WHERE status='active'`
+- `idx_appointments_client_starts (client_id, starts_at DESC) WHERE client_id IS NOT NULL` — 095 (Customer 360 p95 <1.5s `GET /api/client/me` upcoming/history)
+- `idx_appointments_client_upcoming (business_id, client_id, starts_at)` — 095
+- `idx_appointments_payment_status (payment_status) WHERE deposit_paid` — 095
+- `idx_clients_preferred_barber (preferred_barber_id) WHERE not null` — 088
+- `idx_favorites_client/employee` + `idx_client_styles_client/favorite/created` — 089/090
+- `idx_reviews_business/client/employee/rating` + `unique_reviews_appointment` — 091
+- `idx_appointments_checkin` unique partial `checkin_code` — 092
+- `idx_gift_cards_business/purchaser/expires/balance` — 093
+
+## Customer 360 (009) — 088..095
+
+| Rango | Propósito |
+|-------|-----------|
+| 088 | `clients` ADD `preferences jsonb {}`, `status active/inactive/VIP`, `preferred_barber_id FK employees`, `notification_prefs {whatsapp,email,push}` + `idx_clients_status/preferred_barber` |
+| 089 | `favorites` M2M `PK(client_id,employee_id)` + `tenant_access_favorites USING EXISTS clients.business_id IN my_business_ids()` + `client_self_favorites` |
+| 090 | `client_styles` `id, client_id, business_id, service_id, employee_id, photo_url, notes, is_favorite` + `storage bucket client-styles private 5MB webp/png/jpeg` + `storage.objects RLS client_styles_authenticated_all` |
+| 091 | `reviews` `appointment_id UNIQUE, rating 1-5 CHECK, tags text[], comment` + `tenant_access_reviews + client_self_reviews` + advisory lock api |
+| 092 | `appointments` ADD `checkin_code text UNIQUE partial, payment_status unpaid/deposit_paid/paid/failed, deposit_amount int >=0, guest_name text` + `idx_appointments_checkin/guest` |
+| 093 | `gift_cards` stub `code unique, amount>0, balance>=0 && <=amount, purchaser_client_id, recipient_name/email, expires_at` + `tenant_access_gift_cards` |
+| 094 | Storage bucket verification private + `client_styles_service_all` policy + no anon read |
+| 095 | Payments stub verification + `idx_appointments_client_starts/upcoming/payment_status` for `GET /api/client/me` perf + `transactions.tip_amount` |
+
+```
+Business 1--* Client 1--* Favorite M2M Employee, 1--* ClientStyle, 1--* Review via Appointment unique, 1--* Waitlist, 1--* GiftCard purchaser, Client 1--1 Loyalty, N Membership; Appointment *--1 Service, *--0..1 Employee, + checkin_code/payment_status/guest_name
+```
 
 ## RLS
 

@@ -1,6 +1,6 @@
 import { relations } from "drizzle-orm/relations";
 // @ts-expect-error - tsc strict fix
-import { businesses, employeeUnavailability, users, employees, locations, campaigns, businessSettings, businessIntegrations, clients, cashRegisters, inventoryMovements, inventoryItems, holidays, services, serviceCategories, appointments, transactions, tips, memberships, clientMemberships, promotions, notificationLog, loyaltyAccounts, loyaltyMovements, businessHours, cashMovements, commissions, waitlist, transactionItems, recurringAppointments, employeeServices, campaignRecipients, clientTags, tags, serviceCombos, barbershopApplications } from "./schema";
+import { businesses, employeeUnavailability, users, employees, locations, campaigns, businessSettings, businessIntegrations, clients, cashRegisters, inventoryMovements, inventoryItems, holidays, services, serviceCategories, appointments, transactions, tips, memberships, clientMemberships, promotions, notificationLog, loyaltyAccounts, loyaltyMovements, businessHours, cashMovements, commissions, waitlist, transactionItems, recurringAppointments, employeeServices, campaignRecipients, clientTags, tags, serviceCombos, barbershopApplications, favorites, clientStyles, reviews, giftCards } from "./schema";
 
 export const employeeUnavailabilityRelations = relations(employeeUnavailability, ({one}) => ({
 	business: one(businesses, {
@@ -148,6 +148,10 @@ export const clientsRelations = relations(clients, ({one, many}) => ({
 		fields: [clients.locationId],
 		references: [locations.id]
 	}),
+	preferredBarber: one(employees, {
+		fields: [clients.preferredBarberId],
+		references: [employees.id]
+	}),
 	transactions: many(transactions),
 	clientMemberships: many(clientMemberships),
 	loyaltyAccounts: many(loyaltyAccounts),
@@ -157,6 +161,10 @@ export const clientsRelations = relations(clients, ({one, many}) => ({
 	recurringAppointments: many(recurringAppointments),
 	campaignRecipients: many(campaignRecipients),
 	clientTags: many(clientTags),
+	favorites: many(favorites),
+	clientStyles: many(clientStyles),
+	reviews: many(reviews),
+	giftCards: many(giftCards),
 }));
 
 export const cashRegistersRelations = relations(cashRegisters, ({one, many}) => ({
@@ -539,5 +547,65 @@ export const businessHoursRelationsWithLocation = relations(businessHours, ({one
 	location: one(locations, {
 		fields: [businessHours.locationId],
 		references: [locations.id]
+	}),
+}));
+
+export const favoritesRelations = relations(favorites, ({one}) => ({
+	client: one(clients, {
+		fields: [favorites.clientId],
+		references: [clients.id]
+	}),
+	employee: one(employees, {
+		fields: [favorites.employeeId],
+		references: [employees.id]
+	}),
+}));
+
+export const clientStylesRelations = relations(clientStyles, ({one}) => ({
+	client: one(clients, {
+		fields: [clientStyles.clientId],
+		references: [clients.id]
+	}),
+	business: one(businesses, {
+		fields: [clientStyles.businessId],
+		references: [businesses.id]
+	}),
+	service: one(services, {
+		fields: [clientStyles.serviceId],
+		references: [services.id]
+	}),
+	employee: one(employees, {
+		fields: [clientStyles.employeeId],
+		references: [employees.id]
+	}),
+}));
+
+export const reviewsRelations = relations(reviews, ({one}) => ({
+	appointment: one(appointments, {
+		fields: [reviews.appointmentId],
+		references: [appointments.id]
+	}),
+	client: one(clients, {
+		fields: [reviews.clientId],
+		references: [clients.id]
+	}),
+	business: one(businesses, {
+		fields: [reviews.businessId],
+		references: [businesses.id]
+	}),
+	employee: one(employees, {
+		fields: [reviews.employeeId],
+		references: [employees.id]
+	}),
+}));
+
+export const giftCardsRelations = relations(giftCards, ({one}) => ({
+	business: one(businesses, {
+		fields: [giftCards.businessId],
+		references: [businesses.id]
+	}),
+	purchaserClient: one(clients, {
+		fields: [giftCards.purchaserClientId],
+		references: [clients.id]
 	}),
 }));
