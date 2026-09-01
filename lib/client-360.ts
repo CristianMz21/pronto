@@ -51,6 +51,7 @@ export interface Client360 {
     total_visits: number
     total_spent: number
     last_visit_at: string | null
+    tags?: string[]
   }
   upcoming: AppointmentSummary[]
   history: AppointmentSummary[]
@@ -60,6 +61,7 @@ export interface Client360 {
   styles: StyleSummary[]
   reviews: ReviewSummary[]
   transactions: TransactionSummary[]
+  promotions: PromotionSummary[]
   stats: {
     upcomingCount: number
     historyCount: number
@@ -136,6 +138,19 @@ export interface TransactionSummary {
   status: string
   tip_amount: number
   created_at: string
+}
+
+export interface PromotionSummary {
+  id: string
+  name: string
+  type: string
+  value: number
+  promo_code: string | null
+  valid_from: string
+  valid_to: string | null
+  is_active: boolean
+  eligible: boolean
+  reason?: string
 }
 
 type SupabaseLike = {
@@ -251,6 +266,7 @@ export async function getClient360(
     stylesRes,
     reviewsRes,
     transactionsRes,
+    promotionsRes,
   ] = await Promise.allSettled([
     // upcoming: starts_at >= now, order asc, limit 5
     (
@@ -431,6 +447,23 @@ export async function getClient360(
       .eq('status', 'completed')
       .order('created_at', { ascending: false })
       .limit(10),
+
+    // promotions eligible (active, for business)
+    (
+      supa.from('promotions') as unknown as {
+        select: (c: string) => {
+          eq: (
+            c: string,
+            v: unknown,
+          ) => {
+            eq: (c2: string, v2: unknown) => Promise<{ data: unknown[] | null; error: unknown }>
+          }
+        }
+      }
+    )
+      .select('*')
+      .eq('business_id', businessId)
+      .eq('is_active', true),
   ])
 
   const getData = <T>(r: PromiseSettledResult<{ data: T | null; error: unknown }>): T | null => {
@@ -481,6 +514,10 @@ export async function getClient360(
         error: unknown
       }>,
     ) as unknown[] | null) ?? []
+  const promotionsRaw =
+    (getData(
+      promotionsRes as unknown as PromiseSettledResult<{ data: unknown[] | null; error: unknown }>,
+    ) as unknown[] | null) ?? []
 
   // Normalize client
   const client: Client360['client'] = {
@@ -499,6 +536,57 @@ export async function getClient360(
     total_visits: typeof c.total_visits === 'number' ? c.total_visits : 0,
     total_spent: toNumberCOP(c.total_spent),
     last_visit_at: (c.last_visit_at as string | null) ?? null,
+    tags: Array.isArray(c.tags) ? (c.tags as string[]) : [],
+  }
+
+  // Compute promotions eligible (lightweight evaluation, 1/week spam guard not enforced here — UI shows eligible flag)
+  let promotionsEvaluated: PromotionSummary[] = []
+  try {
+    const { evaluatePromotion } = await import('@/lib/promotions')
+    const now = new Date()
+    const clientCtx = {
+      birthday: client.birthday ?? null,
+      tags: client.tags ?? [],
+      last_visit_at: client.last_visit_at ?? null,
+      total_visits: client.total_visits,
+    }
+    promotionsEvaluated = (promotionsRaw as Array<Record<string, unknown>>)
+      .map((p) => {
+        const promo = {
+          id: String(p.id),
+          business_id: String(p.business_id),
+          location_id: (p.location_id as string | null) ?? null,
+          name: String(p.name ?? ''),
+          type: (p.type as 'percent' | 'fixed' | 'combo') ?? 'percent',
+          value: typeof p.value === 'number' ? p.value : Number(p.value ?? 0),
+          promo_code: (p.promo_code as string | null) ?? null,
+          valid_from: String(p.valid_from ?? now.toISOString()),
+          valid_to: (p.valid_to as string | null) ?? null,
+          rules: (p.rules as Record<string, unknown>) ?? {},
+          is_active: !!p.is_active,
+        } as unknown as Parameters<typeof evaluatePromotion>[0]
+        const res = evaluatePromotion(promo, {
+          client: clientCtx,
+          now,
+          amount: 0,
+        })
+        return {
+          id: promo.id as string,
+          name: promo.name as string,
+          type: promo.type as string,
+          value: promo.value as number,
+          promo_code: promo.promo_code as string | null,
+          valid_from: promo.valid_from as string,
+          valid_to: promo.valid_to as string | null,
+          is_active: promo.is_active as boolean,
+          eligible: res.eligible,
+          reason: res.reason,
+        } as PromotionSummary
+      })
+      .filter((p) => p.eligible)
+      .slice(0, 5)
+  } catch {
+    promotionsEvaluated = []
   }
 
   const completedCount = (history as AppointmentSummary[]).filter(
@@ -570,6 +658,7 @@ export async function getClient360(
       tip_amount: typeof t.tip_amount === 'number' ? t.tip_amount : 0,
       created_at: String(t.created_at ?? ''),
     })),
+    promotions: promotionsEvaluated,
     stats: {
       upcomingCount: (upcoming as unknown[]).length,
       historyCount: (history as unknown[]).length,
