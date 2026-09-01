@@ -240,6 +240,10 @@ export const clients = pgTable("clients", {
 	whatsappEncrypted: text("whatsapp_encrypted"),
 	userId: uuid("user_id"),
 	locationId: uuid("location_id"),
+	preferences: jsonb().default({}).notNull(),
+	status: text().default('active').notNull(),
+	preferredBarberId: uuid("preferred_barber_id"),
+	notificationPrefs: jsonb("notification_prefs").default({"whatsapp":true,"email":true,"push":true}).notNull(),
 }, (table) => [
 	index("idx_clients_business").using("btree", table.businessId.asc().nullsLast()),
 	index("idx_clients_last_visit").using("btree", table.businessId.asc().nullsLast(), table.lastVisitAt.asc().nullsLast()).where(sql`(last_visit_at IS NOT NULL)`),
@@ -262,11 +266,19 @@ export const clients = pgTable("clients", {
 			foreignColumns: [locations.id],
 			name: "clients_location_id_fkey"
 		}).onDelete("set null"),
+	foreignKey({
+			columns: [table.preferredBarberId],
+			foreignColumns: [employees.id],
+			name: "clients_preferred_barber_id_fkey"
+		}).onDelete("set null"),
 	index("idx_clients_location").using("btree", table.businessId.asc().nullsLast(), table.locationId.asc().nullsLast()),
+	index("idx_clients_preferred_barber").using("btree", table.preferredBarberId.asc().nullsLast()).where(sql`(preferred_barber_id IS NOT NULL)`),
+	index("idx_clients_status").using("btree", table.businessId.asc().nullsLast(), table.status.asc().nullsLast()),
 	unique("clients_business_phone_unique").on(table.businessId, table.phone),
 	pgPolicy("client_self_update", { as: "permissive", for: "update", to: ["public"], using: sql`(user_id = auth.uid())`, withCheck: sql`(user_id = auth.uid())`  }),
 	pgPolicy("client_self_select", { as: "permissive", for: "select", to: ["public"] }),
 	pgPolicy("tenant_access_clients", { as: "permissive", for: "all", to: ["public"] }),
+	check("clients_status_check", sql`status IN ('active','inactive','VIP')`),
 ]);
 
 export const cashRegisters = pgTable("cash_registers", {
@@ -962,12 +974,18 @@ export const appointments = pgTable("appointments", {
 	locationId: uuid("location_id"),
 	recurringId: uuid("recurring_id"),
 	campaignId: uuid("campaign_id"),
+	checkinCode: text("checkin_code"),
+	paymentStatus: text("payment_status").default('unpaid').notNull(),
+	depositAmount: integer("deposit_amount").default(0).notNull(),
+	guestName: text("guest_name"),
 }, (table) => [
 	index("idx_appointments_business").using("btree", table.businessId.asc().nullsLast()),
 	index("idx_appointments_business_status_starts").using("btree", table.businessId.asc().nullsLast(), table.status.asc().nullsLast(), table.startsAt.asc().nullsLast()),
 	index("idx_appointments_location").using("btree", table.locationId.asc().nullsLast()),
 	index("idx_appointments_starts_at").using("btree", table.businessId.asc().nullsLast(), table.startsAt.asc().nullsLast()),
 	index("idx_appointments_status").using("btree", table.businessId.asc().nullsLast(), table.status.asc().nullsLast()),
+	index("idx_appointments_checkin").using("btree", table.checkinCode.asc().nullsLast()).where(sql`(checkin_code IS NOT NULL)`),
+	index("idx_appointments_guest").using("btree", table.businessId.asc().nullsLast(), table.guestName.asc().nullsLast()).where(sql`(guest_name IS NOT NULL)`),
 	foreignKey({
 			columns: [table.businessId],
 			foreignColumns: [businesses.id],
@@ -1008,6 +1026,9 @@ export const appointments = pgTable("appointments", {
 	pgPolicy("client_self_select_appointments", { as: "permissive", for: "select", to: ["public"] }),
 	check("appointments_source_check", sql`source = ANY (ARRAY['manual'::text, 'online'::text, 'telegram'::text, 'viber'::text])`),
 	check("appointments_status_check", sql`status = ANY (ARRAY['pending'::text, 'scheduled'::text, 'confirmed'::text, 'checked_in'::text, 'in_service'::text, 'completed'::text, 'cancelled'::text, 'no_show'::text, 'paid'::text])`),
+	check("appointments_payment_status_check", sql`payment_status IN ('unpaid','deposit_paid','paid','failed')`),
+	check("appointments_deposit_amount_check", sql`deposit_amount >= 0`),
+	unique("appointments_checkin_code_key").on(table.checkinCode),
 ]);
 
 export const recurringAppointments = pgTable("recurring_appointments", {
@@ -1209,3 +1230,139 @@ export const clientsSecure = pgView("clients_secure", {	id: uuid(),
 	emailSecure: text("email_secure"),
 	whatsappSecure: text("whatsapp_secure"),
 }).with({"securityInvoker":true}).as(sql`SELECT id, business_id, name, phone, email, notes, tags, telegram_id, birthday, total_visits, total_spent, last_visit_at, created_at, viber_user_id, whatsapp_number, phone_encrypted, email_encrypted, whatsapp_encrypted, phone_encrypted AS phone_secure, email_encrypted AS email_secure, whatsapp_encrypted AS whatsapp_secure FROM clients`);
+
+// ── Customer 360: favorites, client_styles, reviews, gift_cards (088..094) ──
+
+export const favorites = pgTable("favorites", {
+	clientId: uuid("client_id").notNull(),
+	employeeId: uuid("employee_id").notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("idx_favorites_client").using("btree", table.clientId.asc().nullsLast()),
+	index("idx_favorites_employee").using("btree", table.employeeId.asc().nullsLast()),
+	index("idx_favorites_created").using("btree", table.clientId.asc().nullsLast(), table.createdAt.desc().nullsFirst()),
+	foreignKey({
+			columns: [table.clientId],
+			foreignColumns: [clients.id],
+			name: "favorites_client_id_fkey"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.employeeId],
+			foreignColumns: [employees.id],
+			name: "favorites_employee_id_fkey"
+		}).onDelete("cascade"),
+	primaryKey({ columns: [table.clientId, table.employeeId], name: "favorites_pkey"}),
+	pgPolicy("tenant_access_favorites", { as: "permissive", for: "all", to: ["public"], using: sql`(EXISTS ( SELECT 1 FROM clients c WHERE ((c.id = favorites.client_id) AND (c.business_id IN ( SELECT my_business_ids() AS my_business_ids)))))` }),
+]);
+
+export const clientStyles = pgTable("client_styles", {
+	id: uuid().default(sql`uuid_generate_v4()`).primaryKey().notNull(),
+	clientId: uuid("client_id").notNull(),
+	businessId: uuid("business_id").notNull(),
+	serviceId: uuid("service_id"),
+	employeeId: uuid("employee_id"),
+	photoUrl: text("photo_url").notNull(),
+	notes: text(),
+	isFavorite: boolean("is_favorite").default(false).notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("idx_client_styles_client").using("btree", table.clientId.asc().nullsLast()),
+	index("idx_client_styles_business").using("btree", table.businessId.asc().nullsLast()),
+	index("idx_client_styles_favorite").using("btree", table.clientId.asc().nullsLast(), table.isFavorite.asc().nullsLast()).where(sql`is_favorite = true`),
+	index("idx_client_styles_created").using("btree", table.clientId.asc().nullsLast(), table.createdAt.desc().nullsFirst()),
+	foreignKey({
+			columns: [table.businessId],
+			foreignColumns: [businesses.id],
+			name: "client_styles_business_id_fkey"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.clientId],
+			foreignColumns: [clients.id],
+			name: "client_styles_client_id_fkey"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.serviceId],
+			foreignColumns: [services.id],
+			name: "client_styles_service_id_fkey"
+		}).onDelete("set null"),
+	foreignKey({
+			columns: [table.employeeId],
+			foreignColumns: [employees.id],
+			name: "client_styles_employee_id_fkey"
+		}).onDelete("set null"),
+	pgPolicy("tenant_access_client_styles", { as: "permissive", for: "all", to: ["public"], using: sql`(business_id IN ( SELECT my_business_ids() AS my_business_ids))` }),
+]);
+
+export const reviews = pgTable("reviews", {
+	id: uuid().default(sql`uuid_generate_v4()`).primaryKey().notNull(),
+	appointmentId: uuid("appointment_id").notNull(),
+	clientId: uuid("client_id").notNull(),
+	businessId: uuid("business_id").notNull(),
+	employeeId: uuid("employee_id"),
+	rating: smallint().notNull(),
+	tags: text().array().default([""]).notNull(),
+	comment: text(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("idx_reviews_business").using("btree", table.businessId.asc().nullsLast()),
+	index("idx_reviews_client").using("btree", table.clientId.asc().nullsLast()),
+	index("idx_reviews_employee").using("btree", table.employeeId.asc().nullsLast()).where(sql`(employee_id IS NOT NULL)`),
+	index("idx_reviews_rating").using("btree", table.businessId.asc().nullsLast(), table.rating.asc().nullsLast()),
+	index("idx_reviews_created").using("btree", table.createdAt.desc().nullsFirst()),
+	unique("reviews_appointment_id_key").on(table.appointmentId),
+	foreignKey({
+			columns: [table.appointmentId],
+			foreignColumns: [appointments.id],
+			name: "reviews_appointment_id_fkey"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.businessId],
+			foreignColumns: [businesses.id],
+			name: "reviews_business_id_fkey"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.clientId],
+			foreignColumns: [clients.id],
+			name: "reviews_client_id_fkey"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.employeeId],
+			foreignColumns: [employees.id],
+			name: "reviews_employee_id_fkey"
+		}).onDelete("set null"),
+	pgPolicy("tenant_access_reviews", { as: "permissive", for: "all", to: ["public"], using: sql`(business_id IN ( SELECT my_business_ids() AS my_business_ids))` }),
+	check("reviews_rating_check", sql`rating BETWEEN 1 AND 5`),
+]);
+
+export const giftCards = pgTable("gift_cards", {
+	id: uuid().default(sql`uuid_generate_v4()`).primaryKey().notNull(),
+	businessId: uuid("business_id").notNull(),
+	code: text().notNull(),
+	amount: integer().notNull(),
+	balance: integer().notNull(),
+	purchaserClientId: uuid("purchaser_client_id"),
+	recipientName: text("recipient_name"),
+	recipientEmail: text("recipient_email"),
+	expiresAt: timestamp("expires_at", { withTimezone: true, mode: 'string' }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("idx_gift_cards_business").using("btree", table.businessId.asc().nullsLast()),
+	index("idx_gift_cards_purchaser").using("btree", table.purchaserClientId.asc().nullsLast()).where(sql`(purchaser_client_id IS NOT NULL)`),
+	index("idx_gift_cards_expires").using("btree", table.expiresAt.asc().nullsLast()).where(sql`(expires_at IS NOT NULL)`),
+	index("idx_gift_cards_balance").using("btree", table.businessId.asc().nullsLast(), table.balance.asc().nullsLast()),
+	unique("gift_cards_code_key").on(table.code),
+	foreignKey({
+			columns: [table.businessId],
+			foreignColumns: [businesses.id],
+			name: "gift_cards_business_id_fkey"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.purchaserClientId],
+			foreignColumns: [clients.id],
+			name: "gift_cards_purchaser_client_id_fkey"
+		}).onDelete("set null"),
+	pgPolicy("tenant_access_gift_cards", { as: "permissive", for: "all", to: ["public"], using: sql`(business_id IN ( SELECT my_business_ids() AS my_business_ids))` }),
+	check("gift_cards_amount_check", sql`amount > 0`),
+	check("gift_cards_balance_check", sql`balance >= 0`),
+	check("gift_cards_balance_amount_check", sql`balance <= amount`),
+]);
