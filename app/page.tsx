@@ -519,11 +519,101 @@ function EscuderiaPremium() {
           </div>
         </section>
 
+        {/* Barberos — premium with assigned photos */}
+        <section id="barbers" className="py-20 md:py-[120px] px-5 md:px-16 max-w-[1280px] mx-auto">
+          <div className="text-center mb-12">
+            <span
+              className="block mb-4 text-[#C5A059] text-[12px] font-semibold tracking-[0.2em]"
+              style={{ fontFamily: 'var(--font-montserrat)' }}
+            >
+              EL EQUIPO
+            </span>
+            <h2
+              className="text-white text-[32px] md:text-[48px] font-semibold mb-4"
+              style={{ fontFamily: 'var(--font-playfair)', lineHeight: 1.1 }}
+            >
+              Maestros del ritual.
+            </h2>
+            <p
+              className="text-[#d0c5b9] max-w-xl mx-auto"
+              style={{ fontFamily: 'var(--font-montserrat)' }}
+            >
+              Tres escuderos, un mismo estándar. Elige tu favorito o deja que asignemos al
+              disponible con tu estilo.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[
+              {
+                name: 'Carlos',
+                role: 'Fade · Corte clásico',
+                exp: '247 servicios',
+                img: '/business-assets/escuderia/barber-1.jpeg',
+                rating: '4.9',
+              },
+              {
+                name: 'Andrés',
+                role: 'Barba · Afeitado',
+                exp: '189 servicios',
+                img: '/business-assets/escuderia/barber-2.jpeg',
+                rating: '4.8',
+              },
+              {
+                name: 'Sofía',
+                role: 'Color · Cejas',
+                exp: '203 servicios',
+                img: '/business-assets/escuderia/chair.jpeg',
+                rating: '4.9',
+              },
+            ].map((b) => (
+              <div
+                key={b.name}
+                className="bg-[#121212] border border-[#8E795E]/20 overflow-hidden group"
+              >
+                <div className="relative h-64 overflow-hidden">
+                  <Image
+                    src={b.img}
+                    alt={b.name}
+                    fill
+                    className="object-cover grayscale group-hover:grayscale-0 transition-all duration-700"
+                    sizes="(max-width: 768px) 100vw, 33vw"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-transparent to-transparent" />
+                  <div className="absolute bottom-3 left-3 bg-[#C5A059] text-black text-[11px] font-bold px-2 py-1 tracking-[0.08em]">
+                    ★ {b.rating}
+                  </div>
+                </div>
+                <div className="p-6 text-center">
+                  <div
+                    className="text-white font-semibold text-[18px]"
+                    style={{ fontFamily: 'var(--font-playfair)' }}
+                  >
+                    {b.name}
+                  </div>
+                  <div
+                    className="text-[#8E795E] text-[12px] tracking-[0.14em] mt-1"
+                    style={{ fontFamily: 'var(--font-montserrat)' }}
+                  >
+                    {b.role} · {b.exp}
+                  </div>
+                  <Link
+                    href="/book/escuderia"
+                    className="mt-4 inline-block border border-[#C5A059]/30 text-[#C5A059] px-6 py-2 text-[12px] font-semibold tracking-[0.14em] hover:bg-[#C5A059] hover:text-black transition-colors"
+                    style={{ fontFamily: 'var(--font-montserrat)', borderRadius: 0 }}
+                  >
+                    RESERVAR CON {b.name.toUpperCase()}
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
         {/* Signature Experience — opacity 30 bg + centered card */}
         <section id="gallery" className="py-20 md:py-[120px] relative overflow-hidden">
           <div className="absolute inset-0 w-full h-full z-0">
             <Image
-              src="/business-assets/escuderia/hero-2.png"
+              src="/business-assets/escuderia/hero-2.jpeg"
               alt="Experiencia signature Escudería"
               fill
               className="object-cover opacity-30"
